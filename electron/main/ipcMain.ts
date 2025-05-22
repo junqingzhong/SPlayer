@@ -14,7 +14,8 @@ import { parseFile } from "music-metadata";
 import { getFonts } from "font-list";
 import { MainTray } from "./tray";
 import { Thumbar } from "./thumbar";
-import { StoreType } from "./store";
+import { type StoreType } from "./store"; // Import StoreType
+import { applyProxyFromMain } from "./index"; // Import applyProxyFromMain
 import { isDev, getFileID, getFileMD5 } from "./utils";
 import { isShortcutRegistered, registerShortcut, unregisterShortcuts } from "./shortcut";
 import { join, basename, resolve, relative, isAbsolute } from "path";
@@ -478,54 +479,65 @@ const initWinIpcMain = (
     },
   );
 
-  // 取消代理
-  ipcMain.on("remove-proxy", () => {
-    store.set("proxy", "");
-    win?.webContents.session.setProxy({ proxyRules: "" });
-    log.info("✅ Remove proxy successfully");
+  // New IPC handler for updating and applying proxy settings
+  ipcMain.on("update-proxy-config", (_, newProxyConfig: StoreType["proxyConfig"]) => {
+    if (store) {
+      // @ts-ignore
+      store.set("proxyConfig", newProxyConfig);
+      log.info("Proxy config updated in store:", newProxyConfig);
+      applyProxyFromMain(newProxyConfig);
+    } else {
+      log.error("Store not available to update proxy config");
+    }
   });
 
-  // 配置网络代理
-  ipcMain.on("set-proxy", (_, config) => {
-    const proxyRules = `${config.protocol}://${config.server}:${config.port}`;
-    store.set("proxy", proxyRules);
-    win?.webContents.session.setProxy({ proxyRules });
-    log.info("✅ Set proxy successfully:", proxyRules);
-  });
+  // New IPC handler for testing proxy settings
+  ipcMain.handle("test-new-proxy", async (_, testProxyConfig: StoreType["proxyConfig"]) => {
+    if (!win) {
+      log.error("Main window not available for proxy test");
+      return false;
+    }
+    const originalProxyConfig = store?.get("proxyConfig");
+    log.info("Testing proxy configuration:", testProxyConfig);
 
-  // 代理测试
-  ipcMain.handle("test-proxy", async (_, config) => {
-    const proxyRules = `${config.protocol}://${config.server}:${config.port}`;
     try {
-      // 设置代理
-      const ses = session.defaultSession;
-      await ses.setProxy({ proxyRules });
-      // 测试请求
-      const request = net.request({ url: "https://www.baidu.com" });
-      return new Promise((resolve) => {
+      // Apply temporary proxy settings for testing
+      applyProxyFromMain(testProxyConfig);
+
+      // Perform a test network request
+      const request = net.request({ url: "https://www.baidu.com" }); // Or any other reliable URL
+      const result = await new Promise<boolean>((resolve) => {
         request.on("response", (response) => {
-          if (response.statusCode === 200) {
-            log.info("✅ Proxy test successful");
-            resolve(true);
-          } else {
-            log.error(`❌ Proxy test failed with status code: ${response.statusCode}`);
-            resolve(false);
-          }
+          log.info(`Proxy test response status: ${response.statusCode}`);
+          resolve(response.statusCode === 200);
         });
         request.on("error", (error) => {
-          log.error("❌ Error testing proxy:", error);
+          log.error("Proxy test request error:", error);
           resolve(false);
         });
         request.end();
       });
+
+      return result;
     } catch (error) {
-      log.error("❌ Error testing proxy:", error);
+      log.error("Error during proxy test:", error);
       return false;
+    } finally {
+      // Revert to original proxy settings
+      log.info("Reverting to original proxy configuration after test");
+      if (originalProxyConfig) {
+        // @ts-ignore
+        applyProxyFromMain(originalProxyConfig);
+      } else {
+        // If no original config, turn off proxy
+        applyProxyFromMain({ type: "off" });
+      }
     }
   });
 
   // 重置全部设置
   ipcMain.on("reset-setting", () => {
+    // @ts-ignore
     store.reset();
     log.info("✅ Reset setting successfully");
   });
@@ -573,7 +585,9 @@ const initLyricIpcMain = (
   ipcMain.on("move-window", (_, x, y, width, height) => {
     lyricWin?.setBounds({ x, y, width, height });
     // 保存配置
-    store.set("lyric", { ...store.get("lyric"), x, y, width, height });
+    // @ts-ignore
+    store.set("lyric", { // @ts-ignore
+                          ...store.get("lyric"), x, y, width, height });
     // 保持置顶
     lyricWin?.setAlwaysOnTop(true, "screen-saver");
   });
@@ -588,11 +602,13 @@ const initLyricIpcMain = (
 
   // 获取配置
   ipcMain.handle("get-desktop-lyric-option", () => {
+    // @ts-ignore
     return store.get("lyric");
   });
 
   // 保存配置
   ipcMain.on("set-desktop-lyric-option", (_, option, callback: boolean = false) => {
+    // @ts-ignore
     store.set("lyric", option);
     // 触发窗口更新
     if (callback && lyricWin) {

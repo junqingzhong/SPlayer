@@ -46,8 +46,12 @@ const initAppServer = async () => {
     server.register(initNcmAPI, { prefix: "/api" });
     server.register(initUnblockAPI, { prefix: "/api" });
     // 启动端口
-    const port = Number(import.meta.env["VITE_SERVER_PORT"] || 25884);
-    await server.listen({ port });
+    let port = Number(import.meta.env["VITE_SERVER_PORT"] || 25884);
+    if (process.env.SPLAYER_DOCKER_MODE === "true") {
+      port = Number(process.env.VITE_SPLAYER_BACKEND_PORT || 25885);
+      log.info("SPLAYER_DOCKER_MODE is true, using VITE_SPLAYER_BACKEND_PORT");
+    }
+    await server.listen({ port, host: "0.0.0.0" }); // Listen on all interfaces for Docker
     log.info(`🌐 Starting AppServer on port ${port}`);
     return server;
   } catch (error) {

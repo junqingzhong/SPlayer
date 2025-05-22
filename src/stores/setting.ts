@@ -41,9 +41,14 @@ interface SettingState {
   downloadCover: boolean;
   downloadLyric: boolean;
   saveMetaFile: boolean;
-  proxyProtocol: "off" | "http" | "https";
-  proxyServe: string;
-  proxyPort: number;
+  // Proxy settings
+  proxyType: "off" | "system" | "manual" | "pac";
+  proxyProtocol: "http" | "https"; // Used when proxyType is 'manual'
+  proxyServe: string; // Used when proxyType is 'manual'
+  proxyPort: number; // Used when proxyType is 'manual'
+  proxyUsername?: string; // Optional, for manual proxy
+  proxyPassword?: string; // Optional, for manual proxy
+  pacUrl?: string; // Used when proxyType is 'pac'
   songLevel:
     | "standard"
     | "higher"
@@ -159,9 +164,13 @@ export const useSettingStore = defineStore("setting", {
     downloadLyric: true, // 同时下载歌词
     saveMetaFile: false, // 保留为独立文件
     // 网络
-    proxyProtocol: "off", // 代理协议
-    proxyServe: "127.0.0.1", // 代理地址
-    proxyPort: 80, // 代理端口
+    proxyType: "off", // 代理类型
+    proxyProtocol: "http", // 代理协议 (for manual)
+    proxyServe: "127.0.0.1", // 代理地址 (for manual)
+    proxyPort: 80, // 代理端口 (for manual)
+    proxyUsername: "", // Optional proxy username
+    proxyPassword: "", // Optional proxy password
+    pacUrl: "", // PAC URL
     useRealIP: false, // 是否使用真实 IP
     realIP: "116.25.146.177", // 真实IP地址
   }),

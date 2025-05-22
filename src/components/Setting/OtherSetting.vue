@@ -31,75 +31,97 @@
       <n-h3 prefix="bar"> 网络代理 </n-h3>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">网络代理</n-text>
-          <n-text class="tip" :depth="3">修改后请点击保存或重启软件以应用</n-text>
+          <n-text class="name">网络代理类型</n-text>
+          <n-text class="tip" :depth="3">选择代理方式</n-text>
         </div>
-        <n-flex>
-          <n-button type="primary" strong secondary @click="setProxy"> 保存并应用 </n-button>
-          <n-select
-            v-model:value="settingStore.proxyProtocol"
-            :options="[
-              {
-                label: '关闭代理',
-                value: 'off',
-              },
-              {
-                label: 'HTTP 代理',
-                value: 'HTTP',
-              },
-              {
-                label: 'HTTPS 代理',
-                value: 'HTTPS',
-              },
-            ]"
-            class="set"
-          />
-        </n-flex>
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">代理服务器地址</n-text>
-          <n-text class="tip" :depth="3">请填写代理服务器地址，如 127.0.0.1</n-text>
-        </div>
-        <n-input
-          v-model:value="settingStore.proxyServe"
-          :disabled="settingStore.proxyProtocol === 'off'"
-          placeholder="请填写代理服务器地址"
-          class="set"
-        >
-          <template #prefix>
-            <n-text depth="3">
-              {{ settingStore.proxyProtocol === "off" ? "-" : settingStore.proxyProtocol }}
-            </n-text>
-          </template>
-        </n-input>
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">代理服务器端口</n-text>
-          <n-text class="tip" :depth="3">请填写代理服务器端口，如 80</n-text>
-        </div>
-        <n-input-number
-          v-model:value="settingStore.proxyPort"
-          :disabled="settingStore.proxyProtocol === 'off'"
-          :show-button="false"
-          :min="1"
-          :max="65535"
-          placeholder="请填写代理服务器端口"
+        <n-select
+          v-model:value="settingStore.proxyType"
+          :options="[
+            { label: '关闭代理', value: 'off' },
+            { label: '系统代理', value: 'system' },
+            { label: '手动代理', value: 'manual' },
+            { label: 'PAC 脚本', value: 'pac' },
+          ]"
           class="set"
         />
       </n-card>
-      <n-collapse-transition :show="settingStore.proxyProtocol !== 'off'">
-        <n-card class="set-item">
+      <!-- 手动代理配置 -->
+      <n-collapse-transition :show="settingStore.proxyType === 'manual'">
+        <n-card class="set-item nested">
           <div class="label">
-            <n-text class="name">测试代理</n-text>
-            <n-text class="tip" :depth="3">测试代理配置是否可正常连通</n-text>
+            <n-text class="name">手动代理协议</n-text>
           </div>
-          <n-button :loading="testProxyLoading" type="primary" strong secondary @click="testProxy">
-            测试代理
-          </n-button>
+          <n-select
+            v-model:value="settingStore.proxyProtocol"
+            :options="[
+              { label: 'HTTP', value: 'http' },
+              { label: 'HTTPS', value: 'https' },
+            ]"
+            class="set"
+          />
+        </n-card>
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理服务器地址</n-text>
+          </div>
+          <n-input
+            v-model:value="settingStore.proxyServe"
+            placeholder="例如: 127.0.0.1"
+            class="set"
+          />
+        </n-card>
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理服务器端口</n-text>
+          </div>
+          <n-input-number
+            v-model:value="settingStore.proxyPort"
+            :show-button="false"
+            :min="1"
+            :max="65535"
+            placeholder="例如: 8080"
+            class="set"
+          />
+        </n-card>
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理用户名 (可选)</n-text>
+          </div>
+          <n-input v-model:value="settingStore.proxyUsername" placeholder="可选" class="set" />
+        </n-card>
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理密码 (可选)</n-text>
+          </div>
+          <n-input
+            v-model:value="settingStore.proxyPassword"
+            type="password"
+            show-password-on="click"
+            placeholder="可选"
+            class="set"
+          />
         </n-card>
       </n-collapse-transition>
+      <!-- PAC 脚本配置 -->
+      <n-collapse-transition :show="settingStore.proxyType === 'pac'">
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">PAC 脚本 URL</n-text>
+          </div>
+          <n-input v-model:value="settingStore.pacUrl" placeholder="例如: http://example.com/proxy.pac" class="set" />
+        </n-card>
+      </n-collapse-transition>
+      <!-- 应用和测试按钮 -->
+      <n-card class="set-item">
+        <n-flex justify="space-between">
+          <n-button type="primary" strong secondary @click="applyProxySettings">
+            应用代理设置
+          </n-button>
+          <n-button :loading="testProxyLoading" type="info" strong secondary @click="testCurrentProxy">
+            测试当前代理
+          </n-button>
+        </n-flex>
+      </n-card>
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> 重置 </n-h3>
@@ -131,34 +153,79 @@ const settingStore = useSettingStore();
 
 const testProxyLoading = ref<boolean>(false);
 
-// 获取当前代理配置
-const proxyConfig = computed(() => ({
-  protocol: settingStore.proxyProtocol,
-  server: settingStore.proxyServe,
-  port: settingStore.proxyPort,
-}));
-
-// 应用代理
-const setProxy = debounce(() => {
-  if (settingStore.proxyProtocol === "off" || !settingStore.proxyServe || !settingStore.proxyPort) {
-    window.electron.ipcRenderer.send("remove-proxy");
-    window.$message.success("成功关闭网络代理");
-    return;
+// 应用代理设置
+const applyProxySettings = debounce(() => {
+  const configToApply: any = {
+    type: settingStore.proxyType,
+  };
+  if (settingStore.proxyType === "manual") {
+    configToApply.manualConfig = {
+      protocol: settingStore.proxyProtocol,
+      server: settingStore.proxyServe,
+      port: settingStore.proxyPort,
+      username: settingStore.proxyUsername,
+      password: settingStore.proxyPassword,
+    };
+    if (!configToApply.manualConfig.server || !configToApply.manualConfig.port) {
+      window.$message.error("手动代理需要服务器地址和端口");
+      return;
+    }
+  } else if (settingStore.proxyType === "pac") {
+    if (!settingStore.pacUrl) {
+      window.$message.error("PAC 脚本需要 URL");
+      return;
+    }
+    configToApply.pacUrl = settingStore.pacUrl;
   }
-  window.electron.ipcRenderer.send("set-proxy", proxyConfig.value);
-  window.$message.success("网络代理配置完成，请重启软件");
+
+  window.electron.ipcRenderer.send("update-proxy-config", configToApply);
+  window.$message.success("代理设置已发送至主进程应用");
 }, 300);
 
-// 测试代理
-const testProxy = async () => {
+// 测试当前代理配置
+const testCurrentProxy = async () => {
   testProxyLoading.value = true;
-  const result = await window.electron.ipcRenderer.invoke("test-proxy", proxyConfig.value);
-  if (result) {
-    window.$message.success("该代理可正常使用");
-  } else {
-    window.$message.error("代理测试失败，请重试");
+  const configToTest: any = {
+    type: settingStore.proxyType,
+  };
+  if (settingStore.proxyType === "manual") {
+    configToTest.manualConfig = {
+      protocol: settingStore.proxyProtocol,
+      server: settingStore.proxyServe,
+      port: settingStore.proxyPort,
+      username: settingStore.proxyUsername,
+      password: settingStore.proxyPassword,
+    };
+    if (!configToTest.manualConfig.server || !configToTest.manualConfig.port) {
+      window.$message.error("测试前请填写手动代理的服务器地址和端口");
+      testProxyLoading.value = false;
+      return;
+    }
+  } else if (settingStore.proxyType === "pac") {
+    if (!settingStore.pacUrl) {
+      window.$message.error("测试前请填写 PAC 脚本的 URL");
+      testProxyLoading.value = false;
+      return;
+    }
+    configToTest.pacUrl = settingStore.pacUrl;
+  } else if (settingStore.proxyType === "off" || settingStore.proxyType === "system") {
+    // For 'off' or 'system', we can still test general connectivity through this setting
+    // The main process will handle applying 'off' or 'system' correctly for the test
   }
-  testProxyLoading.value = false;
+
+  try {
+    const result = await window.electron.ipcRenderer.invoke("test-new-proxy", configToTest);
+    if (result) {
+      window.$message.success("代理连接测试成功！");
+    } else {
+      window.$message.error("代理连接测试失败，请检查配置或网络。");
+    }
+  } catch (error) {
+    window.$message.error("代理测试时发生错误。");
+    console.error("Proxy test error:", error);
+  } finally {
+    testProxyLoading.value = false;
+  }
 };
 
 // 重置设置

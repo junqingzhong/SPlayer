@@ -22,8 +22,21 @@ if ! grep -q "interface3.music.163.com.163jiasu.com" /etc/hosts; then
     echo "127.0.0.1 interface3.music.163.com.163jiasu.com" >> /etc/hosts
 fi
 
+# Configure SPlayer backend
+export ELECTRON_STORE_PATH=/app/splayer_config/config.json
+export SPLAYER_DOCKER_MODE=true
+export VITE_SPLAYER_BACKEND_PORT=${VITE_SPLAYER_BACKEND_PORT:-25885}
+
+echo "Starting SPlayer backend server on port $VITE_SPLAYER_BACKEND_PORT..."
+# Assuming /app/out/main/index.js will respect SPLAYER_DOCKER_MODE and VITE_SPLAYER_BACKEND_PORT
+node /app/out/main/index.js &
+
 # start the nginx daemon
+echo "Starting Nginx..."
 nginx
 
-# start the main process
+# start the main process (if any, otherwise this will just keep the container alive if nginx is not daemonized)
+# If nginx runs in foreground (default for docker images), this exec might not be reached or needed.
+# Keeping it for now as per original script structure.
+echo "Executing main CMD..."
 exec "$@"

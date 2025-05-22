@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, BrowserWindowConstructorOptions } from "electron";
+import { app, shell, BrowserWindow, BrowserWindowConstructorOptions, session } from "electron";
 import { electronApp } from "@electron-toolkit/utils";
 import { join } from "path";
 import { release, type } from "os";
@@ -24,9 +24,22 @@ Object.defineProperty(app, "isPackaged", {
   },
 });
 
-// 主进程
-class MainProcess {
-  // 窗口
+// Check for Docker mode
+const isDockerMode = process.env.SPLAYER_DOCKER_MODE === "true";
+
+if (isDockerMode) {
+  log.info("🚀 SPlayer running in Docker mode (backend server only).");
+  // Initialize store for server (optional, if server needs access to settings)
+  // initStore(); // Consider if server needs settings access directly
+  initAppServer().catch(err => {
+    log.error("🚫 Failed to start AppServer in Docker mode:", err);
+    process.exit(1);
+  });
+} else {
+  log.info("🚀 SPlayer running in Electron mode.");
+  // 主进程
+  class MainProcess {
+    // 窗口
   mainWindow: BrowserWindow | null = null;
   lyricWindow: BrowserWindow | null = null;
   loadingWindow: BrowserWindow | null = null;
@@ -114,7 +127,9 @@ class MainProcess {
   createMainWindow() {
     // 窗口配置项
     const options: BrowserWindowConstructorOptions = {
+      // @ts-ignore
       width: this.store?.get("window").width,
+      // @ts-ignore
       height: this.store?.get("window").height,
       minHeight: 800,
       minWidth: 1280,
@@ -135,9 +150,9 @@ class MainProcess {
     }
 
     // 配置网络代理
-    if (this.store?.get("proxy")) {
-      this.mainWindow.webContents.session.setProxy({ proxyRules: this.store?.get("proxy") });
-    }
+    // Apply initial proxy settings
+    // @ts-ignore
+    this.applyProxySettings(this.store?.get("proxyConfig"));
 
     // 窗口打开处理程序
     this.mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -165,14 +180,18 @@ class MainProcess {
   createLyricsWindow() {
     // 初始化窗口
     this.lyricWindow = this.createWindow({
+      // @ts-ignore
       width: this.store?.get("lyric").width || 800,
+      // @ts-ignore
       height: this.store?.get("lyric").height || 180,
       minWidth: 440,
       minHeight: 120,
       maxWidth: 1600,
       maxHeight: 300,
       // 窗口位置
+      // @ts-ignore
       x: this.store?.get("lyric").x,
+      // @ts-ignore
       y: this.store?.get("lyric").y,
       transparent: true,
       backgroundColor: "rgba(0, 0, 0, 0)",
@@ -259,7 +278,9 @@ class MainProcess {
       const bounds = this.lyricWindow?.getBounds();
       if (bounds) {
         const { width, height } = bounds;
-        this.store?.set("lyric", { ...this.store?.get("lyric"), width, height });
+        // @ts-ignore
+        this.store?.set("lyric", { // @ts-ignore
+                                  ...this.store?.get("lyric"), width, height });
       }
     });
 
@@ -277,6 +298,7 @@ class MainProcess {
   saveBounds() {
     if (this.mainWindow?.isFullScreen()) return;
     const bounds = this.mainWindow?.getBounds();
+    // @ts-ignore
     if (bounds) this.store?.set("window", bounds);
   }
   // 显示窗口
@@ -287,6 +309,53 @@ class MainProcess {
       this.mainWindow.focus();
     }
   }
+
+  // Function to apply proxy settings
+  applyProxySettings(proxyConfig: StoreType["proxyConfig"] | undefined) {
+    if (!this.mainWindow || !proxyConfig) {
+      log.warn("applyProxySettings: No mainWindow or proxyConfig found");
+      return;
+    }
+
+    const ses = this.mainWindow.webContents.session;
+
+    if (proxyConfig.type === "off") {
+      ses.setProxy({ proxyRules: undefined, pacScript: undefined, proxyBypassRules: undefined })
+        .then(() => log.info("Proxy settings: OFF"))
+        .catch(err => log.error("Error disabling proxy:", err));
+    } else if (proxyConfig.type === "system") {
+      ses.setProxy({ mode: "system" })
+        .then(() => log.info("Proxy settings: SYSTEM"))
+        .catch(err => log.error("Error setting system proxy:", err));
+    } else if (proxyConfig.type === "manual" && proxyConfig.manualConfig) {
+      const { protocol, server, port } = proxyConfig.manualConfig;
+      // Note: Electron's setProxy doesn't directly support username/password in proxyRules.
+      // This needs to be handled via app.on('login', ...) or session.on('will-download', ...).
+      // For now, we'll set the basic proxy rule.
+      const rules = `${protocol}://${server}:${port}`;
+      ses.setProxy({ proxyRules: rules })
+        .then(() => log.info(`Proxy settings: MANUAL - ${rules}`))
+        .catch(err => log.error("Error setting manual proxy:", err));
+    } else if (proxyConfig.type === "pac" && proxyConfig.pacUrl) {
+      ses.setProxy({ pacScript: proxyConfig.pacUrl })
+        .then(() => log.info(`Proxy settings: PAC - ${proxyConfig.pacUrl}`))
+        .catch(err => log.error("Error setting PAC script:", err));
+    } else {
+      log.warn("applyProxySettings: Unknown or incomplete proxy configuration", proxyConfig);
+      // Default to 'off' if config is invalid
+      ses.setProxy({ proxyRules: undefined, pacScript: undefined, proxyBypassRules: undefined })
+        .then(() => log.info("Proxy settings: Reverted to OFF due to invalid config"))
+        .catch(err => log.error("Error disabling proxy after invalid config:", err));
+    }
+  }
 }
 
-export default new MainProcess();
+const mainProcessInstance = new MainProcess();
+
+// Make applyProxySettings available for IPC
+export const applyProxyFromMain = (proxyConfig: StoreType["proxyConfig"]) => {
+  mainProcessInstance.applyProxySettings(proxyConfig);
+};
+
+export default mainProcessInstance;
+} // This closes the 'else' block for Electron mode

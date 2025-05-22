@@ -7,10 +7,16 @@ services:
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
+      - ./splayer_data:/app/splayer_config # Volume for SPlayer user settings
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro # Volume for Nginx configuration
     ports:
-      - 25884:25884
+      - "8080:80" # Map host port 8080 to Nginx container port 80
     restart: always
     environment:
+      # SPlayer specific backend port and mode
+      - VITE_SPLAYER_BACKEND_PORT=25885
+      - SPLAYER_DOCKER_MODE=true
+      # UnblockNeteaseMusic and Netease related variables (existing)
       # 所有变量都不是必填项
       # 网易云服务端 IP, 可在宿主机通过 ping music.163.com 获得
       - NETEASE_SERVER_IP=220.197.30.65

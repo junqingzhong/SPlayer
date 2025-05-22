@@ -21,7 +21,17 @@ export interface StoreType {
     width?: number;
     height?: number;
   };
-  proxy: string;
+  proxyConfig: {
+    type: "off" | "system" | "manual" | "pac";
+    manualConfig?: {
+      protocol: "http" | "https";
+      server: string;
+      port: number;
+      username?: string;
+      password?: string;
+    };
+    pacUrl?: string;
+  };
 }
 
 // 初始化仓库
@@ -41,7 +51,9 @@ export const initStore = () => {
         width: 800,
         height: 180,
       },
-      proxy: "",
+      proxyConfig: {
+        type: "off",
+      },
     },
   });
 };
