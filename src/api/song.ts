@@ -1,5 +1,6 @@
 import { songLevelData } from "@/utils/meta";
 import request from "@/utils/request";
+import config from "@/config";
 
 // 获取歌曲详情
 export const songDetail = (ids: number | number[]) => {
@@ -49,7 +50,7 @@ export const songUrl = (
 export const unlockSongUrl = (id: number, keyword: string, server: "netease" | "kuwo") => {
   const params = server === "netease" ? { id } : { keyword };
   return request({
-    baseURL: "/api/unblock",
+    baseURL: config.unblockApiUrl,
     url: `/${server}`,
     params,
   });

@@ -491,6 +491,18 @@ const initWinIpcMain = (
     }
   });
 
+  // IPC handler for applying global proxy configuration
+  ipcMain.on("apply-global-proxy", (_, globalProxyConfig) => {
+    try {
+      log.info("Received global proxy configuration from renderer");
+      // 导入applyGlobalProxyFromMain函数
+      const { applyGlobalProxyFromMain } = require("./index");
+      applyGlobalProxyFromMain(globalProxyConfig);
+    } catch (error) {
+      log.error("Error applying global proxy configuration:", error);
+    }
+  });
+
   // New IPC handler for testing proxy settings
   ipcMain.handle("test-new-proxy", async (_, testProxyConfig: StoreType["proxyConfig"]) => {
     if (!win) {

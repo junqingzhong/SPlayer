@@ -3,9 +3,10 @@ import { isDev, isElectron } from "./helper";
 import { useSettingStore } from "@/stores";
 import { getCookie } from "./cookie";
 import { isLogin } from "./auth";
+import config from "@/config";
 
 // 全局地址
-const baseURL: string = String(isDev ? "/api/netease" : import.meta.env["VITE_API_URL"]);
+const baseURL: string = String(isDev ? config.neteaseApiUrl : config.apiBaseUrl);
 
 // 基础配置
 const server: AxiosInstance = axios.create({
@@ -29,14 +30,22 @@ server.interceptors.request.use(
     }
     // realIP
     if (!isElectron && !request.url?.includes("/login")) {
-      request.params.realIP = "116.25.146.177";
+      request.params.realIP = config.defaultRealIP;
     }
     // 自定义 realIP
     if (settingStore.useRealIP) {
-      request.params.realIP = settingStore.realIP || "116.25.146.177";
+      request.params.realIP = settingStore.realIP || config.defaultRealIP;
     }
-    // proxy
-    if (settingStore.proxyProtocol !== "off") {
+    // 全局代理配置优先
+    if (config.globalProxyConfig.enabled && config.globalProxyConfig.host && config.globalProxyConfig.port) {
+      const protocol = config.globalProxyConfig.type.toLowerCase();
+      const server = config.globalProxyConfig.host;
+      const port = config.globalProxyConfig.port;
+      const proxy = `${protocol}://${server}:${port}`;
+      if (proxy) request.params.proxy = proxy;
+    }
+    // 设置中的代理配置（当全局代理未启用时使用）
+    else if (settingStore.proxyProtocol !== "off") {
       const protocol = settingStore.proxyProtocol.toLowerCase();
       const server = settingStore.proxyServe;
       const port = settingStore.proxyPort;

@@ -124,6 +124,124 @@
       </n-card>
     </div>
     <div class="set-list">
+      <n-h3 prefix="bar"> 全局配置 </n-h3>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">API服务器端口</n-text>
+          <n-text class="tip" :depth="3">修改后需要重启应用生效</n-text>
+        </div>
+        <n-input-number
+          v-model:value="serverPort"
+          :show-button="false"
+          :min="1000"
+          :max="65535"
+          placeholder="例如: 25884"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">API基础URL</n-text>
+          <n-text class="tip" :depth="3">网易云音乐API的基础URL</n-text>
+        </div>
+        <n-input
+          v-model:value="apiBaseUrl"
+          placeholder="例如: /api/netease"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">解锁API URL</n-text>
+          <n-text class="tip" :depth="3">歌曲解锁API的URL</n-text>
+        </div>
+        <n-input
+          v-model:value="unblockApiUrl"
+          placeholder="例如: /api/unblock"
+          class="set"
+        />
+      </n-card>
+
+      <n-h3 prefix="bar"> 全局代理配置 </n-h3>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">启用全局代理</n-text>
+          <n-text class="tip" :depth="3">启用后将优先使用全局代理配置</n-text>
+        </div>
+        <n-switch class="set" v-model:value="globalProxyEnabled" :round="false" />
+      </n-card>
+
+      <n-collapse-transition :show="globalProxyEnabled">
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理类型</n-text>
+          </div>
+          <n-select
+            v-model:value="globalProxyType"
+            :options="[
+              { label: 'HTTP', value: 'http' },
+              { label: 'HTTPS', value: 'https' },
+              { label: 'SOCKS', value: 'socks' },
+              { label: 'SOCKS5', value: 'socks5' },
+            ]"
+            class="set"
+          />
+        </n-card>
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理服务器地址</n-text>
+          </div>
+          <n-input
+            v-model:value="globalProxyHost"
+            placeholder="例如: 127.0.0.1"
+            class="set"
+          />
+        </n-card>
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理服务器端口</n-text>
+          </div>
+          <n-input-number
+            v-model:value="globalProxyPort"
+            :show-button="false"
+            :min="1"
+            :max="65535"
+            placeholder="例如: 7890"
+            class="set"
+          />
+        </n-card>
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理用户名 (可选)</n-text>
+          </div>
+          <n-input v-model:value="globalProxyUsername" placeholder="可选" class="set" />
+        </n-card>
+        <n-card class="set-item nested">
+          <div class="label">
+            <n-text class="name">代理密码 (可选)</n-text>
+          </div>
+          <n-input
+            v-model:value="globalProxyPassword"
+            type="password"
+            show-password-on="click"
+            placeholder="可选"
+            class="set"
+          />
+        </n-card>
+      </n-collapse-transition>
+
+      <n-card class="set-item">
+        <n-flex justify="space-between">
+          <n-button type="primary" strong secondary @click="applyGlobalConfig">
+            应用全局配置
+          </n-button>
+          <n-button type="info" strong secondary @click="resetGlobalConfig">
+            重置全局配置
+          </n-button>
+        </n-flex>
+      </n-card>
+    </div>
+    <div class="set-list">
       <n-h3 prefix="bar"> 重置 </n-h3>
       <n-card class="set-item">
         <div class="label">
@@ -147,11 +265,77 @@
 import { useSettingStore, useDataStore } from "@/stores";
 import { isElectron } from "@/utils/helper";
 import { debounce } from "lodash-es";
+import config, { updateConfig } from "@/config";
+import { ref } from "vue";
 
 const dataStore = useDataStore();
 const settingStore = useSettingStore();
 
 const testProxyLoading = ref<boolean>(false);
+
+// 全局配置变量
+const serverPort = ref<number>(config.serverPort);
+const apiBaseUrl = ref<string>(config.apiBaseUrl);
+const unblockApiUrl = ref<string>(config.unblockApiUrl);
+
+// 全局代理配置变量
+const globalProxyEnabled = ref<boolean>(config.globalProxyConfig.enabled);
+const globalProxyType = ref<string>(config.globalProxyConfig.type);
+const globalProxyHost = ref<string>(config.globalProxyConfig.host);
+const globalProxyPort = ref<number>(config.globalProxyConfig.port);
+const globalProxyUsername = ref<string>(config.globalProxyConfig.username);
+const globalProxyPassword = ref<string>(config.globalProxyConfig.password);
+
+// 应用全局配置
+const applyGlobalConfig = () => {
+  const newConfig = {
+    serverPort: serverPort.value,
+    apiBaseUrl: apiBaseUrl.value,
+    unblockApiUrl: unblockApiUrl.value,
+    globalProxyConfig: {
+      enabled: globalProxyEnabled.value,
+      type: globalProxyType.value,
+      host: globalProxyHost.value,
+      port: globalProxyPort.value,
+      username: globalProxyUsername.value,
+      password: globalProxyPassword.value
+    }
+  };
+
+  // 更新配置
+  updateConfig(newConfig);
+
+  window.$message.success("全局配置已更新，部分设置可能需要重启应用后生效");
+};
+
+// 重置全局配置
+const resetGlobalConfig = () => {
+  window.$dialog.warning({
+    title: "确认重置",
+    content: "确定要重置全局配置吗？这将恢复默认设置。",
+    positiveText: "确定",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      // 重置为默认值
+      serverPort.value = 25884;
+      apiBaseUrl.value = "/api/netease";
+      unblockApiUrl.value = "/api/unblock";
+
+      // 重置全局代理配置
+      globalProxyEnabled.value = false;
+      globalProxyType.value = "http";
+      globalProxyHost.value = "";
+      globalProxyPort.value = 0;
+      globalProxyUsername.value = "";
+      globalProxyPassword.value = "";
+
+      // 应用重置后的配置
+      applyGlobalConfig();
+
+      window.$message.success("全局配置已重置为默认值");
+    },
+  });
+};
 
 // 应用代理设置
 const applyProxySettings = debounce(() => {

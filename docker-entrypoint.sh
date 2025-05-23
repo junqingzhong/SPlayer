@@ -1,4 +1,14 @@
 #!/bin/sh
+###
+ # @Author: ZJQ
+ # @Date: 2025-05-23 10:50:52
+ # @LastEditors: zjq zjq@xkb.com.cn
+ # @LastEditTime: 2025-05-23 17:05:10
+ # @FilePath: \tea\docker-entrypoint.sh
+ # @Description:
+ #
+ # Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
+###
 
 set -e
 
