@@ -9,8 +9,6 @@ import router from "@/router";
 import { debounceDirective, throttleDirective, visibleDirective } from "@/utils/instruction";
 // ipc
 import initIpc from "@/utils/initIpc";
-// 全局配置
-import config from "@/config";
 // 全局样式
 import "@/style/main.scss";
 import "@/style/animate.scss";

@@ -13,7 +13,8 @@
 set -e
 
 # start unblock service in the background
-npx unblockneteasemusic -p 80:443 -s -f ${NETEASE_SERVER_IP:-220.197.30.65} -o ${UNBLOCK_SOURCES:-kugou kuwo bilibili} 2>&1 &
+# Use port 8081 for HTTP and 8082 for HTTPS to avoid conflict with Nginx
+npx unblockneteasemusic -p 8081:8082 -s -f ${NETEASE_SERVER_IP:-220.197.30.65} -o ${UNBLOCK_SOURCES:-kugou kuwo bilibili} 2>&1 &
 
 # point the neteasemusic address to the unblock service
 if ! grep -q "music.163.com" /etc/hosts; then
@@ -39,11 +40,16 @@ export VITE_SPLAYER_BACKEND_PORT=${VITE_SPLAYER_BACKEND_PORT:-25885}
 
 echo "Starting SPlayer backend server on port $VITE_SPLAYER_BACKEND_PORT..."
 # Assuming /app/out/main/index.js will respect SPLAYER_DOCKER_MODE and VITE_SPLAYER_BACKEND_PORT
-node /app/out/main/index.js &
+# Commented out for splayer-app (Nginx image) as it's not supposed to run here and path doesn't exist
+# node /app/out/main/index.js &
 
-# start the nginx daemon
-echo "Starting Nginx..."
-nginx
+# start the nginx daemon if it exists
+if command -v nginx > /dev/null; then
+  echo "Starting Nginx..."
+  nginx
+else
+  echo "Nginx not found, skipping Nginx start."
+fi
 
 # start the main process (if any, otherwise this will just keep the container alive if nginx is not daemonized)
 # If nginx runs in foreground (default for docker images), this exec might not be reached or needed.

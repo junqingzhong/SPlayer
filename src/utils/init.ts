@@ -138,7 +138,7 @@ const initGlobalConfig = () => {
       log.info('使用默认全局配置');
     }
   } catch (error) {
-    log.error('加载全局配置失败', error);
+    log.error('加载全局配置失败', error instanceof Error ? error.message : String(error));
   }
 };
 

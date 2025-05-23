@@ -7,7 +7,6 @@ import {
   shell,
   dialog,
   net,
-  session,
 } from "electron";
 import { File, Picture, Id3v2Settings } from "node-taglib-sharp";
 import { parseFile } from "music-metadata";
@@ -509,7 +508,7 @@ const initWinIpcMain = (
       log.error("Main window not available for proxy test");
       return false;
     }
-    const originalProxyConfig = store?.get("proxyConfig");
+    const originalProxyConfig = (store as any)?.get("proxyConfig");
     log.info("Testing proxy configuration:", testProxyConfig);
 
     try {

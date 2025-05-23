@@ -45,7 +45,7 @@ server.interceptors.request.use(
       if (proxy) request.params.proxy = proxy;
     }
     // 设置中的代理配置（当全局代理未启用时使用）
-    else if (settingStore.proxyProtocol !== "off") {
+    else if (settingStore.proxyType === "manual") {
       const protocol = settingStore.proxyProtocol.toLowerCase();
       const server = settingStore.proxyServe;
       const port = settingStore.proxyPort;
