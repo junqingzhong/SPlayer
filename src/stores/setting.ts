@@ -49,6 +49,10 @@ interface SettingState {
   proxyUsername?: string; // Optional, for manual proxy
   proxyPassword?: string; // Optional, for manual proxy
   pacUrl?: string; // Used when proxyType is 'pac'
+  // Browser settings
+  browserEnabled: boolean;
+  browserHomepage: string;
+  autoLoginCookie: string;
   songLevel:
     | "standard"
     | "higher"
@@ -173,6 +177,11 @@ export const useSettingStore = defineStore("setting", {
     pacUrl: "", // PAC URL
     useRealIP: false, // 是否使用真实 IP
     realIP: "116.25.146.177", // 真实IP地址
+    // 浏览器
+    browserEnabled: false, // 是否启用内置浏览器
+    browserHomepage: "https://music.163.com", // 浏览器默认主页
+    // 全局Cookie设置
+    autoLoginCookie: "", // 网易云自动登录Cookie（全局使用）
   }),
   getters: {},
   actions: {
@@ -203,6 +212,29 @@ export const useSettingStore = defineStore("setting", {
           showIcon: false,
         },
       );
+    },
+
+    /**
+     * 设置全局登录Cookie
+     */
+    setGlobalCookie(cookie: string) {
+      this.autoLoginCookie = cookie;
+      console.log('已更新全局登录Cookie');
+    },
+
+    /**
+     * 清除全局登录Cookie
+     */
+    clearGlobalCookie() {
+      this.autoLoginCookie = "";
+      console.log('已清除全局登录Cookie');
+    },
+
+    /**
+     * 获取全局登录Cookie
+     */
+    getGlobalCookie(): string {
+      return this.autoLoginCookie;
     },
   },
   // 持久化

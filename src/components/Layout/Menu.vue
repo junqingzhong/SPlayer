@@ -90,6 +90,17 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           }),
         },
         {
+          key: "browser",
+          link: "browser",
+          label: "内置浏览器",
+          show: settingStore.browserEnabled,
+          icon: renderIcon("Link", {
+            style: {
+              transform: "translateY(-1px)",
+            },
+          }),
+        },
+        {
           key: "divider",
           type: "divider",
         },

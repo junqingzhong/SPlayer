@@ -251,6 +251,28 @@ const routes: Array<RouteRecordRaw> = [
     name: "history",
     component: () => import("@/views/History.vue"),
   },
+  // 播客电台
+  {
+      path: "/podcast",
+      name: "podcast",
+      component: () => import("@/views/Radio/hot.vue"),
+      meta: {
+        title: "播客电台",
+        keepAlive: true,
+        transition: "slide",
+      },
+    },
+  // 内置浏览器
+  {
+    path: "/browser",
+    name: "browser",
+    component: () => import("@/views/Browser.vue"),
+    meta: {
+      title: "内置浏览器",
+      keepAlive: true,
+      transition: "slide",
+    },
+  },
   // 状态
   {
     path: "/403",
