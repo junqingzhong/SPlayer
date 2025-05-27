@@ -15,12 +15,8 @@
           <n-text class="name">真实 IP 地址</n-text>
           <n-text class="tip" :depth="3">可在此处输入国内 IP</n-text>
         </div>
-        <n-input
-          v-model:value="settingStore.realIP"
-          :disabled="!settingStore.useRealIP"
-          placeholder="请填写真实 IP 地址"
-          class="set"
-        >
+        <n-input v-model:value="settingStore.realIP" :disabled="!settingStore.useRealIP" placeholder="请填写真实 IP 地址"
+          class="set">
           <template #prefix>
             <n-text depth="3">IP</n-text>
           </template>
@@ -41,22 +37,13 @@
           </n-text>
         </div>
         <n-flex vertical>
-          <n-button
-            type="info"
-            ghost
-            @click="openBrowserProxySettings"
-          >
+          <n-button type="info" ghost @click="openBrowserProxySettings">
             <template #icon>
               <SvgIcon name="Settings" />
             </template>
             打开浏览器代理设置
           </n-button>
-          <n-button
-            type="primary"
-            ghost
-            @click="testWebApiConnection"
-            :loading="testApiLoading"
-          >
+          <n-button type="primary" ghost @click="testWebApiConnection" :loading="testApiLoading">
             <template #icon>
               <SvgIcon name="Wifi" />
             </template>
@@ -66,88 +53,65 @@
       </n-card>
       <div v-if="isElectron">
         <n-h4>桌面版代理设置</n-h4>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">网络代理类型</n-text>
-          <n-text class="tip" :depth="3">选择代理方式</n-text>
-        </div>
-        <n-select
-          v-model:value="settingStore.proxyType"
-          :options="[
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">网络代理类型</n-text>
+            <n-text class="tip" :depth="3">选择代理方式</n-text>
+          </div>
+          <n-select v-model:value="settingStore.proxyType" :options="[
             { label: '关闭代理', value: 'off' },
             { label: '系统代理', value: 'system' },
             { label: '手动代理', value: 'manual' },
             { label: 'PAC 脚本', value: 'pac' },
-          ]"
-          class="set"
-        />
-      </n-card>
-      <!-- 手动代理配置 -->
-      <n-collapse-transition :show="settingStore.proxyType === 'manual'">
-        <n-card class="set-item nested">
-          <div class="label">
-            <n-text class="name">手动代理协议</n-text>
-          </div>
-          <n-select
-            v-model:value="settingStore.proxyProtocol"
-            :options="[
+          ]" class="set" />
+        </n-card>
+        <!-- 手动代理配置 -->
+        <n-collapse-transition :show="settingStore.proxyType === 'manual'">
+          <n-card class="set-item nested">
+            <div class="label">
+              <n-text class="name">手动代理协议</n-text>
+            </div>
+            <n-select v-model:value="settingStore.proxyProtocol" :options="[
               { label: 'HTTP', value: 'http' },
               { label: 'HTTPS', value: 'https' },
-            ]"
-            class="set"
-          />
-        </n-card>
-        <n-card class="set-item nested">
-          <div class="label">
-            <n-text class="name">代理服务器地址</n-text>
-          </div>
-          <n-input
-            v-model:value="settingStore.proxyServe"
-            placeholder="例如: 127.0.0.1"
-            class="set"
-          />
-        </n-card>
-        <n-card class="set-item nested">
-          <div class="label">
-            <n-text class="name">代理服务器端口</n-text>
-          </div>
-          <n-input-number
-            v-model:value="settingStore.proxyPort"
-            :show-button="false"
-            :min="1"
-            :max="65535"
-            placeholder="例如: 8080"
-            class="set"
-          />
-        </n-card>
-        <n-card class="set-item nested">
-          <div class="label">
-            <n-text class="name">代理用户名 (可选)</n-text>
-          </div>
-          <n-input v-model:value="settingStore.proxyUsername" placeholder="可选" class="set" />
-        </n-card>
-        <n-card class="set-item nested">
-          <div class="label">
-            <n-text class="name">代理密码 (可选)</n-text>
-          </div>
-          <n-input
-            v-model:value="settingStore.proxyPassword"
-            type="password"
-            show-password-on="click"
-            placeholder="可选"
-            class="set"
-          />
-        </n-card>
-      </n-collapse-transition>
-      <!-- PAC 脚本配置 -->
-      <n-collapse-transition :show="settingStore.proxyType === 'pac'">
-        <n-card class="set-item nested">
-          <div class="label">
-            <n-text class="name">PAC 脚本 URL</n-text>
-          </div>
-          <n-input v-model:value="settingStore.pacUrl" placeholder="例如: http://example.com/proxy.pac" class="set" />
-        </n-card>
-      </n-collapse-transition>
+            ]" class="set" />
+          </n-card>
+          <n-card class="set-item nested">
+            <div class="label">
+              <n-text class="name">代理服务器地址</n-text>
+            </div>
+            <n-input v-model:value="settingStore.proxyServe" placeholder="例如: 127.0.0.1" class="set" />
+          </n-card>
+          <n-card class="set-item nested">
+            <div class="label">
+              <n-text class="name">代理服务器端口</n-text>
+            </div>
+            <n-input-number v-model:value="settingStore.proxyPort" :show-button="false" :min="1" :max="65535"
+              placeholder="例如: 8080" class="set" />
+          </n-card>
+          <n-card class="set-item nested">
+            <div class="label">
+              <n-text class="name">代理用户名 (可选)</n-text>
+            </div>
+            <n-input v-model:value="settingStore.proxyUsername" placeholder="可选" class="set" />
+          </n-card>
+          <n-card class="set-item nested">
+            <div class="label">
+              <n-text class="name">代理密码 (可选)</n-text>
+            </div>
+            <n-input v-model:value="settingStore.proxyPassword" type="password" show-password-on="click"
+              placeholder="可选" class="set" />
+          </n-card>
+        </n-collapse-transition>
+        <!-- PAC 脚本配置 -->
+        <n-collapse-transition :show="settingStore.proxyType === 'pac'">
+          <n-card class="set-item nested">
+            <div class="label">
+              <n-text class="name">PAC 脚本 URL</n-text>
+            </div>
+            <n-input v-model:value="settingStore.pacUrl" placeholder="例如: http://example.com/proxy.pac" class="set" />
+          </n-card>
+        </n-collapse-transition>
       </div>
       <!-- 应用和测试按钮 -->
       <n-card class="set-item">
@@ -162,78 +126,87 @@
       </n-card>
     </div>
     <div class="set-list">
-      <n-h3 prefix="bar"> 全局配置 </n-h3>
+      <n-h3 prefix="bar"> API接口设置 </n-h3>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">API服务器端口</n-text>
           <n-text class="tip" :depth="3">修改后需要重启应用生效</n-text>
         </div>
-        <n-input-number
-          v-model:value="serverPort"
-          :show-button="false"
-          :min="1000"
-          :max="65535"
-          placeholder="例如: 25884"
-          class="set"
-        />
+        <n-input-number v-model:value="serverPort" :show-button="false" :min="1000" :max="65535" placeholder="例如: 25884"
+          class="set" />
       </n-card>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">API基础URL</n-text>
           <n-text class="tip" :depth="3">网易云音乐API的基础URL</n-text>
         </div>
-        <n-input
-          v-model:value="apiBaseUrl"
-          placeholder="例如: /api/netease"
-          class="set"
-        />
+        <n-input v-model:value="apiBaseUrl" placeholder="例如: /api/netease" class="set" />
       </n-card>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">解锁API URL</n-text>
           <n-text class="tip" :depth="3">歌曲解锁API的URL</n-text>
         </div>
-        <n-input
-          v-model:value="unblockApiUrl"
-          placeholder="例如: /api/unblock"
-          class="set"
-        />
+        <n-input v-model:value="unblockApiUrl" placeholder="例如: /api/unblock" class="set" />
       </n-card>
-
+      <n-card class="set-item">
+        <n-button type="primary" strong secondary @click="applyGlobalConfig">
+          <template #icon>
+            <SvgIcon name="Settings" />
+          </template>
+          应用API配置
+        </n-button>
+      </n-card>
+    </div>
+    <div class="set-list">
+      <n-h3 prefix="bar"> cookie设置 </n-h3>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">网易云自动登录Cookie</n-text>
+          <n-card class="set-item nested">
+            <div class="label">
+              <n-text class="tip" :depth="3">用于网易云扫码登录后的自动登录，首次扫码登录后会自动保存到此处</n-text>
+              <n-text class="tip" :depth="3">Cookie状态: {{ autoLoginCookie ? '已设置' : '未设置' }}</n-text>
+              <n-text v-if="autoLoginCookie" class="tip" :depth="3">上次更新: {{ formatCookieDate() }}</n-text>
+            </div>
+            <n-input v-model:value="autoLoginCookie" type="textarea" placeholder="网易云登录Cookie将在首次扫码登录后自动填入"
+              class="set" :autosize="{ minRows: 3, maxRows: 6 }" />
+            <n-space class="cookie-actions" justify="end" style="margin-top: 8px">
+              <n-button size="small" type="primary" @click="testCookie" :disabled="!autoLoginCookie">
+                <template #icon>
+                  <SvgIcon name="Wifi" />
+                </template>
+                测试Cookie
+              </n-button>
+              <n-button size="small" type="info" @click="applyCookie" :disabled="!autoLoginCookie">
+                <template #icon>
+                  <SvgIcon name="Settings" />
+                </template>
+                立即应用
+              </n-button>
+            </n-space>
+          </n-card>
+        </div>
+      </n-card>
+    </div>
+    <div class="set-list">
       <n-h3 prefix="bar"> 内置浏览器 </n-h3>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">启用内置浏览器</n-text>
-          <n-text class="tip" :depth="3">开启后可在应用内访问网站，支持网易云音乐等网页版服务</n-text>
+          <n-text class="tip" :depth="3">开启后可在应用内访问网站</n-text>
         </div>
-        <n-switch class="set" v-model:value="browserEnabled" :round="false" />
+        <n-switch class="set" v-model:value="browserEnabled" :round="false">
+          <template #unchecked></template>
+        </n-switch>
       </n-card>
-
       <n-collapse-transition :show="browserEnabled">
         <n-card class="set-item nested">
           <div class="label">
             <n-text class="name">默认主页</n-text>
             <n-text class="tip" :depth="3">浏览器启动时的默认页面</n-text>
           </div>
-          <n-input
-            v-model:value="browserHomepage"
-            placeholder="例如: https://music.163.com"
-            class="set"
-          />
-        </n-card>
-
-        <n-card class="set-item nested">
-          <div class="label">
-            <n-text class="name">网易云自动登录Cookie</n-text>
-            <n-text class="tip" :depth="3">用于网易云扫码登录后的自动登录，首次扫码登录后会自动保存到此处</n-text>
-          </div>
-          <n-input
-            v-model:value="autoLoginCookie"
-            type="textarea"
-            placeholder="网易云登录Cookie将在首次扫码登录后自动填入"
-            class="set"
-            :autosize="{ minRows: 3, maxRows: 6 }"
-          />
+          <n-input v-model:value="browserHomepage" placeholder="例如: https://music.163.com" class="set" />
         </n-card>
       </n-collapse-transition>
 
@@ -245,25 +218,13 @@
             </template>
             应用配置
           </n-button>
-          <n-button
-            type="info"
-            strong
-            secondary
-            @click="openBrowser"
-            :disabled="!browserEnabled"
-          >
+          <n-button type="info" strong secondary @click="openBrowser" :disabled="!browserEnabled">
             <template #icon>
               <SvgIcon name="Link" />
             </template>
             打开浏览器
           </n-button>
-          <n-button
-            v-if="autoLoginCookie"
-            type="warning"
-            strong
-            secondary
-            @click="clearCookie"
-          >
+          <n-button v-if="autoLoginCookie" type="warning" strong secondary @click="clearCookie">
             <template #icon>
               <SvgIcon name="Delete" />
             </template>
@@ -272,23 +233,23 @@
         </n-flex>
       </n-card>
     </div>
-    <div class="set-list">
-      <n-h3 prefix="bar"> 重置 </n-h3>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">重置所有设置</n-text>
-          <n-text class="tip" :depth="3">重置所有设置，恢复软件默认值</n-text>
-        </div>
-        <n-button type="warning" strong secondary @click="resetSetting"> 重置设置 </n-button>
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">清除全部数据</n-text>
-          <n-text class="tip" :depth="3">重置所有设置，清除全部数据</n-text>
-        </div>
-        <n-button type="error" strong secondary @click="clearAllData"> 清除全部 </n-button>
-      </n-card>
-    </div>
+  </div>
+  <div class="set-list">
+    <n-h3 prefix="bar"> 重置 </n-h3>
+    <n-card class="set-item">
+      <div class="label">
+        <n-text class="name">重置所有设置</n-text>
+        <n-text class="tip" :depth="3">重置所有设置，恢复软件默认值</n-text>
+      </div>
+      <n-button type="warning" strong secondary @click="resetSetting"> 重置设置 </n-button>
+    </n-card>
+    <n-card class="set-item">
+      <div class="label">
+        <n-text class="name">清除全部数据</n-text>
+        <n-text class="tip" :depth="3">重置所有设置，清除全部数据</n-text>
+      </div>
+      <n-button type="error" strong secondary @click="clearAllData"> 清除全部 </n-button>
+    </n-card>
   </div>
 </template>
 
@@ -600,5 +561,81 @@ const clearAllData = () => {
       });
     },
   });
+};
+/**
+ * 格式化Cookie更新日期
+ */
+const formatCookieDate = () => {
+  const cookieDate = localStorage.getItem('cookie-update-time');
+  if (!cookieDate) return '未知';
+
+  try {
+    const date = new Date(parseInt(cookieDate));
+    return date.toLocaleString();
+  } catch (error) {
+    console.error('解析Cookie日期失败:', error);
+    return '日期格式错误';
+  }
+};
+
+/**
+ * 测试Cookie有效性
+ */
+const testCookie = async () => {
+  if (!autoLoginCookie.value) {
+    window.$message.warning('请先设置Cookie');
+    return;
+  }
+
+  window.$message.loading('正在测试Cookie有效性...');
+
+  try {
+    // 先应用Cookie
+    setCookies(autoLoginCookie.value);
+
+    // 测试登录状态API
+    const response = await fetch('/api/login/status', {
+      method: 'GET',
+      credentials: 'include',
+      timeout: 5000
+    });
+
+    const data = await response.json();
+
+    if (data.data.code === 200 && data.data.account) {
+      window.$message.success(`Cookie有效，已登录账号: ${data.data.profile?.nickname || '未知用户'}`);
+    } else {
+      window.$message.error('Cookie无效或已过期，请重新登录获取');
+    }
+  } catch (error) {
+    console.error('测试Cookie失败:', error);
+    window.$message.error('测试失败，请检查网络连接或API配置');
+  }
+};
+
+/**
+ * 立即应用Cookie
+ */
+const applyCookie = () => {
+  if (!autoLoginCookie.value) {
+    window.$message.warning('请先设置Cookie');
+    return;
+  }
+
+  try {
+    // 应用Cookie
+    setCookies(autoLoginCookie.value);
+
+    // 更新设置存储
+    settingStore.autoLoginCookie = autoLoginCookie.value;
+
+    // 记录更新时间
+    localStorage.setItem('cookie-update-time', Date.now().toString());
+
+    window.$message.success('Cookie已成功应用');
+  } catch (error) {
+    console.error('应用Cookie失败:', error);
+    window.$message.error('应用Cookie失败，请检查格式');
+  }
 };
 </script>

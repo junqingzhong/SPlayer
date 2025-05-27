@@ -41,10 +41,17 @@
           </template>
           主页
         </n-button>
+
+        <n-button @click="toggleFullscreen">
+          <template #icon>
+            <SvgIcon :name="isFullscreen ? 'FullscreenExit' : 'Fullscreen'" />
+          </template>
+          {{ isFullscreen ? '退出全屏' : '全屏' }}
+        </n-button>
       </n-flex>
     </div>
 
-    <div class="browser-content">
+    <div class="browser-content" :class="{ 'fullscreen': isFullscreen }">
       <n-spin
         class="loading-spinner"
         :show="isLoading"
@@ -55,9 +62,24 @@
           ref="browserFrame"
           :src="frameUrl"
           class="browser-frame"
+          sandbox="allow-forms allow-scripts allow-same-origin allow-modals allow-pointer-lock allow-presentation allow-top-navigation-by-user-activation allow-popups allow-popups-to-escape-sandbox"
+          referrerpolicy="no-referrer"
           @load="onFrameLoad"
         />
       </n-spin>
+
+      <!-- 全屏模式下的退出按钮 -->
+      <n-button
+        v-if="isFullscreen"
+        class="exit-fullscreen-btn"
+        type="primary"
+        @click="toggleFullscreen"
+      >
+        <template #icon>
+          <SvgIcon name="FullscreenExit" />
+        </template>
+        退出全屏
+      </n-button>
     </div>
   </div>
 </template>
@@ -73,6 +95,7 @@ const settingStore = useSettingStore();
 const browserFrame = ref<HTMLIFrameElement | null>(null);
 const currentUrl = ref<string>(settingStore.browserHomepage || 'https://music.163.com');
 const frameUrl = ref<string>(currentUrl.value);
+const isFullscreen = ref<boolean>(false);
 
 // 导航历史
 const history: string[] = [];
@@ -184,7 +207,12 @@ const goHome = () => {
   navigateToUrl();
 };
 
-
+/**
+ * 切换全屏模式
+ */
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value;
+};
 
 /**
  * 页面加载完成
@@ -271,8 +299,8 @@ onMounted(() => {
 .browser {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  width: 100vw;
+  height: 100%; // 改为 100% 以确保继承父容器高度
+  width: 100%;  // 改为 100% 以确保继承父容器宽度
   overflow: hidden;
 
   .browser-header {
@@ -296,10 +324,28 @@ onMounted(() => {
   .browser-content {
     flex: 1;
     position: relative;
-    overflow: hidden;
+    overflow: hidden; // 确保内容区不会意外溢出
     min-height: 0;
-    height: calc(100vh - 60px); /* 减去header高度 */
     width: 100%;
+    transition: all 0.3s ease;
+    transform-origin: top left; // 设置缩放基点
+
+    &:not(.fullscreen) {
+      // 非全屏状态下的样式，启用按比例缩小
+      transform: scale(0.95); // 缩小到95%，可根据需要调整
+      width: calc(100% / 0.95); // 调整宽度以适应缩放
+      height: calc(100% / 0.95); // 调整高度以适应缩放
+    }
+
+    &.fullscreen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1000;
+      transform: scale(1); // 全屏时恢复原始大小
+    }
 
     .loading-spinner {
       position: absolute;
@@ -320,9 +366,21 @@ onMounted(() => {
       width: 100%;
       height: 100%;
       border: none;
-      background: white;
+      background: white; // 确保有背景色
       display: block;
-      overflow: auto; /* 允许内容滚动 */
+      // overflow: auto; /* iframe 自身滚动由其内容决定，这里不需要 */
+    }
+    .exit-fullscreen-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 100;
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+
+      &:hover {
+        opacity: 1;
+      }
     }
   }
 }
