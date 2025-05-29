@@ -126,15 +126,15 @@ const isValidCookie = ref<boolean>(false);
 // Cookie状态
 const cookieStatus = computed(() => {
   if (!globalCookie.value) {
-    return { type: 'default', text: '未设置Cookie' };
+    return { type: 'default' as const, text: '未设置Cookie' };
   }
   if (isValidCookie.value && userInfo.value) {
-    return { type: 'success', text: '已登录' };
+    return { type: 'success' as const, text: '已登录' };
   }
   if (testLoading.value) {
-    return { type: 'info', text: '验证中...' };
+    return { type: 'info' as const, text: '验证中...' };
   }
-  return { type: 'warning', text: 'Cookie状态未知' };
+  return { type: 'warning' as const, text: 'Cookie状态未知' };
 });
 
 /**

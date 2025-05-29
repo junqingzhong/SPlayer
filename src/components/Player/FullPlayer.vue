@@ -21,6 +21,13 @@
           class="overlay-img"
           alt="cover"
         />
+        <!-- 自定义背景图片 -->
+        <img
+          v-else-if="settingStore.playerBackgroundType === 'custom' && settingStore.customBackgroundImage"
+          :src="settingStore.customBackgroundImage"
+          class="overlay-img custom-bg"
+          alt="custom-background"
+        />
         <!-- 流体背景 -->
         <PlayerBackground
           v-else-if="settingStore.playerBackgroundType === 'animation'"
@@ -235,6 +242,17 @@ onBeforeUnmount(() => {
         height: auto;
         transform: scale(1.5);
         filter: blur(80px) contrast(1.2);
+      }
+    }
+    &.custom {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      .overlay-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: blur(20px) contrast(1.1);
       }
     }
   }

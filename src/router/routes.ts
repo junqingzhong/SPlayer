@@ -43,11 +43,6 @@ const routes: Array<RouteRecordRaw> = [
         name: "search-videos",
         component: () => import("@/views/Search/videos.vue"),
       },
-      {
-        path: "radios",
-        name: "search-radios",
-        component: () => import("@/views/Search/radios.vue"),
-      },
     ],
   },
   // 发现
@@ -137,33 +132,7 @@ const routes: Array<RouteRecordRaw> = [
     },
     component: () => import("@/views/List/playlist.vue"),
   },
-  // 播客
-  {
-    path: "/radio",
-    name: "radio",
 
-    beforeEnter: (to, _, next) => {
-      if (!to.query.id) next({ path: "/403" });
-      else next();
-    },
-    component: () => import("@/views/List/radio.vue"),
-  },
-  // 热门播客
-  {
-    path: "/radio-hot",
-    name: "radio-hot",
-    component: () => import("@/views/Radio/hot.vue"),
-  },
-  // 播客分类
-  {
-    path: "/radio-type",
-    name: "radio-type",
-    beforeEnter: (to, _, next) => {
-      if (!to.query.id || !to.query.name) next({ path: "/403" });
-      else next();
-    },
-    component: () => import("@/views/Radio/type.vue"),
-  },
   // 我喜欢的音乐
   {
     path: "/like-songs",
@@ -213,11 +182,6 @@ const routes: Array<RouteRecordRaw> = [
         name: "like-videos",
         component: () => import("@/views/Like/videos.vue"),
       },
-      {
-        path: "radios",
-        name: "like-radios",
-        component: () => import("@/views/Like/radios.vue"),
-      },
     ],
   },
   // 本地歌曲
@@ -251,17 +215,17 @@ const routes: Array<RouteRecordRaw> = [
     name: "history",
     component: () => import("@/views/History.vue"),
   },
-  // 播客电台
+  // 活动列表
   {
-      path: "/podcast",
-      name: "podcast",
-      component: () => import("@/views/Radio/hot.vue"),
-      meta: {
-        title: "播客电台",
-        keepAlive: true,
-        transition: "slide",
-      },
+    path: "/activities",
+    name: "activities",
+    component: () => import("@/views/Activities/index.vue"),
+    meta: {
+      title: "活动列表",
+      keepAlive: true,
+      transition: "slide",
     },
+  },
   // 内置浏览器
   {
     path: "/browser",

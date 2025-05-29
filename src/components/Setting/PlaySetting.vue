@@ -127,6 +127,10 @@
               value: 'blur',
             },
             {
+              label: '自定义背景',
+              value: 'custom',
+            },
+            {
               label: '封面主色',
               disabled: true,
               value: 'color',
@@ -140,6 +144,43 @@
           class="set"
         />
       </n-card>
+      <n-collapse-transition :show="settingStore.playerBackgroundType === 'custom'">
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">自定义背景图片</n-text>
+            <n-text class="tip" :depth="3">选择一张图片作为播放器背景</n-text>
+          </div>
+          <n-flex vertical justify="center" align="center" class="custom-bg-container">
+            <n-image
+              v-if="settingStore.customBackgroundImage"
+              :src="settingStore.customBackgroundImage"
+              width="200"
+              height="120"
+              object-fit="cover"
+              preview-disabled
+              class="custom-bg-preview"
+            />
+            <n-flex justify="center" align="center" class="custom-bg-actions">
+              <n-button type="primary" @click="chooseBackgroundImage">
+                <template #icon>
+                  <SvgIcon name="Upload" />
+                </template>
+                选择图片
+              </n-button>
+              <n-button
+                v-if="settingStore.customBackgroundImage"
+                type="error"
+                @click="clearBackgroundImage"
+              >
+                <template #icon>
+                  <SvgIcon name="Delete" />
+                </template>
+                清除图片
+              </n-button>
+            </n-flex>
+          </n-flex>
+        </n-card>
+      </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">全屏播放器留存</n-text>
@@ -346,6 +387,30 @@ const showSpectrumsChange = (value: boolean) => {
     showSpectrums.value = false;
     settingStore.showSpectrums = false;
   }
+};
+
+// 选择背景图片
+const chooseBackgroundImage = async () => {
+  if (!isElectron) {
+    window.$message.warning("该功能仅在桌面版可用");
+    return;
+  }
+  try {
+    const imagePath = await window.electron.ipcRenderer.invoke("choose-image");
+    if (imagePath) {
+      settingStore.customBackgroundImage = imagePath;
+      window.$message.success("背景图片设置成功");
+    }
+  } catch (error) {
+    console.error("选择背景图片失败", error);
+    window.$message.error("选择背景图片失败");
+  }
+};
+
+// 清除背景图片
+const clearBackgroundImage = () => {
+  settingStore.customBackgroundImage = "";
+  window.$message.success("已清除背景图片");
 };
 
 onMounted(() => {

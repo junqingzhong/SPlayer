@@ -5,12 +5,12 @@
         <n-button-group>
           <n-button :disabled="!canGoBack" @click="goBack">
             <template #icon>
-              <SvgIcon name="ArrowLeft" />
+              <SvgIcon name="NavigateBefore" />
             </template>
           </n-button>
           <n-button :disabled="!canGoForward" @click="goForward">
             <template #icon>
-              <SvgIcon name="ArrowRight" />
+              <SvgIcon name="NavigateNext" />
             </template>
           </n-button>
           <n-button @click="refresh">
@@ -20,12 +20,7 @@
           </n-button>
         </n-button-group>
 
-        <n-input
-          v-model:value="currentUrl"
-          class="url-input"
-          placeholder="请输入网址"
-          @keyup.enter="navigateToUrl"
-        >
+        <n-input v-model:value="currentUrl" class="url-input" placeholder="请输入网址" @keyup.enter="navigateToUrl">
           <template #prefix>
             <SvgIcon name="Link" />
           </template>
@@ -52,29 +47,14 @@
     </div>
 
     <div class="browser-content" :class="{ 'fullscreen': isFullscreen }">
-      <n-spin
-        class="loading-spinner"
-        :show="isLoading"
-        description="页面加载中..."
-        size="large"
-      >
-        <iframe
-          ref="browserFrame"
-          :src="frameUrl"
-          class="browser-frame"
+      <n-spin class="loading-spinner" :show="isLoading" description="页面加载中..." size="large">
+        <iframe ref="browserFrame" :src="frameUrl" class="browser-frame"
           sandbox="allow-forms allow-scripts allow-same-origin allow-modals allow-pointer-lock allow-presentation allow-top-navigation-by-user-activation allow-popups allow-popups-to-escape-sandbox"
-          referrerpolicy="no-referrer"
-          @load="onFrameLoad"
-        />
+          referrerpolicy="no-referrer" @load="onFrameLoad" />
       </n-spin>
 
       <!-- 全屏模式下的退出按钮 -->
-      <n-button
-        v-if="isFullscreen"
-        class="exit-fullscreen-btn"
-        type="primary"
-        @click="toggleFullscreen"
-      >
+      <n-button v-if="isFullscreen" class="exit-fullscreen-btn" type="primary" @click="toggleFullscreen">
         <template #icon>
           <SvgIcon name="FullscreenExit" />
         </template>
@@ -85,8 +65,9 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingStore } from "@/stores";
-import { setCookies, clearAllCookies } from "@/utils/cookie";
+import { ref, onMounted } from 'vue';
+import { useSettingStore } from '@/stores';
+// 删除未使用的导入
 import { NSpin } from "naive-ui";
 
 const settingStore = useSettingStore();
@@ -222,11 +203,24 @@ const onFrameLoad = () => {
 
   // 应用全局登录Cookie（仅在网易云音乐域名下）
   const globalCookie = settingStore.getGlobalCookie();
-  if (globalCookie && frameUrl.value.includes('music.163.com')) {
+  if (globalCookie && frameUrl.value.includes('music.163.com') && browserFrame.value) {
     try {
       // 尝试设置Cookie到iframe的document
-      const iframeDoc = browserFrame.value?.contentDocument;
+      const iframeDoc = browserFrame.value.contentDocument;
       if (iframeDoc) {
+        // 使用document.cookie设置Cookie
+        const setCookies = (cookieStr: string) => {
+          const cookies = cookieStr.split(';');
+          cookies.forEach(cookie => {
+            try {
+              document.cookie = cookie.trim();
+              console.log('已设置Cookie:', cookie.trim());
+            } catch (e) {
+              console.warn('设置单个Cookie失败:', e);
+            }
+          });
+        };
+
         setCookies(globalCookie);
         console.log('已应用全局登录Cookie到网易云音乐');
       }
@@ -234,6 +228,19 @@ const onFrameLoad = () => {
       console.warn('无法设置iframe Cookie (跨域限制):', error);
       // 尝试在主文档中设置Cookie
       try {
+        // 使用document.cookie设置Cookie
+        const setCookies = (cookieStr: string) => {
+          const cookies = cookieStr.split(';');
+          cookies.forEach(cookie => {
+            try {
+              document.cookie = cookie.trim();
+              console.log('已设置Cookie:', cookie.trim());
+            } catch (e) {
+              console.warn('设置单个Cookie失败:', e);
+            }
+          });
+        };
+
         setCookies(globalCookie);
         console.log('已在主文档中应用全局登录Cookie');
       } catch (mainError) {
@@ -243,26 +250,28 @@ const onFrameLoad = () => {
   }
 
   // 更新当前URL显示
-  try {
-    const iframeDoc = browserFrame.value?.contentDocument;
-    if (iframeDoc && iframeDoc.URL !== 'about:blank') {
-      const actualUrl = iframeDoc.URL;
+  if (browserFrame.value) {
+    try {
+      const iframeDoc = browserFrame.value.contentDocument;
+      if (iframeDoc && iframeDoc.URL !== 'about:blank') {
+        const actualUrl = iframeDoc.URL;
 
-      // 如果实际URL与当前frameUrl不同，可能是重定向导致的
-      if (actualUrl !== frameUrl.value) {
-        console.log(`URL已更新: ${frameUrl.value} -> ${actualUrl}`);
+        // 如果实际URL与当前frameUrl不同，可能是重定向导致的
+        if (actualUrl !== frameUrl.value) {
+          console.log(`URL已更新: ${frameUrl.value} -> ${actualUrl}`);
 
-        // 更新当前URL显示
-        currentUrl.value = actualUrl;
+          // 更新当前URL显示
+          currentUrl.value = actualUrl;
 
-        // 如果是重定向，更新历史记录中的当前URL
-        if (historyIndex.value >= 0 && historyIndex.value < history.length) {
-          history[historyIndex.value] = actualUrl;
+          // 如果是重定向，更新历史记录中的当前URL
+          if (historyIndex.value >= 0 && historyIndex.value < history.length) {
+            history[historyIndex.value] = actualUrl;
+          }
         }
       }
+    } catch (error) {
+      console.warn('无法获取iframe URL (跨域限制):', error);
     }
-  } catch (error) {
-    console.warn('无法获取iframe URL (跨域限制):', error);
   }
 
   // 更新导航状态
@@ -286,6 +295,19 @@ onMounted(() => {
   const globalCookie = settingStore.getGlobalCookie();
   if (globalCookie) {
     try {
+      // 定义setCookies函数
+      const setCookies = (cookieStr: string) => {
+        const cookies = cookieStr.split(';');
+        cookies.forEach(cookie => {
+          try {
+            document.cookie = cookie.trim();
+            console.log('已设置Cookie:', cookie.trim());
+          } catch (e) {
+            console.warn('设置单个Cookie失败:', e);
+          }
+        });
+      };
+
       setCookies(globalCookie);
       console.log('组件挂载时已应用全局登录Cookie');
     } catch (error) {

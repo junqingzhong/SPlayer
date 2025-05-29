@@ -25,6 +25,9 @@ interface SettingState {
   showTaskbarProgress: boolean;
   useOnlineService: boolean;
   checkUpdateOnStart: boolean;
+  customGlobalBackgroundImage: string; // 全局自定义背景图片路径
+  globalBackgroundOpacity: number; // 全局背景图片透明度
+  activitiesApiBaseUrl: string; // 活动列表API域名
   hideVipTag: boolean;
   lyricFontSize: number;
   lyricTranFontSize: number;
@@ -70,7 +73,8 @@ interface SettingState {
   countDownShow: boolean;
   barLyricShow: boolean;
   playerType: "cover" | "record";
-  playerBackgroundType: "none" | "animation" | "blur" | "color";
+  playerBackgroundType: "none" | "animation" | "blur" | "color" | "custom";
+  customBackgroundImage: string; // 自定义背景图片路径
   memoryLastSeek: boolean;
   showPlaylistCount: boolean;
   showSpectrums: boolean;
@@ -118,6 +122,9 @@ export const useSettingStore = defineStore("setting", {
     closeAppMethod: "hide", // 关闭方式
     showTaskbarProgress: false, // 显示任务栏进度
     checkUpdateOnStart: true, // 启动时检查更新
+    customGlobalBackgroundImage: "", // 全局自定义背景图片路径
+    globalBackgroundOpacity: 0.5, // 全局背景图片透明度，默认0.5
+    activitiesApiBaseUrl: "http://localhost:8080/api/activities", // 活动列表API域名，默认本地
     preventSleep: false, // 是否禁止休眠
     fullPlayerCache: false, // 全屏播放器缓存
     useKeepAlive: true, // 使用 keep-alive
@@ -132,6 +139,7 @@ export const useSettingStore = defineStore("setting", {
     barLyricShow: true, // 显示歌词条
     playerType: "cover", // 播放器类型
     playerBackgroundType: "blur", // 背景类型
+    customBackgroundImage: "", // 自定义背景图片路径
     memoryLastSeek: true, // 记忆最后进度
     showPlaylistCount: true, // 显示播放列表数量
     showSpectrums: true, // 是否显示音乐频谱

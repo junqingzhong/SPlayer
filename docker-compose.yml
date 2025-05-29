@@ -1,26 +1,32 @@
 services:
   SPlayer:
     # build:
-      # context: .
+    #   context: .
     image: splayer
     container_name: SPlayer
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
       # - ./splayer_data:/app/splayer_config # Volume for SPlayer user settings
-      # - ./out/renderer:/usr/share/nginx/html # Volume for SPlayer user settings
-      # - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro # Volume for Nginx configuration
+      - ./out/renderer:/usr/share/nginx/html # Volume for SPlayer user settings
+      - ./default.conf:/etc/nginx/conf.d/default.conf # Volume for Nginx configuration
+      - ./nginx.conf:/etc/nginx/nginx.conf # Volume for Nginx configuration
+      - ./public/api:/app
+      - ./docker-entrypoint.sh:/docker-entrypoint.sh
     ports:
       - "8080:80" # Map host port 8080 to Nginx container port 80
     restart: always
+    # command: sh -c "cd /app && uvicorn app:app --host 0.0.0.0 --port 8000 --reload"
     environment:
+      - MODULE_NAME=app
+      - VARIABLE_NAME=app
       # SPlayer specific backend port and mode
       - VITE_SPLAYER_BACKEND_PORT=25885
       - SPLAYER_DOCKER_MODE=true
       # UnblockNeteaseMusic and Netease related variables (existing)
       # 所有变量都不是必填项
       # 网易云服务端 IP, 可在宿主机通过 ping music.163.com 获得
-      - NETEASE_SERVER_IP=220.197.30.65
+      - NETEASE_SERVER_IP=111.124.200.65
       # UnblockNeteaseMusic 使用的音源, 支持列表见 https://github.com/UnblockNeteaseMusic/server?tab=readme-ov-file#%E9%9F%B3%E6%BA%90%E6%B8%85%E5%8D%95
       - UNBLOCK_SOURCES=qq kugou kuwo pyncmd bilibili
       # 可添加 UnblockNeteaseMusic 支持的任何环境变量, 支持列表见 https://github.com/UnblockNeteaseMusic/server?tab=readme-ov-file#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F
@@ -38,4 +44,9 @@ services:
       - ENABLE_LOCAL_VIP=svip
       - MIN_BR=320000
       - QQ_COOKIE="uin=o2738323431;qm_keyst=W_X_63B0aOjcAAQPbhd044BCWZRbqx8qnh-07P_lpW4QxXKs0WT_Qw_l7kVoYIpEbvgjJl5UGiJN_G8ZAaNYX8jadGHMZny8"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 

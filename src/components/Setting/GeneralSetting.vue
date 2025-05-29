@@ -250,6 +250,55 @@
         </div>
         <n-switch v-model:value="settingStore.checkUpdateOnStart" class="set" :round="false" />
       </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">全局背景图片</n-text>
+          <n-text class="tip" :depth="3">设置应用全局背景图片</n-text>
+        </div>
+        <n-flex vertical justify="center" align="center" class="custom-bg-container">
+          <n-image
+            v-if="settingStore.customGlobalBackgroundImage"
+            :src="settingStore.customGlobalBackgroundImage"
+            width="200"
+            height="120"
+            object-fit="cover"
+            preview-disabled
+            class="custom-bg-preview"
+          />
+          <n-flex justify="center" align="center" class="custom-bg-actions">
+            <n-button type="primary" @click="chooseBackgroundImage">
+              <template #icon>
+                <SvgIcon name="Upload" />
+              </template>
+              选择图片
+            </n-button>
+            <n-button
+              v-if="settingStore.customGlobalBackgroundImage"
+              type="error"
+              @click="clearBackgroundImage"
+            >
+              <template #icon>
+                <SvgIcon name="Delete" />
+              </template>
+              清除图片
+            </n-button>
+          </n-flex>
+          <n-card v-if="settingStore.customGlobalBackgroundImage" class="set-item nested" style="width: 100%; margin-top: 16px;">
+            <div class="label">
+              <n-text class="name">背景图透明度</n-text>
+              <n-text class="tip" :depth="3">调整背景图片的透明度</n-text>
+            </div>
+            <n-slider
+              v-model:value="settingStore.globalBackgroundOpacity"
+              :min="0"
+              :max="1"
+              :step="0.01"
+              :tooltip="true"
+              :format-tooltip="value => `${Math.round(value * 100)}%`"
+            />
+          </n-card>
+        </n-flex>
+      </n-card>
     </div>
   </div>
 </template>
@@ -353,9 +402,50 @@ const themeGlobalColorChange = (val: boolean) => {
   if (val) player.getCoverColor(musicStore.songCover);
 };
 
+// 选择背景图片
+const chooseBackgroundImage = async () => {
+  if (!isElectron) {
+    window.$message.warning("该功能仅在桌面版可用");
+    return;
+  }
+  try {
+    const imagePath = await window.electron.ipcRenderer.invoke("choose-image");
+    if (imagePath) {
+      settingStore.customGlobalBackgroundImage = imagePath;
+      window.$message.success("背景图片设置成功");
+    }
+  } catch (error) {
+    console.error("选择背景图片失败", error);
+    window.$message.error("选择背景图片失败");
+  }
+};
+
+// 清除背景图片
+const clearBackgroundImage = () => {
+  settingStore.customGlobalBackgroundImage = "";
+  window.$message.success("已清除背景图片");
+};
+
 onMounted(() => {
   if (isElectron) {
     getAllSystemFonts();
   }
 });
 </script>
+
+<style lang="scss" scoped>
+.custom-bg-container {
+  width: 100%;
+  margin-top: 16px;
+
+  .custom-bg-preview {
+    margin-bottom: 16px;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .custom-bg-actions {
+    gap: 16px;
+  }
+}
+</style>

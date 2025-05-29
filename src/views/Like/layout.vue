@@ -26,7 +26,6 @@
       <n-tab name="like-albums"> 专辑 </n-tab>
       <n-tab name="like-artists"> 歌手 </n-tab>
       <n-tab name="like-videos"> 视频 </n-tab>
-      <n-tab name="like-radios"> 播客 </n-tab>
     </n-tabs>
     <!-- 路由 -->
     <RouterView v-slot="{ Component }">
@@ -71,11 +70,7 @@ const likeData = computed(() => [
     name: "like-videos",
     length: dataStore.userLikeData.mvs?.length || 0,
   },
-  {
-    icon: "Record",
-    name: "like-radios",
-    length: dataStore.userLikeData.djs?.length || 0,
-  },
+
 ]);
 
 onBeforeRouteUpdate((to) => {

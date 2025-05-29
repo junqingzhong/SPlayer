@@ -11,7 +11,6 @@
       <n-tab name="search-artists"> 歌手 </n-tab>
       <n-tab name="search-albums"> 专辑 </n-tab>
       <n-tab name="search-videos"> 视频 </n-tab>
-      <n-tab name="search-radios"> 播客 </n-tab>
     </n-tabs>
     <!-- 路由 -->
     <RouterView v-slot="{ Component }">

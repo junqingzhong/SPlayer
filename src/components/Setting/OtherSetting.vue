@@ -150,6 +150,13 @@
         <n-input v-model:value="unblockApiUrl" placeholder="例如: /api/unblock" class="set" />
       </n-card>
       <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">活动列表API域名</n-text>
+          <n-text class="tip" :depth="3">活动列表API的基础URL</n-text>
+        </div>
+        <n-input v-model:value="activitiesApiBaseUrl" placeholder="例如: http://127.0.0.1:8000/api" class="set" />
+      </n-card>
+      <n-card class="set-item">
         <n-button type="primary" strong secondary @click="applyGlobalConfig">
           <template #icon>
             <SvgIcon name="Settings" />
@@ -274,6 +281,7 @@ const testApiLoading = ref<boolean>(false);
 const serverPort = ref<number>(config.serverPort);
 const apiBaseUrl = ref<string>(config.apiBaseUrl);
 const unblockApiUrl = ref<string>(config.unblockApiUrl);
+const activitiesApiBaseUrl = ref<string>(settingStore.activitiesApiBaseUrl);
 
 // 浏览器配置变量
 const browserEnabled = ref<boolean>(settingStore.browserEnabled || false);
@@ -290,6 +298,9 @@ const applyGlobalConfig = () => {
 
   // 更新配置
   updateConfig(newConfig);
+
+  // 更新活动列表API域名设置
+  settingStore.activitiesApiBaseUrl = activitiesApiBaseUrl.value;
 
   window.$message.success("全局配置已更新，部分设置可能需要重启应用后生效");
 };
@@ -403,14 +414,28 @@ const testWebApiConnection = async () => {
       '/api/recommend/songs'
     ];
 
-    const results = [];
+    // 定义结果类型
+    interface TestResult {
+      url: string;
+      status: number | string;
+      success: boolean;
+      error?: string;
+    }
+
+    const results: TestResult[] = [];
 
     for (const url of testUrls) {
       try {
+        // 使用AbortController实现超时功能
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
         const response = await fetch(url, {
           method: 'GET',
-          timeout: 5000
+          signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         results.push({
           url,
@@ -422,7 +447,7 @@ const testWebApiConnection = async () => {
           url,
           status: 'Error',
           success: false,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
@@ -589,6 +614,9 @@ const testCookie = async () => {
 
   window.$message.loading('正在测试Cookie有效性...');
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 设置5秒超时
+
   try {
     // 先应用Cookie
     setCookies(autoLoginCookie.value);
@@ -597,8 +625,10 @@ const testCookie = async () => {
     const response = await fetch('/api/login/status', {
       method: 'GET',
       credentials: 'include',
-      timeout: 5000
+      signal: controller.signal // 将 AbortController 的 signal 传递给 fetch
     });
+
+    clearTimeout(timeoutId); // 请求成功，清除超时定时器
 
     const data = await response.json();
 
@@ -608,8 +638,13 @@ const testCookie = async () => {
       window.$message.error('Cookie无效或已过期，请重新登录获取');
     }
   } catch (error) {
-    console.error('测试Cookie失败:', error);
-    window.$message.error('测试失败，请检查网络连接或API配置');
+    clearTimeout(timeoutId); // 捕获到错误，清除超时定时器
+    if ((error as Error).name === 'AbortError') {
+      window.$message.error('测试Cookie失败: 请求超时');
+    } else {
+      console.error('测试Cookie失败:', error);
+      window.$message.error('测试失败，请检查网络连接或API配置');
+    }
   }
 };
 

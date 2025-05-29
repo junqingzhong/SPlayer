@@ -1,11 +1,16 @@
 <template>
   <Provider>
+    <!-- 全局背景图片 -->
+    <div v-if="settingStore.customGlobalBackgroundImage" class="global-background" :style="{ '--bg-opacity': settingStore.globalBackgroundOpacity }">
+      <img :src="settingStore.customGlobalBackgroundImage" alt="background" />
+    </div>
     <!-- 主框架 -->
     <n-layout
       id="main"
       :class="{
         'show-player': musicStore.isHasPlayer && statusStore.showPlayBar,
         'show-full-player': statusStore.showFullPlayer,
+        'has-background': settingStore.customGlobalBackgroundImage,
       }"
       has-sider
     >
@@ -110,6 +115,36 @@ onMounted(async () => {
 </script>
 
 <style lang="scss" scoped>
+.global-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
+  --bg-opacity: 0.5; /* 默认透明度，会被内联样式覆盖 */
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: blur(8px);
+    transform: scale(1.1);
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, var(--bg-opacity));
+    backdrop-filter: blur(10px);
+  }
+}
+
 #main {
   flex: 1;
   height: 100%;
@@ -134,9 +169,6 @@ onMounted(async () => {
     }
   }
   &.show-player {
-    // #main-sider {
-    //   margin-bottom: 80px;
-    // }
     #main-content {
       bottom: 80px;
     }
@@ -146,6 +178,24 @@ onMounted(async () => {
     transform: scale(0.9);
     #main-header {
       -webkit-app-region: no-drag;
+    }
+  }
+  &.has-background {
+    background-color: transparent;
+
+    :deep(#main-sider) {
+      background-color: rgba(var(--background-rgb), 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    :deep(#main-header) {
+      background-color: rgba(var(--background-rgb), 0.7);
+      backdrop-filter: blur(10px);
+    }
+
+    :deep(#main-content) {
+      background-color: rgba(var(--background-rgb), 0.7);
+      backdrop-filter: blur(10px);
     }
   }
 }
