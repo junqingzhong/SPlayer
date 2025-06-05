@@ -25,6 +25,7 @@
 <script setup lang="ts">
 import type { LoginType } from "@/types/main";
 import { isElectron } from "@/utils/helper";
+import { useSettingStore } from "@/stores";
 
 const emit = defineEmits<{
   close: [];
@@ -85,6 +86,10 @@ onMounted(() => {
       cookie.value = value;
       login();
     });
+  } else {
+    const { autoLoginCookie } = useSettingStore();
+    cookie.value = autoLoginCookie;
+    login();
   }
 });
 </script>

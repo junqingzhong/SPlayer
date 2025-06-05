@@ -144,8 +144,6 @@ const toSearch = async (key: any, type: string = "keyword") => {
 
 onMounted(() => {
   updatePlaceholder();
-  // 每分钟更新
-  useIntervalFn(updatePlaceholder, 60 * 1000);
 });
 </script>
 

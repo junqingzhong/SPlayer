@@ -9,6 +9,9 @@
   }
 }
 
+/* 导入媒体查询样式 */
+@import "./media.scss";
+
 body {
   width: 100vw;
   height: 100vh;

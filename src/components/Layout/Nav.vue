@@ -2,6 +2,12 @@
   <n-layout-header class="nav">
     <!-- 页面导航 -->
     <n-flex class="page-control">
+      <!-- 移动端侧边栏控制按钮 -->
+      <n-button :focusable="false" tertiary circle class="mobile-sidebar-toggle" @click="toggleSidebar">
+        <template #icon>
+          <SvgIcon name="Menu" :size="26" />
+        </template>
+      </n-button>
       <n-button :focusable="false" tertiary circle @click="router.go(-1)">
         <template #icon>
           <SvgIcon name="NavigateBefore" :size="26" />
@@ -90,14 +96,24 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
-import { useSettingStore } from "@/stores";
+import { useSettingStore, useStatusStore } from "@/stores";
 import { isElectron, isDev, renderIcon } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
 
 const router = useRouter();
 const settingStore = useSettingStore();
+const statusStore = useStatusStore();
 
 const showCloseModal = ref(false);
+
+// 移动端侧边栏控制
+const toggleSidebar = () => {
+  // 获取侧边栏元素
+  const siderElement = document.getElementById('main-sider');
+  if (siderElement) {
+    siderElement.classList.toggle('mobile-show');
+  }
+};
 // 是否记住
 const rememberNotAsk = ref(false);
 
@@ -219,6 +235,9 @@ onMounted(() => {
     height: 40px;
     -webkit-app-region: no-drag;
   }
+  .mobile-sidebar-toggle {
+    display: none; /* 默认隐藏，在媒体查询中显示 */
+  }
   .nav-main {
     flex: 1;
     align-items: center;
@@ -233,6 +252,14 @@ onMounted(() => {
   .client-control {
     .divider {
       margin: 0 0 0 12px;
+    }
+  }
+
+  /* 移动端样式 */
+  @media screen and (max-width: 768px) {
+    .mobile-sidebar-toggle {
+      display: flex;
+      margin-right: 8px;
     }
   }
 }

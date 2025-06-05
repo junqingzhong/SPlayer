@@ -3,6 +3,7 @@ import { openUserLogin } from "@/utils/modal";
 import { isElectron } from "@/utils/helper";
 import { isLogin } from "@/utils/auth";
 import routes from "./routes";
+import CategoryManagement from '@/views/CategoryManagement/index.vue'
 
 // 基础配置
 const router: Router = createRouter({

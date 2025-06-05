@@ -169,7 +169,7 @@
       <n-h3 prefix="bar"> cookie设置 </n-h3>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">网易云自动登录Cookie</n-text>
+          <n-text class="name">网易云自动登录Cookie(保存等3s自动刷新)</n-text>
           <n-card class="set-item nested">
             <div class="label">
               <n-text class="tip" :depth="3">用于网易云扫码登录后的自动登录，首次扫码登录后会自动保存到此处</n-text>
@@ -179,12 +179,6 @@
             <n-input v-model:value="autoLoginCookie" type="textarea" placeholder="网易云登录Cookie将在首次扫码登录后自动填入"
               class="set" :autosize="{ minRows: 3, maxRows: 6 }" />
             <n-space class="cookie-actions" justify="end" style="margin-top: 8px">
-              <n-button size="small" type="primary" @click="testCookie" :disabled="!autoLoginCookie">
-                <template #icon>
-                  <SvgIcon name="Wifi" />
-                </template>
-                测试Cookie
-              </n-button>
               <n-button size="small" type="info" @click="applyCookie" :disabled="!autoLoginCookie">
                 <template #icon>
                   <SvgIcon name="Settings" />
@@ -231,12 +225,6 @@
             </template>
             打开浏览器
           </n-button>
-          <n-button v-if="autoLoginCookie" type="warning" strong secondary @click="clearCookie">
-            <template #icon>
-              <SvgIcon name="Delete" />
-            </template>
-            清除Cookie
-          </n-button>
         </n-flex>
       </n-card>
     </div>
@@ -268,6 +256,7 @@ import { debounce } from "lodash-es";
 import config, { updateConfig } from "@/config";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import axios from "axios";
 
 const router = useRouter();
 
@@ -340,31 +329,6 @@ const openBrowser = () => {
 
   // 跳转到浏览器页面
   router.push({ name: 'browser' });
-};
-
-/**
- * 清除Cookie
- */
-const clearCookie = () => {
-  window.$dialog.warning({
-    title: "清除Cookie",
-    content: "确定要清除网易云登录Cookie吗？清除后需要重新扫码登录。",
-    positiveText: "确定",
-    negativeText: "取消",
-    onPositiveClick: () => {
-      autoLoginCookie.value = '';
-      settingStore.autoLoginCookie = '';
-
-      // 清除当前会话的Cookie
-      try {
-        clearAllCookies();
-        window.$message.success("Cookie已清除");
-      } catch (error) {
-        console.error("清除Cookie失败:", error);
-        window.$message.warning("Cookie清除可能不完整，建议重启应用");
-      }
-    }
-  });
 };
 
 /**
@@ -604,73 +568,78 @@ const formatCookieDate = () => {
 };
 
 /**
- * 测试Cookie有效性
- */
-const testCookie = async () => {
-  if (!autoLoginCookie.value) {
-    window.$message.warning('请先设置Cookie');
-    return;
-  }
-
-  window.$message.loading('正在测试Cookie有效性...');
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 设置5秒超时
-
-  try {
-    // 先应用Cookie
-    setCookies(autoLoginCookie.value);
-
-    // 测试登录状态API
-    const response = await fetch('/api/login/status', {
-      method: 'GET',
-      credentials: 'include',
-      signal: controller.signal // 将 AbortController 的 signal 传递给 fetch
-    });
-
-    clearTimeout(timeoutId); // 请求成功，清除超时定时器
-
-    const data = await response.json();
-
-    if (data.data.code === 200 && data.data.account) {
-      window.$message.success(`Cookie有效，已登录账号: ${data.data.profile?.nickname || '未知用户'}`);
-    } else {
-      window.$message.error('Cookie无效或已过期，请重新登录获取');
-    }
-  } catch (error) {
-    clearTimeout(timeoutId); // 捕获到错误，清除超时定时器
-    if ((error as Error).name === 'AbortError') {
-      window.$message.error('测试Cookie失败: 请求超时');
-    } else {
-      console.error('测试Cookie失败:', error);
-      window.$message.error('测试失败，请检查网络连接或API配置');
-    }
-  }
-};
-
-/**
  * 立即应用Cookie
  */
-const applyCookie = () => {
+const applyCookie = async () => {
   if (!autoLoginCookie.value) {
     window.$message.warning('请先设置Cookie');
     return;
   }
+  let userInfo = null;
+  let success = false; // 标记操作是否成功
 
   try {
-    // 应用Cookie
-    setCookies(autoLoginCookie.value);
+    if (settingStore.autoLoginCookie) {
+      const headers = {
+        'Authorization': `Bearer ${settingStore.autoLoginCookie}`,
+        'Content-Type': 'application/json'
+      };
+      const apiUrl = `${settingStore.activitiesApiBaseUrl}/users?current_info=true`;
 
-    // 更新设置存储
-    settingStore.autoLoginCookie = autoLoginCookie.value;
-
-    // 记录更新时间
-    localStorage.setItem('cookie-update-time', Date.now().toString());
-
-    window.$message.success('Cookie已成功应用');
+      const response = await axios.get(apiUrl, { headers });
+      if (response.data.status === 200 && response.data.data.length > 0) {
+        userInfo = response.data.data[0];
+      } else {
+        window.$message.error(response.data.message || "获取用户信息失败");
+      }
+    }
   } catch (error) {
-    console.error('应用Cookie失败:', error);
-    window.$message.error('应用Cookie失败，请检查格式');
+    console.error("获取用户信息时发生错误:", error);
+    window.$message.error("获取用户信息时发生错误，请检查网络或API服务");
+  }
+
+  if (userInfo) {
+    try {
+      const headers = {
+        'Authorization': `Bearer ${settingStore.autoLoginCookie}`,
+        'Content-Type': 'application/json'
+      };
+      const apiUrl = `${settingStore.activitiesApiBaseUrl}/user/${userInfo.id}`;
+      const udresponse = await axios.put(apiUrl, {
+        cookie: autoLoginCookie.value,
+      }, { headers });
+      if (udresponse.data.status === 200) {
+        window.$message.success("Cookie已成功应用");
+        success = true; // 标记成功
+      } else {
+        window.$message.error(udresponse.data.data.message || "更新用户信息失败");
+      }
+    } catch (error) {
+      console.error("更新用户信息时发生错误:", error);
+      window.$message.error("更新用户信息时发生错误，请检查网络或API服务");
+    }
+  }
+
+  // 无论API请求是否成功，都尝试应用Cookie并更新设置
+  try {
+    setCookies(autoLoginCookie.value);
+    settingStore.autoLoginCookie = autoLoginCookie.value;
+    localStorage.setItem('cookie-update-time', Date.now().toString());
+    if (isElectron) window.electron.ipcRenderer.send("reset-setting");
+    // 根据操作是否成功显示不同的消息
+    if (success) {
+      window.$message.loading("Cookie已成功应用，软件即将热重载", { duration: 3000 });
+    } else {
+      window.$message.loading("尝试应用Cookie，软件即将热重载", { duration: 3000 });
+    }
+  } catch (error) {
+    console.error('应用Cookie和更新设置时发生错误:', error);
+    window.$message.error('应用Cookie和更新设置失败，请检查格式');
+  } finally {
+    // 无论成功或失败，都在消息显示后尝试热重载
+    setTimeout(() => {
+      window.location.reload();
+    }, 3000); // 确保消息有足够时间显示
   }
 };
 </script>

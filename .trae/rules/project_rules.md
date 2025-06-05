@@ -10,3 +10,4 @@
 -->
 1.activities.db是数据库，数据都可以放里面。
 2.app.py是操作数据库的接口。
+3.已经在dokcer启动了fastapi服务，所以可以直接访问。

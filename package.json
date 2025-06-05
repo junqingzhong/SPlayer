@@ -71,7 +71,8 @@
     "pinia": "^3.0.2",
     "pinia-plugin-persistedstate": "^4.3.0",
     "plyr": "^3.7.8",
-    "vue-virt-list": "^1.5.11"
+    "vue-virt-list": "^1.5.11",
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.1",

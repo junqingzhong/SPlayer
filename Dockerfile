@@ -21,12 +21,9 @@ RUN pip install --no-cache-dir --upgrade pip && pip install --no-cache-dir \
     uvicorn[standard] \
     python-dotenv \
     httpx \
-    sqlalchemy \
     passlib[bcrypt] \
     python-jose[cryptography] \
     pydantic \
-    jinja2 \
-    itsdangerous \
     python-multipart
 
 # 安装 Node 服务

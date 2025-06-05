@@ -1,0 +1,85 @@
+/* 响应式设计媒体查询 */
+
+/* 手机模式 */
+@media screen and (max-width: 768px) {
+  /* 隐藏侧边栏 */
+  #main-sider {
+    position: fixed !important;
+    left: -240px !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    transition: left 0.3s ease !important;
+
+    &.mobile-show {
+      left: 0 !important;
+    }
+  }
+
+  /* 调整主布局 */
+  #main-layout {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  /* 导航栏调整 */
+  .nav {
+    padding: 0 0.5rem !important;
+
+    .page-control {
+      margin-right: 8px !important;
+    }
+
+    .nav-main {
+      margin-left: 0 !important;
+    }
+  }
+
+  /* 活动列表页面样式调整 */
+  .activities-container {
+    padding: 10px !important;
+
+    .activities-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 10px !important;
+
+      h2 {
+        margin-bottom: 10px !important;
+      }
+
+      .n-space {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+      }
+    }
+
+    .filter-container {
+      flex-direction: column !important;
+
+      .search-input {
+        width: 100% !important;
+      }
+
+      .status-filter {
+        width: 100% !important;
+      }
+
+      .sort-button {
+        width: 100% !important;
+      }
+    }
+  }
+}
+
+/* 平板模式 */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+  /* 活动列表页面样式调整 */
+  .activities-container {
+    .activities-header {
+      .n-space {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+      }
+    }
+  }
+}

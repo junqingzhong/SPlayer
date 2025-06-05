@@ -38,6 +38,8 @@
       >
         <Sider />
       </n-layout-sider>
+      <!-- 移动端侧边栏遮罩 -->
+      <div class="mobile-sidebar-mask" @click="closeMobileSidebar"></div>
       <n-layout id="main-layout">
         <!-- 导航栏 -->
         <Nav id="main-header" />
@@ -99,6 +101,14 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
+// 关闭移动端侧边栏
+const closeMobileSidebar = () => {
+  const siderElement = document.getElementById('main-sider');
+  if (siderElement && siderElement.classList.contains('mobile-show')) {
+    siderElement.classList.remove('mobile-show');
+  }
+};
+
 // 主内容
 const contentRef = ref<HTMLElement | null>(null);
 
@@ -142,6 +152,26 @@ onMounted(async () => {
     height: 100%;
     background-color: rgba(0, 0, 0, var(--bg-opacity));
     backdrop-filter: blur(10px);
+  }
+}
+
+/* 移动端侧边栏遮罩 */
+.mobile-sidebar-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: none;
+  backdrop-filter: blur(3px);
+}
+
+/* 当侧边栏显示时显示遮罩 */
+@media screen and (max-width: 768px) {
+  #main-sider.mobile-show + .mobile-sidebar-mask {
+    display: block;
   }
 }
 

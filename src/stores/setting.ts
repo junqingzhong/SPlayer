@@ -187,7 +187,7 @@ export const useSettingStore = defineStore("setting", {
     realIP: "116.25.146.177", // 真实IP地址
     // 浏览器
     browserEnabled: false, // 是否启用内置浏览器
-    browserHomepage: "https://music.163.com", // 浏览器默认主页
+    browserHomepage: "https://www.google.com", // 浏览器默认主页
     // 全局Cookie设置
     autoLoginCookie: "", // 网易云自动登录Cookie（全局使用）
   }),

@@ -1,11 +1,22 @@
 import { type RouteRecordRaw } from "vue-router";
 
 const routes: Array<RouteRecordRaw> = [
-  // 首页
+  // 首页 (现在是活动列表)
+  {
+    path: "/home",
+    name: "home",
+    component: () => import("@/views/Home/index.vue"), // 修改为 Activities/index.vue
+  },
+   // 活动列表
   {
     path: "",
-    name: "home",
-    component: () => import("@/views/Home/index.vue"),
+    name: "activities",
+    component: () => import("@/views/Activities/index.vue"),
+    meta: {
+      title: "活动列表",
+      keepAlive: true,
+      transition: "slide",
+    },
   },
   // 搜索
   {
@@ -215,16 +226,28 @@ const routes: Array<RouteRecordRaw> = [
     name: "history",
     component: () => import("@/views/History.vue"),
   },
-  // 活动列表
+
+  // 分类管理
   {
-    path: "/activities",
-    name: "activities",
-    component: () => import("@/views/Activities/index.vue"),
+    path: "/category-management",
+    name: "category-management",
+    component: () => import("@/views/CategoryManagement/index.vue"),
     meta: {
-      title: "活动列表",
+      title: "分类管理",
       keepAlive: true,
       transition: "slide",
     },
+  },
+  // 用户管理
+  {
+    path: '/user-management',
+    name: 'UserManagement',
+    component: () => import('@/views/UserManagement/index.vue'),
+    meta: {
+      title: '用户管理',
+      keepAlive: true,
+      transition: 'slide-left',
+    }
   },
   // 内置浏览器
   {
