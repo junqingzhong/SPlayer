@@ -256,6 +256,26 @@ onBeforeUnmount(() => {
       }
     }
   }
+  .player-menu,
+  .player-control {
+    position: absolute;
+    width: 100%;
+    transition: opacity 0.3s;
+    z-index: 100;
+
+    &.player-menu {
+      top: 0;
+    }
+
+    &.player-control {
+      bottom: 0;
+    }
+
+    &:not(.show) {
+      pointer-events: none; // 当不显示时，鼠标事件穿透
+    }
+  }
+
   .lrc-instant {
     position: absolute;
     top: 0;

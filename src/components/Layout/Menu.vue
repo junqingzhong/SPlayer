@@ -80,17 +80,6 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           }),
         },
         {
-          key: "browser",
-          link: "browser",
-          label: "内置浏览器",
-          show: settingStore.browserEnabled,
-          icon: renderIcon("Link", {
-            style: {
-              transform: "translateY(-1px)",
-            },
-          }),
-        },
-        {
           key: "divider",
           type: "divider",
         },
@@ -227,6 +216,16 @@ const renderMenuLabel = (option: MenuOption) => {
 
 // 菜单项更改
 const menuUpdate = (key: string, item: MenuOption) => {
+  // 在移动端视图下，点击菜单项后自动隐藏侧边栏
+  const hideSidebarOnMobile = () => {
+    if (window.innerWidth <= 768) {
+      const siderElement = document.getElementById('main-sider');
+      if (siderElement && siderElement.classList.contains('mobile-show')) {
+        siderElement.classList.remove('mobile-show');
+      }
+    }
+  };
+
   // 私人漫游
   if (key === "personal-fm") {
     if (!musicStore.personalFMSong?.id) {
@@ -262,6 +261,9 @@ const menuUpdate = (key: string, item: MenuOption) => {
         break;
     }
   }
+
+  // 路由跳转后隐藏侧边栏
+  hideSidebarOnMobile();
 };
 
 // 选中菜单项

@@ -347,6 +347,8 @@ const instantLyrics = computed(() => {
   align-items: center;
   transition: bottom 0.3s;
   z-index: 10;
+  /* 为iOS设备底部控制键保留安全区域 */
+  padding-bottom: env(safe-area-inset-bottom, 0);
   &.show {
     bottom: 0;
   }

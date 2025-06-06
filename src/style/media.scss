@@ -31,6 +31,21 @@
 
     .nav-main {
       margin-left: 0 !important;
+
+      /* 优化设置按钮和头像位置 */
+      .n-dropdown {
+        margin-left: 8px !important;
+      }
+
+      /* 用户头像调整 */
+      .user {
+        margin-left: 8px !important;
+
+        .avatar {
+          width: 32px !important;
+          height: 32px !important;
+        }
+      }
     }
   }
 

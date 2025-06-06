@@ -249,17 +249,6 @@ const routes: Array<RouteRecordRaw> = [
       transition: 'slide-left',
     }
   },
-  // 内置浏览器
-  {
-    path: "/browser",
-    name: "browser",
-    component: () => import("@/views/Browser.vue"),
-    meta: {
-      title: "内置浏览器",
-      keepAlive: true,
-      transition: "slide",
-    },
-  },
   // 状态
   {
     path: "/403",

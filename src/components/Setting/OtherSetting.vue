@@ -190,44 +190,6 @@
         </div>
       </n-card>
     </div>
-    <div class="set-list">
-      <n-h3 prefix="bar"> 内置浏览器 </n-h3>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">启用内置浏览器</n-text>
-          <n-text class="tip" :depth="3">开启后可在应用内访问网站</n-text>
-        </div>
-        <n-switch class="set" v-model:value="browserEnabled" :round="false">
-          <template #unchecked></template>
-        </n-switch>
-      </n-card>
-      <n-collapse-transition :show="browserEnabled">
-        <n-card class="set-item nested">
-          <div class="label">
-            <n-text class="name">默认主页</n-text>
-            <n-text class="tip" :depth="3">浏览器启动时的默认页面</n-text>
-          </div>
-          <n-input v-model:value="browserHomepage" placeholder="例如: https://music.163.com" class="set" />
-        </n-card>
-      </n-collapse-transition>
-
-      <n-card class="set-item">
-        <n-flex justify="space-between" align="center">
-          <n-button type="primary" strong secondary @click="applyBrowserConfig">
-            <template #icon>
-              <SvgIcon name="Settings" />
-            </template>
-            应用配置
-          </n-button>
-          <n-button type="info" strong secondary @click="openBrowser" :disabled="!browserEnabled">
-            <template #icon>
-              <SvgIcon name="Link" />
-            </template>
-            打开浏览器
-          </n-button>
-        </n-flex>
-      </n-card>
-    </div>
   </div>
   <div class="set-list">
     <n-h3 prefix="bar"> 重置 </n-h3>
@@ -273,8 +235,6 @@ const unblockApiUrl = ref<string>(config.unblockApiUrl);
 const activitiesApiBaseUrl = ref<string>(settingStore.activitiesApiBaseUrl);
 
 // 浏览器配置变量
-const browserEnabled = ref<boolean>(settingStore.browserEnabled || false);
-const browserHomepage = ref<string>(settingStore.browserHomepage || 'https://www.baidu.com');
 const autoLoginCookie = ref<string>(settingStore.autoLoginCookie || '');
 
 // 应用全局配置
@@ -292,43 +252,6 @@ const applyGlobalConfig = () => {
   settingStore.activitiesApiBaseUrl = activitiesApiBaseUrl.value;
 
   window.$message.success("全局配置已更新，部分设置可能需要重启应用后生效");
-};
-
-/**
- * 应用浏览器配置
- */
-const applyBrowserConfig = () => {
-  // 更新设置存储
-  settingStore.browserEnabled = browserEnabled.value;
-  settingStore.browserHomepage = browserHomepage.value;
-  settingStore.autoLoginCookie = autoLoginCookie.value;
-
-  // 如果启用了自动登录Cookie，立即应用
-  if (autoLoginCookie.value) {
-    try {
-      // 使用工具函数设置Cookie
-      setCookies(autoLoginCookie.value);
-      window.$message.success("浏览器配置已应用，网易云登录Cookie已设置");
-    } catch (error) {
-      window.$message.error("Cookie设置失败，请检查格式");
-      console.error("Cookie设置错误:", error);
-    }
-  } else {
-    window.$message.success("浏览器配置已应用");
-  }
-};
-
-/**
- * 打开浏览器页面
- */
-const openBrowser = () => {
-  if (!browserEnabled.value) {
-    window.$message.warning("请先启用内置浏览器功能");
-    return;
-  }
-
-  // 跳转到浏览器页面
-  router.push({ name: 'browser' });
 };
 
 /**

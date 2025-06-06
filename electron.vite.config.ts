@@ -110,8 +110,13 @@ export default defineConfig(({ command, mode }) => {
         },
         terserOptions: {
           compress: {
-            pure_funcs: ["console.log"],
+            // 移除pure_funcs配置，避免构建错误
+            drop_console: true,
+            drop_debugger: true
           },
+          format: {
+            comments: false
+          }
         },
         sourcemap: false,
       },
