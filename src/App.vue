@@ -11,6 +11,7 @@
         'show-player': musicStore.isHasPlayer && statusStore.showPlayBar,
         'show-full-player': statusStore.showFullPlayer,
         'has-background': settingStore.customGlobalBackgroundImage,
+        'mobile-mode': settingStore.isMobileMode,
       }"
       has-sider
     >
@@ -51,10 +52,8 @@
             '--layout-height': contentHeight,
           }"
           :content-style="{
-            display: 'grid',
             gridTemplateRows: '1fr',
             minHeight: '100%',
-            padding: '0 24px',
           }"
           position="absolute"
           embedded
@@ -94,6 +93,8 @@
 </template>
 
 <script setup lang="ts">
+import { ref, watchEffect, watch, onMounted } from "vue";
+import { useElementSize } from "@vueuse/core";
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import init from "@/utils/init";
 
@@ -121,6 +122,15 @@ watchEffect(() => {
 
 onMounted(async () => {
   await init();
+
+  // 监听手机模式变化，添加或移除body类名
+  watch(() => settingStore.isMobileMode, (newValue) => {
+    if (newValue) {
+      document.body.classList.add('mobile-mode');
+    } else {
+      document.body.classList.remove('mobile-mode');
+    }
+  }, { immediate: true });
 });
 </script>
 
@@ -181,11 +191,73 @@ onMounted(async () => {
   transition:
     transform 0.3s var(--n-bezier),
     opacity 0.3s var(--n-bezier);
+
+  /* 手机模式样式 - iPhone 13 Pro 尺寸 */
+  &.mobile-mode {
+    width: 390px !important;
+      height: 844px !important;
+      margin: 1% auto;
+      overflow: hidden;
+      position: relative;
+
+    /* 布局样式 */
+    #main-layout {
+      width: 100% !important;
+      margin-left: 0 !important;
+    }
+
+    /* 侧边栏样式 */
+    #main-sider {
+      position: fixed !important;
+      left: -240px !important;
+      height: 100% !important;
+      z-index: 1000 !important;
+      transition: left 0.3s ease !important;
+
+      &.mobile-show {
+        left: 0 !important;
+      }
+    }
+
+    /* 内容区样式 */
+    #main-content {
+      padding: 0 12px !important;
+    }
+
+    /* 导航栏样式 */
+    .nav {
+      padding: 0 0.5rem !important;
+
+      .mobile-sidebar-toggle {
+        display: flex !important;
+        margin-right: 8px !important;
+      }
+      .nav-main {
+        margin-left: 0 !important;
+        .search-inp {
+          max-width: 150px !important;
+        }
+      }
+    }
+  }
+
   #main-layout {
     background-color: rgba(var(--background), 0.58);
+
+    /* 手机模式样式 */
+    .mobile-mode & {
+      margin-left: 0 !important;
+      width: 100% !important;
+    }
   }
+
   #main-content {
     top: 70px;
+
+    /* 手机模式样式 */
+    .mobile-mode & {
+      padding: 0 12px !important;
+    }
     background-color: transparent;
     transition: bottom 0.3s;
     .router-view {
@@ -200,7 +272,7 @@ onMounted(async () => {
   }
   &.show-player {
     #main-content {
-      bottom: 80px;
+      bottom: 120px;
     }
   }
   &.show-full-player {
@@ -228,5 +300,7 @@ onMounted(async () => {
       backdrop-filter: blur(10px);
     }
   }
+
+
 }
 </style>

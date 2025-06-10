@@ -337,7 +337,7 @@ const instantLyrics = computed(() => {
   position: fixed;
   left: 0;
   bottom: -90px;
-  height: 80px;
+  height: 120px;
   padding: 0 15px;
   width: 100%;
   background-color: var(--surface-container-hex);
@@ -348,7 +348,7 @@ const instantLyrics = computed(() => {
   transition: bottom 0.3s;
   z-index: 10;
   /* 为iOS设备底部控制键保留安全区域 */
-  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-bottom: 10px;
   &.show {
     bottom: 0;
   }

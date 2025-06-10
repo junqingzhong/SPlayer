@@ -58,8 +58,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, h } from "vue";
-import { useMessage, NButton, NSpace, NTag, NDropdown } from "naive-ui";
+import { ref, onMounted, watch, h } from "vue";
+import { useMessage, NButton, NSpace } from "naive-ui";
 import type { FormInst, FormRules, DataTableColumns } from "naive-ui";
 import axios from "axios";
 import { useSettingStore } from "@/stores";
@@ -75,7 +75,7 @@ const showDeleteModal = ref(false);
 const submitting = ref(false);
 const formRef = ref<FormInst | null>(null);
 const isEditing = ref(false);
-const deleteId = ref<number | null>(null);
+const deleteId = ref<string | null>(null);
 const hasToken = ref(false);
 
 // 分页设置
@@ -103,7 +103,7 @@ const columns: DataTableColumns = [
             {
               size: 'small',
               type: 'info',
-              onClick: () => editCategory(row.name) // 传递分类名称
+              onClick: () => editCategory(row.name as string) // 传递分类名称
             },
             { default: () => '编辑' }
           ),
@@ -112,7 +112,7 @@ const columns: DataTableColumns = [
             {
               size: 'small',
               type: 'error',
-              onClick: () => deleteCategory(row.name) // 传递分类名称
+              onClick: () => deleteCategory(row.name as string) // 传递分类名称
             },
             { default: () => '删除' }
           )
@@ -212,7 +212,7 @@ const addCategory = async () => {
       currentSettings = currentUserResponse.data.data[0].settings || {};
     }
 
-    let existingCategories = currentSettings?.categories || [];
+    let existingCategories = (currentSettings as any).categories || [];
     if (!Array.isArray(existingCategories)) {
       existingCategories = [];
     }
@@ -285,7 +285,7 @@ const updateCategory = async () => {
       currentSettings = currentUserResponse.data.data[0].settings || {};
     }
 
-    let existingCategories = currentSettings.categories || [];
+    let existingCategories = (currentSettings as any).categories || [];
     if (!Array.isArray(existingCategories)) {
       existingCategories = [];
     }
@@ -300,9 +300,6 @@ const updateCategory = async () => {
         return false;
       }
       existingCategories[index] = categoryForm.value.name;
-    } else {
-      message.error("未找到要更新的分类");
-      return false;
     }
 
     const payload = {
@@ -416,13 +413,12 @@ const confirmDelete = async () => {
           'Authorization': `Bearer ${token}`
         }
       });
-
       let currentSettings = {};
       if (currentUserResponse.data.status === 200 && currentUserResponse.data.data.length > 0) {
         currentSettings = currentUserResponse.data.data[0].settings || {};
       }
 
-      let existingCategories = currentSettings.categories || [];
+      let existingCategories = (currentSettings as any).categories || [];
       if (!Array.isArray(existingCategories)) {
         existingCategories = [];
       }
@@ -460,9 +456,10 @@ onMounted(() => {
 });
 
 // 监听token变化，重新获取分类列表
-watch(() => useSettingStore().autoLoginCookie, (newVal) => {
+watch(() => useSettingStore().autoLoginCookie, () => {
   fetchCategories();
 });
+// 移除未使用的watch
 </script>
 
 <style scoped>

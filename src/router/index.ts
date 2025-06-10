@@ -1,9 +1,18 @@
+/*
+ * @Author: ZJQ
+ * @Date: 2025-05-23 10:50:52
+ * @LastEditors: zjq zjq@xkb.com.cn
+ * @LastEditTime: 2025-06-11 17:26:21
+ * @FilePath: \tea\src\router\index.ts
+ * @Description:
+ *
+ * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
+ */
 import { createRouter, createWebHashHistory, Router } from "vue-router";
 import { openUserLogin } from "@/utils/modal";
 import { isElectron } from "@/utils/helper";
 import { isLogin } from "@/utils/auth";
 import routes from "./routes";
-import CategoryManagement from '@/views/CategoryManagement/index.vue'
 
 // 基础配置
 const router: Router = createRouter({

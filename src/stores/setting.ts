@@ -29,6 +29,7 @@ interface SettingState {
   globalBackgroundOpacity: number; // 全局背景图片透明度
   activitiesApiBaseUrl: string; // 活动列表API域名
   hideVipTag: boolean;
+  isMobileMode: boolean; // 是否启用手机模式
   lyricFontSize: number;
   lyricTranFontSize: number;
   lyricRomaFontSize: number;
@@ -113,6 +114,7 @@ export const useSettingStore = defineStore("setting", {
     showSearchHistory: true, // 显示搜索历史
     menuShowCover: true, // 菜单显示封面
     routeAnimation: "slide", // 路由动画
+    isMobileMode: false, // 是否启用手机模式
     // 系统
     useOnlineService: true, // 是否使用在线服务
     showCloseAppTip: true, // 显示关闭应用提示
@@ -237,6 +239,24 @@ export const useSettingStore = defineStore("setting", {
      */
     getGlobalCookie(): string {
       return this.autoLoginCookie;
+    },
+
+    /**
+     * 切换手机模式
+     * @param mode 是否启用手机模式，不传则切换当前状态
+     */
+    toggleMobileMode(mode?: boolean) {
+      if (mode === undefined) {
+        this.isMobileMode = !this.isMobileMode;
+      } else {
+        this.isMobileMode = mode;
+      }
+      window.$message.info(
+        `已切换至${this.isMobileMode ? '手机模式' : 'PC模式'}`,
+        {
+          showIcon: false,
+        },
+      );
     },
   },
   // 持久化

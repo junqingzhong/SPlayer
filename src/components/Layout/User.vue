@@ -1,32 +1,21 @@
 <template>
   <n-popover trigger="manual" :show="userMenuShow" @clickoutside="userMenuShow = false">
     <template #trigger>
-      <div
-        class="user"
-        :style="{ pointerEvents: userMenuShow ? 'none' : 'auto' }"
-        @click="openMenu"
-      >
+      <div class="user" :style="{ pointerEvents: userMenuShow ? 'none' : 'auto' }" @click="openMenu">
         <div class="avatar">
-          <n-avatar
-            v-if="dataStore.userLoginStatus"
-            :src="dataStore.userData?.avatarUrl"
-            fallback-src="/images/avatar.jpg?assest"
-            round
-          />
+          <n-avatar v-if="dataStore.userLoginStatus" :src="dataStore.userData?.avatarUrl"
+            fallback-src="/images/avatar.jpg?assest" round />
           <n-avatar v-else round>
             <SvgIcon name="Person" :depth="3" size="26" />
           </n-avatar>
         </div>
         <div class="user-data">
-          <n-text class="name">
+          <n-text class="name text-hidden">
             {{ dataStore.userLoginStatus ? dataStore.userData.name || "未知用户名" : "未登录" }}
           </n-text>
           <!-- VIP -->
-          <img
-            v-if="dataStore.userLoginStatus && dataStore.userData.vipType !== 0"
-            class="vip"
-            src="/images/vip.png?assest"
-          />
+          <img v-if="dataStore.userLoginStatus && dataStore.userData.vipType !== 0" class="vip"
+            src="/images/vip.png?assest" />
           <SvgIcon :class="['down', { open: userMenuShow }]" name="DropDown" :depth="3" />
         </div>
       </div>
@@ -34,12 +23,8 @@
     <div class="user-menu" @click="userMenuShow = false">
       <!-- 喜欢数量 -->
       <div v-if="dataStore.loginType !== 'uid'" class="like-num">
-        <div
-          v-for="(item, index) in userLikeData"
-          :key="index"
-          class="num-item"
-          @click="router.push({ name: item.name })"
-        >
+        <div v-for="(item, index) in userLikeData" :key="index" class="num-item"
+          @click="router.push({ name: item.name })">
           <n-number-animation :from="0" :to="item.value" />
           <n-text :depth="3">{{ item.label }}</n-text>
         </div>

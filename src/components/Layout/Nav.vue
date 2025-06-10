@@ -3,7 +3,7 @@
     <!-- 页面导航 -->
     <n-flex class="page-control">
       <!-- 移动端侧边栏控制按钮 -->
-      <n-button :focusable="false" tertiary circle class="mobile-sidebar-toggle" @click="toggleSidebar">
+      <n-button :focusable="false" v-if="settingStore.isMobileMode" tertiary circle class="mobile-sidebar-toggle" @click="toggleSidebar">
         <template #icon>
           <SvgIcon name="Menu" :size="26" />
         </template>
@@ -20,13 +20,13 @@
       </n-button>
     </n-flex>
     <!-- 主内容 -->
-    <n-flex class="nav-main">
+    <n-flex class="nav-main" :wrap="false">
       <!-- 搜索 -->
       <SearchInp />
       <!-- 可拖拽 -->
       <div class="nav-drag" />
       <!-- 用户 -->
-      <User v-if="settingStore.useOnlineService" />
+      <User v-if="settingStore.useOnlineService && !settingStore.isMobileMode" />
       <!-- 设置菜单 -->
       <n-dropdown :options="setOptions" trigger="click" show-arrow @select="setSelect">
         <n-button :focusable="false" title="设置" tertiary circle>
@@ -44,13 +44,7 @@
           <SvgIcon name="WindowMinimize" />
         </template>
       </n-button>
-      <n-button
-        :focusable="false"
-        :title="isMax ? '还原' : '最大化'"
-        tertiary
-        circle
-        @click="maxOrRes"
-      >
+      <n-button :focusable="false" :title="isMax ? '还原' : '最大化'" tertiary circle @click="maxOrRes">
         <template #icon>
           <SvgIcon :name="isMax ? 'WindowRestore' : 'WindowMaximize'" />
         </template>
@@ -62,16 +56,8 @@
       </n-button>
     </n-flex>
     <!-- 关闭弹窗 -->
-    <n-modal
-      v-model:show="showCloseModal"
-      :auto-focus="false"
-      title="关闭软件"
-      style="width: 600px"
-      preset="card"
-      transform-origin="center"
-      bordered
-      @after-leave="rememberNotAsk = false"
-    >
+    <n-modal v-model:show="showCloseModal" :auto-focus="false" title="关闭软件" style="width: 600px" preset="card"
+      transform-origin="center" bordered @after-leave="rememberNotAsk = false">
       <n-text class="tip">确认关闭软件吗？</n-text>
       <n-checkbox v-model:checked="rememberNotAsk" class="checkbox"> 记住且不再询问 </n-checkbox>
       <template #footer>
@@ -96,15 +82,15 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
-import { useSettingStore, useStatusStore } from "@/stores";
+import { useSettingStore } from "@/stores";
 import { isElectron, isDev, renderIcon } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
 
 const router = useRouter();
 const settingStore = useSettingStore();
-const statusStore = useStatusStore();
 
 const showCloseModal = ref(false);
+
 
 // 移动端侧边栏控制
 const toggleSidebar = () => {
@@ -172,6 +158,11 @@ const setOptions = computed<DropdownOption[]>(() => [
     ),
   },
   {
+    label: settingStore.isMobileMode ? "切换至PC模式" : "切换至手机模式",
+    key: "toggleMobileMode",
+    icon: renderIcon(settingStore.isMobileMode ? "Computer" : "Smartphone"),
+  },
+  {
     key: "header-divider",
     type: "divider",
   },
@@ -202,6 +193,9 @@ const setSelect = (key: string) => {
     case "themeMode":
       settingStore.setThemeMode();
       break;
+    case "toggleMobileMode":
+      settingStore.toggleMobileMode();
+      break;
     case "setting":
       openSetting();
       break;
@@ -213,11 +207,29 @@ const setSelect = (key: string) => {
   }
 };
 
+// 监听窗口大小变化，更新手机模式状态
+const handleResize = () => {
+  if (window.innerWidth <= 768) {
+    settingStore.isMobileMode = true;
+  } else {
+    settingStore.isMobileMode = false;
+  }
+};
+
 onMounted(() => {
   // 获取窗口状态
   if (isElectron) {
     isMax.value = window.electron.ipcRenderer.sendSync("win-state");
   }
+  // 添加窗口大小监听器
+  window.addEventListener('resize', handleResize);
+  // 初始化时检查一次
+  handleResize();
+});
+
+onUnmounted(() => {
+  // 移除窗口大小监听器，防止内存泄漏
+  window.removeEventListener('resize', handleResize);
 });
 </script>
 
@@ -235,14 +247,12 @@ onMounted(() => {
     height: 40px;
     -webkit-app-region: no-drag;
   }
-  .mobile-sidebar-toggle {
-    display: none; /* 默认隐藏，在媒体查询中显示 */
-  }
   .nav-main {
     flex: 1;
     align-items: center;
     height: 100%;
     margin-left: 12px;
+    z-index: 2; /* 确保nav-main在client-control之上 */
     .nav-drag {
       flex: 1;
       width: 100%;
@@ -250,19 +260,21 @@ onMounted(() => {
     }
   }
   .client-control {
+    z-index: 1; /* 确保client-control在nav-main之下 */
     .divider {
       margin: 0 0 0 12px;
     }
   }
-
-  /* 移动端样式 */
-  @media screen and (max-width: 768px) {
-    .mobile-sidebar-toggle {
-      display: flex;
-      margin-right: 8px;
+  .nav-main .search{
+    width: 70%;
+  }
+  .client-control {
+    .divider {
+      margin: 0 0 0 12px;
     }
   }
 }
+
 .tip {
   font-size: 16px;
 }

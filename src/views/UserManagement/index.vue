@@ -84,8 +84,6 @@
 import { ref, onMounted, h } from "vue";
 import { useMessage, NButton, NSpace, useDialog, NImage } from "naive-ui";
 import type { FormInst, FormRules, DataTableColumns, UploadFileInfo } from "naive-ui";
-import { getCookie } from "@/utils/cookie";
-import { useRouter } from "vue-router";
 import axios from "axios";
 import { useSettingStore } from "@/stores";
 

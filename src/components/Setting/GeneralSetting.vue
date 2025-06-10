@@ -84,6 +84,13 @@
       <n-h3 prefix="bar"> 杂项设置 </n-h3>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">手机模式</n-text>
+          <n-text class="tip" :depth="3">切换至iPhone 13 Pro尺寸的手机模式</n-text>
+        </div>
+        <n-switch class="set" v-model:value="settingStore.isMobileMode" :round="false" @update:value="toggleMobileMode" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">显示搜索历史</n-text>
         </div>
         <n-switch class="set" v-model:value="settingStore.showSearchHistory" :round="false" />
@@ -310,6 +317,11 @@ import { isElectron } from "@/utils/helper";
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";
 import player from "@/utils/player";
+
+// 切换手机模式
+const toggleMobileMode = (val: boolean) => {
+  settingStore.toggleMobileMode(val);
+};
 
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();

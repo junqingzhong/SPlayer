@@ -2,49 +2,31 @@
 <!-- vue-virt-list https://github.com/keno-lee/vue-virt-list -->
 <template>
   <Transition name="fade" mode="out-in">
-    <div
-      v-if="!isEmpty(listData)"
-      ref="songListRef"
-      :class="[
+    <div v-if="!isEmpty(listData)" ref="songListRef" :class="[
         'song-list',
         {
           'hidden-scrollbar': hiddenScrollbar,
         },
-      ]"
-    >
+      ]">
       <Transition name="fade" mode="out-in">
-        <VirtList
-          ref="listRef"
-          :key="listData?.[0]?.id"
-          :list="listData"
-          :minSize="94"
-          :buffer="2"
-          :offset="offset"
-          :style="{ height: height === 'auto' ? 'auto' : `${height || songListHeight}px` }"
-          itemKey="id"
-          @scroll="onScroll"
-          @toBottom="onToBottom"
-        >
+        <VirtList ref="listRef" :key="listData?.[0]?.id" :list="listData" :minSize="94" :buffer="2" :offset="offset"
+          :style="{ height: height === 'auto' ? 'auto' : `${height || songListHeight}px` }" itemKey="id"
+          @scroll="onScroll" @toBottom="onToBottom">
           <!-- 悬浮顶栏 -->
           <template #stickyHeader>
             <div class="list-header song-card">
               <n-text class="num">#</n-text>
-              <n-dropdown
-                v-if="!disabledSort"
-                :options="sortMenuOptions"
-                trigger="click"
-                placement="bottom-start"
-                @select="sortSelect"
-              >
+              <n-dropdown v-if="!disabledSort" :options="sortMenuOptions" trigger="click" placement="bottom-start"
+                @select="sortSelect">
                 <div class="title has-sort">
-                  <n-text>标题</n-text>
+                  <n-text>歌名</n-text>
                   <n-text v-if="statusStore.listSort !== 'default'" class="sort" depth="3">
                     {{ sortOptions[statusStore.listSort].name }}
                   </n-text>
                 </div>
               </n-dropdown>
-              <n-text v-else class="title">标题</n-text>
-              <n-text v-if="type !== 'radio' && !hiddenAlbum" class="album">专辑</n-text>
+              <n-text v-else class="title">歌名</n-text>
+              <n-text v-if="type !== 'radio' && !hiddenAlbum && !settingStore.isMobileMode" class="album">专辑</n-text>
               <n-text v-if="type !== 'radio'" class="actions">操作</n-text>
               <n-text v-if="type === 'radio'" class="meta date">更新日期</n-text>
               <n-text v-if="type === 'radio'" class="meta">播放量</n-text>
@@ -54,17 +36,11 @@
           </template>
           <!-- 主内容 -->
           <template #default="{ itemData, index }">
-            <SongCard
-              :song="itemData"
-              :index="index"
-              :hiddenCover="hiddenCover"
-              :hiddenAlbum="hiddenAlbum"
-              :hiddenSize="hiddenSize"
-              @dblclick.stop="player.updatePlayList(listData, itemData, playListId)"
+            <SongCard :song="itemData" :index="index" :hiddenCover="hiddenCover" :hiddenAlbum="hiddenAlbum"
+              :hiddenSize="hiddenSize" @dblclick.stop="player.updatePlayList(listData, itemData, playListId)"
               @contextmenu.stop="
                 songListMenuRef?.openDropdown($event, listData, itemData, index, type, playListId)
-              "
-            />
+              " />
           </template>
           <!-- 加载更多 -->
           <template #footer>
@@ -89,11 +65,7 @@
                 <SvgIcon :size="22" name="Up" />
               </n-float-button>
             </Transition>
-            <n-float-button
-              v-if="hasPlaySong >= 0"
-              width="42"
-              @click="listRef?.scrollToIndex(hasPlaySong)"
-            >
+            <n-float-button v-if="hasPlaySong >= 0" width="42" @click="listRef?.scrollToIndex(hasPlaySong)">
               <SvgIcon :size="22" name="Location" />
             </n-float-button>
           </n-float-button-group>
@@ -112,7 +84,7 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import type { SongType, SortType } from "@/types/main";
-import { useMusicStore, useStatusStore } from "@/stores";
+import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { VirtList } from "vue-virt-list";
 import { cloneDeep, entries, isEmpty } from "lodash-es";
 import { sortOptions } from "@/utils/meta";
@@ -162,6 +134,7 @@ const emit = defineEmits<{
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+const settingStore = useSettingStore();
 
 // 列表状态
 const offset = ref<number>(0);

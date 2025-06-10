@@ -50,8 +50,7 @@
           <SvgIcon name="Search" />
         </template>
       </n-input>
-      <n-select v-model:value="statusFilter" :options="[{ label: '全部', value: null }, ...statusOptions]" placeholder="状态筛选" clearable class="status-filter"
-        @update:value="handleStatusFilterChange" />
+      <n-select v-model:value="statusFilter" :options="[{ label: '全部', value:'', type: 'ignored' }, ...statusOptions]" placeholder="状态筛选" clearable class="status-filter" @update:value="handleStatusFilterChange" />
       <n-button @click="toggleSortOrder" class="sort-button">
         {{ sortOrder === 'desc' ? '按时间正序' : '按时间倒序' }}
       </n-button>
@@ -59,8 +58,8 @@
 
     <!-- 日历视图 -->
     <n-modal v-model:show="showCalendar" preset="card" title="活动日历" class="calendar-view" :mask-closable="true"
-      :style="{ width: '80%',height:'60%' }">
-      <n-calendar v-model:value="selectedDate" #="{ year, month, date }" @update:value="handleDateSelect">
+      :style="{ width: '80%' }">
+      <n-calendar v-model:value="selectedDate" :style="{ height: '460px' }" #="{ year, month, date }" @update:value="handleDateSelect">
         <template v-if="hasActivitiesOnDate(year, month, date)">
           <!-- 查找并显示对应日期的活动名称 -->
           <div v-for="activity in activities.filter((act) => {
@@ -181,11 +180,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { useMessage, NButton, NSpace, NTag, NDropdown } from "naive-ui";
-import type { FormInst, FormRules, UploadFileInfo } from "naive-ui";
-import { getCookie } from "@/utils/cookie";
+import { useMessage, NButton, NSpace, NTag } from "naive-ui";
+import type { FormInst, FormRules } from "naive-ui";
 import axios from "axios";
 import { useSettingStore, useDataStore} from "@/stores";
 import { formatDate } from "@/utils/helper";
@@ -218,22 +216,15 @@ const isselectedDateActivities = ref(false);
 const selectedDateactivities = ref<any[]>([]);
 const selectedDate = ref(new Date().getTime());
 
-// 计算选中日期的时间戳
-const selectedDateTimestamp = computed(() => {
-  const date = new Date(selectedDate.value);
-  date.setHours(0, 0, 0, 0);
-  return date.getTime();
-});
-
 // 切换日历视图
 const toggleCalendarView = () => {
   showCalendar.value = !showCalendar.value;
 };
 
 // 处理日期选择
-const handleDateSelect = (date: Date) => {
+const handleDateSelect = (date: number) => {
   selectedDateactivities.value = activities.value.filter((act) => {
-    const activityDate = parseChineseDate(act.date)?.getTime();
+    const activityDate = parseChineseDate(act.date)?.getTime() ?? 0;
     const checkDate = date;
     return activityDate === checkDate;
   })
@@ -250,8 +241,8 @@ const hasActivitiesOnDate = (year: number, month: number, date: number) => {
   checkDate.setHours(0, 0, 0, 0);
   const checkTimestamp = checkDate.getTime();
   return activities.value.some(activity => {
-    const activityDate = parseChineseDate(activity.date);
-    return activityDate?.getTime() === checkTimestamp;
+    const activityDate = parseChineseDate(activity.date)?.getTime() ?? 0;
+    return activityDate === checkTimestamp;
   });
 };
 
@@ -373,16 +364,6 @@ const getActivityClass = (status: string) => {
   }
 };
 
-// 获取状态下拉选项
-const getStatusOptions = (activity: any) => {
-  return statusOptions
-    .filter((option) => option.value !== activity.status)
-    .map((option) => ({
-      label: `标记为${option.label}`,
-      key: option.value,
-    }));
-};
-
 // 处理搜索输入变化
 const handleSearch = (value) => {
   searchKeyword.value = value;
@@ -419,8 +400,8 @@ const filteredActivities = computed(() => {
 
   // Sort by date
   filtered.sort((a, b) => {
-    const dateA = parseChineseDate(a.date).getTime();
-    const dateB = parseChineseDate(b.date).getTime();
+    const dateA = parseChineseDate(a.date)?.getTime() ?? 0;
+    const dateB = parseChineseDate(b.date)?.getTime() ?? 0;
     return sortOrder.value === 'desc' ? dateB - dateA : dateA - dateB;
   });
 
@@ -820,7 +801,7 @@ onMounted(async () => {
 });
 
 // 监听token变化，重新获取活动列表
-watch(() => useSettingStore().autoLoginCookie, (newVal) => {
+watch(() => useSettingStore().autoLoginCookie, () => {
   fetchActivities();
 });
 </script>

@@ -1,5 +1,6 @@
 <!-- 本地设置 -->
 <template>
+  <div>
   <div class="setting-type">
     <div class="set-list">
       <n-h3 prefix="bar"> 地区解锁 </n-h3>
@@ -208,19 +209,17 @@
       <n-button type="error" strong secondary @click="clearAllData"> 清除全部 </n-button>
     </n-card>
   </div>
+</div>
 </template>
 
 <script setup lang="ts">
 import { useSettingStore, useDataStore } from "@/stores";
 import { isElectron } from "@/utils/helper";
-import { setCookies, clearAllCookies } from "@/utils/cookie";
+import { setCookies } from "@/utils/cookie";
 import { debounce } from "lodash-es";
 import config, { updateConfig } from "@/config";
 import { ref } from "vue";
-import { useRouter } from "vue-router";
 import axios from "axios";
-
-const router = useRouter();
 
 const dataStore = useDataStore();
 const settingStore = useSettingStore();
@@ -498,7 +497,7 @@ const applyCookie = async () => {
     window.$message.warning('请先设置Cookie');
     return;
   }
-  let userInfo = null;
+  let userInfoId = null;
   let success = false; // 标记操作是否成功
 
   try {
@@ -511,7 +510,7 @@ const applyCookie = async () => {
 
       const response = await axios.get(apiUrl, { headers });
       if (response.data.status === 200 && response.data.data.length > 0) {
-        userInfo = response.data.data[0];
+        userInfoId = response.data.data[0].id;
       } else {
         window.$message.error(response.data.message || "获取用户信息失败");
       }
@@ -521,13 +520,13 @@ const applyCookie = async () => {
     window.$message.error("获取用户信息时发生错误，请检查网络或API服务");
   }
 
-  if (userInfo) {
+  if (userInfoId) {
     try {
       const headers = {
         'Authorization': `Bearer ${settingStore.autoLoginCookie}`,
         'Content-Type': 'application/json'
       };
-      const apiUrl = `${settingStore.activitiesApiBaseUrl}/user/${userInfo.id}`;
+      const apiUrl = `${settingStore.activitiesApiBaseUrl}/user/${userInfoId}`;
       const udresponse = await axios.put(apiUrl, {
         cookie: autoLoginCookie.value,
       }, { headers });

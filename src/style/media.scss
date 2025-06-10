@@ -1,100 +1,367 @@
-/* 响应式设计媒体查询 */
+/* --- 响应式设计样式 (优化版) --- */
 
-/* 手机模式 */
-@media screen and (max-width: 768px) {
-  /* 隐藏侧边栏 */
-  #main-sider {
-    position: fixed !important;
-    left: -240px !important;
-    height: 100vh !important;
-    z-index: 1000 !important;
-    transition: left 0.3s ease !important;
+/* ==========================================================================
+   1. 手机模式 - 通过添加 .mobile-mode 类来激活所有样式
+   ========================================================================== */
 
-    &.mobile-show {
-      left: 0 !important;
-    }
-  }
-
-  /* 调整主布局 */
-  #main-layout {
-    margin-left: 0 !important;
-    width: 100% !important;
-  }
-
-  /* 导航栏调整 */
-  .nav {
-    padding: 0 0.5rem !important;
-
-    .page-control {
-      margin-right: 8px !important;
-    }
-
-    .nav-main {
-      margin-left: 0 !important;
-
-      /* 优化设置按钮和头像位置 */
-      .n-dropdown {
-        margin-left: 8px !important;
-      }
-
-      /* 用户头像调整 */
-      .user {
-        margin-left: 8px !important;
-
-        .avatar {
-          width: 32px !important;
-          height: 32px !important;
-        }
-      }
-    }
-  }
-
-  /* 活动列表页面样式调整 */
-  .activities-container {
-    padding: 10px !important;
-
-    .activities-header {
-      flex-direction: column !important;
-      align-items: flex-start !important;
-      gap: 10px !important;
-
-      h2 {
-        margin-bottom: 10px !important;
-      }
-
-      .n-space {
-        flex-wrap: wrap !important;
-        gap: 8px !important;
-      }
-    }
-
-    .filter-container {
-      flex-direction: column !important;
-
-      .search-input {
-        width: 100% !important;
-      }
-
-      .status-filter {
-        width: 100% !important;
-      }
-
-      .sort-button {
-        width: 100% !important;
-      }
-    }
-  }
+/* 主布局和侧边栏 */
+.mobile-mode #main-sider {
+  position: fixed !important;
+  left: -240px !important;
+  height: 100vh !important;
+  z-index: 1000 !important;
+  transition: left 0.3s ease !important;
 }
 
-/* 平板模式 */
+.mobile-mode #main-sider.mobile-show {
+  left: 0 !important;
+}
+
+.mobile-mode #main-layout {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+
+.mobile-mode #main-content {
+  padding: 0 12px !important;
+}
+
+/* 顶部导航栏 */
+.mobile-mode .nav {
+  padding: 0 12px !important;
+  height: 60px !important;
+}
+
+.mobile-mode .nav .page-control {
+  margin-right: 8px !important;
+}
+
+.mobile-mode .nav .page-control .mobile-sidebar-toggle {
+  display: flex !important;
+    margin-right: 8px;
+}
+
+.mobile-mode .nav .search-input {
+  max-width: 120px !important;
+}
+
+.mobile-mode .nav .nav-main .search {
+  width: 68% !important;
+}
+
+.mobile-mode .nav .dropdown,
+.mobile-mode .nav .n-dropdown {
+  margin-left: 8px !important;
+}
+
+.mobile-mode .nav .user {
+  margin-left: 8px !important;
+}
+
+.mobile-mode .nav .user .avatar {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+/* 底部主播放器 (关键更新) */
+.mobile-mode .main-player {
+  display: grid !important;
+  gap: 4px 8px !important;
+  grid-template-areas:
+    "cover info"
+    "cover buttons"
+    "extra-buttons extra-buttons"
+    "progress progress" !important;
+  grid-template-columns: auto 1fr !important;
+  grid-template-rows: auto auto auto auto !important;
+}
+
+.mobile-mode .main-player .cover {
+  grid-area: cover !important;
+  width: 60px !important;
+  /* 稍微增大封面以容纳内容 */
+  height: 60px !important;
+  margin-right: 8px !important;
+}
+
+.mobile-mode .main-player .info-wrapper {
+  grid-area: info !important;
+  /* 信息和主控制按钮的容器 */
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  overflow: hidden !important;
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.mobile-mode .main-player .info .name {
+  font-size: 15px !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
+}
+
+.mobile-mode .main-player .info .artist {
+  font-size: 12px !important;
+}
+
+.mobile-mode .main-player .buttons {
+  grid-area: buttons !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding: 2px 0 !important;
+}
+
+.mobile-mode .main-player .control {
+  flex: none !important;
+}
+
+.mobile-mode .main-player .control .n-button {
+  width: 32px !important;
+  height: 32px !important;
+}
+
+.mobile-mode .main-player .control .n-button .n-icon {
+  font-size: 16px !important;
+}
+
+.mobile-mode .main-player .extra-buttons {
+  grid-area: extra-buttons !important;
+  display: flex !important;
+  justify-content: space-around !important;
+  align-items: center !important;
+  padding: 2px 0 !important;
+}
+
+.mobile-mode .main-player .extra-buttons .n-button {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+.mobile-mode .main-player .progress {
+  grid-area: progress !important;
+}
+
+/* 全屏播放器 */
+.mobile-mode .full-player {
+  flex-direction: column !important;
+  padding: 12px !important;
+}
+
+.mobile-mode .full-player .player-content {
+  flex-direction: column !important;
+  padding: 20px 10px !important;
+}
+
+.mobile-mode .full-player .content-left {
+  width: 100% !important;
+  margin-bottom: 20px !important;
+}
+
+.mobile-mode .full-player .content-right {
+  width: 100% !important;
+}
+
+.mobile-mode .full-player .player-control {
+  padding: 10px !important;
+}
+
+.mobile-mode .full-player .control-progress {
+  width: 100% !important;
+}
+
+.mobile-mode .full-player .control-buttons {
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: 8px !important;
+}
+
+/* 封面列表 */
+.mobile-mode .cover-list .n-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+
+.mobile-mode .cover-list .cover-item .cover {
+  height: 140px !important;
+}
+
+.mobile-mode .cover-list .cover-item .name {
+  font-size: 14px !important;
+}
+
+/* 设置弹窗 */
+.mobile-mode .setting-modal {
+  width: 90% !important;
+  max-width: 350px !important;
+}
+
+.mobile-mode .setting-modal .n-tabs-nav {
+  padding: 0 12px !important;
+}
+
+.mobile-mode .setting-modal .n-tab-pane {
+  padding: 12px !important;
+}
+
+/* 歌单详情页 */
+.mobile-mode .playlist .detail {
+  flex-direction: column !important;
+  height: 300px !important;
+  padding: 12px !important;
+}
+
+.mobile-mode .playlist .detail .cover {
+  width: 140px !important;
+  height: 140px !important;
+  margin-right: 0 !important;
+  margin-bottom: 12px !important;
+  align-self: center !important;
+}
+
+.mobile-mode .playlist .detail .data .name {
+  font-size: 18px !important;
+}
+
+.mobile-mode .playlist .detail .data .description {
+  font-size: 13px !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.mobile-mode .playlist .detail .data .meta {
+  font-size: 13px !important;
+}
+
+.mobile-mode .playlist .detail .data .menu {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.mobile-mode .playlist .song-list {
+  padding-top: 300px !important;
+}
+
+.mobile-mode .playlist.small .detail {
+  height: 180px !important;
+}
+
+.mobile-mode .playlist.small .detail .cover {
+  width: 80px !important;
+  height: 80px !important;
+}
+
+.mobile-mode .playlist.small .detail .data .name {
+  font-size: 16px !important;
+}
+
+.mobile-mode .playlist.small .song-list {
+  padding-top: 180px !important;
+}
+
+/* 设置页 */
+.mobile-mode .main-setting {
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+}
+
+.mobile-mode .main-setting .setting {
+  flex-direction: column !important;
+  height: auto !important;
+}
+
+.mobile-mode .main-setting .set-left {
+  width: 100% !important;
+  padding: 10px !important;
+}
+
+.mobile-mode .main-setting .set-left .n-menu {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.mobile-mode .main-setting .set-left .n-menu .n-menu-item {
+  margin: 0 !important;
+  padding: 8px !important;
+}
+
+.mobile-mode .main-setting .set-left .power {
+  margin-top: 10px !important;
+  text-align: center !important;
+}
+
+.mobile-mode .main-setting .set-content {
+  padding: 10px 0 !important;
+}
+
+.mobile-mode .main-setting .setting-type .set-list {
+  margin-bottom: 20px !important;
+}
+
+.mobile-mode .main-setting .setting-type .set-item {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  padding: 12px !important;
+}
+
+.mobile-mode .main-setting .setting-type .set-item .label {
+  margin-bottom: 10px !important;
+  width: 100% !important;
+}
+
+.mobile-mode .main-setting .setting-type .set-item .set {
+  width: 100% !important;
+}
+
+/* 活动列表页 */
+.mobile-mode .activities-container {
+  padding: 10px !important;
+}
+
+.mobile-mode .activities-container .activities-header {
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+}
+
+.mobile-mode .activities-container .activities-header h2 {
+  margin-bottom: 10px !important;
+}
+
+.mobile-mode .activities-container .activities-header .n-space {
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+.mobile-mode .activities-container .filter-container {
+  flex-direction: column !important;
+}
+
+.mobile-mode .activities-container .filter-container .search-input,
+.mobile-mode .activities-container .filter-container .status-filter,
+.mobile-mode .activities-container .filter-container .sort-button {
+  width: 100% !important;
+}
+
+
+/* ==========================================================================
+   2. 平板模式 (769px - 1024px) - 此部分保持不变
+  ========================================================================== */
 @media screen and (min-width: 769px) and (max-width: 1024px) {
-  /* 活动列表页面样式调整 */
-  .activities-container {
-    .activities-header {
-      .n-space {
-        flex-wrap: wrap !important;
-        gap: 8px !important;
-      }
-    }
+
+  /* 封面列表调整为3列 */
+  .cover-list .n-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+
+  /* 活动列表页头部按钮换行 */
+  .activities-container .activities-header .n-space {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
   }
 }

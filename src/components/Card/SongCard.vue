@@ -52,11 +52,11 @@
               {{ song.quality }}
             </n-tag>
             <!-- 特权 -->
-            <n-tag v-if="song.originCoverType === 1" :bordered="false" type="primary" round>
+            <!-- <n-tag v-if="song.originCoverType === 1" :bordered="false" type="primary" round>
               原
-            </n-tag>
-            <n-tag v-if="song.free === 1" :bordered="false" type="error" round> VIP </n-tag>
-            <n-tag v-if="song.free === 4" :bordered="false" type="error" round> EP </n-tag>
+            </n-tag> -->
+            <!-- <n-tag v-if="song.free === 1" :bordered="false" type="error" round> VIP </n-tag> -->
+            <!-- <n-tag v-if="song.free === 4" :bordered="false" type="error" round> EP </n-tag> -->
             <!-- 云盘 -->
             <n-tag v-if="song?.pc" :bordered="false" class="cloud" type="info" round>
               <template #icon>
@@ -81,7 +81,7 @@
             </n-tag>
           </div>
           <!-- 歌手 -->
-          <div v-if="Array.isArray(song.artists)" class="artists text-hidden">
+          <div v-if="Array.isArray(song.artists) " class="artists text-hidden">
             <n-text
               v-for="ar in song.artists"
               :key="ar.id"
@@ -102,7 +102,7 @@
         </div>
       </div>
       <!-- 专辑 -->
-      <div v-if="song.type !== 'radio' && !hiddenAlbum" class="album text-hidden">
+      <div v-if="song.type !== 'radio' && !hiddenAlbum && !settingStore.isMobileMode" class="album text-hidden">
         <n-text
           v-if="isObject(song.album)"
           class="album-text"
@@ -120,7 +120,7 @@
         </n-text>
       </div>
       <!-- 操作 -->
-      <div v-if="song.type !== 'radio'" class="actions" @click.stop @dblclick.stop>
+      <div v-if="song.type !== 'radio' " class="actions" @click.stop @dblclick.stop>
         <!-- 喜欢歌曲 -->
         <SvgIcon
           :name="dataStore.isLikeSong(song.id) ? 'Favorite' : 'FavoriteBorder'"
@@ -149,7 +149,7 @@
 
 <script setup lang="ts">
 import type { SongType } from "@/types/main";
-import { useStatusStore, useMusicStore, useDataStore } from "@/stores";
+import { useStatusStore, useMusicStore, useDataStore, useSettingStore } from "@/stores";
 import { formatNumber, isElectron } from "@/utils/helper";
 import { openJumpArtist } from "@/utils/modal";
 import { toLikeSong } from "@/utils/auth";
@@ -173,6 +173,8 @@ const router = useRouter();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+const settingStore = useSettingStore();
+
 
 // 歌曲数据
 const song = toRef(props, "song");

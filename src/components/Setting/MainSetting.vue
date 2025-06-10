@@ -29,21 +29,21 @@
     >
       <Transition name="fade" mode="out-in">
         <!-- 常规 -->
-        <GeneralSetting v-if="activeKey === 'general'" />
+        <GeneralSetting v-if="activeKey === 'general'" key="general" />
         <!-- 播放 -->
-        <PlaySetting v-else-if="activeKey === 'play'" />
+        <PlaySetting v-else-if="activeKey === 'play'" key="play" />
         <!-- 歌词 -->
-        <LyricsSetting v-else-if="activeKey === 'lyrics'" />
+        <LyricsSetting v-else-if="activeKey === 'lyrics'" key="lyrics" />
         <!-- 快捷键 -->
-        <KeyboardSetting v-else-if="activeKey === 'keyboard'" />
+        <KeyboardSetting v-else-if="activeKey === 'keyboard'" key="keyboard" />
         <!-- 本地 -->
-        <LocalSetting v-else-if="activeKey === 'local'" />
+        <LocalSetting v-else-if="activeKey === 'local'" key="local" />
         <!-- 其他 -->
-        <OtherSetting v-else-if="activeKey === 'other'" />
+        <OtherSetting v-else-if="activeKey === 'other'" key="other" />
         <!-- 关于 -->
-        <AboutSetting v-else-if="activeKey === 'about'" />
+        <AboutSetting v-else-if="activeKey === 'about'" key="about" />
         <!-- 空白 -->
-        <n-text v-else class="error">暂无该设置项</n-text>
+        <n-text v-else class="error" key="error">暂无该设置项</n-text>
       </Transition>
     </n-scrollbar>
   </div>
