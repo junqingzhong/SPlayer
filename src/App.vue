@@ -68,7 +68,7 @@
             </Transition>
           </RouterView>
           <!-- 回顶 -->
-          <n-back-top :right="40" :bottom="120">
+          <n-back-top :right="40" :bottom="130">
             <SvgIcon :size="22" name="Up" />
           </n-back-top>
         </n-layout>
@@ -194,8 +194,9 @@ onMounted(async () => {
 
   /* 手机模式样式 - iPhone 13 Pro 尺寸 */
   &.mobile-mode {
-    width: 390px !important;
-      height: 844px !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      max-width: 750px !important;
       margin: 1% auto;
       overflow: hidden;
       position: relative;
@@ -244,10 +245,17 @@ onMounted(async () => {
   #main-layout {
     background-color: rgba(var(--background), 0.58);
 
-    /* 手机模式样式 */
-    .mobile-mode & {
-      margin-left: 0 !important;
-      width: 100% !important;
+    /* 手机模式样式 - 自适应浏览器尺寸 */
+    &.mobile-mode {
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: 750px !important;
+        margin: 0 auto;
+        overflow: hidden;
+        position: fixed;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
     }
   }
 

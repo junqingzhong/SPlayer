@@ -1,45 +1,24 @@
 <template>
-  <div
-    :class="[
+  <div :class="[
       'main-player',
       {
         show: musicStore.isHasPlayer && statusStore.showPlayBar,
       },
-    ]"
-  >
+    ]">
     <!-- 进度条 -->
-    <n-slider
-      v-model:value="statusStore.progress"
-      :step="0.01"
-      :min="0"
-      :max="100"
-      :tooltip="false"
-      :keyboard="false"
+    <n-slider v-model:value="statusStore.progress" :step="0.01" :min="0" :max="100" :tooltip="false" :keyboard="false"
       :marks="
         statusStore.chorus && statusStore.progress <= statusStore.chorus
           ? { [statusStore.chorus]: '' }
           : undefined
-      "
-      class="player-slider"
-      @dragstart="player.pause(false)"
-      @dragend="sliderDragend"
-    />
+      " class="player-slider" @dragstart="player.pause(false)" @dragend="sliderDragend" />
     <!-- 信息 -->
     <div class="play-data">
       <!-- 封面 -->
       <Transition name="fade" mode="out-in">
-        <div
-          :key="musicStore.playSong.cover"
-          class="cover"
-          @click.stop="statusStore.showFullPlayer = true"
-        >
-          <n-image
-            :src="musicStore.songCover"
-            :alt="musicStore.songCover"
-            class="cover-img"
-            preview-disabled
-            @load="coverLoaded"
-          >
+        <div :key="musicStore.playSong.cover" class="cover" @click.stop="statusStore.showFullPlayer = true">
+          <n-image :src="musicStore.songCover" :alt="musicStore.songCover" class="cover-img" preview-disabled
+            @load="coverLoaded">
             <template #placeholder>
               <div class="cover-loading">
                 <img src="/images/song.jpg?assest" class="loading-img" alt="loading-img" />
@@ -55,22 +34,13 @@
         <div :key="musicStore.playSong.id" class="info">
           <div class="data">
             <!-- 名称 -->
-            <TextContainer
-              :key="musicStore.playSong.name"
-              :text="musicStore.playSong.name"
-              :speed="0.2"
-              class="name"
-            />
+            <TextContainer :key="musicStore.playSong.name" :text="musicStore.playSong.name" :speed="0.2" class="name" />
             <!-- 喜欢 -->
-            <SvgIcon
-              v-if="musicStore.playSong.type !== 'radio'"
-              :name="dataStore.isLikeSong(musicStore.playSong.id) ? 'Favorite' : 'FavoriteBorder'"
-              :size="20"
-              class="like"
-              @click="
+            <SvgIcon v-if="musicStore.playSong.type !== 'radio'"
+              :name="dataStore.isLikeSong(musicStore.playSong.id) ? 'Favorite' : 'FavoriteBorder'" :size="20"
+              class="like" @click="
                 toLikeSong(musicStore.playSong, !dataStore.isLikeSong(musicStore.playSong.id))
-              "
-            />
+              " />
             <!-- 更多操作 -->
             <n-dropdown :options="songMoreOptions" trigger="click" placement="top-start">
               <SvgIcon name="FormatList" :size="20" :depth="2" class="more" />
@@ -78,24 +48,14 @@
           </div>
           <Transition name="fade" mode="out-in">
             <!-- 歌词 -->
-            <TextContainer
-              v-if="isShowLyrics && instantLyrics"
-              :key="instantLyrics"
-              :text="instantLyrics"
-              :speed="0.2"
-              :delay="500"
-              class="lyric"
-            />
+            <TextContainer v-if="isShowLyrics && instantLyrics" :key="instantLyrics" :text="instantLyrics" :speed="0.2"
+              :delay="500" class="lyric" />
             <!-- 歌手 -->
             <div v-else class="artists">
               <n-text v-if="musicStore.playSong.type === 'radio'" class="ar-item">播客电台</n-text>
               <template v-else-if="Array.isArray(musicStore.playSong.artists)">
-                <n-text
-                  v-for="(item, index) in musicStore.playSong.artists"
-                  :key="index"
-                  class="ar-item"
-                  @click="openJumpArtist(musicStore.playSong.artists)"
-                >
+                <n-text v-for="(item, index) in musicStore.playSong.artists" :key="index" class="ar-item"
+                  @click="openJumpArtist(musicStore.playSong.artists)">
                   {{ item.name }}
                 </n-text>
               </template>
@@ -110,11 +70,8 @@
     <!-- 控制 -->
     <div class="play-control">
       <!-- 不喜欢 -->
-      <div
-        v-if="statusStore.personalFmMode"
-        class="play-icon"
-        v-debounce="() => player.personalFMTrash(musicStore.personalFMSong?.id)"
-      >
+      <div v-if="statusStore.personalFmMode" class="play-icon"
+        v-debounce="() => player.personalFMTrash(musicStore.personalFMSong?.id)">
         <SvgIcon class="icon" :size="18" name="ThumbDown" />
       </div>
       <!-- 上一曲 -->
@@ -122,24 +79,12 @@
         <SvgIcon :size="26" name="SkipPrev" />
       </div>
       <!-- 播放暂停 -->
-      <n-button
-        :loading="statusStore.playLoading"
-        :focusable="false"
-        :keyboard="false"
-        class="play-pause"
-        type="primary"
-        strong
-        secondary
-        circle
-        v-debounce="() => player.playOrPause()"
-      >
+      <n-button :loading="statusStore.playLoading" :focusable="false" :keyboard="false" class="play-pause"
+        type="primary" strong secondary circle v-debounce="() => player.playOrPause()">
         <template #icon>
           <Transition name="fade" mode="out-in">
-            <SvgIcon
-              :key="statusStore.playStatus ? 'Pause' : 'Play'"
-              :name="statusStore.playStatus ? 'Pause' : 'Play'"
-              :size="28"
-            />
+            <SvgIcon :key="statusStore.playStatus ? 'Pause' : 'Play'" :name="statusStore.playStatus ? 'Pause' : 'Play'"
+              :size="28" />
           </Transition>
         </template>
       </n-button>
@@ -150,12 +95,7 @@
     </div>
     <!-- 功能 -->
     <Transition name="fade" mode="out-in">
-      <n-flex
-        :key="statusStore.personalFmMode ? 'fm' : 'normal'"
-        :size="[8, 0]"
-        class="play-menu"
-        justify="end"
-      >
+      <n-flex :key="statusStore.personalFmMode ? 'fm' : 'normal'" :size="[8, 0]" class="play-menu" justify="end">
         <!-- 播放时间 -->
         <div class="time">
           <n-text depth="2">{{ secondsToTime(statusStore.currentTime) }}</n-text>
@@ -166,12 +106,8 @@
           <SvgIcon name="DesktopLyric" :depth="statusStore.showDesktopLyric ? 1 : 3" />
         </div>
         <!-- 播放模式 -->
-        <n-dropdown
-          v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode"
-          :options="playModeOptions"
-          :show-arrow="true"
-          @select="(mode) => player.togglePlayMode(mode)"
-        >
+        <n-dropdown v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode"
+          :options="playModeOptions" :show-arrow="true" @select="(mode) => player.togglePlayMode(mode)">
           <div class="menu-icon" @click.stop="player.togglePlayMode(false)">
             <SvgIcon :name="statusStore.playModeIcon" />
           </div>
@@ -184,28 +120,16 @@
             </div>
           </template>
           <div class="volume-change" @wheel="player.setVolume">
-            <n-slider
-              v-model:value="statusStore.playVolume"
-              :tooltip="false"
-              :min="0"
-              :max="1"
-              :step="0.01"
-              vertical
-              @update:value="(val) => player.setVolume(val)"
-            />
+            <n-slider v-model:value="statusStore.playVolume" :tooltip="false" :min="0" :max="1" :step="0.01" vertical
+              @update:value="(val) => player.setVolume(val)" />
             <n-text class="slider-num">{{ statusStore.playVolumePercent }}%</n-text>
           </div>
         </n-popover>
         <!-- 播放列表 -->
-        <n-badge
-          v-if="!statusStore.personalFmMode"
-          :value="dataStore.playList?.length ?? 0"
-          :show="settingStore.showPlaylistCount"
-          :max="999"
-          :style="{
+        <n-badge v-if="!statusStore.personalFmMode" :value="dataStore.playList?.length ?? 0"
+          :show="settingStore.showPlaylistCount" :max="999" :style="{
             marginRight: settingStore.showPlaylistCount ? '12px' : null,
-          }"
-        >
+          }">
           <div class="menu-icon" @click.stop="statusStore.playListShow = !statusStore.playListShow">
             <SvgIcon name="PlayList" />
           </div>
@@ -528,6 +452,7 @@ const instantLyrics = computed(() => {
     }
   }
   .play-menu {
+    flex-wrap: nowrap !important;
     .time {
       display: flex;
       align-items: center;
