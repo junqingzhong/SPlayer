@@ -261,7 +261,7 @@ const instantLyrics = computed(() => {
   position: fixed;
   left: 0;
   bottom: -90px;
-  height: 120px;
+  height: 122px;
   padding: 0 15px;
   width: 100%;
   background-color: var(--surface-container-hex);
@@ -280,7 +280,7 @@ const instantLyrics = computed(() => {
     position: absolute;
     width: 100%;
     height: 16px;
-    top: -8px;
+    top: 0;
     left: 0;
     margin: 0;
     --n-rail-height: 3px;

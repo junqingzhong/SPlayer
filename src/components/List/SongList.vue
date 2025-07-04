@@ -256,6 +256,7 @@ onBeforeUnmount(() => {
   height: 100%;
   border-radius: 12px 0 0 12px;
   overflow: hidden;
+  display: block;
   .song-card {
     padding-bottom: 12px;
     // padding-right: 4px;
@@ -345,6 +346,7 @@ onBeforeUnmount(() => {
   }
   // 滚动条
   .virt-list__client {
+    // display: inline-table;
     transition:
       height 0.3s,
       width 0.3s,
@@ -407,7 +409,7 @@ onBeforeUnmount(() => {
 .list-menu {
   position: fixed;
   right: 40px;
-  bottom: 120px;
+  bottom: 140px;
   .n-float-button {
     height: 42px;
     border: 1px solid rgba(var(--primary), 0.28);

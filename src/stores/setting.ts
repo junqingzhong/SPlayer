@@ -123,7 +123,7 @@ export const useSettingStore = defineStore("setting", {
     checkUpdateOnStart: true, // 启动时检查更新
     customGlobalBackgroundImage: "", // 全局自定义背景图片路径
     globalBackgroundOpacity: 0.5, // 全局背景图片透明度，默认0.5
-    activitiesApiBaseUrl: "http://localhost:8080/api/activities", // 活动列表API域名，默认本地
+    activitiesApiBaseUrl: "/api/activities", // 活动列表API域名，默认本地
     preventSleep: false, // 是否禁止休眠
     fullPlayerCache: false, // 全屏播放器缓存
     useKeepAlive: true, // 使用 keep-alive
@@ -148,9 +148,9 @@ export const useSettingStore = defineStore("setting", {
     scrobbleSong: false, // 是否打卡
     dynamicCover: true, // 动态封面
     // 歌词
-    lyricFontSize: 46, // 歌词大小
-    lyricTranFontSize: 22, // 歌词翻译大小
-    lyricRomaFontSize: 18, // 歌词音译大小
+    lyricFontSize: 24, // 歌词大小
+    lyricTranFontSize: 14, // 歌词翻译大小
+    lyricRomaFontSize: 14, // 歌词音译大小
     lyricFontBold: true, // 歌词字体加粗
     useAMLyrics: false, // 是否使用 AM 歌词
     useAMSpring: false, // 是否使用 AM 歌词弹簧效果

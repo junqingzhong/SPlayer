@@ -11,6 +11,8 @@
   height: 100vh !important;
   z-index: 1000 !important;
   transition: left 0.3s ease !important;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1) !important;
+  will-change: left !important;
 }
 
 .mobile-mode #main-sider.mobile-show {
@@ -30,6 +32,13 @@
 .mobile-mode .nav {
   padding: 0 12px !important;
   height: 60px !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 99 !important;
+  background-color: var(--n-color) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 
 .mobile-mode .nav .page-control {
@@ -38,11 +47,17 @@
 
 .mobile-mode .nav .page-control .mobile-sidebar-toggle {
   display: flex !important;
-    margin-right: 8px;
+  margin-right: 8px !important;
+  transition: transform 0.2s ease !important;
+}
+
+.mobile-mode .nav .page-control .mobile-sidebar-toggle:active {
+  transform: scale(0.95) !important;
 }
 
 .mobile-mode .nav .search-input {
-  max-width: 120px !important;
+  max-width: 140px !important;
+  height: 36px !important; /* 增加高度，便于触摸 */
 }
 
 .mobile-mode .nav .nav-main .search {
@@ -69,18 +84,24 @@
   grid-template-areas:
     "cover info"
     "cover buttons"
-    "extra-buttons extra-buttons"
-    "progress progress" !important;
+    "progress progress"
+    "extra-buttons extra-buttons" !important;
   grid-template-columns: auto 1fr !important;
   grid-template-rows: auto auto auto auto !important;
+  max-width: 100vw !important; /* 确保不超出视口宽度 */
+  overflow: hidden !important; /* 防止内容溢出 */
+  padding: 12px 10px !important;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05) !important; /* 添加顶部阴影，增强视觉分离 */
+  z-index: 100 !important; /* 确保播放器在最上层 */
 }
 
 .mobile-mode .main-player .cover {
   grid-area: cover !important;
   width: 60px !important;
-  /* 稍微增大封面以容纳内容 */
   height: 60px !important;
   margin-right: 8px !important;
+  object-fit: cover !important; /* 确保图片正确填充容器 */
+  border-radius: 6px !important; /* 添加圆角 */
 }
 
 .mobile-mode .main-player .info-wrapper {
@@ -92,18 +113,29 @@
   overflow: hidden !important;
   flex: 1 !important;
   min-width: 0 !important;
+  max-width: calc(100vw - 80px) !important; /* 确保不超出视口宽度减去封面和边距 */
 }
 
 .mobile-mode .main-player .info .name {
-  font-size: 15px !important;
+  font-size: 14px !important;
   white-space: nowrap !important;
   text-overflow: ellipsis !important;
   overflow: hidden !important;
   max-width: 100% !important;
+  padding-right: 8px !important; /* 添加右侧内边距，防止文字贴边 */
+  margin-bottom: 2px !important; /* 增加与艺术家名称的间距 */
+  line-height: 1.3 !important; /* 优化行高 */
 }
 
 .mobile-mode .main-player .info .artist {
   font-size: 12px !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
+  padding-right: 8px !important; /* 添加右侧内边距，防止文字贴边 */
+  opacity: 0.8 !important; /* 降低不透明度，增强层次感 */
+  line-height: 1.2 !important; /* 优化行高 */
 }
 
 .mobile-mode .main-player .buttons {
@@ -111,7 +143,8 @@
   display: flex !important;
   justify-content: space-between !important;
   align-items: center !important;
-  padding: 2px 0 !important;
+  padding: 4px 0 !important;
+  margin-top: 2px !important; /* 增加与信息的间距 */
 }
 
 .mobile-mode .main-player .control {
@@ -119,8 +152,14 @@
 }
 
 .mobile-mode .main-player .control .n-button {
-  width: 32px !important;
-  height: 32px !important;
+  width: 36px !important;
+  height: 36px !important;
+  margin: 0 2px !important; /* 增加按钮间距 */
+  transition: transform 0.2s ease !important; /* 添加按下效果的过渡 */
+}
+
+.mobile-mode .main-player .control .n-button:active {
+  transform: scale(0.95) !important; /* 按下时稍微缩小，提供触觉反馈 */
 }
 
 .mobile-mode .main-player .control .n-button .n-icon {
@@ -132,40 +171,141 @@
   display: flex !important;
   justify-content: space-around !important;
   align-items: center !important;
-  padding: 2px 0 !important;
+  padding: 4px 0 !important;
+  margin-top: 2px !important;
 }
 
 .mobile-mode .main-player .extra-buttons .n-button {
-  width: 28px !important;
-  height: 28px !important;
+  width: 32px !important;
+  height: 32px !important;
+  transition: transform 0.2s ease !important;
+}
+
+.mobile-mode .main-player .extra-buttons .n-button:active {
+  transform: scale(0.95) !important;
 }
 
 .mobile-mode .main-player .progress {
   grid-area: progress !important;
+  width: 100% !important;
+  padding: 0 8px !important;
+  margin: 6px 0 !important;
+  touch-action: none !important; /* 防止触摸滑动冲突 */
+}
+
+.mobile-mode .main-player .progress .n-slider {
+  margin: 8px 0 !important;
+  height: 4px !important; /* 增加滑块高度，便于触摸 */
+}
+
+.mobile-mode .main-player .progress .n-slider-rail {
+  height: 4px !important;
+  border-radius: 2px !important;
+}
+
+.mobile-mode .main-player .progress .n-slider-handle {
+  height: 14px !important;
+  width: 14px !important;
+  margin-top: -5px !important;
+}
+
+.mobile-mode .main-player .progress .time {
+  font-size: 12px !important;
+  margin: 0 4px !important;
 }
 
 /* 全屏播放器 */
 .mobile-mode .full-player {
   flex-direction: column !important;
   padding: 12px !important;
+  max-width: 100vw !important; /* 确保不超出视口宽度 */
+  overflow: hidden !important; /* 防止内容溢出 */
+  height: 100vh !important;
+  /* 优化动画性能 */
+  will-change: transform, opacity !important;
+  transform: translateZ(0) !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* 推荐页面优化 */
+.mobile-mode .recommend-page {
+  max-width: 100vw !important;
+  overflow: hidden !important;
+  padding: 12px !important;
+  padding-bottom: 70px !important; /* 增加底部内边距，避免被播放器遮挡 */
+}
+
+.mobile-mode .recommend-page .recommend-list {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+  gap: 12px !important;
+  padding: 8px !important;
+}
+
+.mobile-mode .recommend-page .recommend-item {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.mobile-mode .recommend-page .recommend-item img {
+  width: 100% !important;
+  height: auto !important;
+  object-fit: cover !important;
+  aspect-ratio: 1 !important;
+  border-radius: 8px !important;
 }
 
 .mobile-mode .full-player .player-content {
   flex-direction: column !important;
   padding: 20px 10px !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
 }
 
 .mobile-mode .full-player .content-left {
   width: 100% !important;
   margin-bottom: 20px !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.mobile-mode .full-player .content-left img {
+  max-width: 100% !important;
+  height: auto !important;
+  object-fit: contain !important;
 }
 
 .mobile-mode .full-player .content-right {
   width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.mobile-mode .full-player .lyric-container {
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.mobile-mode .full-player .lyric-container .lyric-item {
+  max-width: 100% !important;
+  white-space: normal !important; /* 允许文本换行 */
+  word-wrap: break-word !important; /* 长单词断行 */
+  overflow-wrap: break-word !important;
+  padding: 0 12px !important; /* 增加内边距 */
+  line-height: 1.6 !important; /* 增加行高，提高可读性 */
+  margin: 12px 0 !important; /* 增加行间距 */
+  text-align: center !important; /* 居中显示 */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; /* 平滑过渡效果 */
 }
 
 .mobile-mode .full-player .player-control {
-  padding: 10px !important;
+  padding: 12px 10px !important;
+  margin-top: 10px !important;
+  background: rgba(0, 0, 0, 0.1) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
 }
 
 .mobile-mode .full-player .control-progress {
@@ -175,26 +315,70 @@
 .mobile-mode .full-player .control-buttons {
   flex-wrap: wrap !important;
   justify-content: center !important;
-  gap: 8px !important;
+  gap: 12px !important;
+}
+
+.mobile-mode .full-player .control-buttons .n-button {
+  transition: transform 0.2s ease !important;
+}
+
+.mobile-mode .full-player .control-buttons .n-button:active {
+  transform: scale(0.95) !important;
 }
 
 /* 封面列表 */
 .mobile-mode .cover-list .n-grid {
-  grid-template-columns: repeat(2, 1fr) !important;
+  width: 100% !important;
+  max-width: 100vw !important;
+  padding: 0 8px !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+  padding-bottom: 70px !important; /* 增加底部内边距，避免被播放器遮挡 */
+}
+
+.mobile-mode .cover-list .cover-item {
+  width: 100% !important;
+  overflow: hidden !important;
+  margin-bottom: 16px !important;
+  transition: transform 0.2s ease !important;
+  will-change: transform !important;
+}
+
+.mobile-mode .cover-list .cover-item:active {
+  transform: scale(0.98) !important;
 }
 
 .mobile-mode .cover-list .cover-item .cover {
-  height: 140px !important;
+  height: 80px !important;
+  width: 100% !important;
+  object-fit: cover !important;
+  border-radius: 8px !important;
 }
 
 .mobile-mode .cover-list .cover-item .name {
   font-size: 14px !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
+  padding: 6px 0 2px 0 !important; /* 调整内边距 */
+  line-height: 1.3 !important; /* 优化行高 */
+}
+
+.mobile-mode .cover-list .cover-item .description {
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
+  font-size: 12px !important;
 }
 
 /* 设置弹窗 */
 .mobile-mode .setting-modal {
   width: 90% !important;
   max-width: 350px !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
 }
 
 .mobile-mode .setting-modal .n-tabs-nav {
@@ -209,7 +393,11 @@
 .mobile-mode .playlist .detail {
   flex-direction: column !important;
   height: 300px !important;
-  padding: 12px !important;
+  padding: 16px 12px !important;
+  max-width: 100vw !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.05), transparent) !important;
 }
 
 .mobile-mode .playlist .detail .cover {
@@ -218,49 +406,94 @@
   margin-right: 0 !important;
   margin-bottom: 12px !important;
   align-self: center !important;
+  object-fit: cover !important;
+  border-radius: 8px !important;
+}
+
+.mobile-mode .playlist .detail .data {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
 }
 
 .mobile-mode .playlist .detail .data .name {
   font-size: 1rem !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
+  padding-right: 8px !important;
 }
 
 .mobile-mode .playlist .detail .data .description {
   font-size: 13px !important;
   -webkit-line-clamp: 2 !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  word-break: break-word !important;
+  max-width: 100% !important;
+  padding-right: 8px !important;
 }
 
 .mobile-mode .playlist .detail .data .meta {
   font-size: 13px !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
 }
 
 .mobile-mode .playlist .detail .data .menu {
   display: flex !important;
   flex-wrap: wrap !important;
   gap: 8px !important;
+  max-width: 100% !important;
+  padding: 8px 0 !important;
 }
 
 .mobile-mode .playlist .song-list {
   padding-top: 300px !important;
+  padding-bottom: 70px !important; /* 增加底部内边距，避免被播放器遮挡 */
+  max-width: 100vw !important;
+  overflow: hidden !important;
 }
 
 .mobile-mode .playlist.small .detail {
   height: 180px !important;
+  max-width: 100vw !important;
+  overflow: hidden !important;
 }
 
 .mobile-mode .playlist.small .detail .cover {
   width: 80px !important;
   height: 80px !important;
+  object-fit: cover !important;
+  border-radius: 6px !important;
 }
 
 .mobile-mode .playlist.small .detail .data .name {
   font-size: 1rem !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
 }
+
 .mobile-mode .likedPage .detail .data .name {
   font-size: 1rem !important;
+  white-space: nowrap !important;
+  text-overflow: ellipsis !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
 }
 
 .mobile-mode .playlist.small .song-list {
   padding-top: 180px !important;
+  padding-bottom: 70px !important; /* 增加底部内边距，避免被播放器遮挡 */
+  max-width: 100vw !important;
+  overflow: hidden !important;
 }
 
 /* 设置页 */
@@ -322,7 +555,8 @@
 
 /* 活动列表页 */
 .mobile-mode .activities-container {
-  padding: 10px !important;
+  padding: 12px !important;
+  padding-bottom: 70px !important; /* 增加底部内边距，避免被播放器遮挡 */
 }
 
 .mobile-mode .activities-container .activities-header {
@@ -352,7 +586,77 @@
 
 
 /* ==========================================================================
-   2. 平板模式 (769px - 1024px) - 此部分保持不变
+   2. 小屏幕手机模式 (iPhone 13 mini - 375px宽度)
+  ========================================================================== */
+@media screen and (max-width: 375px) {
+  /* 主播放器进一步优化 */
+  .mobile-mode .main-player {
+    padding: 10px 8px !important;
+  }
+
+  .mobile-mode .main-player .cover {
+    width: 50px !important;
+    height: 50px !important;
+    margin-right: 6px !important;
+  }
+
+  .mobile-mode .main-player .info .name {
+    font-size: 13px !important;
+    margin-bottom: 1px !important;
+  }
+
+  .mobile-mode .main-player .info .artist {
+    font-size: 11px !important;
+  }
+
+  .mobile-mode .main-player .buttons {
+    margin-top: 1px !important;
+  }
+
+  .mobile-mode .main-player .control .n-button {
+    width: 32px !important;
+    height: 32px !important;
+    margin: 0 1px !important;
+  }
+
+  .mobile-mode .main-player .control .n-button .n-icon {
+    font-size: 14px !important;
+  }
+
+  .mobile-mode .main-player .extra-buttons .n-button {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  .mobile-mode .main-player .progress {
+    margin: 4px 0 !important;
+  }
+
+  /* 导航栏优化 */
+  .mobile-mode .nav {
+    padding: 0 8px !important;
+    height: 56px !important;
+  }
+
+  .mobile-mode .nav .search-input {
+    max-width: 120px !important;
+  }
+
+  /* 内容区域优化 */
+  .mobile-mode #main-content {
+    padding: 0 8px !important;
+  }
+
+  /* 封面列表优化 */
+  .mobile-mode .cover-list .n-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    padding: 0 6px !important;
+  }
+}
+
+/* ==========================================================================
+   3. 平板模式 (769px - 1024px) - 此部分保持不变
   ========================================================================== */
 @media screen and (min-width: 769px) and (max-width: 1024px) {
 

@@ -176,12 +176,15 @@ onMounted(async () => {
   z-index: 999;
   display: none;
   backdrop-filter: blur(3px);
+  transition: opacity 0.3s ease-in-out;
+  opacity: 0;
 }
 
 /* 当侧边栏显示时显示遮罩 */
 @media screen and (max-width: 768px) {
   #main-sider.mobile-show + .mobile-sidebar-mask {
     display: block;
+    opacity: 1;
   }
 }
 

@@ -6,7 +6,7 @@
     </div>
     <!-- 标签页 -->
     <n-tabs v-model:value="searchType" class="tabs" type="segment" @update:value="tabChange">
-      <n-tab name="search-songs"> 单曲 </n-tab>
+      <n-tab name="search-songs"> 单曲</n-tab>
       <n-tab name="search-playlists"> 歌单 </n-tab>
       <n-tab name="search-artists"> 歌手 </n-tab>
       <n-tab name="search-albums"> 专辑 </n-tab>

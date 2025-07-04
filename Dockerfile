@@ -38,7 +38,7 @@ RUN wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -O /us
 COPY . .
 
 # 拷贝 nginx 配置文件
-COPY nginx.conf /etc/nginx/nginx.conf
+# COPY nginx.conf /etc/nginx/nginx.conf
 
 # 拷贝启动脚本
 COPY docker-entrypoint.sh /

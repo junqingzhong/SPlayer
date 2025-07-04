@@ -50,7 +50,7 @@ const getSearchResult = async () => {
   searchCount.value = result.result?.songCount;
   // 处理数据
   const songData = formatSongsList(result.result.songs);
-  searchResultData.value = searchResultData.value?.concat(songData);
+  searchResultData.value = (searchResultData.value || []).concat(songData);
   loading.value = false;
 };
 

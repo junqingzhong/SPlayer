@@ -76,7 +76,15 @@ class Player {
     }
     // 播放列表
     const playlist = dataStore.playList;
-    if (!playlist.length) return null;
+    if (!playlist.length) {
+      console.log(`getPlaySongData: 播放列表为空`);
+      return null;
+    }
+    console.log(`getPlaySongData: playIndex=${statusStore.playIndex}, 播放列表长度=${playlist.length}`);
+    if (statusStore.playIndex < 0 || statusStore.playIndex >= playlist.length) {
+      console.log(`getPlaySongData: playIndex超出范围，重置为0`);
+      statusStore.playIndex = 0;
+    }
     return playlist[statusStore.playIndex];
   }
   /**
@@ -139,26 +147,115 @@ class Player {
    */
   private async getOnlineUrl(id: number): Promise<string | null> {
     const settingStore = useSettingStore();
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+    const songUnData = this.getPlaySongData();
+
+    // 查找当前歌曲在播放列表中的位置
+    const { playList } = dataStore;
+    const songIndex = playList.findIndex(song => {
+      const songId = song.type === "radio" ? song.dj?.id : song.id;
+      return songId === id;
+    });
+
+    // 如果找到了歌曲，检查是否有缓存的URL
+    if (songIndex !== -1) {
+      const song = playList[songIndex];
+      // 检查缓存URL是否存在且未过期（默认30分钟有效期）
+      const cacheExpiry = 30 * 60 * 1000; // 30分钟
+      const now = Date.now();
+
+      // 优先检查解锁URL缓存
+          if ((song as any).cachedUnlockUrl &&
+              (song as any).cachedUnlockTime &&
+              now - (song as any).cachedUnlockTime < cacheExpiry) {
+              console.log(`✅ ${id} 已存在解锁链接播放`);
+            // 如果是当前播放歌曲，直接返回缓存URL
+            if (songIndex === statusStore.playIndex) {
+              return (song as any).cachedUnlockUrl;
+            }
+          }
+
+      // 然后检查普通URL缓存
+          if ((song as any).cachedUrl &&
+              (song as any).cachedTime &&
+              now - (song as any).cachedTime < cacheExpiry) {
+            console.log(`✅ ${id} 使用缓存链接播放`);
+            // 如果是当前播放歌曲，直接返回缓存URL
+            if (songIndex === statusStore.playIndex) {
+              return (song as any).cachedUrl;
+            }
+          }
+    }
+
+    // 1. 优先尝试使用解锁链接（提前尝试解锁，不等待网易云返回）
+    if (isElectron && songUnData && settingStore.useSongUnlock) {
+      try {
+        const unlockUrl = await this.getUnlockSongUrl(songUnData);
+        if (unlockUrl) {
+          console.log(`🔓 ${id} 使用解锁链接播放`);
+          // 保存解锁URL到歌曲对象中
+          if (songIndex !== -1) {
+            const song = playList[songIndex];
+            (song as any).cachedUnlockUrl = unlockUrl;
+            (song as any).cachedUnlockTime = Date.now();
+          }
+          // 如果是当前播放歌曲，返回解锁URL
+          if (songIndex === statusStore.playIndex) {
+            return unlockUrl;
+          }
+        }
+      } catch (error) {
+        console.error("尝试解锁失败，将使用原始链接", error);
+      }
+    }
+
+    // 2. 尝试获取网易云官方链接
     const res = await songUrl(id, settingStore.songLevel);
     console.log(`🌐 ${id} music data:`, res);
     const songData = res.data?.[0];
-    // 是否有播放地址
-    if (!songData || !songData?.url) return null;
+
     // 是否仅能试听
     if (songData?.freeTrialInfo !== null) {
       if (settingStore.playSongDemo) {
         window.$message.warning("当前歌曲仅可试听，请开通会员后重试");
-      } else return null;
+      } else {
+        // 4. 如果是试听版本，尝试解锁（确保之前没有尝试过）
+        if (songUnData && (!settingStore.useSongUnlock || !(songUnData as any).unlockAttempted)) {
+          const unlockUrl = await this.getUnlockSongUrl(songUnData);
+          if (unlockUrl) {
+            console.log(`🔓 ${id} 试听版本，使用解锁链接播放`);
+            // 保存解锁URL到歌曲对象中
+            if (songIndex !== -1) {
+              const song = playList[songIndex];
+              (song as any).cachedUnlockUrl = unlockUrl;
+              (song as any).cachedUnlockTime = Date.now();
+              // 同时更新通用缓存URL
+              (song as any).cachedUrl = unlockUrl;
+              (song as any).cachedTime = Date.now();
+            }
+            // 如果是当前播放歌曲，返回解锁URL
+            if (songIndex === statusStore.playIndex) {
+              return unlockUrl;
+            }
+          }
+        }
+        return null;
+      }
     }
-    // 返回歌曲地址
-    // 客户端直接返回，网页端转 https
-    const url = isElectron ? songData.url : songData.url.replace(/^http:/, "https:");
-    return url;
+
+    // 保存获取到的URL到歌曲对象中
+    if (songIndex !== -1) {
+      const song = playList[songIndex];
+      (song as any).cachedUnlockUrl = songData.url;
+      (song as any).cachedUnlockTime = Date.now();
+    }
+    return songData.url;
   }
   /**
    * 获取解锁播放链接
    * @param songData 歌曲数据
-   * @returns
+   * @returns 解锁后的播放链接
    */
   private async getUnlockSongUrl(songData: SongType): Promise<string | null> {
     try {
@@ -166,18 +263,89 @@ class Player {
       const artist = Array.isArray(songData.artists) ? songData.artists[0].name : songData.artists;
       const keyWord = songData.name + "-" + artist;
       if (!songId || !keyWord) return null;
-      // 尝试解锁
-      const [neteaseUrl, kuwoUrl] = await Promise.all([
+
+      // 检查缓存的解锁URL是否存在且未过期
+      const cacheExpiry = 30 * 60 * 1000; // 30分钟
+      const now = Date.now();
+      // 标记已尝试解锁，避免重复尝试
+      if ((songData as any).unlockAttempted && !((songData as any).cachedUnlockTime && now - (songData as any).cachedUnlockTime >= cacheExpiry)) {
+        return (songData as any).cachedUnlockUrl || null;
+      }
+
+      // 设置解锁尝试标记
+      (songData as any).unlockAttempted = true;
+
+      // 优先尝试酷我解锁（根据服务端实现优化）
+      try {
+        const kuwo = await unlockSongUrl(songId, keyWord, "kuwo");
+        if (kuwo.code === 200 && kuwo.url !== "" ) {
+          (songData as any).cachedUnlockUrl = kuwo.url;
+          (songData as any).cachedUnlockTime = Date.now();
+          return kuwo.url;
+        }
+      } catch (e) {
+        console.error("酷我解锁失败", e);
+      }
+
+      // 并行尝试其他平台解锁
+      const [qq, kugou, netease] = await Promise.all([
+        unlockSongUrl(songId, keyWord, "qq"),
+        unlockSongUrl(songId, keyWord, "kugou"),
         unlockSongUrl(songId, keyWord, "netease"),
-        unlockSongUrl(songId, keyWord, "kuwo"),
       ]);
-      if (neteaseUrl.code === 200 && neteaseUrl.url !== "") return neteaseUrl.url;
-      if (kuwoUrl.code === 200 && kuwoUrl.url !== "") return kuwoUrl.url;
+
+      // 按照成功率排序检查结果
+      if (qq.code === 200 && qq.url !== ""  && (songData as any).cachedUnlockUrl == "") {
+        (songData as any).cachedUnlockUrl = qq.url;
+        (songData as any).cachedUnlockTime = Date.now();
+        return qq.url;
+      }
+      if (kugou.code === 200 && kugou.url !== "" && (songData as any).cachedUnlockUrl == "") {
+        (songData as any).cachedUnlockUrl = kugou.url;
+        (songData as any).cachedUnlockTime = Date.now();
+        return kugou.url;
+      }
+      if (netease.code === 200 && netease.url !== "" && (songData as any).cachedUnlockUrl == "") {
+        (songData as any).cachedUnlockUrl = netease.url;
+        (songData as any).cachedUnlockTime = Date.now();
+        return netease.url;
+      }
+      // 所有平台都解锁失败
       return null;
     } catch (error) {
       console.error("Error in getUnlockSongUrl", error);
       return null;
     }
+  }
+
+  /**
+   * 处理跨域问题
+   * @param url 音频URL
+   * @returns 处理后的URL
+   */
+  private handleCrossDomain(url: string): string {
+    const settingStore = useSettingStore();
+
+    // 如果是客户端，不需要处理跨域
+    if (isElectron) return url;
+
+    // 如果URL已经是HTTPS，尝试直接使用
+    if (url.startsWith('https://')) {
+      // 添加crossOrigin属性在createPlayer方法中已处理
+      return url;
+    }
+
+    // 如果是HTTP链接，转换为HTTPS
+    if (url.startsWith('http://')) {
+      return url.replace(/^http:/, "https:");
+    }
+
+    // 如果配置了代理服务器，使用代理服务器
+    if ((settingStore as any).useProxyServer && (settingStore as any).proxyServerUrl) {
+      return `${(settingStore as any).proxyServerUrl}/proxy?url=${encodeURIComponent(url)}`;
+    }
+
+    return url;
   }
   /**
    * 创建播放器
@@ -193,11 +361,16 @@ class Player {
     const settingStore = useSettingStore();
     // 播放信息
     const { id, path, type } = musicStore.playSong;
+    console.log(`createPlayer: 创建播放器，歌曲ID=${id}, playIndex=${statusStore.playIndex}`);
     // 清理播放器
     Howler.unload();
+
+    // 处理跨域问题
+    const processedSrc = this.handleCrossDomain(src);
+
     // 创建播放器
     this.player = new Howl({
-      src,
+      src: processedSrc,
       format: allowPlayFormat,
       html5: true,
       autoplay: autoPlay,
@@ -205,7 +378,12 @@ class Player {
       pool: 1,
       volume: statusStore.playVolume,
       rate: statusStore.playRate,
+      xhr: {
+        // 添加跨域支持
+        withCredentials: false,
+      }
     });
+
     // 播放器事件
     this.playerEvent({ seek });
     // 播放设备
@@ -225,8 +403,141 @@ class Player {
     if (!path) this.getCoverColor(musicStore.songCover);
     // 更新 MediaSession
     if (!path) this.updateMediaSession();
+    // 预缓存下一首歌曲
+    this.preCacheNextSongs();
     // 开发模式
     if (isDev) window.player = this.player;
+  }
+
+  /**
+   * 预缓存下一首和下下首歌曲
+   * 每次缓存两首歌，减少播放时的卡顿
+   */
+  private async preCacheNextSongs() {
+    try {
+      const dataStore = useDataStore();
+      const statusStore = useStatusStore();
+      const settingStore = useSettingStore();
+
+      // 如果是私人FM模式或单曲循环模式，不进行预缓存
+      if (statusStore.personalFmMode || statusStore.playSongMode === "repeat-once") {
+        return;
+      }
+
+      // 获取播放列表
+      const { playList } = dataStore;
+      const playListLength = playList.length;
+
+      // 如果播放列表少于2首歌，不需要预缓存
+      if (playListLength <= 1) return;
+
+      // 计算需要预缓存的索引
+      const nextIndices: number[] = [];
+      let currentIndex = statusStore.playIndex;
+
+      // 预缓存下一首歌曲
+      const nextIndex = (currentIndex + 1) % playListLength;
+      // nextIndices.push(nextIndex);
+
+      // 根据播放模式决定是否预缓存其他歌曲
+      if (statusStore.playSongMode === "repeat" || statusStore.playHeartbeatMode) {
+        // 列表循环或心动模式，预缓存下下首
+        nextIndices.push((currentIndex + 1) % playListLength);
+      } else if (statusStore.playSongMode === "shuffle") {
+        // 随机播放模式，随机选择一首不同的歌曲
+        let randomIndex;
+        do {
+          randomIndex = Math.floor(Math.random() * playListLength);
+        } while (randomIndex === currentIndex || randomIndex === nextIndex);
+
+        nextIndices.push(randomIndex);
+      }
+
+      // 预缓存上一首歌曲（用于向前切换）
+      const prevIndex = currentIndex <= 0 ? playListLength - 1 : currentIndex - 1;
+      if (!nextIndices.includes(prevIndex) && prevIndex !== currentIndex) {
+        nextIndices.push(prevIndex);
+      }
+
+      console.log(`预缓存索引: ${nextIndices.join(', ')}，当前索引: ${currentIndex}`);
+
+      // 预缓存歌曲（异步进行，不阻塞主播放流程）
+      for (const index of nextIndices) {
+        const song = playList[index];
+        if (!song) continue;
+
+        // 本地歌曲不需要预缓存
+        if (song.path) continue;
+
+        const { id, dj, type } = song;
+        const songId = type === "radio" ? dj?.id : id;
+
+        if (!songId) continue;
+
+        // 检查缓存URL是否存在且未过期
+        const cacheExpiry = 30 * 60 * 1000; // 30分钟
+        const now = Date.now();
+
+        // 检查是否有有效的缓存URL
+        const hasValidCache = (
+          ((song as any).cachedUrl &&
+           (song as any).cachedTime &&
+           now - (song as any).cachedTime < cacheExpiry) ||
+          ((song as any).cachedUnlockUrl &&
+           (song as any).cachedUnlockTime &&
+           now - (song as any).cachedUnlockTime < cacheExpiry)
+        );
+
+        // 如果歌曲已经有有效的缓存URL，跳过获取
+        if (hasValidCache) {
+          console.log(`✅ 歌曲已缓存: ${song.name}`);
+          continue;
+        }
+        // 异步获取歌曲URL并预加载
+        console.log(`🔄 开始预缓存歌曲: ${song.name}, 索引: ${index}`);
+        this.getOnlineUrl(song.id).then(url => {
+          if (url) {
+            // 保存URL到歌曲对象中
+            (song as any).cachedUrl = url;
+            (song as any).cachedTime = Date.now();
+
+            // 创建一个新的Howl实例进行预加载，但不播放
+            new Howl({
+              src: [url],
+              format: allowPlayFormat,
+              html5: true,
+              autoplay: false,
+              preload: "metadata", // 只预加载元数据，减少内存占用
+            });
+            console.log(`✅ 预缓存成功: ${song.name}, 索引: ${song.id}`);
+          } else if (isElectron && type !== "radio" && settingStore.useSongUnlock) {
+            // 尝试解锁歌曲
+            this.getUnlockSongUrl(song).then(unlockUrl => {
+              if (unlockUrl) {
+                // 保存解锁URL到歌曲对象中
+                (song as any).cachedUnlockUrl = unlockUrl;
+                (song as any).cachedUnlockTime = Date.now();
+
+                new Howl({
+                  src: [unlockUrl],
+                  format: allowPlayFormat,
+                  html5: true,
+                  autoplay: false,
+                  preload: "metadata",
+                });
+                console.log(`✅ 预缓存解锁成功: ${song.name}, 索引: ${index}`);
+              }
+            }).catch(err => {
+              console.error(`预缓存解锁歌曲失败: ${song.name}, 索引: ${index}`, err);
+            });
+          }
+        }).catch(err => {
+          console.error(`预缓存歌曲失败: ${song.name}, 索引: ${index}`, err);
+        });
+      }
+    } catch (error) {
+      console.error("预缓存歌曲出错:", error);
+    }
   }
   /**
    * 播放器事件
@@ -285,6 +596,7 @@ class Player {
     this.player.on("end", () => {
       // statusStore.playStatus = false;
       console.log("⏹️ song end:", playSongData);
+      console.log(`歌曲播放结束，准备切换到下一首，当前playIndex=${statusStore.playIndex}`);
       this.nextOrPrev("next");
     });
     // 错误
@@ -520,8 +832,13 @@ class Player {
     try {
       // 获取播放数据
       const playSongData = this.getPlaySongData();
-      if (!playSongData) return;
+      if (!playSongData) {
+        console.log(`initPlayer: 无法获取播放数据，可能是playIndex无效`);
+        return;
+      }
+
       const { id, dj, path, type } = playSongData;
+      console.log(`initPlayer: 准备播放歌曲 ${playSongData.name},当前playIndex=${statusStore.playIndex}, id=${id}`);
       // 更改当前播放歌曲
       musicStore.playSong = playSongData;
       // 更改状态
@@ -531,44 +848,90 @@ class Player {
         await this.createPlayer(path, autoPlay, seek);
         // 获取歌曲元信息
         await this.parseLocalMusicInfo(path);
+        // 预缓存下一首和下下首歌曲
+        this.preCacheNextSongs();
       }
       // 在线歌曲
       else if (id && dataStore.playList.length) {
         const songId = type === "radio" ? dj?.id : id;
         if (!songId) throw new Error("Get song id error");
-        const url = await this.getOnlineUrl(songId);
-        // 正常播放地址
-        if (url) {
-          statusStore.playUblock = false;
-          await this.createPlayer(url, autoPlay, seek);
+
+        // 检查是否有缓存的URL
+        const cacheExpiry = 30 * 60 * 1000; // 30分钟
+        const now = Date.now();
+        let cachedUrl = null;
+        let isUnlockUrl = false;
+        // 检查是否有缓存的URL（优先检查解锁URL）
+        if ((playSongData as any).cachedUnlockUrl &&
+            (playSongData as any).cachedUnlockTime &&
+            now - (playSongData as any).cachedUnlockTime < cacheExpiry) {
+          cachedUrl = (playSongData as any).cachedUnlockUrl;
+          isUnlockUrl = true;
+          console.log(`✅ 使用缓存解锁链接播放: ${(playSongData as any).cachedUnlockUrl}`);
         }
-        // 尝试解灰
-        else if (isElectron && type !== "radio" && settingStore.useSongUnlock) {
-          const unlockUrl = await this.getUnlockSongUrl(playSongData);
-          if (unlockUrl) {
-            statusStore.playUblock = true;
-            console.log("🎼 Song unlock successfully:", unlockUrl);
-            await this.createPlayer(unlockUrl, autoPlay, seek);
-          } else {
-            statusStore.playUblock = false;
-            // 是否为最后一首
-            if (statusStore.playIndex === dataStore.playList.length - 1) {
-              statusStore.$patch({ playStatus: false, playLoading: false });
-              window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
-            } else {
-              window.$message.error("该歌曲暂无音源，跳至下一首");
-              this.nextOrPrev("next");
-            }
-          }
+        // 然后检查普通缓存URL
+        else if ((playSongData as any).cachedUrl &&
+            (playSongData as any).cachedTime &&
+            now - (playSongData as any).cachedTime < cacheExpiry) {
+          cachedUrl = (playSongData as any).cachedUrl;
+          console.log(`✅ 使用原链接播放: ${(playSongData as any).cachedUrl}`);
+        }
+        // 如果有缓存的URL，直接使用
+        if (cachedUrl) {
+          statusStore.playUblock = isUnlockUrl;
+          await this.createPlayer(cachedUrl, autoPlay, seek);
+          // 预缓存下一首和下下首歌曲
+          this.preCacheNextSongs();
         } else {
-          if (dataStore.playList.length === 1) {
-            this.resetStatus();
-            window.$message.warning("当前播放列表已无可播放歌曲，请更换");
-            return;
+          // 没有缓存，获取新URL
+          console.log(`🔄 获取新的URL: ${playSongData.name}, songId=${songId}`);
+          const url = await this.getOnlineUrl(songId);
+          // 正常播放地址
+          if (url) {
+            statusStore.playUblock = false;
+            // 保存URL到歌曲对象中
+            (playSongData as any).cachedUrl = url;
+            (playSongData as any).cachedTime = Date.now();
+
+            await this.createPlayer(url, autoPlay, seek);
+            // 预缓存下一首和下下首歌曲
+            this.preCacheNextSongs();
+          }
+          // 尝试解灰
+          else if (type !== "radio" && settingStore.useSongUnlock) {
+            const unlockUrl = await this.getUnlockSongUrl(playSongData);
+            if (unlockUrl) {
+              statusStore.playUblock = true;
+              console.log("🎼 Song unlock successfully:", unlockUrl);
+
+              // 保存解锁URL到歌曲对象中
+              (playSongData as any).cachedUnlockUrl = unlockUrl;
+              (playSongData as any).cachedUnlockTime = Date.now();
+
+              await this.createPlayer(unlockUrl, autoPlay, seek);
+              // 预缓存下一首和下下首歌曲
+              this.preCacheNextSongs();
+            } else {
+              statusStore.playUblock = false;
+              // 是否为最后一首
+              if (statusStore.playIndex === dataStore.playList.length - 1) {
+                statusStore.$patch({ playStatus: false, playLoading: false });
+                window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
+              } else {
+                window.$message.error("该歌曲暂无音源，跳至下一首");
+                this.nextOrPrev("next");
+              }
+            }
           } else {
-            window.$message.error("该歌曲无法播放，跳至下一首");
-            this.nextOrPrev();
-            return;
+            if (dataStore.playList.length === 1) {
+              this.resetStatus();
+              window.$message.warning("当前播放列表已无可播放歌曲，请更换");
+              return;
+            } else {
+              window.$message.error("该歌曲无法播放，跳至下一首");
+              this.nextOrPrev();
+              return;
+            }
           }
         }
       }
@@ -656,39 +1019,53 @@ class Player {
         statusStore.lyricIndex = -1;
         this.setSeek(0);
         await this.play();
+        return; // 添加return，避免继续执行下面的代码
       }
-      // 列表循环或处于心动模式
-      if (playSongMode === "repeat" || playHeartbeatMode || playSong.type === "radio") {
-        statusStore.playIndex += type === "next" ? 1 : -1;
+
+      // 记录当前索引，用于后续检查是否真的切换了歌曲
+      const oldIndex = statusStore.playIndex;
+      console.log(`nextOrPrev: 开始切换歌曲，当前索引=${oldIndex}, 播放模式=${playSongMode}`);
+
+      // 强制更新索引，确保切换歌曲
+      if (type === "next") {
+        // 下一首
+        statusStore.playIndex = (oldIndex + 1) % playListLength;
+      } else {
+        // 上一首
+        statusStore.playIndex = oldIndex <= 0 ? playListLength - 1 : oldIndex - 1;
       }
-      // 随机播放
-      else if (playSongMode === "shuffle") {
+
+      // 随机播放模式下，再次随机选择一首歌
+      if (playSongMode === "shuffle" && !playHeartbeatMode && playSong.type !== "radio") {
         let newIndex: number;
         // 确保不会随机到同一首
         do {
           newIndex = Math.floor(Math.random() * playListLength);
-        } while (newIndex === statusStore.playIndex);
+        } while (newIndex === oldIndex);
         statusStore.playIndex = newIndex;
+        console.log(`nextOrPrev: 随机模式，重新随机索引=${statusStore.playIndex}`);
+      } else if (playSongMode !== "repeat" && playSongMode !== "repeat-once" && !playHeartbeatMode && playSong.type !== "radio") {
+        // 处理其他未知的播放模式
+        console.log(`nextOrPrev: 未知播放模式 ${playSongMode}，使用默认列表循环逻辑`);
       }
-      // 单曲循环
-      else if (playSongMode === "repeat-once") {
+      // 检查是否真的切换了歌曲
+      if (oldIndex === statusStore.playIndex) {
+        // 如果索引没变，只需要重置播放位置
+        console.log(`索引未变化，重置当前歌曲播放位置`);
         statusStore.lyricIndex = -1;
         this.setSeek(0);
-        await this.play();
+        if (play) await this.play();
         return;
-      } else {
-        throw new Error("The play mode is not supported");
       }
-      // 索引是否越界
-      if (statusStore.playIndex < 0) {
-        statusStore.playIndex = playListLength - 1;
-      } else if (statusStore.playIndex >= playListLength) {
-        statusStore.playIndex = 0;
-      }
+      console.log(`索引已变化，准备初始化新歌曲`);
+
       // 暂停
       await this.pause(false);
       // 初始化播放器
       await this.initPlayer(play);
+
+      // 切换歌曲后，触发预缓存下一首歌曲
+      this.preCacheNextSongs();
     } catch (error) {
       console.error("Error in nextOrPrev:", error);
       throw error;

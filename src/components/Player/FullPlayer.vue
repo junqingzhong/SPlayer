@@ -204,7 +204,7 @@ onBeforeUnmount(() => {
   position: fixed;
   top: 0;
   left: 0;
-  width: 100%;
+  width: calc(100% - 12px);
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -272,7 +272,7 @@ onBeforeUnmount(() => {
     }
 
     &:not(.show) {
-      pointer-events: none; // 当不显示时，鼠标事件穿透
+      pointer-events: auto; // 当不显示时，鼠标事件穿透
     }
   }
 

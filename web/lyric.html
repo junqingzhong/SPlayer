@@ -93,6 +93,33 @@
           }
         }
       }
+      
+      /* 歌词播放时禁用按钮点击 */
+      /* 移除playing-lyric类，确保按钮可以正常点击 */
+      .tools .item {
+        pointer-events: auto;
+        opacity: 1;
+        cursor: pointer;
+      }
+      
+      /* 移动端优化 */
+      @media screen and (max-width: 768px) {
+        #lyric-text {
+          font-size: calc(var(--font-size) * 0.8px) !important;
+          line-height: 1.4;
+          text-align: center;
+          word-wrap: break-word;
+          white-space: normal;
+        }
+        
+        #lyric-tran {
+          font-size: calc(var(--font-size) * 0.7px - 5px) !important;
+          line-height: 1.4;
+          text-align: center;
+          word-wrap: break-word;
+          white-space: normal;
+        }
+      }
     }
 
     header {
@@ -419,6 +446,9 @@
         window.electron.ipcRenderer.on("play-status-change", (_, status) => {
           this.playDom.classList.toggle("hidden", status);
           this.pauseDom.classList.toggle("hidden", !status);
+          
+          // 添加或移除playing-lyric类，控制歌词播放时按钮的点击状态
+          document.body.classList.toggle("playing-lyric", status);
         });
 
         // 配置变化

@@ -53,7 +53,9 @@ body {
     }
   }
 }
-
+.n-scrollbar .n-scrollbar-container .n-scrollbar-content{
+    display: grid;
+}
 // modal
 .n-modal {
   max-width: calc(100vw - 40px);
@@ -130,12 +132,6 @@ body {
       width: 8px;
     }
   }
-}
-.mobile-mode .n-scrollbar .n-scrollbar-container .n-scrollbar-content{
-  display: 'flex';
-}
-.n-scrollbar .n-scrollbar-container .n-scrollbar-content{
-  display: 'grid' !important;
 }
 #main #main-content{
   padding: 0 24px;
@@ -372,7 +368,7 @@ body {
       display: flex;
       flex-direction: column;
       flex: 1;
-      padding-right: 60px;
+      // padding-right: 60px;
 
       :deep(.n-skeleton) {
         margin-bottom: 12px;
@@ -511,6 +507,7 @@ body {
     .loading,
     .n-empty {
       padding-top: 120px;
+
     }
   }
 }

@@ -27,28 +27,12 @@
     <div class="set-list">
       <n-h3 prefix="bar"> 网络设置 </n-h3>
       <n-card v-if="!isElectron" class="set-item">
-        <div class="label">
-          <n-text class="name">Web版网络设置</n-text>
-          <n-text class="tip" :depth="3">
-            Web版受浏览器安全限制，无法直接设置系统代理。如需使用代理访问网易云API，建议：
-            <br />1. 在浏览器设置中配置代理
-            <br />2. 使用浏览器扩展程序
-            <br />3. 使用桌面版应用获得完整代理功能
-            <br />4. 配置CORS代理服务器
-          </n-text>
-        </div>
         <n-flex vertical>
           <n-button type="info" ghost @click="openBrowserProxySettings">
             <template #icon>
               <SvgIcon name="Settings" />
             </template>
             打开浏览器代理设置
-          </n-button>
-          <n-button type="primary" ghost @click="testWebApiConnection" :loading="testApiLoading">
-            <template #icon>
-              <SvgIcon name="Wifi" />
-            </template>
-            测试API连接
           </n-button>
         </n-flex>
       </n-card>
@@ -225,7 +209,6 @@ const dataStore = useDataStore();
 const settingStore = useSettingStore();
 
 const testProxyLoading = ref<boolean>(false);
-const testApiLoading = ref<boolean>(false);
 
 // 全局配置变量
 const serverPort = ref<number>(config.serverPort);
@@ -283,80 +266,6 @@ const openBrowserProxySettings = () => {
     window.open(proxyUrl, '_blank');
   } catch (error) {
     window.$message.warning('无法自动打开代理设置页面，请手动在浏览器设置中查找代理选项');
-  }
-};
-
-/**
- * 测试Web版API连接
- */
-const testWebApiConnection = async () => {
-  testApiLoading.value = true;
-
-  try {
-    // 测试网易云API连接
-    const testUrls = [
-      '/api/login/status',
-      '/api/user/account',
-      '/api/recommend/songs'
-    ];
-
-    // 定义结果类型
-    interface TestResult {
-      url: string;
-      status: number | string;
-      success: boolean;
-      error?: string;
-    }
-
-    const results: TestResult[] = [];
-
-    for (const url of testUrls) {
-      try {
-        // 使用AbortController实现超时功能
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-
-        const response = await fetch(url, {
-          method: 'GET',
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        results.push({
-          url,
-          status: response.status,
-          success: response.ok
-        });
-      } catch (error) {
-        results.push({
-          url,
-          status: 'Error',
-          success: false,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-    }
-
-    const successCount = results.filter(r => r.success).length;
-    const totalCount = results.length;
-
-    if (successCount === totalCount) {
-      window.$message.success(`API连接测试完成：${successCount}/${totalCount} 个接口正常`);
-    } else if (successCount > 0) {
-      window.$message.warning(`API连接测试完成：${successCount}/${totalCount} 个接口正常，部分接口可能需要代理`);
-    } else {
-      window.$message.error('API连接测试失败，建议配置代理或检查网络连接');
-    }
-
-    // 显示详细结果
-    console.log('API连接测试结果:', results);
-
-  } catch (error) {
-    console.error('API测试错误:', error);
-    window.$message.error('API连接测试失败');
-  } finally {
-    testApiLoading.value = false;
   }
 };
 

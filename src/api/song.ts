@@ -45,9 +45,8 @@ export const songUrl = (
     },
   });
 };
-
 // 获取解锁歌曲 URL
-export const unlockSongUrl = (id: number, keyword: string, server: "netease" | "kuwo") => {
+export const unlockSongUrl = (id: number, keyword: string, server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili") => {
   const params = server === "netease" ? { id } : { keyword };
   return request({
     baseURL: config.unblockApiUrl,

@@ -3,11 +3,9 @@
     <Transition name="fade" mode="out-in">
       <div v-show="statusStore.playerMetaShow" class="menu-content">
         <n-flex class="left">
-          <div
-            v-if="musicStore.isHasLrc && musicStore.playSong.type !== 'radio'"
+          <div v-if="musicStore.isHasLrc && musicStore.playSong.type !== 'radio'"
             :class="['menu-icon', { open: statusStore.pureLyricMode }]"
-            @click="statusStore.pureLyricMode = !statusStore.pureLyricMode"
-          >
+            @click="statusStore.pureLyricMode = !statusStore.pureLyricMode;">
             <SvgIcon name="TextPlay" />
           </div>
         </n-flex>
@@ -16,7 +14,7 @@
           <div class="menu-icon" @click="toggleFullscreen">
             <SvgIcon :name="isFullscreen ? 'FullscreenExit' : 'Fullscreen'" />
           </div>
-          <div v-if="!isFullscreen" class="menu-icon" @click="statusStore.showFullPlayer = false">
+          <div v-if="!isFullscreen" class="menu-icon" @click="statusStore.showFullPlayer = false;">
             <SvgIcon name="Down" />
           </div>
         </n-flex>
@@ -30,9 +28,9 @@ import { useStatusStore, useMusicStore } from "@/stores";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
-
 // Fullscreen
 const { isFullscreen, toggle: toggleFullscreen } = useFullscreen();
+
 </script>
 
 <style lang="scss" scoped>
@@ -52,7 +50,7 @@ const { isFullscreen, toggle: toggleFullscreen } = useFullscreen();
   }
   .drag-dom {
     height: 80px;
-    margin: 0 100px;
+    margin: 0 60px;
     flex: 1;
     -webkit-app-region: drag;
   }

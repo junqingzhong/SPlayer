@@ -49,10 +49,11 @@
   opacity: 0;
 }
 
-// fade
+// fade - 优化性能
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.3s ease-in-out;
+  transition: opacity 0.25s ease-in-out;
+  will-change: opacity;
 }
 
 .fade-enter-from,
@@ -60,12 +61,19 @@
   opacity: 0;
 }
 
-// fadeDown
+// 移动端优化 - 减少动画时间
+.mobile-mode .fade-enter-active,
+.mobile-mode .fade-leave-active {
+  transition: opacity 0.2s ease-in-out;
+}
+
+// fadeDown - 优化性能
 .fadeDown-enter-active,
 .fadeDown-leave-active {
   transition:
     opacity 0.3s ease,
     transform 0.3s ease;
+  will-change: opacity, transform;
 }
 
 .fadeDown-enter-from,
@@ -74,7 +82,20 @@
   transform: translateY(-10px);
 }
 
-// left-sm
+// 移动端优化 - 减少动画时间和距离
+.mobile-mode .fadeDown-enter-active,
+.mobile-mode .fadeDown-leave-active {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.mobile-mode .fadeDown-enter-from,
+.mobile-mode .fadeDown-leave-to {
+  transform: translateY(-6px);
+}
+
+// left-sm - 优化性能
 .left-sm-enter-active,
 .left-sm-leave-active {
   opacity: 1;
@@ -82,11 +103,20 @@
   transition:
     transform 0.3s,
     opacity 0.3s;
+  will-change: opacity, transform;
 }
 .left-sm-enter-from,
 .left-sm-leave-to {
   opacity: 0;
   transform: translateX(-5px);
+}
+
+// 移动端优化
+.mobile-mode .left-sm-enter-active,
+.mobile-mode .left-sm-leave-active {
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
 }
 
 // shrink
@@ -204,4 +234,37 @@
   100% {
     transform: scale(0.95);
   }
+}
+
+/* 移动端触摸反馈动画 */
+@keyframes touch-feedback {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.97);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* 移动端加载动画优化 */
+.mobile-mode .n-spin-container {
+  will-change: opacity;
+}
+
+/* 移动端触摸反馈 */
+.mobile-mode .n-button:active,
+.mobile-mode .cover-item:active,
+.mobile-mode .song-item:active {
+  animation: touch-feedback 0.3s ease;
+}
+
+/* 移动端过渡优化 */
+.mobile-mode * {
+  transition-duration: 0.2s !important;
+  /* 使用硬件加速 */
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }

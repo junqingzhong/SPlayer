@@ -85,7 +85,7 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">手机模式</n-text>
-          <n-text class="tip" :depth="3">切换至iPhone 13 Pro尺寸的手机模式</n-text>
+          <n-text class="tip" :depth="3">切换至手机模式</n-text>
         </div>
         <n-switch class="set" v-model:value="settingStore.isMobileMode" :round="false" @update:value="toggleMobileMode" />
       </n-card>

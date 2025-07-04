@@ -39,6 +39,7 @@ interface StatusState {
   showPlayerComment: boolean;
   personalFmMode: boolean;
   updateCheck: boolean;
+  showMobileSidebar: boolean; // 添加移动端侧边栏显示状态
 }
 
 export const useStatusStore = defineStore("status", {
@@ -102,6 +103,8 @@ export const useStatusStore = defineStore("status", {
     showPlayerComment: false,
     // 更新检查
     updateCheck: false,
+    // 移动端侧边栏显示状态
+    showMobileSidebar: false,
   }),
   getters: {
     // 播放音量图标
