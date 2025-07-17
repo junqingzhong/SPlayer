@@ -112,6 +112,7 @@
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> API接口设置 </n-h3>
+
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">API服务器端口</n-text>
@@ -152,6 +153,13 @@
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> cookie设置 </n-h3>
+       <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">QQ音乐Cookie</n-text>
+          <n-text class="tip" :depth="3">用于部分接口需要QQ音乐登录信息</n-text>
+        </div>
+        <n-input v-model:value="qqCookie" type="textarea" placeholder="请填写QQ音乐Cookie" class="set" :autosize="{ minRows: 2, maxRows: 4 }" />
+      </n-card>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">网易云自动登录Cookie(保存等3s自动刷新)</n-text>
@@ -168,7 +176,13 @@
                 <template #icon>
                   <SvgIcon name="Settings" />
                 </template>
-                立即应用
+                立即登录
+              </n-button>
+              <n-button size="small" type="info" @click="modifyCookie" :disabled="!autoLoginCookie">
+                <template #icon>
+                  <SvgIcon name="Settings" />
+                </template>
+                修改cookie
               </n-button>
             </n-space>
           </n-card>
@@ -202,7 +216,7 @@ import { isElectron } from "@/utils/helper";
 import { setCookies } from "@/utils/cookie";
 import { debounce } from "lodash-es";
 import config, { updateConfig } from "@/config";
-import { ref } from "vue";
+import { ref, watch  } from "vue";
 import axios from "axios";
 
 const dataStore = useDataStore();
@@ -218,6 +232,13 @@ const activitiesApiBaseUrl = ref<string>(settingStore.activitiesApiBaseUrl);
 
 // 浏览器配置变量
 const autoLoginCookie = ref<string>(settingStore.autoLoginCookie || '');
+// QQ音乐Cookie配置变量
+const qqCookie = ref<string>(localStorage.getItem('qq-cookie') || '');
+
+// 监听qqCookie变化并同步到localStorage
+watch(qqCookie, (val) => {
+  localStorage.setItem('qq-cookie', val || '');
+});
 
 // 应用全局配置
 const applyGlobalConfig = () => {
@@ -406,63 +427,13 @@ const applyCookie = async () => {
     window.$message.warning('请先设置Cookie');
     return;
   }
-  let userInfoId = null;
-  let success = false; // 标记操作是否成功
 
-  try {
-    if (settingStore.autoLoginCookie) {
-      const headers = {
-        'Authorization': `Bearer ${settingStore.autoLoginCookie}`,
-        'Content-Type': 'application/json'
-      };
-      const apiUrl = `${settingStore.activitiesApiBaseUrl}/users?current_info=true`;
-
-      const response = await axios.get(apiUrl, { headers });
-      if (response.data.status === 200 && response.data.data.length > 0) {
-        userInfoId = response.data.data[0].id;
-      } else {
-        window.$message.error(response.data.message || "获取用户信息失败");
-      }
-    }
-  } catch (error) {
-    console.error("获取用户信息时发生错误:", error);
-    window.$message.error("获取用户信息时发生错误，请检查网络或API服务");
-  }
-
-  if (userInfoId) {
-    try {
-      const headers = {
-        'Authorization': `Bearer ${settingStore.autoLoginCookie}`,
-        'Content-Type': 'application/json'
-      };
-      const apiUrl = `${settingStore.activitiesApiBaseUrl}/user/${userInfoId}`;
-      const udresponse = await axios.put(apiUrl, {
-        cookie: autoLoginCookie.value,
-      }, { headers });
-      if (udresponse.data.status === 200) {
-        window.$message.success("Cookie已成功应用");
-        success = true; // 标记成功
-      } else {
-        window.$message.error(udresponse.data.data.message || "更新用户信息失败");
-      }
-    } catch (error) {
-      console.error("更新用户信息时发生错误:", error);
-      window.$message.error("更新用户信息时发生错误，请检查网络或API服务");
-    }
-  }
-
-  // 无论API请求是否成功，都尝试应用Cookie并更新设置
   try {
     setCookies(autoLoginCookie.value);
     settingStore.autoLoginCookie = autoLoginCookie.value;
     localStorage.setItem('cookie-update-time', Date.now().toString());
     if (isElectron) window.electron.ipcRenderer.send("reset-setting");
-    // 根据操作是否成功显示不同的消息
-    if (success) {
-      window.$message.loading("Cookie已成功应用，软件即将热重载", { duration: 3000 });
-    } else {
-      window.$message.loading("尝试应用Cookie，软件即将热重载", { duration: 3000 });
-    }
+    window.$message.loading("Cookie已成功应用，软件即将热重载", { duration: 3000 });
   } catch (error) {
     console.error('应用Cookie和更新设置时发生错误:', error);
     window.$message.error('应用Cookie和更新设置失败，请检查格式');
@@ -472,5 +443,63 @@ const applyCookie = async () => {
       window.location.reload();
     }, 3000); // 确保消息有足够时间显示
   }
+};
+
+/**
+ * 修改Cookie
+ */
+const modifyCookie = async () => {
+  if (!autoLoginCookie.value) {
+    window.$message.warning('请先设置Cookie');
+    return;
+  }
+  let userInfoId = null;
+  let success = false;
+  try {
+    if (settingStore.autoLoginCookie) {
+      const headers = {
+        'Authorization': `Bearer ${settingStore.autoLoginCookie}`,
+        'Content-Type': 'application/json'
+      };
+      const apiUrl = `${settingStore.activitiesApiBaseUrl}/users?current_info=true`;
+      const response = await axios.get(apiUrl, { headers });
+      if (response.data.status === 200 && response.data.data.length > 0) {
+        userInfoId = response.data.data[0].id;
+        const apiUpdateUrl = `${settingStore.activitiesApiBaseUrl}/user/${userInfoId}`;
+        const udresponse = await axios.put(apiUpdateUrl, {
+          cookie: autoLoginCookie.value,
+        }, { headers });
+        if (udresponse.data.status === 200) {
+          window.$message.success("Cookie已成功修改并应用");
+          success = true;
+          // 同步全局登录cookie
+          try {
+            setCookies(autoLoginCookie.value);
+            settingStore.autoLoginCookie = autoLoginCookie.value;
+            localStorage.setItem('cookie-update-time', Date.now().toString());
+            if (isElectron) window.electron.ipcRenderer.send("reset-setting");
+            if (success) {
+              window.$message.loading("Cookie已成功修改并应用，软件即将热重载", { duration: 3000 });
+            } else {
+              window.$message.loading("尝试修改并应用Cookie，软件即将热重载", { duration: 3000 });
+            }
+          } catch (error) {
+            window.$message.error('应用Cookie和更新设置失败，请检查格式');
+          } finally {
+            setTimeout(() => {
+              window.location.reload();
+            }, 3000);
+          }
+        } else {
+          window.$message.error(udresponse.data.data.message || "更新用户信息失败");
+        }
+      } else {
+        window.$message.error(response.data.message || "获取用户信息失败");
+      }
+    }
+  } catch (error) {
+    window.$message.error("获取用户信息时发生错误，请检查网络或API服务");
+  }
+
 };
 </script>

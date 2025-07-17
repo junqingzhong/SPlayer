@@ -29,83 +29,78 @@ const getNeteaseSongUrl = async (id: number | string): Promise<SongUrlResult> =>
  * 获取 QQ音乐 链接
  * 通过关键词搜索获取歌曲ID，然后获取播放链接
  */
-const getQQSongUrl = async (keyword: string): Promise<SongUrlResult> => {
+const getQQSongUrl = async (keyword: string, qqCookie?: string): Promise<{ code: number; url: string | null }> => {
+  log.info("🔍 Searching QQ song with keyword:", keyword);
   try {
-    if (!keyword) return { code: 404, url: null };
-
-    // 第一步：搜索歌曲获取ID
-    const searchUrl = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp";
-    const searchResult = await axios.get(searchUrl, {
-      params: {
-        w: keyword,
-        format: "json",
-        p: 1,
-        n: 5
-      },
-      headers: {
-        Referer: "https://y.qq.com/",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-      }
-    });
-
-    if (!searchResult.data.data || !searchResult.data.data.song || !searchResult.data.data.song.list || searchResult.data.data.song.list.length === 0) {
-      return { code: 404, url: null };
-    }
-
-    const songInfo = searchResult.data.data.song.list[0];
-    const songMid = songInfo.songmid;
-
-    // 第二步：获取播放链接
-    const getVkeyUrl = "https://u.y.qq.com/cgi-bin/musicu.fcg";
-    const pguid = (Math.random() * 10000000).toFixed(0);
-    const data = {
-      req: {
-        module: "CDN.SrfCdnDispatchServer",
-        method: "GetCdnDispatch",
-        param: { guid:pguid, calltype: 0, userip: "" }
-      },
-      req_0: {
-        module: "vkey.GetVkeyServer",
-        method: "CgiGetVkey",
+    const cookie = qqCookie || localStorage.getItem('qq-cookie') || '';
+    // 1. 搜索歌曲
+    const searchUrl = "https://u.y.qq.com/cgi-bin/musicu.fcg";
+    const searchData = {
+      search: {
+        method: "DoSearchForQQMusicDesktop",
+        module: "music.search.SearchCgiService",
         param: {
-          guid: pguid,
-          songmid: [songMid],
-          songtype: [0],
-          uin: "0",
-          loginflag: 1,
-          platform: "20"
-        }
+          num_per_page: 5,
+          page_num: 1,
+          query: keyword,
+          search_type: 0,
+        },
       },
-      comm: { uin: 0, format: "json", ct: 24, cv: 0 }
     };
-
-    const vkeyResult = await axios.get(getVkeyUrl, {
-      params: {
-        data: JSON.stringify(data)
-      },
+    const searchRes = await axios.get(searchUrl, {
+      params: { data: JSON.stringify(searchData) },
       headers: {
         Referer: "https://y.qq.com/",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-      }
+        Cookie: cookie,
+      },
     });
+    const list = searchRes.data?.search?.data?.body?.song?.list;
+    if (!list || list.length === 0) return { code: 404, url: null };
+    const songInfo = list[0];
+    const songmid = songInfo.mid;
 
-    if (!vkeyResult.data.req_0.data.midurlinfo || vkeyResult.data.req_0.data.midurlinfo.length === 0) {
-      return { code: 404, url: null };
+    // 2. 依次尝试不同格式
+    const formats = [
+      ["F000", ".flac"],
+      ["M800", ".mp3"],
+      ["M500", ".mp3"],
+      [null, null],
+    ];
+    for (const format of formats) {
+      const guid = (Math.random() * 10000000).toFixed(0);
+      const uin = ((cookie || '').match(/uin=(\\d+)/) || [])[1] || '0';
+      const filename = format[0] ? [format[0] + songmid + format[1]] : null;
+      const vkeyData = {
+        req_0: {
+          module: "vkey.GetVkeyServer",
+          method: "CgiGetVkey",
+          param: {
+            guid,
+            loginflag: 1,
+            filename,
+            songmid: [songmid],
+            songtype: [0],
+            uin,
+            platform: "20",
+          },
+        },
+      };
+      const vkeyRes = await axios.get(searchUrl, {
+        params: { data: JSON.stringify(vkeyData) },
+        headers: {
+          Referer: "https://y.qq.com/",
+          Cookie: cookie,
+        },
+      });
+      const { sip, midurlinfo } = vkeyRes.data?.req_0?.data || {};
+      if (midurlinfo && midurlinfo[0]?.purl) {
+        const playurl = sip[0] + midurlinfo[0].purl;
+        return { code: 200, url: playurl };
+      }
     }
-
-    const purl = vkeyResult.data.req_0.data.midurlinfo[0].purl;
-    if (!purl) {
-      return { code: 404, url: null };
-    }
-
-    const baseUrl = vkeyResult.data.req_0.data.sip[0];
-    const songUrl = baseUrl + purl;
-
-    log.info("🔗 QQSong URL:", songUrl);
-    return { code: 200, url: songUrl };
+    return { code: 4041, url: null };
   } catch (error) {
-    log.error("❌ Get QQSong URL Error:", error);
-    return { code: 404, url: null };
+    return { code: 4042, url: null };
   }
 };
 
@@ -158,27 +153,6 @@ const getKugouSongUrl = async (keyword: string): Promise<SongUrlResult> => {
     return { code: 200, url: playUrl };
   } catch (error) {
     log.error("❌ Get KugouSong URL Error:", error);
-    return { code: 404, url: null };
-  }
-};
-
-/**
- * 获取 pyncmd 音乐链接
- * 通过 pyncmd API 获取网易云音乐的替代链接
- * Power by GD音乐台(music.gdstudio.xyz)
- */
-const getPyncmdSongUrl = async (id: number | string): Promise<SongUrlResult> => {
-  try {
-    if (!id) return { code: 404, url: null };
-    const baseUrl = "https://music-api.gdstudio.xyz/api.php";
-    const result = await axios.get(baseUrl, {
-      params: { types: "pyncmd", id },
-    });
-    const songUrl = result.data.url;
-    log.info("🔗 PyncmdSong URL:", songUrl);
-    return { code: 200, url: songUrl };
-  } catch (error) {
-    log.error("❌ Get PyncmdSong URL Error:", error);
     return { code: 404, url: null };
   }
 };
@@ -293,19 +267,6 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
     ) => {
       const { keyword } = req.query;
       const result = await getKugouSongUrl(keyword);
-      return reply.send(result);
-    },
-  );
-
-  // pyncmd
-  fastify.get(
-    "/unblock/pyncmd",
-    async (
-      req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
-      reply: FastifyReply,
-    ) => {
-      const { id } = req.query;
-      const result = await getPyncmdSongUrl(id);
       return reply.send(result);
     },
   );

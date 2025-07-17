@@ -14,7 +14,7 @@ services:
       - ./api:/app
       - ./docker-entrypoint.sh:/docker-entrypoint.sh
     ports:
-      - "8080:80" # Map host port 8080 to Nginx container port 80
+      - "8000:8000" # Map host port 8080 to Nginx container port 80
     restart: always
     # command: sh -c "cd /app && uvicorn app:app --host 0.0.0.0 --port 8000 --reload"
     environment:

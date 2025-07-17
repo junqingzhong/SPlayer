@@ -597,7 +597,7 @@ class Player {
       // statusStore.playStatus = false;
       console.log("⏹️ song end:", playSongData);
       console.log(`歌曲播放结束，准备切换到下一首，当前playIndex=${statusStore.playIndex}`);
-      this.nextOrPrev("next");
+      this.nextOrPrev("auto");
     });
     // 错误
     this.player.on("loaderror", (sourceid, err: any) => {
@@ -996,7 +996,7 @@ class Player {
    * @param type 切换类别 next 下一首 prev 上一首
    * @param play 是否立即播放
    */
-  async nextOrPrev(type: "next" | "prev" = "next", play: boolean = true) {
+  async nextOrPrev(type: "next" | "prev" | "auto" = "next", play: boolean = true) {
     try {
       const statusStore = useStatusStore();
       const dataStore = useDataStore();
@@ -1020,6 +1020,14 @@ class Player {
         this.setSeek(0);
         await this.play();
         return; // 添加return，避免继续执行下面的代码
+      }
+
+      // 单曲循环模式处理
+      if (playSongMode === "repeat-once" && type === "auto") {
+        statusStore.lyricIndex = -1;
+        this.setSeek(0);
+        await this.play();
+        return;
       }
 
       // 记录当前索引，用于后续检查是否真的切换了歌曲
