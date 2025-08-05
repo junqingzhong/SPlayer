@@ -275,14 +275,10 @@ class Player {
       // 设置解锁尝试标记
       (songData as any).unlockAttempted = true;
 
-      // 优先尝试酷我解锁（根据服务端实现优化）
+      // 优先尝试酷我解锁
+      let kuwo: any = null;
       try {
-        const kuwo = await unlockSongUrl(songId, keyWord, "kuwo");
-        if (kuwo.code === 200 && kuwo.url !== "" ) {
-          (songData as any).cachedUnlockUrl = kuwo.url;
-          (songData as any).cachedUnlockTime = Date.now();
-          return kuwo.url;
-        }
+        kuwo = await unlockSongUrl(songId, keyWord, "kuwo");
       } catch (e) {
         console.error("酷我解锁失败", e);
       }
@@ -294,18 +290,23 @@ class Player {
         unlockSongUrl(songId, keyWord, "netease"),
       ]);
 
-      // 按照成功率排序检查结果
-      if (qq.code === 200 && qq.url !== ""  && (songData as any).cachedUnlockUrl == "") {
+      // 优先级：kuwo > qq > kugou > netease
+      if (kuwo && kuwo.code === 200 && kuwo.url) {
+        (songData as any).cachedUnlockUrl = kuwo.url;
+        (songData as any).cachedUnlockTime = Date.now();
+        return kuwo.url;
+      }
+      if (qq && qq.code === 200 && qq.url) {
         (songData as any).cachedUnlockUrl = qq.url;
         (songData as any).cachedUnlockTime = Date.now();
         return qq.url;
       }
-      if (kugou.code === 200 && kugou.url !== "" && (songData as any).cachedUnlockUrl == "") {
+      if (kugou && kugou.code === 200 && kugou.url) {
         (songData as any).cachedUnlockUrl = kugou.url;
         (songData as any).cachedUnlockTime = Date.now();
         return kugou.url;
       }
-      if (netease.code === 200 && netease.url !== "" && (songData as any).cachedUnlockUrl == "") {
+      if (netease && netease.code === 200 && netease.url) {
         (songData as any).cachedUnlockUrl = netease.url;
         (songData as any).cachedUnlockTime = Date.now();
         return netease.url;
@@ -1035,7 +1036,7 @@ class Player {
       console.log(`nextOrPrev: 开始切换歌曲，当前索引=${oldIndex}, 播放模式=${playSongMode}`);
 
       // 强制更新索引，确保切换歌曲
-      if (type === "next") {
+      if (type === "next" || type === "auto") {
         // 下一首
         statusStore.playIndex = (oldIndex + 1) % playListLength;
       } else {

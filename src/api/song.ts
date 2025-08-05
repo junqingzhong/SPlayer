@@ -48,6 +48,13 @@ export const songUrl = (
 // 获取解锁歌曲 URL
 export const unlockSongUrl = (id: number, keyword: string, server: "qq" | "kugou" | "kuwo" | "netease") => {
   const params = server === "netease" ? { id } : { keyword };
+  if (server === "qq") {
+    // 如果是 QQ 音乐，尝试从环境变量中获取 cookie
+    const qqCookie = localStorage.getItem('qq-cookie') || "";
+    if (qqCookie) {
+      Object.assign(params, { cookie: qqCookie });
+    }
+  }
   return request({
     baseURL: config.unblockApiUrl,
     url: `/${server}`,

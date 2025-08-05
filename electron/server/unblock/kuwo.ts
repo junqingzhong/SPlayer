@@ -1,3 +1,13 @@
+/*
+ * @Author: ZJQ
+ * @Date: 2025-05-23 10:50:52
+ * @LastEditors: zjq zjq@xkb.com.cn
+ * @LastEditTime: 2025-08-05 17:13:09
+ * @FilePath: \tea\electron\server\unblock\kuwo.ts
+ * @Description:
+ *
+ * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
+ */
 import { encryptQuery } from "./kwDES";
 import { SongUrlResult } from "./unblock";
 import log from "../../main/logger";

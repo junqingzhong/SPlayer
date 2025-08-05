@@ -1,6 +1,8 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { SongUrlResult } from "./unblock";
 import getKuwoSongUrl from "./kuwo";
+import getKugouSongUrl from "./kugou";
+import getQQSongUrl from "./qq";
 import log from "../../main/logger";
 import axios from "axios";
 
@@ -21,138 +23,6 @@ const getNeteaseSongUrl = async (id: number | string): Promise<SongUrlResult> =>
     return { code: 200, url: songUrl };
   } catch (error) {
     log.error("❌ Get NeteaseSongUrl Error:", error);
-    return { code: 404, url: null };
-  }
-};
-
-/**
- * 获取 QQ音乐 链接
- * 通过关键词搜索获取歌曲ID，然后获取播放链接
- */
-const getQQSongUrl = async (keyword: string, qqCookie?: string): Promise<{ code: number; url: string | null }> => {
-  log.info("🔍 Searching QQ song with keyword:", keyword);
-  try {
-    const cookie = qqCookie || localStorage.getItem('qq-cookie') || '';
-    // 1. 搜索歌曲
-    const searchUrl = "https://u.y.qq.com/cgi-bin/musicu.fcg";
-    const searchData = {
-      search: {
-        method: "DoSearchForQQMusicDesktop",
-        module: "music.search.SearchCgiService",
-        param: {
-          num_per_page: 5,
-          page_num: 1,
-          query: keyword,
-          search_type: 0,
-        },
-      },
-    };
-    const searchRes = await axios.get(searchUrl, {
-      params: { data: JSON.stringify(searchData) },
-      headers: {
-        Referer: "https://y.qq.com/",
-        Cookie: cookie,
-      },
-    });
-    const list = searchRes.data?.search?.data?.body?.song?.list;
-    if (!list || list.length === 0) return { code: 404, url: null };
-    const songInfo = list[0];
-    const songmid = songInfo.mid;
-
-    // 2. 依次尝试不同格式
-    const formats = [
-      ["F000", ".flac"],
-      ["M800", ".mp3"],
-      ["M500", ".mp3"],
-      [null, null],
-    ];
-    for (const format of formats) {
-      const guid = (Math.random() * 10000000).toFixed(0);
-      const uin = ((cookie || '').match(/uin=(\\d+)/) || [])[1] || '0';
-      const filename = format[0] ? [format[0] + songmid + format[1]] : null;
-      const vkeyData = {
-        req_0: {
-          module: "vkey.GetVkeyServer",
-          method: "CgiGetVkey",
-          param: {
-            guid,
-            loginflag: 1,
-            filename,
-            songmid: [songmid],
-            songtype: [0],
-            uin,
-            platform: "20",
-          },
-        },
-      };
-      const vkeyRes = await axios.get(searchUrl, {
-        params: { data: JSON.stringify(vkeyData) },
-        headers: {
-          Referer: "https://y.qq.com/",
-          Cookie: cookie,
-        },
-      });
-      const { sip, midurlinfo } = vkeyRes.data?.req_0?.data || {};
-      if (midurlinfo && midurlinfo[0]?.purl) {
-        const playurl = sip[0] + midurlinfo[0].purl;
-        return { code: 200, url: playurl };
-      }
-    }
-    return { code: 4041, url: null };
-  } catch (error) {
-    return { code: 4042, url: null };
-  }
-};
-
-/**
- * 获取 酷狗音乐 链接
- * 通过关键词搜索获取歌曲hash和album_id，然后获取播放链接
- */
-const getKugouSongUrl = async (keyword: string): Promise<SongUrlResult> => {
-  try {
-    if (!keyword) return { code: 404, url: null };
-
-    // 第一步：搜索歌曲获取hash和album_id
-    const searchUrl = "http://mobilecdn.kugou.com/api/v3/search/song";
-    const searchResult = await axios.get(searchUrl, {
-      params: {
-        format: "json",
-        keyword: keyword,
-        page: 1,
-        pagesize: 5,
-        showtype: 1
-      },
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-      }
-    });
-
-    if (!searchResult.data.data || !searchResult.data.data.info || searchResult.data.data.info.length === 0) {
-      return { code: 404, url: null };
-    }
-
-    const songInfo = searchResult.data.data.info[0];
-    const hash = songInfo.hash;
-    const albumId = songInfo.album_id;
-
-    // 第二步：获取播放链接
-    const songUrl = `https://wwwapi.kugou.com/yy/index.php?r=play/getdata&hash=${hash}&album_id=${albumId}&mid=1`;
-    const songResult = await axios.get(songUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Referer: "https://www.kugou.com/"
-      }
-    });
-
-    if (!songResult.data.data || !songResult.data.data.play_url) {
-      return { code: 404, url: null };
-    }
-
-    const playUrl = songResult.data.data.play_url;
-    log.info("🔗 KugouSong URL:", playUrl);
-    return { code: 200, url: playUrl };
-  } catch (error) {
-    log.error("❌ Get KugouSong URL Error:", error);
     return { code: 404, url: null };
   }
 };
@@ -252,8 +122,8 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const { keyword } = req.query;
-      const result = await getQQSongUrl(keyword);
+      const { keyword, cookie } = req.query;
+      const result = await getQQSongUrl(keyword, cookie);
       return reply.send(result);
     },
   );
