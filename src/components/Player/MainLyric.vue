@@ -324,6 +324,7 @@ onBeforeUnmount(() => {
     padding: 10px 16px;
     transform: scale(0.86);
     transform-origin: left center;
+    will-change: filter, opacity, transform;
     transition:
       filter 0.35s,
       opacity 0.35s,
