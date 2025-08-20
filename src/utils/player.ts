@@ -167,12 +167,22 @@ class Player {
       const keyWord = songData.name + "-" + artist;
       if (!songId || !keyWord) return null;
       // 尝试解锁
-      const [neteaseUrl, kuwoUrl] = await Promise.all([
+      const results = await Promise.allSettled([
         unlockSongUrl(songId, keyWord, "netease"),
         unlockSongUrl(songId, keyWord, "kuwo"),
       ]);
-      if (neteaseUrl.code === 200 && neteaseUrl.url !== "") return neteaseUrl.url;
-      if (kuwoUrl.code === 200 && kuwoUrl.url !== "") return kuwoUrl.url;
+      // 解析结果
+      const [neteaseRes, kuwoRes] = results;
+      if (
+        neteaseRes.status === "fulfilled" &&
+        neteaseRes.value.code === 200 &&
+        neteaseRes.value.url
+      ) {
+        return neteaseRes.value.url;
+      }
+      if (kuwoRes.status === "fulfilled" && kuwoRes.value.code === 200 && kuwoRes.value.url) {
+        return kuwoRes.value.url;
+      }
       return null;
     } catch (error) {
       console.error("Error in getUnlockSongUrl", error);
