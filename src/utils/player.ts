@@ -259,6 +259,8 @@ class Player {
    */
   private async getUnlockSongUrl(songData: SongType): Promise<string | null> {
     try {
+      const settingStore = useSettingStore();
+
       const songId = songData.id;
       const artist = Array.isArray(songData.artists) ? songData.artists[0].name : songData.artists;
       const keyWord = songData.name + "-" + artist;
@@ -275,43 +277,88 @@ class Player {
       // 设置解锁尝试标记
       (songData as any).unlockAttempted = true;
 
-      // 优先尝试酷我解锁
-      let kuwo: any = null;
-      try {
-        kuwo = await unlockSongUrl(songId, keyWord, "kuwo");
-      } catch (e) {
-        console.error("酷我解锁失败", e);
+      // 获取用户选择的解锁来源
+      const { unlockSources } = settingStore;
+      const enabledSources = [];
+
+      if (unlockSources.kuwo) enabledSources.push('kuwo');
+      if (unlockSources.netease) enabledSources.push('netease');
+      if (unlockSources.kugou) enabledSources.push('kugou');
+      if (unlockSources.qq) enabledSources.push('qq');
+
+      // 如果没有选择任何平台，直接返回null
+      if (enabledSources.length === 0) {
+        console.log("没有选择任何音频解锁来源");
+        return null;
       }
 
-      // 并行尝试其他平台解锁
-      const [qq, kugou, netease] = await Promise.all([
-        unlockSongUrl(songId, keyWord, "qq"),
-        unlockSongUrl(songId, keyWord, "kugou"),
-        unlockSongUrl(songId, keyWord, "netease"),
-      ]);
+      // 获取用户设置的音质等级
+      const { songLevel } = settingStore;
 
-      // 优先级：kuwo > qq > kugou > netease
-      if (kuwo && kuwo.code === 200 && kuwo.url) {
-        (songData as any).cachedUnlockUrl = kuwo.url;
-        (songData as any).cachedUnlockTime = Date.now();
-        return kuwo.url;
+      // 音质优先级映射（数值越大优先级越高）
+      const qualityPriority = {
+        'jm': 9, // 超清母带
+        'db': 8, // 杜比全景声
+        'hr': 7, // Hi-Res
+        'sq': 6, // 无损音质
+        'h': 5,  // 极高音质
+        'm': 4,  // 较高音质
+        'l': 3,  // 标准音质
+      };
+
+      // 收集所有平台的结果进行比较
+      const availableUrls = [];
+
+      // 遍历所有启用的平台，每个平台只使用用户设置的音质等级
+      for (const source of enabledSources) {
+        console.log(`🔍 正在 ${source} 平台搜索歌曲（${songLevel}音质）...`);
+        
+        try {
+          const result = await unlockSongUrl(songId, keyWord, source, songLevel);
+          if (result && result.code === 200 && result.url) {
+            // 检测是否为FLAC格式
+            const urlLower = result.url.toLowerCase();
+            const isFlac = urlLower.includes('.flac') || urlLower.includes('flac') ||
+                         urlLower.includes('lossless') || urlLower.includes('ape');
+            
+            // 计算优先级：音质等级 + FLAC奖励
+            const basePriority = qualityPriority[songLevel as keyof typeof qualityPriority] || 0;
+            const flacBonus = isFlac ? 10 : 0;
+            const finalPriority = basePriority + flacBonus;
+            
+            availableUrls.push({
+              url: result.url,
+              source,
+              quality: songLevel,
+              priority: finalPriority,
+              isFlac,
+              duration: result.duration
+            });
+            
+            console.log(`🔍 ${source} 平台发现可用链接: ${songLevel}音质 ${isFlac ? '(FLAC)' : ''} - 优先级: ${finalPriority}`);
+          } else {
+            console.log(`❌ ${source} 平台未找到${songLevel}音质的链接`);
+          }
+        } catch (error) {
+          console.error(`${source} 平台 ${songLevel}音质解锁失败:`, error);
+        }
       }
-      if (qq && qq.code === 200 && qq.url) {
-        (songData as any).cachedUnlockUrl = qq.url;
+
+      // 按优先级排序，选择最佳链接
+      if (availableUrls.length > 0) {
+        availableUrls.sort((a, b) => b.priority - a.priority);
+        const bestUrl = availableUrls[0];
+        
+        (songData as any).cachedUnlockUrl = bestUrl.url;
         (songData as any).cachedUnlockTime = Date.now();
-        return qq.url;
+        
+        console.log(`✅ 选择最佳链接: ${bestUrl.source} - ${bestUrl.quality}音质 ${bestUrl.isFlac ? '(FLAC)' : ''} - 优先级: ${bestUrl.priority}`);
+        
+        return bestUrl.url;
       }
-      if (kugou && kugou.code === 200 && kugou.url) {
-        (songData as any).cachedUnlockUrl = kugou.url;
-        (songData as any).cachedUnlockTime = Date.now();
-        return kugou.url;
-      }
-      if (netease && netease.code === 200 && netease.url) {
-        (songData as any).cachedUnlockUrl = netease.url;
-        (songData as any).cachedUnlockTime = Date.now();
-        return netease.url;
-      }
-      // 所有平台都解锁失败
+
+      // 所有选中的平台都解锁失败
+      console.log(`❌ 所有选中的平台都解锁失败: ${enabledSources.join(', ')}`);
       return null;
     } catch (error) {
       console.error("Error in getUnlockSongUrl", error);

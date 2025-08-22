@@ -45,6 +45,14 @@ interface SettingState {
   downloadCover: boolean;
   downloadLyric: boolean;
   saveMetaFile: boolean;
+  useSpecificSourceUnlock: boolean; // 是否启用特定来源解锁音频功能
+  unlockSources: {
+    netease: boolean;
+    bilibili: boolean;
+    kuwo: boolean;
+    kugou: boolean;
+    qq: boolean;
+  }; // 音频解锁来源平台配置
   // Proxy settings
   proxyType: "off" | "system" | "manual" | "pac";
   proxyProtocol: "http" | "https"; // Used when proxyType is 'manual'
@@ -134,6 +142,13 @@ export const useSettingStore = defineStore("setting", {
     songVolumeFade: true, // 渐入渐出
     songVolumeFadeTime: 300, // 渐入渐出时间
     useSongUnlock: true, // 是否使用解灰
+    useSpecificSourceUnlock: true, // 是否启用特定来源解锁音频功能
+    unlockSources: {
+      netease: true,
+      kuwo: true,
+      kugou: true,
+      qq: true,
+    }, // 音频解锁来源平台配置
     countDownShow: true, // 显示倒计时
     barLyricShow: true, // 显示歌词条
     playerType: "cover", // 播放器类型

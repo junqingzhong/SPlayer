@@ -1,5 +1,8 @@
 import axios from "axios";
 import crypto from "crypto";
+import { SongUrlResult } from "./unblock";
+import { filterByDuration } from "./index";
+import log from "../../main/logger";
 
 // 格式化搜索结果
 const format = (song: any) => ({
@@ -72,7 +75,7 @@ export const kugouTrack = async (song: any) => {
 };
 
 // 入口：通过关键词获取酷狗播放链接
-export const getKugouSongUrl = async (keyword: string): Promise<{ code: number; url: string | null }> => {
+export const getKugouSongUrl = async (keyword: string, quality?: string): Promise<SongUrlResult> => {
   try {
     const list = await kugouSearch(keyword);
     if (!list || list.length === 0) return { code: 404, url: null };
@@ -80,13 +83,20 @@ export const getKugouSongUrl = async (keyword: string): Promise<{ code: number; 
     for (const song of list) {
       const playUrl = await kugouTrack(song);
       if (playUrl) {
-        return { code: 200, url: playUrl };
+        log.info("🔗 KugouSong URL:", playUrl);
+        // 应用时长过滤，使用搜索结果中的时长信息
+        return filterByDuration({ 
+          code: 200, 
+          url: playUrl, 
+          duration: song.duration // 已经在 format 函数中转换为毫秒
+        });
       }
     }
     // 全部尝试后都没有可用直链
     return { code: 404, url: null };
   } catch (e) {
-    return { code: 500, url: (e instanceof Error ? e.message : "获取酷狗歌曲链接失败") };
+    log.error("❌ Get KugouSong URL Error:", e);
+    return { code: 404, url: null };
   }
 };
 

@@ -73,6 +73,31 @@
         </div>
         <n-switch v-model:value="settingStore.useSongUnlock" class="set" :round="false" />
       </n-card>
+      <n-collapse-transition :show="settingStore.useSongUnlock && isElectron">
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">启用特定来源解锁</n-text>
+            <n-text class="tip" :depth="3">控制是否启用特定来源解锁音频功能，不勾选时跳过解锁流程</n-text>
+          </div>
+          <n-switch v-model:value="settingStore.useSpecificSourceUnlock" class="set" :round="false" />
+        </n-card>
+        <n-collapse-transition :show="settingStore.useSpecificSourceUnlock && settingStore.useSongUnlock">
+          <n-card class="set-item">
+            <div class="label">
+              <n-text class="name">音频解锁来源</n-text>
+              <n-text class="tip" :depth="3">选择用于音频解锁的平台来源</n-text>
+            </div>
+            <n-checkbox-group v-model:value="unlockSources" class="unlock-sources">
+              <n-space vertical>
+                <n-checkbox value="netease">网易云音乐</n-checkbox>
+                <n-checkbox value="kuwo">酷我音乐</n-checkbox>
+                <n-checkbox value="kugou">酷狗音乐</n-checkbox>
+                <n-checkbox value="qq">QQ音乐</n-checkbox>
+              </n-space>
+            </n-checkbox-group>
+          </n-card>
+        </n-collapse-transition>
+      </n-collapse-transition>
       <n-card v-if="isElectron" class="set-item">
         <div class="label">
           <n-text class="name">音频输出设备</n-text>
@@ -273,6 +298,24 @@ import { uniqBy } from "lodash";
 import player from "@/utils/player";
 
 const settingStore = useSettingStore();
+
+// 音频解锁来源平台
+const unlockSources = computed({
+  get: () => {
+    const sources = [];
+    if (settingStore.unlockSources.netease) sources.push('netease');
+    if (settingStore.unlockSources.kuwo) sources.push('kuwo');
+    if (settingStore.unlockSources.kugou) sources.push('kugou');
+    if (settingStore.unlockSources.qq) sources.push('qq');
+    return sources;
+  },
+  set: (values: string[]) => {
+    settingStore.unlockSources.netease = values.includes('netease');
+    settingStore.unlockSources.kuwo = values.includes('kuwo');
+    settingStore.unlockSources.kugou = values.includes('kugou');
+    settingStore.unlockSources.qq = values.includes('qq');
+  }
+});
 
 // 输出设备数据
 const outputDevices = ref<SelectOption[]>([]);

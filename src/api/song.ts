@@ -46,7 +46,7 @@ export const songUrl = (
   });
 };
 // 获取解锁歌曲 URL
-export const unlockSongUrl = (id: number, keyword: string, server: "qq" | "kugou" | "kuwo" | "netease") => {
+export const unlockSongUrl = (id: number, keyword: string, server: "qq" | "kugou" | "kuwo" | "netease", level: keyof typeof songLevelData = "h") => {
   const params = server === "netease" ? { id } : { keyword };
   if (server === "qq") {
     // 如果是 QQ 音乐，尝试从环境变量中获取 cookie
@@ -55,6 +55,8 @@ export const unlockSongUrl = (id: number, keyword: string, server: "qq" | "kugou
       Object.assign(params, { cookie: qqCookie });
     }
   }
+  // 添加音质参数
+  Object.assign(params, { quality: level });
   return request({
     baseURL: config.unblockApiUrl,
     url: `/${server}`,
