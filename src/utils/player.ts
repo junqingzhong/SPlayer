@@ -290,12 +290,13 @@ class Player {
 
       // 获取用户选择的解锁来源
       const { unlockSources } = settingStore;
-      const enabledSources = [];
+      const enabledSources: string[] = [];
 
       if (unlockSources.kuwo) enabledSources.push('kuwo');
       if (unlockSources.netease) enabledSources.push('netease');
       if (unlockSources.kugou) enabledSources.push('kugou');
       if (unlockSources.qq) enabledSources.push('qq');
+      if (unlockSources.bilibili) enabledSources.push('bilibili');
 
       // 如果没有选择任何平台，直接返回null
       if (enabledSources.length === 0) {
@@ -316,16 +317,25 @@ class Player {
         'm': 4,  // 较高音质
         'l': 3,  // 标准音质
       };
+      
+
 
       // 收集所有平台的结果进行比较
-      const availableUrls = [];
+      const availableUrls: Array<{
+        url: string;
+        source: string;
+        quality: string;
+        priority: number;
+        isFlac: boolean;
+        duration?: number;
+      }> = [];
 
       // 遍历所有启用的平台，每个平台只使用用户设置的音质等级
       for (const source of enabledSources) {
         console.log(`🔍 正在 ${source} 平台搜索歌曲（${songLevel}音质）...`);
 
         try {
-          const result = await unlockSongUrl(songId, keyWord, source, songLevel);
+          const result = await unlockSongUrl(songId, keyWord, source as "qq" | "kugou" | "kuwo" | "netease" | "bilibili", songLevel);
           if (result && result.code === 200 && result.url) {
             // 检测是否为FLAC格式
             const urlLower = result.url.toLowerCase();

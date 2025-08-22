@@ -3,6 +3,7 @@ import { SongUrlResult } from "./unblock";
 import getKuwoSongUrl from "./kuwo";
 import getKugouSongUrl from "./kugou";
 import getQQSongUrl from "./qq";
+import { check as getBilibiliSongUrl } from "./bilibili";
 import log from "../../main/logger";
 import axios from "axios";
 
@@ -45,7 +46,7 @@ export const filterByDuration = (result: SongUrlResult): SongUrlResult => {
  * Thank @939163156
  * Power by GD音乐台(music.gdstudio.xyz)
  */
-const getNeteaseSongUrl = async (id: number | string, quality?: string): Promise<SongUrlResult> => {
+const getNeteaseSongUrl = async (id: number | string): Promise<SongUrlResult> => {
   try {
     if (!id) return { code: 404, url: null };
     const baseUrl = "https://music-api.gdstudio.xyz/api.php";
@@ -88,8 +89,8 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const { id, quality } = req.query;
-      const result = await getNeteaseSongUrl(id, quality);
+      const { id } = req.query;
+      const result = await getNeteaseSongUrl(id);
       return reply.send(result);
     },
   );
@@ -100,8 +101,8 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const { keyword, quality } = req.query;
-      const result = await getKuwoSongUrl(keyword, quality);
+      const { keyword } = req.query;
+      const result = await getKuwoSongUrl(keyword);
       return reply.send(result);
     },
   );
@@ -113,8 +114,8 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const { keyword, cookie, quality } = req.query;
-      const result = await getQQSongUrl(keyword, cookie, quality);
+      const { keyword, cookie } = req.query;
+      const result = await getQQSongUrl(keyword, cookie);
       return reply.send(result);
     },
   );
@@ -126,8 +127,21 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const { keyword, quality } = req.query;
-      const result = await getKugouSongUrl(keyword, quality);
+      const { keyword } = req.query;
+      const result = await getKugouSongUrl(keyword);
+      return reply.send(result);
+    },
+  );
+
+  // bilibili
+  fastify.get(
+    "/unblock/bilibili",
+    async (
+      req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const { keyword } = req.query;
+      const result = await getBilibiliSongUrl({ keyword });
       return reply.send(result);
     },
   );

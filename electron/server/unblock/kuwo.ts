@@ -1,9 +1,9 @@
 /*
  * @Author: ZJQ
  * @Date: 2025-05-23 10:50:52
- * @LastEditors: zjq zjq@xkb.com.cn
- * @LastEditTime: 2025-08-22 17:06:31
- * @FilePath: \tea\electron\server\unblock\kuwo.ts
+ * @LastEditors: zjq 631724110@qq.com
+ * @LastEditTime: 2025-08-23 01:10:55
+ * @FilePath: /llm/electron/server/unblock/kuwo.ts
  * @Description:
  *
  * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
@@ -22,7 +22,24 @@ const getKuwoSongId = async (keyword: string): Promise<string | null> => {
     const url =
       "http://search.kuwo.cn/r.s?&correct=1&stype=comprehensive&encoding=utf8&rformat=json&mobi=1&show_copyright_off=1&searchapi=6&all=" +
       keyword;
-    const result = await axios.get(url);
+    const result = await axios.get(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.kuwo.cn/',
+            'Accept': 'application/json, text/plain, */*',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache',
+            'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+            'Sec-Ch-Ua-Mobile': '?0',
+            'Sec-Ch-Ua-Platform': '"Windows"',
+            'Sec-Fetch-Dest': 'empty',
+            'Sec-Fetch-Mode': 'cors',
+            'Sec-Fetch-Site': 'same-site',
+            'Cookie': 'Hm_Iuvt_cdb524f42f23cer9b268564v7y735ewrq2324=mKTSStA6xdsEHSXjQrcBibiN5zPbp5nf; Hm_lpvt_cdb524f42f0ce19b169a8071123a4797=1755881315; Hm_lvt_cdb524f42f0ce19b169a8071123a4797=1755880985; _ga=GA1.2.809238187.1755880986; _ga_ETPBRPM9ML=GS2.2.s1755880987$o1$g1$t1755881314$j60$l0$h0; _gat=1; _gid=GA1.2.725880452.1755880986; kw_token=your_token_here; bid=1; crossid=1; Hm_Iuvt_cdb524f42f23cer9b268564v7y735ewrq2324=1'
+          }
+        });
     if (
       !result.data ||
       result.data.content.length < 2 ||
@@ -45,7 +62,7 @@ const getKuwoSongId = async (keyword: string): Promise<string | null> => {
 };
 
 // 获取酷我音乐歌曲 URL
-const getKuwoSongUrl = async (keyword: string, quality?: string): Promise<SongUrlResult> => {
+const getKuwoSongUrl = async (keyword: string): Promise<SongUrlResult> => {
   try {
     if (!keyword) return { code: 404, url: null };
     const songId = await getKuwoSongId(keyword);

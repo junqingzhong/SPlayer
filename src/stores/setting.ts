@@ -145,6 +145,7 @@ export const useSettingStore = defineStore("setting", {
     useSpecificSourceUnlock: true, // 是否启用特定来源解锁音频功能
     unlockSources: {
       netease: true,
+      bilibili: true,
       kuwo: true,
       kugou: true,
       qq: true,

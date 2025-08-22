@@ -1,3 +1,13 @@
+/*
+ * @Author: ZJQ
+ * @Date: 2025-07-12 01:33:40
+ * @LastEditors: zjq 631724110@qq.com
+ * @LastEditTime: 2025-08-23 00:24:32
+ * @FilePath: /llm/src/utils/cache.ts
+ * @Description:
+ *
+ * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
+ */
 type StorageType = "localStorage" | "sessionStorage";
 
 interface CacheOptions {
@@ -19,30 +29,49 @@ interface CacheOptions {
  * @returns {Promise<T>}
  * @returns
  */
+const memoryCache = new Map<string, { value: any; expiry: number }>();
+
 export const getCacheData = async <T>(
   promiseFunc: (...args: any[]) => Promise<T>,
   options: CacheOptions,
   ...args: any[]
 ): Promise<T> => {
   const { key, time, storage = "sessionStorage", useCache = true } = options;
-  // 储存方式
-  const storageObj = window[storage];
+
+  // 浏览器环境使用 localStorage/sessionStorage，Node 环境使用内存缓存
+  const isBrowser = typeof window !== "undefined";
+  const storageObj = isBrowser ? window[storage] : null;
+
   try {
-    // 获取缓存数据
-    const cachedData = storageObj.getItem(key);
+    // 读取缓存
+    let cachedData: string | null = null;
+    if (isBrowser && storageObj) {
+      cachedData = storageObj.getItem(key);
+    } else {
+      const item = memoryCache.get(key);
+      if (item && (item.expiry === -1 || Date.now() < item.expiry)) {
+        cachedData = JSON.stringify(item);
+      }
+    }
+
     if (cachedData && useCache) {
-      // 判断缓存是否过期
       const { value, expiry } = JSON.parse(cachedData);
-      if (expiry === 0 || new Date().getTime() < expiry) {
-        console.log(`✅ Cached data found for key: ${key}`, value);
+      if (expiry === -1 || Date.now() < expiry) {
         return value;
       }
     }
+
     // 请求数据
     const result = await promiseFunc(...args);
-    const expiry = time === -1 ? -1 : new Date().getTime() + time * 60 * 1000;
-    // 存储数据
-    storageObj.setItem(key, JSON.stringify({ value: result, expiry }));
+    const expiry = time === -1 ? -1 : Date.now() + time * 60 * 1000;
+
+    // 写入缓存
+    if (isBrowser && storageObj) {
+      storageObj.setItem(key, JSON.stringify({ value: result, expiry }));
+    } else {
+      memoryCache.set(key, { value: result, expiry });
+    }
+
     return result;
   } catch (error) {
     console.error(`❌ Error in getCacheData: ${error}`);

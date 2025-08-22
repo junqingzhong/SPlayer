@@ -75,7 +75,7 @@ export const kugouTrack = async (song: any) => {
 };
 
 // 入口：通过关键词获取酷狗播放链接
-export const getKugouSongUrl = async (keyword: string, quality?: string): Promise<SongUrlResult> => {
+export const getKugouSongUrl = async (keyword: string): Promise<SongUrlResult> => {
   try {
     const list = await kugouSearch(keyword);
     if (!list || list.length === 0) return { code: 404, url: null };
@@ -85,9 +85,9 @@ export const getKugouSongUrl = async (keyword: string, quality?: string): Promis
       if (playUrl) {
         log.info("🔗 KugouSong URL:", playUrl);
         // 应用时长过滤，使用搜索结果中的时长信息
-        return filterByDuration({ 
-          code: 200, 
-          url: playUrl, 
+        return filterByDuration({
+          code: 200,
+          url: playUrl,
           duration: song.duration // 已经在 format 函数中转换为毫秒
         });
       }

@@ -1,6 +1,7 @@
 
 import axios from "axios";
-import { SongUrlResult, filterByDuration } from "./index";
+import type { SongUrlResult } from "./unblock";
+import { filterByDuration } from "./index";
 import log from "../../main/logger";
 
 // 搜索 QQ 歌曲
@@ -87,7 +88,7 @@ const qqTrack = async (songmid: string, cookie: string = ""): Promise<string | n
 };
 
 // 入口：通过关键词和cookie获取 QQ 歌曲高音质直链
-export const getQQSongUrl = async (keyword: string, cookie: string = "", quality?: string): Promise<SongUrlResult> => {
+export const getQQSongUrl = async (keyword: string, cookie: string = ""): Promise<SongUrlResult> => {
   try {
     const list = await qqSearch(keyword, cookie);
     if (!list || list.length === 0) return { code: 404, url: null };
@@ -96,9 +97,9 @@ export const getQQSongUrl = async (keyword: string, cookie: string = "", quality
       if (playUrl) {
         log.info("🔗 QQSong URL:", playUrl);
         // 应用时长过滤，使用搜索结果中的时长信息
-        return filterByDuration({ 
-          code: 200, 
-          url: playUrl, 
+        return filterByDuration({
+          code: 200,
+          url: playUrl,
           duration: song.interval ? song.interval * 1000 : undefined // 转换为毫秒
         });
       }

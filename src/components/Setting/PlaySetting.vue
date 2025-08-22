@@ -90,6 +90,7 @@
             <n-checkbox-group v-model:value="unlockSources" class="unlock-sources">
               <n-space vertical>
                 <n-checkbox value="netease">网易云音乐</n-checkbox>
+                <n-checkbox value="bilibili">哔哩哔哩</n-checkbox>
                 <n-checkbox value="kuwo">酷我音乐</n-checkbox>
                 <n-checkbox value="kugou">酷狗音乐</n-checkbox>
                 <n-checkbox value="qq">QQ音乐</n-checkbox>
@@ -302,8 +303,9 @@ const settingStore = useSettingStore();
 // 音频解锁来源平台
 const unlockSources = computed({
   get: () => {
-    const sources = [];
+    const sources: string[] = [];
     if (settingStore.unlockSources.netease) sources.push('netease');
+    if (settingStore.unlockSources.bilibili) sources.push('bilibili');
     if (settingStore.unlockSources.kuwo) sources.push('kuwo');
     if (settingStore.unlockSources.kugou) sources.push('kugou');
     if (settingStore.unlockSources.qq) sources.push('qq');
@@ -311,6 +313,7 @@ const unlockSources = computed({
   },
   set: (values: string[]) => {
     settingStore.unlockSources.netease = values.includes('netease');
+    settingStore.unlockSources.bilibili = values.includes('bilibili');
     settingStore.unlockSources.kuwo = values.includes('kuwo');
     settingStore.unlockSources.kugou = values.includes('kugou');
     settingStore.unlockSources.qq = values.includes('qq');
