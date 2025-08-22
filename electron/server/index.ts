@@ -105,11 +105,9 @@ const initAppServer = async () => {
     // 注册接口
     server.register(initNcmAPI, { prefix: "/api" });
     server.register(initUnblockAPI, { prefix: "/api" });
-
-    // 获取可用端口
+    // 启动端口
     const port = await getServerPort();
-
-    await server.listen({ port, host: "0.0.0.0" }); // Listen on all interfaces for Docker
+    await server.listen({ port });
     log.info(`🌐 Starting AppServer on port ${port}`);
     return server;
   } catch (error) {

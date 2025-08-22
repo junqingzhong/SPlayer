@@ -41,6 +41,17 @@ class Player {
     this.initMediaSession();
   }
   /**
+   * 洗牌数组（Fisher-Yates）
+   */
+  private shuffleArray<T>(arr: T[]): T[] {
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+  /**
    * 重置状态
    */
   resetStatus() {
@@ -312,7 +323,7 @@ class Player {
       // 遍历所有启用的平台，每个平台只使用用户设置的音质等级
       for (const source of enabledSources) {
         console.log(`🔍 正在 ${source} 平台搜索歌曲（${songLevel}音质）...`);
-        
+
         try {
           const result = await unlockSongUrl(songId, keyWord, source, songLevel);
           if (result && result.code === 200 && result.url) {
@@ -320,12 +331,12 @@ class Player {
             const urlLower = result.url.toLowerCase();
             const isFlac = urlLower.includes('.flac') || urlLower.includes('flac') ||
                          urlLower.includes('lossless') || urlLower.includes('ape');
-            
+
             // 计算优先级：音质等级 + FLAC奖励
             const basePriority = qualityPriority[songLevel as keyof typeof qualityPriority] || 0;
             const flacBonus = isFlac ? 10 : 0;
             const finalPriority = basePriority + flacBonus;
-            
+
             availableUrls.push({
               url: result.url,
               source,
@@ -334,7 +345,7 @@ class Player {
               isFlac,
               duration: result.duration
             });
-            
+
             console.log(`🔍 ${source} 平台发现可用链接: ${songLevel}音质 ${isFlac ? '(FLAC)' : ''} - 优先级: ${finalPriority}`);
           } else {
             console.log(`❌ ${source} 平台未找到${songLevel}音质的链接`);
@@ -348,12 +359,12 @@ class Player {
       if (availableUrls.length > 0) {
         availableUrls.sort((a, b) => b.priority - a.priority);
         const bestUrl = availableUrls[0];
-        
+
         (songData as any).cachedUnlockUrl = bestUrl.url;
         (songData as any).cachedUnlockTime = Date.now();
-        
+
         console.log(`✅ 选择最佳链接: ${bestUrl.source} - ${bestUrl.quality}音质 ${bestUrl.isFlac ? '(FLAC)' : ''} - 优先级: ${bestUrl.priority}`);
-        
+
         return bestUrl.url;
       }
 
@@ -1131,28 +1142,65 @@ class Player {
    * 切换播放模式
    * @param mode 播放模式 repeat / repeat-once / shuffle
    */
-  togglePlayMode(mode: PlayModeType | false) {
+  async togglePlayMode(mode: PlayModeType | false) {
     const statusStore = useStatusStore();
+    const dataStore = useDataStore();
+    const musicStore = useMusicStore();
     // 退出心动模式
     if (statusStore.playHeartbeatMode) this.toggleHeartMode(false);
-    // 若传入了指定模式
+    // 计算目标模式
+    let targetMode: PlayModeType;
     if (mode) {
-      statusStore.playSongMode = mode;
+      targetMode = mode;
     } else {
       switch (statusStore.playSongMode) {
         case "repeat":
-          statusStore.playSongMode = "repeat-once";
+          targetMode = "repeat-once";
           break;
         case "shuffle":
-          statusStore.playSongMode = "repeat";
+          targetMode = "repeat";
           break;
         case "repeat-once":
-          statusStore.playSongMode = "shuffle";
+          targetMode = "shuffle";
           break;
         default:
-          statusStore.playSongMode = "repeat";
+          targetMode = "repeat";
       }
     }
+    // 进入随机模式：保存原顺序并打乱当前歌单
+    if (targetMode === "shuffle" && statusStore.playSongMode !== "shuffle") {
+      const currentList = dataStore.playList;
+      if (currentList && currentList.length > 1) {
+        const currentSongId = musicStore.playSong?.id;
+        await dataStore.setOriginalPlayList(currentList);
+        const shuffled = this.shuffleArray(currentList);
+        await dataStore.setPlayList(shuffled);
+        if (currentSongId) {
+          const newIndex = shuffled.findIndex((s: any) => s?.id === currentSongId);
+          if (newIndex !== -1) useStatusStore().playIndex = newIndex;
+        }
+      }
+    }
+    // 离开随机模式：恢复到原顺序
+    if (
+      statusStore.playSongMode === "shuffle" &&
+      (targetMode === "repeat" || targetMode === "repeat-once")
+    ) {
+      const original = await dataStore.getOriginalPlayList();
+      if (original && original.length) {
+        const currentSongId = musicStore.playSong?.id;
+        await dataStore.setPlayList(original);
+        if (currentSongId) {
+          const origIndex = original.findIndex((s: any) => s?.id === currentSongId);
+          useStatusStore().playIndex = origIndex !== -1 ? origIndex : 0;
+        } else {
+          useStatusStore().playIndex = 0;
+        }
+        await dataStore.clearOriginalPlayList();
+      }
+    }
+    // 应用模式
+    statusStore.playSongMode = targetMode;
     this.playModeSyncIpc();
   }
   /**
