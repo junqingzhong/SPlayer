@@ -29,7 +29,7 @@ class Player {
   // 频谱数据
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
-  private dataArray: Uint8Array | null = null;
+  private dataArray: Uint8Array<ArrayBuffer> | null = null;
   private source: MediaElementAudioSourceNode | null = null;
   // 其他数据
   private testNumber: number = 0;
