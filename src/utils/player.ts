@@ -610,10 +610,11 @@ class Player {
       return;
     }
     this.player.play();
-    statusStore.playStatus = true;
     // 淡入
     await new Promise<void>((resolve) => {
       this.player.once("play", () => {
+        // 在淡入开始时立即设置播放状态
+        statusStore.playStatus = true;
         this.player.fade(0, statusStore.playVolume, this.getFadeTime());
         resolve();
       });
@@ -631,12 +632,14 @@ class Player {
       return;
     }
 
+    // 立即设置播放状态
+    if (changeStatus) statusStore.playStatus = false;
+    
     // 淡出
     await new Promise<void>((resolve) => {
       this.player.fade(statusStore.playVolume, 0, this.getFadeTime());
       this.player.once("fade", () => {
         this.player.pause();
-        if (changeStatus) statusStore.playStatus = false;
         resolve();
       });
     });
@@ -905,8 +908,18 @@ class Player {
     const statusStore = useStatusStore();
     // 获取配置
     const { showTip, play } = options;
+    
+    // 处理随机播放模式
+    let processedData = cloneDeep(data);
+    if (statusStore.playSongMode === "shuffle") {
+      // 保存原始播放列表
+      await dataStore.setOriginalPlayList(cloneDeep(data));
+      // 随机排序
+      processedData = this.shuffleArray(processedData);
+    }
+    
     // 更新列表
-    await dataStore.setPlayList(cloneDeep(data));
+    await dataStore.setPlayList(processedData);
     // 关闭特殊模式
     if (statusStore.playHeartbeatMode) this.toggleHeartMode(false);
     if (statusStore.personalFmMode) statusStore.personalFmMode = false;
@@ -916,15 +929,15 @@ class Player {
       if (musicStore.playSong.id === song.id) {
         if (play) await this.play();
       } else {
-        // 查找索引
-        statusStore.playIndex = data.findIndex((item) => item.id === song.id);
+        // 查找索引（在处理后的列表中查找）
+        statusStore.playIndex = processedData.findIndex((item) => item.id === song.id);
         // 播放
         await this.pause(false);
         await this.initPlayer();
       }
     } else {
       statusStore.playIndex =
-        statusStore.playSongMode === "shuffle" ? Math.floor(Math.random() * data.length) : 0;
+        statusStore.playSongMode === "shuffle" ? Math.floor(Math.random() * processedData.length) : 0;
       // 播放
       await this.pause(false);
       await this.initPlayer();
