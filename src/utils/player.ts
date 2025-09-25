@@ -162,8 +162,9 @@ class Player {
       } else return null;
     }
     // 返回歌曲地址
-    // 客户端直接返回，网页端转 https
-    const url = isElectron ? songData.url : songData.url.replace(/^http:/, "https:");
+    // 客户端直接返回，网页端转 https, 并转换url以便解决音乐链接cors问题
+    const url = isElectron ? songData.url : songData.url.replace(/^http:/, "https:").replace(/m804\.music\.126\.net/g, 'm801.music.126.net').replace(/m704\.music\.126\.net/g, 'm701.music.126.net');
+    console.log(`🎧 ${id} music url:`, url);
     return url;
   }
   /**
