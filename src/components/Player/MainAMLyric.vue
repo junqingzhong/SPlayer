@@ -16,6 +16,7 @@
         :style="{
           '--amll-lyric-view-color': mainColor,
           '--amll-lyric-player-font-size': settingStore.lyricFontSize + 'px',
+          '--ja-font-family': settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
           'font-weight': settingStore.lyricFontBold ? 'bold' : 'normal',
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
         }"
@@ -31,7 +32,9 @@ import { LyricPlayer } from "@applemusic-like-lyrics/vue";
 import { LyricLine } from "@applemusic-like-lyrics/core";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { msToS } from "@/utils/time";
+import { getLyricLanguage } from "@/utils/lyric";
 import player from "@/utils/player";
+import { watch } from "vue";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
@@ -68,9 +71,25 @@ const jumpSeek = (line: any) => {
   player.play();
 };
 
+// 处理歌词语言
+const processLyricLanguage = () => {
+  const lyricLinesEl: Array<any> = lyricPlayerRef.value?.lyricPlayer.lyricLinesEl
+  for (let e of lyricLinesEl) {
+    const content = e.lyricLine.words.map((word: any) => word.word).join("");
+    const lang = getLyricLanguage(content);
+    e.element.firstChild.setAttribute("lang", lang);
+  }
+};
+
+watch(amLyricsData, () => {
+  nextTick(() => processLyricLanguage());
+});
+
 onMounted(() => {
   // 恢复进度
   resumeSeek();
+  // 处理歌词语言
+  nextTick(() => processLyricLanguage());
 });
 
 onBeforeUnmount(() => {
@@ -113,6 +132,9 @@ onBeforeUnmount(() => {
         transform-origin: center;
       }
     }
+  }
+  & :lang(ja) {
+    font-family: var(--ja-font-family);
   }
 }
 </style>
