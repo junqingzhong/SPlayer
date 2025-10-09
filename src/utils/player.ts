@@ -3,8 +3,8 @@ import type { MessageReactive } from "naive-ui";
 import { Howl, Howler } from "howler";
 import { cloneDeep } from "lodash-es";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { parsedLyricsData, resetSongLyric, parseLocalLyric } from "./lyric";
-import { songUrl, unlockSongUrl, songLyric, songChorus } from "@/api/song";
+import { parsedLyricsData, resetSongLyric, parseLocalLyric, parseTTMLToAMLL } from "./lyric";
+import { songUrl, unlockSongUrl, songLyric, songChorus, songLyricTTML } from "@/api/song";
 import { getCoverColorData } from "@/utils/color";
 import { calculateProgress } from "./time";
 import { isElectron, isDev } from "./helper";
@@ -421,8 +421,35 @@ class Player {
       resetSongLyric();
       return;
     }
-    const lyricRes = await songLyric(id);
-    parsedLyricsData(lyricRes);
+
+    try {
+      const musicStore = useMusicStore();
+      const settingStore = useSettingStore();
+      const [lyricRes, ttmlContent] = await Promise.all([
+        songLyric(id),
+        songLyricTTML(id)
+      ]);
+      parsedLyricsData(lyricRes);
+      if (ttmlContent && settingStore.enableTTMLLyric) {
+        const ttmlLyric = parseTTMLToAMLL(ttmlContent);
+        if (ttmlLyric?.length > 0) {
+          settingStore.showYrc = true;
+          musicStore.songLyric = {
+            ...musicStore.songLyric,
+            yrcAMData: ttmlLyric,
+            hasLrcTran: ttmlLyric.some(line => line.translatedLyric),
+            hasLrcRoma: ttmlLyric.some(line => line.romanLyric),
+            hasYrc: true
+          };
+          console.log("✅ TTML lyrics enabled");
+          return;
+        }
+      }
+
+    } catch (error) {
+      console.error("❌ Error loading lyrics:", error);
+      resetSongLyric();
+    }
   }
   /**
    * 获取副歌时间
