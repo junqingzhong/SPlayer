@@ -437,9 +437,6 @@ class Player {
           musicStore.songLyric = {
             ...musicStore.songLyric,
             yrcAMData: ttmlLyric,
-            hasLrcTran: ttmlLyric.some(line => line.translatedLyric),
-            hasLrcRoma: ttmlLyric.some(line => line.romanLyric),
-            hasYrc: true
           };
           console.log("✅ TTML lyrics enabled");
           return;

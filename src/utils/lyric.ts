@@ -1,6 +1,5 @@
 import { LyricLine, parseLrc, parseYrc, parseTTML } from "@applemusic-like-lyrics/lyric";
-import type { LyricType,  } from "@/types/main";
-import type { LyricLine as AMLLLyricLine } from "@/types/amll";
+import type { LyricType } from "@/types/main";
 import { useMusicStore, useSettingStore } from "@/stores";
 import { msToS } from "./time";
 
@@ -220,18 +219,16 @@ export function parseTTMLToAMLL(ttmlContent: string): LyricLine[] {
   try {
     const parsedResult = parseTTML(ttmlContent);
     if (!parsedResult?.lines?.length) return [];
-    
+
     const validLines = parsedResult.lines
-      .filter((line): line is any => 
-        line && typeof line === 'object' && Array.isArray(line.words)
-      )
-      .map(line => {
+      .filter((line): line is any => line && typeof line === "object" && Array.isArray(line.words))
+      .map((line) => {
         const words = line.words
-          .filter((word: any) => word && typeof word === 'object')
+          .filter((word: any) => word && typeof word === "object")
           .map((word: any) => ({
-            word: String(word.word || ' '),
+            word: String(word.word || " "),
             startTime: Number(word.startTime) || 0,
-            endTime: Number(word.endTime) || 0
+            endTime: Number(word.endTime) || 0,
           }));
 
         if (!words.length) return null;
@@ -243,17 +240,17 @@ export function parseTTMLToAMLL(ttmlContent: string): LyricLine[] {
           words,
           startTime,
           endTime,
-          translatedLyric: String(line.translatedLyric || ''),
-          romanLyric: String(line.romanLyric || ''),
+          translatedLyric: String(line.translatedLyric || ""),
+          romanLyric: String(line.romanLyric || ""),
           isBG: Boolean(line.isBG),
-          isDuet: Boolean(line.isDuet)
+          isDuet: Boolean(line.isDuet),
         };
       })
       .filter((line): line is LyricLine => line !== null);
 
     return validLines;
   } catch (error) {
-    console.error('TTML parsing error:', error);
+    console.error("TTML parsing error:", error);
     return [];
   }
 }
