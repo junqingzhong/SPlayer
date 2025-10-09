@@ -5,7 +5,7 @@
       '--lrc-tran-size': settingStore.lyricTranFontSize + 'px',
       '--lrc-roma-size': settingStore.lyricRomaFontSize + 'px',
       '--lrc-bold': settingStore.lyricFontBold ? 'bold' : 'normal',
-      '--ja-font-family': settingStore.LyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
+      '--ja-font-family': settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
       cursor: statusStore.playerMetaShow ? 'auto' : 'none',
     }"
