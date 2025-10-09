@@ -192,6 +192,13 @@ export const parseLocalLyric = (lyric: string) => {
   };
 };
 
+// 检测语言
+export const getLyricLanguage = (lyric: string): string => {
+  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(lyric)) return 'ja'
+  if (/[\u4e00-\u9fa5]/.test(lyric)) return 'zh-CN'
+  return 'en'
+}
+
 // 处理 AM 歌词
 const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: LyricLine[]) => {
   return lrcData.map((line, index, lines) => ({

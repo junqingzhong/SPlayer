@@ -5,6 +5,7 @@
       '--lrc-tran-size': settingStore.lyricTranFontSize + 'px',
       '--lrc-roma-size': settingStore.lyricRomaFontSize + 'px',
       '--lrc-bold': settingStore.lyricFontBold ? 'bold' : 'normal',
+      '--ja-font-family': settingStore.LyricFont === 'follow' ? settingStore.japaneseLyricFont : '',
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
       cursor: statusStore.playerMetaShow ? 'auto' : 'none',
     }"
@@ -60,8 +61,8 @@
                     'end-with-space': text.endsWithSpace,
                   }"
                 >
-                  <span class="word" :lang="/[\u4e00-\u9fa5]/.test(text.content) ? 'zh-CN' : 'en'">{{ text.content }}</span>
-                  <span class="filler" :style="getYrcStyle(text, index)" :lang="/[\u4e00-\u9fa5]/.test(text.content) ? 'zh-CN' : 'en'">
+                  <span class="word" :lang="getLyricLanguage(text.content)">{{ text.content }}</span>
+                  <span class="filler" :style="getYrcStyle(text, index)" :lang="getLyricLanguage(text.content)">
                     {{ text.content }}
                   </span>
                 </div>
@@ -113,7 +114,7 @@
               @click="jumpSeek(item.time)"
             >
               <!-- 歌词 -->
-              <span class="content" :lang="/[\u4e00-\u9fa5]/.test(item.content) ? 'zh-CN' : 'en'">{{ item.content }}</span>
+              <span class="content" :lang="getLyricLanguage(item.content)">{{ item.content }}</span>
               <!-- 翻译 -->
               <span v-if="item.tran && settingStore.showTran" class="tran" lang="en">{{ item.tran }}</span>
               <!-- 音译 -->
@@ -151,6 +152,7 @@ import { NScrollbar } from "naive-ui";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { openSetting } from "@/utils/modal";
 import player from "@/utils/player";
+import { getLyricLanguage } from "@/utils/lyric";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
@@ -388,6 +390,9 @@ onBeforeUnmount(() => {
             filter: drop-shadow(0px 0px 14px rgba(255, 255, 255, 0.6));
           }
         }
+      }
+      &:lang(ja) {
+        font-family: var(--ja-font-family);
       }
     }
     .tran {

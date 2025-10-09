@@ -193,6 +193,33 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">日语歌词字体</n-text>
+          <n-text class="tip" :depth="3"> 是否在歌词为日语时单独设置字体 </n-text>
+        </div>
+        <n-flex>
+          <Transition name="fade" mode="out-in">
+            <n-button
+              v-if="settingStore.japaneseLyricFont !== 'follow'"
+              type="primary"
+              strong
+              secondary
+              @click="settingStore.japaneseLyricFont = 'follow'"
+            >
+              恢复默认
+            </n-button>
+          </Transition>
+          <n-select
+            v-model:value="settingStore.japaneseLyricFont"
+            :options="[
+              { label: '跟随全局', value: 'follow' },
+              ...allFontsData.filter((v) => v.value !== 'default'),
+            ]"
+            class="set"
+          />
+        </n-flex>
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">关闭软件时</n-text>
           <n-text class="tip" :depth="3">选择关闭软件的方式</n-text>
         </div>
