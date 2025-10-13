@@ -20,6 +20,7 @@ interface SettingState {
   themeFollowCover: boolean;
   globalFont: "default" | string;
   LyricFont: "follow" | string;
+  japaneseLyricFont: "follow" | string;
   showCloseAppTip: boolean;
   closeAppMethod: "exit" | "hide";
   showTaskbarProgress: boolean;
@@ -100,6 +101,7 @@ export const useSettingStore = defineStore("setting", {
     themeGlobalColor: false, // 全局着色
     globalFont: "default", // 全局字体
     LyricFont: "follow", // 歌词区域字体
+    japaneseLyricFont: "follow", // 日语歌词字体
     hideVipTag: false, // 隐藏 VIP 标签
     showSearchHistory: true, // 显示搜索历史
     menuShowCover: true, // 菜单显示封面

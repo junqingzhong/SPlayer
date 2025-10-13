@@ -254,3 +254,13 @@ export function parseTTMLToAMLL(ttmlContent: string): LyricLine[] {
     return [];
   }
 }
+
+// 检测语言
+export const getLyricLanguage = (lyric: string): string => {
+  // 判断日语 根据平假名和片假名
+  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(lyric)) return 'ja';
+  // 判断简体中文 根据中日韩统一表意文字基本区
+  if (/[\u4e00-\u9fa5]/.test(lyric)) return 'zh-CN';
+  // 默认英语
+  return 'en';
+};
