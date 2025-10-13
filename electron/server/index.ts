@@ -11,8 +11,10 @@ import log from "../main/logger";
 const initAppServer = async () => {
   try {
     const server = fastify({
-      // 忽略尾随斜杠
-      ignoreTrailingSlash: true,
+      routerOptions: {
+        // 忽略尾随斜杠
+        ignoreTrailingSlash: true,
+      },
     });
     // 注册插件
     server.register(fastifyCookie);
