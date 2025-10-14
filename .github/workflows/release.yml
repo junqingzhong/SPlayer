@@ -1,5 +1,5 @@
 # Release 发行版本部署
-## 多端部署
+## 多端部署，支持 x64 和 ARM64 架构
 name: Build Release
 
 on:
@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  # Windows
-  build-windows:
-    name: Build for Windows
+  # Windows x64 架构
+  build-windows-x64:
+    name: Build for Windows (x64)
     runs-on: windows-latest
     steps:
       # 检出 Git 仓库
@@ -36,29 +36,97 @@ jobs:
       # 安装项目依赖
       - name: Install Dependencies
         run: pnpm install
-      # 构建 Electron App
-      - name: Build Electron App for Windows
-        run: pnpm run build:win || true
+      # 清理旧的构建产物
+      - name: Clean dist folder
+        run: |
+          if (Test-Path dist) {
+            Remove-Item -Recurse -Force dist
+          }
+      # 构建 Electron App (x64)
+      - name: Build Electron App for Windows x64
+        run: pnpm run build:win -- --x64 || true
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       # 上传构建产物
-      - name: Upload Windows artifact
+      - name: Upload Windows x64 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SPlarer-Win
+          name: SPlayer-Win-x64
           if-no-files-found: ignore
-          path: dist/*.*
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
       # 创建 GitHub Release
       - name: Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
         with:
-          files: dist/*.*
+          files: |
+            dist/*.exe
+            dist/*.exe.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-  # Mac
+
+  # Windows ARM64 架构
+  build-windows-arm64:
+    name: Build for Windows (ARM64)
+    runs-on: windows-latest
+    steps:
+      # 检出 Git 仓库
+      - name: Check out git repository
+        uses: actions/checkout@v4
+      # 安装 Node.js
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+      # 安装 pnpm
+      - name: Install pnpm
+        run: npm install -g pnpm
+      # 复制环境变量文件
+      - name: Copy .env.example
+        run: |
+          if (-not (Test-Path .env)) {
+            Copy-Item .env.example .env
+          } else {
+            Write-Host ".env file already exists. Skipping the copy step."
+          }
+      # 安装项目依赖
+      - name: Install Dependencies
+        run: pnpm install
+      # 清理旧的构建产物
+      - name: Clean dist folder
+        run: |
+          if (Test-Path dist) {
+            Remove-Item -Recurse -Force dist
+          }
+      # 构建 Electron App (ARM64)
+      - name: Build Electron App for Windows ARM64
+        run: pnpm run build:win -- --arm64 || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      # 上传构建产物
+      - name: Upload Windows ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPlayer-Win-ARM64
+          if-no-files-found: ignore
+          path: |
+            dist/*.exe
+            dist/*.exe.blockmap
+      # 创建 GitHub Release
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: |
+            dist/*.exe
+            dist/*.exe.blockmap
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+  # macOS - 支持 Intel (x64) 和 Apple Silicon (ARM64)
   build-macos:
-    name: Build for macOS
+    name: Build for macOS (Universal)
     runs-on: macos-latest
     steps:
       # 检出 Git 仓库
@@ -68,7 +136,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "22.x"
       # 安装 pnpm
       - name: Install pnpm
         run: npm install -g pnpm
@@ -83,8 +151,11 @@ jobs:
       # 安装项目依赖
       - name: Install Dependencies
         run: pnpm install
-      # 构建 Electron App
-      - name: Build Electron App for macOS
+      # 清理旧的构建产物
+      - name: Clean dist folder
+        run: rm -rf dist
+      # 构建 Electron App（同时构建 x64 和 arm64）
+      - name: Build Electron App for macOS (x64 + ARM64)
         run: pnpm run build:mac || true
         shell: bash
         env:
@@ -93,7 +164,7 @@ jobs:
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SPlarer-Macos
+          name: SPlayer-macOS
           if-no-files-found: ignore
           path: dist/*.*
       # 创建 GitHub Release
@@ -104,9 +175,9 @@ jobs:
           files: dist/*.*
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-  # Linux
-  build-linux:
-    name: Build for Linux
+  # Linux x64 架构
+  build-linux-x64:
+    name: Build for Linux (x64)
     runs-on: ubuntu-22.04
     steps:
       # 检出 Git 仓库
@@ -116,7 +187,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "22.x"
       # 安装 pnpm
       - name: Install pnpm
         run: npm install -g pnpm
@@ -132,8 +203,6 @@ jobs:
       # 安装 Snapcraft
       - name: Install Snapcraft
         uses: samuelmeuli/action-snapcraft@v2
-        with:
-          snapcraft_token: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 复制环境变量文件
       - name: Copy .env.example
         run: |
@@ -145,24 +214,95 @@ jobs:
       # 安装项目依赖
       - name: Install Dependencies
         run: pnpm install
-      # 构建 Electron App
-      - name: Build Electron App for Linux
-        run: pnpm run build:linux || true
+      # 清理旧的构建产物
+      - name: Clean dist folder
+        run: rm -rf dist
+      # 构建 Electron App (x64)
+      - name: Build Electron App for Linux x64
+        run: pnpm run build:linux -- --x64 || true
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 上传 Snap 包到 Snapcraft 商店
       - name: Publish Snap to Snap Store
-        run: snapcraft upload dist/*.snap --release stable
+        run: |
+          if [ -f dist/*.snap ]; then
+            snapcraft upload dist/*.snap --release stable || echo "Snap upload failed or not configured"
+          fi
         continue-on-error: true
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 上传构建产物
-      - name: Upload Linux artifact
+      - name: Upload Linux x64 artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SPlarer-Linux
+          name: SPlayer-Linux-x64
+          if-no-files-found: ignore
+          path: dist/*.*
+      # 创建 GitHub Release
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v')
+        with:
+          files: dist/*.*
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+
+  # Linux ARM64 架构
+  build-linux-arm64:
+    name: Build for Linux (ARM64)
+    runs-on: ubuntu-22.04
+    steps:
+      # 检出 Git 仓库
+      - name: Check out git repository
+        uses: actions/checkout@v4
+      # 配置 QEMU 以支持 ARM64 交叉编译
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+      # 安装 Node.js
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+      # 安装 pnpm
+      - name: Install pnpm
+        run: npm install -g pnpm
+      # 更新 Ubuntu 软件源
+      - name: Ubuntu Update with sudo
+        run: sudo apt-get update
+      # 安装依赖
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get install --no-install-recommends -y rpm &&
+          sudo apt-get install --no-install-recommends -y libarchive-tools &&
+          sudo apt-get install --no-install-recommends -y libopenjp2-tools &&
+          sudo apt-get install --no-install-recommends -y gcc-aarch64-linux-gnu &&
+          sudo apt-get install --no-install-recommends -y g++-aarch64-linux-gnu
+      # 复制环境变量文件
+      - name: Copy .env.example
+        run: |
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          else
+            echo ".env file already exists. Skipping the copy step."
+          fi
+      # 安装项目依赖
+      - name: Install Dependencies
+        run: pnpm install
+      # 清理旧的构建产物
+      - name: Clean dist folder
+        run: rm -rf dist
+      # 构建 Electron App (ARM64)
+      - name: Build Electron App for Linux ARM64
+        run: pnpm run build:linux -- --arm64 || true
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      # 上传构建产物
+      - name: Upload Linux ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SPlayer-Linux-ARM64
           if-no-files-found: ignore
           path: dist/*.*
       # 创建 GitHub Release

@@ -116,8 +116,8 @@
   },
   "pnpm": {
     "overrides": {
-      "dmg-builder": "25.1.8",
-      "electron-builder-squirrel-windows": "25.1.8"
+      "dmg-builder": "26.0.12",
+      "electron-builder-squirrel-windows": "26.0.12"
     },
     "onlyBuiltDependencies": [
       "@applemusic-like-lyrics/lyric",

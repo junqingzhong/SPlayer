@@ -24,7 +24,9 @@ win:
   executableName: SPlayer
   # 应用程序的图标文件路径
   icon: public/icons/favicon-512x512.png
-  # 构建类型
+  # Windows 平台全局文件名模板
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  # 构建类型（架构由命令行参数 --x64 或 --arm64 指定）
   target:
     # 安装版
     - nsis
@@ -35,7 +37,7 @@ nsis:
   # 是否一键式安装
   oneClick: false
   # 安装程序的生成名称
-  artifactName: ${productName}-${version}-setup.${ext}
+  artifactName: ${productName}-${version}-${arch}-setup.${ext}
   # 创建的桌面快捷方式名称
   shortcutName: ${productName}
   # 卸载时显示的名称
@@ -50,6 +52,10 @@ nsis:
   installerIcon: public/icons/favicon.ico
   # 卸载命令图标
   uninstallerIcon: public/icons/favicon.ico
+# Portable 便携版配置
+portable:
+  # 便携版文件名
+  artifactName: ${productName}-${version}-${arch}-portable.${ext}
 # macOS 平台配置
 mac:
   # 可执行文件名
@@ -58,12 +64,14 @@ mac:
   icon: public/icons/favicon-512x512.png
   # 权限继承的文件路径
   entitlementsInherit: build/entitlements.mac.plist
+  # macOS 平台全局文件名模板
+  artifactName: ${name}-${version}-${arch}.${ext}
   # 扩展信息，如权限描述
   extendInfo:
-    - NSCameraUsageDescription: Application requests access to the device's camera.
-    - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
-    - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
-    - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
+    NSCameraUsageDescription: Application requests access to the device's camera.
+    NSMicrophoneUsageDescription: Application requests access to the device's microphone.
+    NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
+    NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   # 是否启用应用程序的 Notarization（苹果的安全审核）
   notarize: false
   darkModeSupport: true
@@ -80,29 +88,49 @@ mac:
 # macOS 平台的 DMG 配置
 dmg:
   # DMG 文件的生成名称
-  artifactName: ${name}-${version}.${ext}
+  artifactName: ${name}-${version}-${arch}.${ext}
 # Linux 平台配置
 linux:
   # 可执行文件名
   executableName: splayer
   # 应用程序的图标文件路径
   icon: public/icons/favicon-512x512.png
-  # 构建类型
+  # Linux 所有格式的统一文件名模板
+  artifactName: ${name}-${version}-${arch}.${ext}
+  # 构建类型 - 支持 x64 和 ARM64 架构
   target:
-    - pacman
-    - AppImage
-    - deb
-    - rpm
-    - snap
-    - tar.gz
+    - target: pacman
+      arch:
+        - x64
+        - arm64
+    - target: AppImage
+      arch:
+        - x64
+        - arm64
+    - target: deb
+      arch:
+        - x64
+        - arm64
+    - target: rpm
+      arch:
+        - x64
+        - arm64
+    # Snap 仅支持 x64 架构（无法在 x64 主机上交叉编译 ARM64）
+    - target: snap
+      arch:
+        - x64
+    - target: tar.gz
+      arch:
+        - x64
+        - arm64
   # 维护者信息
   maintainer: imsyy.top
   # 应用程序类别
   category: Audio;Music
-# AppImage 配置
+# AppImage 特定配置
 appImage:
-  #  AppImage 文件的生成名称
-  artifactName: ${name}-${version}.${ext}
+  # AppImage 文件的生成名称
+  artifactName: ${name}-${version}-${arch}.${ext}
 # 是否在构建之前重新编译原生模块
 npmRebuild: false
 # 自动更新的配置
