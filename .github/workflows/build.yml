@@ -62,7 +62,7 @@ jobs:
   # Windows ARM64 架构
   release-arm64:
     name: Build Electron App for Windows (ARM64)
-    runs-on: windows-latest
+    runs-on: windows-11-arm
 
     steps:
       # 检出 Git 仓库
