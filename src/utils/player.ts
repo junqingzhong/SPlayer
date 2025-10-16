@@ -42,6 +42,8 @@ class Player {
   // 其他数据
   private testNumber: number = 0;
   private message: MessageReactive | null = null;
+  // 预载下一首歌曲播放地址缓存（仅存 URL，不创建 Howl）
+  private nextPrefetch: { id: number; url: string | null; ublock: boolean } | null = null;
   constructor() {
     // 创建播放器实例
     this.player = new Howl({ src: [""], format: allowPlayFormat, autoplay: false });
@@ -265,6 +267,65 @@ class Player {
     }
   }
   /**
+   * 预载下一首歌曲的播放地址（优先官方，失败则并发尝试解灰）
+   * 仅缓存 URL，不实例化播放器
+   */
+  private async prefetchNextSongUrl() {
+    try {
+      const dataStore = useDataStore();
+      const statusStore = useStatusStore();
+      // const musicStore = useMusicStore();
+      const settingStore = useSettingStore();
+
+      // 无列表或私人FM模式直接跳过
+      const playList = dataStore.playList;
+      if (!playList?.length || statusStore.personalFmMode) {
+        this.nextPrefetch = null;
+        return;
+      }
+
+      // 计算下一首（循环到首）
+      let nextIndex = statusStore.playIndex + 1;
+      if (nextIndex >= playList.length) nextIndex = 0;
+      const nextSong = playList[nextIndex];
+      if (!nextSong) {
+        this.nextPrefetch = null;
+        return;
+      }
+
+      // 本地歌曲：直接缓存 file URL
+      if (nextSong.path) {
+        const songId = nextSong.type === "radio" ? nextSong.dj?.id : nextSong.id;
+        this.nextPrefetch = {
+          id: Number(songId || nextSong.id),
+          url: `file://${nextSong.path}`,
+          ublock: false,
+        };
+        return;
+      }
+
+      // 在线歌曲：优先官方，其次解灰
+      const songId = nextSong.type === "radio" ? nextSong.dj?.id : nextSong.id;
+      if (!songId) {
+        this.nextPrefetch = null;
+        return;
+      }
+      const canUnlock = isElectron && nextSong.type !== "radio" && settingStore.useSongUnlock;
+      const unlockUrlPromise = canUnlock ? this.getUnlockSongUrl(nextSong) : null;
+      const url = await this.getOnlineUrl(songId);
+      if (url) {
+        this.nextPrefetch = { id: songId, url, ublock: false };
+      } else if (unlockUrlPromise) {
+        const unlockUrl = await unlockUrlPromise;
+        this.nextPrefetch = { id: songId, url: unlockUrl || null, ublock: !!unlockUrl };
+      } else {
+        this.nextPrefetch = { id: songId, url: null, ublock: false };
+      }
+    } catch (error) {
+      console.error("Error prefetching next song url:", error);
+    }
+  }
+  /**
    * 创建播放器
    * @param src 播放地址
    * @param autoPlay 是否自动播放
@@ -312,6 +373,8 @@ class Player {
     if (!path) this.updateMediaSession();
     // 开发模式
     if (isDev) window.player = this.player;
+    // 异步预载下一首播放地址（不阻塞当前播放）
+    void this.prefetchNextSongUrl();
   }
   /**
    * 播放器事件
@@ -655,44 +718,51 @@ class Player {
       else if (id && dataStore.playList.length) {
         const songId = type === "radio" ? dj?.id : id;
         if (!songId) throw new Error("Get song id error");
-        // 并发启动解灰请求（仅在 Electron 且非电台且开启解灰时）
-        const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
-        const unlockUrlPromise = canUnlock ? this.getUnlockSongUrl(playSongData) : null;
-        // 先请求正常播放地址
-        const url = await this.getOnlineUrl(songId);
-        // 正常播放地址
-        if (url) {
-          statusStore.playUblock = false;
-          await this.createPlayer(url, autoPlay, seek);
-        }
-        // 尝试解灰
-        else if (unlockUrlPromise) {
-          // 若正常地址不可用，则等待并使用并发中的解灰结果
-          const unlockUrl = await unlockUrlPromise;
-          if (unlockUrl) {
-            statusStore.playUblock = true;
-            console.log("🎼 Song unlock successfully:", unlockUrl);
-            await this.createPlayer(unlockUrl, autoPlay, seek);
-          } else {
-            statusStore.playUblock = false;
-            // 是否为最后一首
-            if (statusStore.playIndex === dataStore.playList.length - 1) {
-              statusStore.$patch({ playStatus: false, playLoading: false });
-              window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
-            } else {
-              window.$message.error("该歌曲暂无音源，跳至下一首");
-              this.nextOrPrev("next");
-            }
-          }
+        // 优先使用预载的下一首 URL（若命中缓存）
+        const cached = this.nextPrefetch;
+        if (cached && cached.id === songId && cached.url) {
+          statusStore.playUblock = cached.ublock;
+          await this.createPlayer(cached.url, autoPlay, seek);
         } else {
-          if (dataStore.playList.length === 1) {
-            this.resetStatus();
-            window.$message.warning("当前播放列表已无可播放歌曲，请更换");
-            return;
+          // 并发启动解灰请求（仅在 Electron 且非电台且开启解灰时）
+          const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
+          const unlockUrlPromise = canUnlock ? this.getUnlockSongUrl(playSongData) : null;
+          // 先请求正常播放地址
+          const url = await this.getOnlineUrl(songId);
+          // 正常播放地址
+          if (url) {
+            statusStore.playUblock = false;
+            await this.createPlayer(url, autoPlay, seek);
+          }
+          // 尝试解灰
+          else if (unlockUrlPromise) {
+            // 若正常地址不可用，则等待并使用并发中的解灰结果
+            const unlockUrl = await unlockUrlPromise;
+            if (unlockUrl) {
+              statusStore.playUblock = true;
+              console.log("🎼 Song unlock successfully:", unlockUrl);
+              await this.createPlayer(unlockUrl, autoPlay, seek);
+            } else {
+              statusStore.playUblock = false;
+              // 是否为最后一首
+              if (statusStore.playIndex === dataStore.playList.length - 1) {
+                statusStore.$patch({ playStatus: false, playLoading: false });
+                window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
+              } else {
+                window.$message.error("该歌曲暂无音源，跳至下一首");
+                this.nextOrPrev("next");
+              }
+            }
           } else {
-            window.$message.error("该歌曲无法播放，跳至下一首");
-            this.nextOrPrev();
-            return;
+            if (dataStore.playList.length === 1) {
+              this.resetStatus();
+              window.$message.warning("当前播放列表已无可播放歌曲，请更换");
+              return;
+            } else {
+              window.$message.error("该歌曲无法播放，跳至下一首");
+              this.nextOrPrev();
+              return;
+            }
           }
         }
       }

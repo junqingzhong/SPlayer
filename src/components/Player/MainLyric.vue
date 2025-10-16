@@ -475,7 +475,9 @@ onBeforeUnmount(() => {
       }
       &.is-duet {
         transform-origin: right;
-        .content {
+        .content,
+        .tran,
+        .roma {
           text-align: right;
           justify-content: flex-end;
         }

@@ -289,6 +289,8 @@ export const parseTTMLToYrc = (ttmlContent: TTMLLyric): LyricType[] => {
           endTime,
           content: contentStr,
           contents,
+          tran: line.translatedLyric || "",
+          roma: line.romanLyric || "",
           isBG: line.isBG,
           isDuet: line.isDuet,
         };
