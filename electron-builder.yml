@@ -141,4 +141,3 @@ publish:
   # url: https://example.com/auto-updates
   owner: "imsyy"
   repo: "SPlayer"
-  publishAutoUpdate: false
