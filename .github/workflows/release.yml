@@ -56,6 +56,7 @@ jobs:
           path: |
             dist/*.exe
             dist/*.exe.blockmap
+            dist/*.yml
       # 创建 GitHub Release
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -114,6 +115,7 @@ jobs:
           path: |
             dist/*.exe
             dist/*.exe.blockmap
+            dist/*.yml
       # 创建 GitHub Release
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -166,7 +168,9 @@ jobs:
         with:
           name: SPlayer-macOS-x64
           if-no-files-found: ignore
-          path: dist/*.*
+          path: |
+            dist/*.*
+            dist/*.yml
       # 创建 GitHub Release
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -217,7 +221,9 @@ jobs:
         with:
           name: SPlayer-macOS-ARM64
           if-no-files-found: ignore
-          path: dist/*.*
+          path: |
+            dist/*.*
+            dist/*.yml
       # 创建 GitHub Release
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -254,6 +260,8 @@ jobs:
       # 安装 Snapcraft
       - name: Install Snapcraft
         uses: samuelmeuli/action-snapcraft@v2
+        with:
+          snapcraft_token: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 复制环境变量文件
       - name: Copy .env.example
         run: |
@@ -274,6 +282,7 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 上传 Snap 包到 Snapcraft 商店
       - name: Publish Snap to Snap Store
         run: |
@@ -281,13 +290,17 @@ jobs:
             snapcraft upload dist/*.snap --release stable || echo "Snap upload failed or not configured"
           fi
         continue-on-error: true
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 上传构建产物
       - name: Upload Linux x64 artifact
         uses: actions/upload-artifact@v4
         with:
           name: SPlayer-Linux-x64
           if-no-files-found: ignore
-          path: dist/*.*
+          path: |
+            dist/*.*
+            dist/*.yml
       # 创建 GitHub Release
       - name: Release
         uses: softprops/action-gh-release@v2
@@ -348,7 +361,9 @@ jobs:
         with:
           name: SPlayer-Linux-ARM64
           if-no-files-found: ignore
-          path: dist/*.*
+          path: |
+            dist/*.*
+            dist/*.yml
       # 创建 GitHub Release
       - name: Release
         uses: softprops/action-gh-release@v2
