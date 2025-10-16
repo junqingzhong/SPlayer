@@ -1,375 +1,152 @@
-## 多端部署，支持 x64 和 ARM64 架构
-## 多平台构建并统一上传
+name: Build & Release SPlayer
 
 on:
   push:
     tags:
-      - v*
+      - v* # 只在 tag v* 时触发
   workflow_dispatch:
 
-name: Build Release
+env:
+  NODE_VERSION: 22.x
 
 jobs:
-  # Windows x64 架构
-  build-windows-x64:
-    name: Build for Windows (x64)
+  # ---------------- Windows 构建 ----------------
+  build-windows:
+    name: Build Windows (x64 + ARM64)
     runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, arm64]
     steps:
-      - name: Check out git repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install pnpm
         run: npm install -g pnpm
 
-      - name: Copy .env.example
-        run: |
-          if (-not (Test-Path .env)) {
-            Copy-Item .env.example .env
-          } else {
-            Write-Host ".env file already exists. Skipping the copy step."
-          }
-
-      - name: Install Dependencies
+      - name: Install dependencies
         run: pnpm install
 
-      - name: Clean dist folder
-        run: |
-          if (Test-Path dist) {
-            Remove-Item -Recurse -Force dist
-          }
-
-      - name: Build Electron App for Windows x64
-        run: pnpm run build:win -- --x64 || true
+      - name: Build Electron App (Windows)
+        run: pnpm run build:win -- --${{ matrix.arch }}
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Windows x64 artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SPlayer-Win-x64
-          if-no-files-found: ignore
+          name: SPlayer-Win-${{ matrix.arch }}
           path: |
             dist/*.exe
             dist/*.exe.blockmap
             dist/*.yml
-            dist/*.*
-  # Windows ARM64 架构
-  build-windows-arm64:
-    name: Build for Windows (ARM64)
-    runs-on: windows-11-arm
-    steps:
-      - name: Check out git repository
-        uses: actions/checkout@v4
+            dist/*.zip
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.x"
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Copy .env.example
-        run: |
-          if (-not (Test-Path .env)) {
-            Copy-Item .env.example .env
-          } else {
-            Write-Host ".env file already exists. Skipping the copy step."
-          }
-
-      - name: Install Dependencies
-        run: pnpm install
-
-      - name: Clean dist folder
-        run: |
-          if (Test-Path dist) {
-            Remove-Item -Recurse -Force dist
-          }
-
-      - name: Build Electron App for Windows ARM64
-        run: pnpm run build:win -- --arm64 || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-
-      - name: Upload Windows ARM64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SPlayer-Win-ARM64
-          if-no-files-found: ignore
-          path: |
-            dist/*.exe
-            dist/*.exe.blockmap
-            dist/*.yml
-            dist/*.*
-  # macOS - Intel x64
-  build-macos-x64:
-    name: Build for macOS (Intel x64)
+  # ---------------- macOS 构建 ----------------
+  build-macos:
+    name: Build macOS (x64 + ARM64)
     runs-on: macos-13
+    strategy:
+      matrix:
+        arch: [x64, arm64]
     steps:
-      - name: Check out git repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install pnpm
         run: npm install -g pnpm
 
-      - name: Copy .env.example
-        run: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
-          else
-            echo ".env file already exists. Skipping the copy step."
-          fi
-
-      - name: Install Dependencies
+      - name: Install dependencies
         run: pnpm install
 
-      - name: Clean dist folder
-        run: rm -rf dist
-
-      - name: Build Electron App for macOS x64
-        run: pnpm run build:mac -- --x64 || true
-        shell: bash
+      - name: Build Electron App (macOS)
+        run: pnpm run build:mac -- --${{ matrix.arch }}
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload macOS x64 artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SPlayer-macOS-x64
-          if-no-files-found: ignore
+          name: SPlayer-macOS-${{ matrix.arch }}
           path: |
-            dist/*.*
+            dist/*.dmg
+            dist/*.zip
             dist/*.yml
-  # macOS - Apple Silicon ARM64
-  build-macos-arm64:
-    name: Build for macOS (Apple Silicon ARM64)
-    runs-on: macos-15
-    steps:
-      - name: Check out git repository
-        uses: actions/checkout@v4
 
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.x"
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Copy .env.example
-        run: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
-          else
-            echo ".env file already exists. Skipping the copy step."
-          fi
-
-      - name: Install Dependencies
-        run: pnpm install
-
-      - name: Clean dist folder
-        run: rm -rf dist
-
-      - name: Build Electron App for macOS ARM64
-        run: pnpm run build:mac -- --arm64 || true
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-
-      - name: Upload macOS ARM64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SPlayer-macOS-ARM64
-          if-no-files-found: ignore
-          path: |
-            dist/*.*
-            dist/*.yml
-  # Linux x64 架构
-  build-linux-x64:
-    name: Build for Linux (x64)
+  # ---------------- Linux 构建 ----------------
+  build-linux:
+    name: Build Linux (x64 + ARM64)
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        arch: [x64, arm64]
     steps:
-      - name: Check out git repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Install Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "22.x"
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Install pnpm
         run: npm install -g pnpm
 
-      - name: Ubuntu Update with sudo
-        run: sudo apt-get update
-
-      - name: Install RPM & Pacman
+      - name: Install build dependencies
         run: |
-          sudo apt-get install --no-install-recommends -y rpm &&
-          sudo apt-get install --no-install-recommends -y libarchive-tools &&
-          sudo apt-get install --no-install-recommends -y libopenjp2-tools
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y rpm libarchive-tools libopenjp2-tools
 
-      - name: Install Snapcraft
-        uses: samuelmeuli/action-snapcraft@v2
-        with:
-          snapcraft_token: ${{ secrets.SNAPCRAFT_TOKEN }}
-
-      - name: Copy .env.example
-        run: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
-          else
-            echo ".env file already exists. Skipping the copy step."
-          fi
-
-      - name: Install Dependencies
-        run: pnpm install
-
-      - name: Clean dist folder
-        run: rm -rf dist
-
-      - name: Build Electron App for Linux x64
-        run: pnpm run build:linux -- --x64 || true
-        shell: bash
+      - name: Build Electron App (Linux)
+        run: pnpm run build:linux -- --${{ matrix.arch }}
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
 
-      - name: Publish Snap to Snap Store
-        run: |
-          if compgen -G "dist/*.snap" > /dev/null; then
-            snapcraft upload dist/*.snap --release stable || echo "Snap upload failed or not configured"
-          fi
-        continue-on-error: true
-        env:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
-
-      - name: Upload Linux x64 artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SPlayer-Linux-x64
-          if-no-files-found: ignore
+          name: SPlayer-Linux-${{ matrix.arch }}
           path: |
-            dist/*.*
-            dist/*.yml
-  # Linux ARM64 架构
-  build-linux-arm64:
-    name: Build for Linux (ARM64)
-    runs-on: ubuntu-22.04-arm
-    steps:
-      - name: Check out git repository
-        uses: actions/checkout@v4
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.x"
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Ubuntu Update with sudo
-        run: sudo apt-get update
-
-      - name: Install Build Dependencies
-        run: |
-          sudo apt-get install --no-install-recommends -y rpm &&
-          sudo apt-get install --no-install-recommends -y libarchive-tools &&
-          sudo apt-get install --no-install-recommends -y libopenjp2-tools
-
-      - name: Copy .env.example
-        run: |
-          if [ ! -f .env ]; then
-            cp .env.example .env
-          else
-            echo ".env file already exists. Skipping the copy step."
-          fi
-
-      - name: Install Dependencies
-        run: pnpm install
-
-      - name: Clean dist folder
-        run: rm -rf dist
-
-      - name: Build Electron App for Linux ARM64
-        run: pnpm run build:linux -- --arm64 || true
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-
-      - name: Upload Linux ARM64 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SPlayer-Linux-ARM64
-          if-no-files-found: ignore
-          path: |
-            dist/*.*
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.rpm
+            dist/*.snap
+            dist/*.tar.gz
             dist/*.yml
 
-  # 汇总并创建 Release（仅在 tag v* 时运行）
-  create-release:
-    name: Create GitHub Release and upload assets
+  # ---------------- 统一 Release ----------------
+  release:
+    name: Create GitHub Release
     runs-on: ubuntu-latest
     needs:
-      - build-windows-x64
-      - build-windows-arm64
-      - build-macos-x64
-      - build-macos-arm64
-      - build-linux-x64
-      - build-linux-arm64
+      - build-windows
+      - build-macos
+      - build-linux
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
-      - name: Check out repo (for context)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Download Windows x64 artifact (if exists)
+      # 下载各平台构建产物
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: SPlayer-Win-x64
-          path: artifacts/SPlayer-Win-x64
-      - name: Download Windows ARM64 artifact (if exists)
-        uses: actions/download-artifact@v4
-        with:
-          name: SPlayer-Win-ARM64
-          path: artifacts/SPlayer-Win-ARM64
-      - name: Download macOS x64 artifact (if exists)
-        uses: actions/download-artifact@v4
-        with:
-          name: SPlayer-macOS-x64
-          path: artifacts/SPlayer-macOS-x64
-      - name: Download macOS ARM64 artifact (if exists)
-        uses: actions/download-artifact@v4
-        with:
-          name: SPlayer-macOS-ARM64
-          path: artifacts/SPlayer-macOS-ARM64
-      - name: Download Linux x64 artifact (if exists)
-        uses: actions/download-artifact@v4
-        with:
-          name: SPlayer-Linux-x64
-          path: artifacts/SPlayer-Linux-x64
-      - name: Download Linux ARM64 artifact (if exists)
-        uses: actions/download-artifact@v4
-        with:
-          name: SPlayer-Linux-ARM64
-          path: artifacts/SPlayer-Linux-ARM64
+          path: artifacts
 
       - name: List downloaded artifacts
-        run: ls -R artifacts || true
+        run: ls -R artifacts
 
-      - name: Create GitHub Release and upload assets (all artifacts & yml)
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            artifacts/**
+      # 通过 electron-builder 上传 Release 和 latest.yml
+      - name: Publish via electron-builder
+        run: |
+          pnpm install
+          pnpm run build:publish
         env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
