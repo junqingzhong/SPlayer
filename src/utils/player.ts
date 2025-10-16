@@ -1,9 +1,15 @@
-import type { SongType, PlayModeType } from "@/types/main";
+import type { SongType, PlayModeType, LyricType } from "@/types/main";
 import type { MessageReactive } from "naive-ui";
 import { Howl, Howler } from "howler";
 import { cloneDeep } from "lodash-es";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { parsedLyricsData, resetSongLyric, parseLocalLyric, parseTTMLToAMLL } from "./lyric";
+import {
+  parsedLyricsData,
+  resetSongLyric,
+  parseLocalLyric,
+  parseTTMLToAMLL,
+  parseTTMLToYrc,
+} from "./lyric";
 import { songUrl, unlockSongUrl, songLyric, songChorus, songLyricTTML } from "@/api/song";
 import { getCoverColorData } from "@/utils/color";
 import { calculateProgress } from "./time";
@@ -14,6 +20,8 @@ import { isLogin } from "./auth";
 import { openUserLogin } from "./modal";
 import { personalFm, personalFmToTrash } from "@/api/rec";
 import blob from "./blob";
+import { parseTTML } from "@applemusic-like-lyrics/lyric";
+import { LyricLine } from "@applemusic-like-lyrics/core";
 
 // 播放器核心
 // Howler.js
@@ -103,7 +111,7 @@ class Player {
    * 处理播放状态
    */
   private handlePlayStatus() {
-    const musicStore = useMusicStore();
+    // const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     // 清理定时器
@@ -115,14 +123,8 @@ class Player {
       const duration = this.player.duration();
       // 计算进度条距离
       const progress = calculateProgress(currentTime, duration);
-      // 计算歌词索引
-      const hasYrc = !musicStore.songLyric.yrcData.length || !settingStore.showYrc;
-      const lyrics = hasYrc ? musicStore.songLyric.lrcData : musicStore.songLyric.yrcData;
-      // 歌词实时偏移量
-      const currentTimeOffset = statusStore.currentTimeOffset;
-      const index = lyrics?.findIndex((v) => v?.time >= currentTime + currentTimeOffset);
-      // 歌词跨界处理
-      const lyricIndex = index === -1 ? lyrics.length - 1 : index - 1;
+      // 计算歌词索引（支持 LRC 与逐字 YRC，对唱重叠处理）
+      const { index: lyricIndex, lyrics } = this.calculateLyricIndex(currentTime);
       // 更新状态
       statusStore.$patch({ currentTime, duration, progress, lyricIndex });
       // 客户端事件
@@ -130,11 +132,7 @@ class Player {
         // 歌词变化
         window.electron.ipcRenderer.send("play-lyric-change", {
           index: lyricIndex,
-          lyric: cloneDeep(
-            settingStore.showYrc && musicStore.songLyric.yrcData?.length
-              ? musicStore.songLyric.yrcData
-              : musicStore.songLyric.lrcData,
-          ),
+          lyric: cloneDeep(lyrics),
         });
         // 进度条
         if (settingStore.showTaskbarProgress) {
@@ -142,6 +140,66 @@ class Player {
         }
       }
     }, 250);
+  }
+  /**
+   * 计算歌词索引
+   * - 普通歌词(LRC)：沿用当前按开始时间定位的算法
+   * - 逐字歌词(YRC)：当播放时间位于某句 [time, endTime) 区间内时，索引为该句；
+   *   若下一句开始时间落在上一句区间（对唱重叠），仍保持上一句索引，直到上一句结束。
+   */
+  private calculateLyricIndex(currentTime: number): { index: number; lyrics: LyricType[] } {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    // 应用实时偏移 + 0.3s（解决对唱时歌词延迟问题）
+    const playSeek = currentTime + statusStore.currentTimeOffset + 0.3;
+    // 选择歌词类型
+    const useYrc = !!(settingStore.showYrc && musicStore.songLyric.yrcData.length);
+    const lyrics = useYrc ? musicStore.songLyric.yrcData : musicStore.songLyric.lrcData;
+    // 无歌词时
+    if (!lyrics || !lyrics.length) return { index: -1, lyrics: [] };
+
+    // 普通歌词：保持原有计算方式
+    if (!useYrc) {
+      const idx = lyrics.findIndex((v) => (v?.time ?? 0) >= playSeek);
+      const index = idx === -1 ? lyrics.length - 1 : idx - 1;
+      return { index, lyrics };
+    }
+
+    // 逐字歌词（对唱最多两句同时存在）：
+    // - 计算在播放进度下处于激活区间的句子集合 activeIndices（[time, endTime)）
+    // - 若激活数 >= 2，仅保留最后两句作为对唱对（不允许三句同时有效）
+    // - 索引取该对唱对中较早的一句（保持“上一句”高亮）
+    // - 若无激活句：首句之前返回 -1；否则回退到最近一句
+
+    const firstStart = lyrics[0]?.time ?? 0;
+    if (playSeek < firstStart) {
+      return { index: -1, lyrics };
+    }
+
+    const activeIndices: number[] = [];
+    for (let i = 0; i < lyrics.length; i++) {
+      const start = lyrics[i]?.time ?? 0;
+      const end = lyrics[i]?.endTime ?? Infinity;
+      if (playSeek >= start && playSeek < end) {
+        activeIndices.push(i);
+      }
+    }
+
+    if (activeIndices.length === 0) {
+      // 不在任何句子的区间里：退回到最近一句（按开始时间）
+      const nextIdx = lyrics.findIndex((v) => (v?.time ?? 0) > playSeek);
+      const index = nextIdx === -1 ? lyrics.length - 1 : nextIdx - 1;
+      return { index, lyrics };
+    }
+
+    if (activeIndices.length === 1) {
+      return { index: activeIndices[0], lyrics };
+    }
+
+    // 激活句 >= 2：限制为最后两句对唱
+    const pair = activeIndices.slice(-2);
+    return { index: pair[0], lyrics };
   }
   /**
    * 获取在线播放链接
@@ -163,7 +221,12 @@ class Player {
     }
     // 返回歌曲地址
     // 客户端直接返回，网页端转 https, 并转换url以便解决音乐链接cors问题
-    const url = isElectron ? songData.url : songData.url.replace(/^http:/, "https:").replace(/m804\.music\.126\.net/g, 'm801.music.126.net').replace(/m704\.music\.126\.net/g, 'm701.music.126.net');
+    const url = isElectron
+      ? songData.url
+      : songData.url
+          .replace(/^http:/, "https:")
+          .replace(/m804\.music\.126\.net/g, "m801.music.126.net")
+          .replace(/m704\.music\.126\.net/g, "m701.music.126.net");
     console.log(`🎧 ${id} music url:`, url);
     return url;
   }
@@ -427,22 +490,32 @@ class Player {
       const settingStore = useSettingStore();
       const [lyricRes, ttmlContent] = await Promise.all([
         songLyric(id),
-        songLyricTTML(id)
+        settingStore.enableTTMLLyric && songLyricTTML(id),
       ]);
       parsedLyricsData(lyricRes);
-      if (ttmlContent && settingStore.enableTTMLLyric) {
-        const ttmlLyric = parseTTMLToAMLL(ttmlContent);
-        if (ttmlLyric?.length > 0) {
-          settingStore.showYrc = true;
+      if (ttmlContent) {
+        const parsedResult = parseTTML(ttmlContent);
+        if (!parsedResult?.lines?.length) return;
+        const ttmlLyric = parseTTMLToAMLL(parsedResult);
+        const ttmlYrcLyric = parseTTMLToYrc(parsedResult);
+        console.log("TTML lyrics:", ttmlLyric, ttmlYrcLyric);
+        // 合并数据
+        const updates: Partial<{ yrcAMData: LyricLine[]; yrcData: LyricType[] }> = {};
+        if (ttmlLyric?.length) {
+          updates.yrcAMData = ttmlLyric;
+          console.log("✅ TTML AMLL lyrics success");
+        }
+        if (ttmlYrcLyric?.length) {
+          updates.yrcData = ttmlYrcLyric;
+          console.log("✅ TTML Yrc lyrics success");
+        }
+        if (Object.keys(updates).length) {
           musicStore.songLyric = {
             ...musicStore.songLyric,
-            yrcAMData: ttmlLyric,
+            ...updates,
           };
-          console.log("✅ TTML lyrics enabled");
-          return;
         }
       }
-
     } catch (error) {
       console.error("❌ Error loading lyrics:", error);
       resetSongLyric();
@@ -582,6 +655,10 @@ class Player {
       else if (id && dataStore.playList.length) {
         const songId = type === "radio" ? dj?.id : id;
         if (!songId) throw new Error("Get song id error");
+        // 并发启动解灰请求（仅在 Electron 且非电台且开启解灰时）
+        const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
+        const unlockUrlPromise = canUnlock ? this.getUnlockSongUrl(playSongData) : null;
+        // 先请求正常播放地址
         const url = await this.getOnlineUrl(songId);
         // 正常播放地址
         if (url) {
@@ -589,8 +666,9 @@ class Player {
           await this.createPlayer(url, autoPlay, seek);
         }
         // 尝试解灰
-        else if (isElectron && type !== "radio" && settingStore.useSongUnlock) {
-          const unlockUrl = await this.getUnlockSongUrl(playSongData);
+        else if (unlockUrlPromise) {
+          // 若正常地址不可用，则等待并使用并发中的解灰结果
+          const unlockUrl = await unlockUrlPromise;
           if (unlockUrl) {
             statusStore.playUblock = true;
             console.log("🎼 Song unlock successfully:", unlockUrl);
@@ -659,7 +737,7 @@ class Player {
 
     // 立即设置播放状态
     if (changeStatus) statusStore.playStatus = false;
-    
+
     // 淡出
     await new Promise<void>((resolve) => {
       this.player.fade(statusStore.playVolume, 0, this.getFadeTime());
@@ -933,7 +1011,7 @@ class Player {
     const statusStore = useStatusStore();
     // 获取配置
     const { showTip, play } = options;
-    
+
     // 处理随机播放模式
     let processedData = cloneDeep(data);
     if (statusStore.playSongMode === "shuffle") {
@@ -942,7 +1020,7 @@ class Player {
       // 随机排序
       processedData = this.shuffleArray(processedData);
     }
-    
+
     // 更新列表
     await dataStore.setPlayList(processedData);
     // 关闭特殊模式
@@ -962,7 +1040,9 @@ class Player {
       }
     } else {
       statusStore.playIndex =
-        statusStore.playSongMode === "shuffle" ? Math.floor(Math.random() * processedData.length) : 0;
+        statusStore.playSongMode === "shuffle"
+          ? Math.floor(Math.random() * processedData.length)
+          : 0;
       // 播放
       await this.pause(false);
       await this.initPlayer();

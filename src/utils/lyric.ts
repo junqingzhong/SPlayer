@@ -1,4 +1,4 @@
-import { LyricLine, parseLrc, parseYrc, parseTTML } from "@applemusic-like-lyrics/lyric";
+import { LyricLine, parseLrc, parseYrc, TTMLLyric } from "@applemusic-like-lyrics/lyric";
 import type { LyricType } from "@/types/main";
 import { useMusicStore, useSettingStore } from "@/stores";
 import { msToS } from "./time";
@@ -213,14 +213,11 @@ const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: Ly
  * @param ttmlContent TTML格式的歌词内容
  * @returns AMLL格式的歌词行数组
  */
-export function parseTTMLToAMLL(ttmlContent: string): LyricLine[] {
+export const parseTTMLToAMLL = (ttmlContent: TTMLLyric): LyricLine[] => {
   if (!ttmlContent) return [];
 
   try {
-    const parsedResult = parseTTML(ttmlContent);
-    if (!parsedResult?.lines?.length) return [];
-
-    const validLines = parsedResult.lines
+    const validLines = ttmlContent.lines
       .filter((line): line is any => line && typeof line === "object" && Array.isArray(line.words))
       .map((line) => {
         const words = line.words
@@ -253,14 +250,63 @@ export function parseTTMLToAMLL(ttmlContent: string): LyricLine[] {
     console.error("TTML parsing error:", error);
     return [];
   }
-}
+};
+
+/**
+ * 从TTML格式解析歌词并转换为默认Yrc格式
+ * @param ttmlContent TTML格式的歌词内容
+ * @returns 默认Yrc格式的歌词行数组
+ */
+export const parseTTMLToYrc = (ttmlContent: TTMLLyric): LyricType[] => {
+  if (!ttmlContent) return [];
+
+  try {
+    // 数据处理
+    const yrcList = ttmlContent.lines
+      .map((line) => {
+        const words = line.words;
+        const time = msToS(words[0].startTime);
+        const endTime = msToS(words[words.length - 1].endTime);
+        const contents = words.map((word) => {
+          return {
+            time: msToS(word.startTime),
+            endTime: msToS(word.endTime),
+            duration: msToS(word.endTime - word.startTime),
+            content: word.word.trim(),
+            endsWithSpace: word.word.endsWith(" "),
+          };
+        });
+        // 完整歌词
+        const contentStr = contents
+          .map((word) => word.content + (word.endsWithSpace ? " " : ""))
+          .join("");
+        // 排除内容
+        if (!contentStr || getExcludeKeywords().some((keyword) => contentStr.includes(keyword))) {
+          return null;
+        }
+        return {
+          time,
+          endTime,
+          content: contentStr,
+          contents,
+          isBG: line.isBG,
+          isDuet: line.isDuet,
+        };
+      })
+      .filter((line) => line !== null);
+    return yrcList;
+  } catch (error) {
+    console.error("TTML parsing to yrc error:", error);
+    return [];
+  }
+};
 
 // 检测语言
 export const getLyricLanguage = (lyric: string): string => {
   // 判断日语 根据平假名和片假名
-  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(lyric)) return 'ja';
+  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(lyric)) return "ja";
   // 判断简体中文 根据中日韩统一表意文字基本区
-  if (/[\u4e00-\u9fa5]/.test(lyric)) return 'zh-CN';
+  if (/[\u4e00-\u9fa5]/.test(lyric)) return "zh-CN";
   // 默认英语
-  return 'en';
+  return "en";
 };
