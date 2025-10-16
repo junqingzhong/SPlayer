@@ -51,11 +51,11 @@ jobs:
         run: pnpm run build:win -- --${{ matrix.arch }} || true
         env:
           GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-      # 上传构建产物
-      - name: Upload artifacts
+      # 合并所有 Windows 构建
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SPlayer-Win-${{ matrix.arch }}
+          name: SPlayer-Windows
           if-no-files-found: ignore
           path: |
             dist/*.exe
@@ -106,7 +106,7 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SPlayer-macOS-${{ matrix.arch }}
+          name: SPlayer-macOS
           if-no-files-found: ignore
           path: |
             dist/*.dmg
@@ -171,11 +171,13 @@ jobs:
             snapcraft upload dist/*.snap --release stable || echo "Snap upload failed or not configured"
           fi
         continue-on-error: true
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 上传构建产物
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SPlayer-Linux-${{ matrix.arch }}
+          name: SPlayer-Linux
           if-no-files-found: ignore
           path: |
             dist/*.AppImage
@@ -204,7 +206,7 @@ jobs:
         with:
           path: artifacts
       # 列出下载的产物（用于调试）
-      - name: List downloaded artifacts (for debugging)
+      - name: List downloaded artifacts
         run: ls -R artifacts
       # 创建 GitHub Release 并上传所有产物
       - name: Create GitHub Release and Upload Assets
@@ -214,4 +216,14 @@ jobs:
           generate_release_notes: true
           # 全部上传
           files: |
-            artifacts/**/*
+            artifacts/SPlayer-Windows/!(builder-debug).yml
+            artifacts/SPlayer-macOS/!(builder-debug).yml
+            artifacts/SPlayer-Linux/!(builder-debug).yml
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
+            artifacts/**/*.AppImage
+            artifacts/**/*.snap
