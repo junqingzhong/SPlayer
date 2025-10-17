@@ -45,8 +45,6 @@ jobs:
       # 构建 Electron App (x64)
       - name: Build Electron App for Windows x64
         run: pnpm run build:win -- --x64
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       # 清理不必要的构建产物（保留 .exe 和 .blockmap 文件）
       - name: Cleanup Artifacts
         run: npx del-cli "dist/**/*.yaml" "dist/**/*.yml"
@@ -96,8 +94,6 @@ jobs:
       # 构建 Electron App (ARM64)
       - name: Build Electron App for Windows ARM64
         run: pnpm run build:win -- --arm64
-        env:
-          GITHUB_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       # 清理不必要的构建产物（保留 .exe 和 .blockmap 文件）
       - name: Cleanup Artifacts
         run: npx del-cli "dist/**/*.yaml" "dist/**/*.yml"
