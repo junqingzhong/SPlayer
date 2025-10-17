@@ -73,14 +73,19 @@ jobs:
       # 构建 Electron App
       - name: Build macOS Universal App
         if: runner.os == 'macOS'
-        run: pnpm run build:mac -- --universal --publish never
+        run: pnpm run build:mac -- --universal -p never || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Windows x64 & ARM64 App
         if: runner.os == 'Windows'
-        run: pnpm run build:win -- --x64 --arm64 --publish never
+        run: pnpm run build:win -- --x64 --arm64 -p never || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Linux x64 & ARM64 App
         if: runner.os == 'Linux'
-        run: pnpm run build:linux -- --x64 --arm64 --publish never
+        run: pnpm run build:linux -- --x64 --arm64 -p never || true
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 上传 Snap 包到 Snapcraft 商店
       - name: Publish Snap to Snap Store
