@@ -73,17 +73,17 @@ jobs:
       # 构建 Electron App
       - name: Build macOS Universal App
         if: runner.os == 'macOS'
-        run: pnpm run build:mac -- --universal -p never || true
+        run: pnpm run build:mac -- --universal || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Windows x64 & ARM64 App
         if: runner.os == 'Windows'
-        run: pnpm run build:win -- --x64 --arm64 -p never || true
+        run: pnpm run build:win -- --x64 --arm64 || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Linux x64 & ARM64 App
         if: runner.os == 'Linux'
-        run: pnpm run build:linux -- --x64 --arm64 -p never || true
+        run: pnpm run build:linux -- --x64 --arm64 || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
@@ -117,9 +117,6 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-      # 列出下载的产物（用于调试）
-      - name: List downloaded artifacts
-        run: ls -R artifacts
       # 创建 GitHub Release 并上传所有产物
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
@@ -133,4 +130,14 @@ jobs:
           prerelease: false
           # 全部上传
           files: |
-            artifacts/**/*
+            artifacts/**/*.exe
+            artifacts/**/*.dmg
+            artifacts/**/*.zip
+            artifacts/**/*.AppImage
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
+            artifacts/**/*.pacman
+            artifacts/**/*.snap
+            artifacts/**/*.tar.gz
+            artifacts/**/*.yml
+            artifacts/**/*.blockmap
