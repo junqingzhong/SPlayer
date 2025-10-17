@@ -19,6 +19,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       # 矩阵策略
+      # 即使一个矩阵任务失败，其他任务也会继续运行
+      fail-fast: false
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
     # 开始步骤
@@ -128,16 +130,3 @@ jobs:
           draft: false
           # 发布为预发布
           prerelease: false
-          # 全部上传
-          files: |
-            artifacts/**/*.exe
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-            artifacts/**/*.rpm
-            artifacts/**/*.pacman
-            artifacts/**/*.snap
-            artifacts/**/*.tar.gz
-            artifacts/**/*.yml
-            artifacts/**/*.blockmap
