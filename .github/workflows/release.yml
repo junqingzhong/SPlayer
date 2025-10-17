@@ -68,28 +68,25 @@ jobs:
       - name: Install Snapcraft
         if: runner.os == 'Linux'
         uses: samuelmeuli/action-snapcraft@v2
+        with:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 构建 Electron App
       - name: Build macOS Universal App
         if: runner.os == 'macOS'
-        run: pnpm run build:mac -- --universal
+        run: pnpm run build:mac -- --universal --publish never
       - name: Build Windows x64 & ARM64 App
         if: runner.os == 'Windows'
-        run: pnpm run build:win -- --x64 --arm64
+        run: pnpm run build:win -- --x64 --arm64 --publish never
       - name: Build Linux x64 & ARM64 App
         if: runner.os == 'Linux'
-        run: pnpm run build:linux -- --x64 --arm64
+        run: pnpm run build:linux -- --x64 --arm64 --publish never
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 上传 Snap 包到 Snapcraft 商店
       - name: Publish Snap to Snap Store
         if: runner.os == 'Linux'
-        # 即使发布失败，也继续执行后续步骤
+        run: snapcraft upload dist/*.snap --release stable
         continue-on-error: true
-        run: |
-          snap_file=$(find dist -name "*.snap" -print -quit)
-          if [ -n "$snap_file" ]; then
-            snapcraft upload "$snap_file" --release stable
-          else
-            echo "No .snap file found to upload."
-          fi
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 合并所有构建
