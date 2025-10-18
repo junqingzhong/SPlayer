@@ -33,9 +33,9 @@ importers:
       '@material/material-color-utilities':
         specifier: ^0.3.0
         version: 0.3.0
-      '@neteaseapireborn/api':
-        specifier: ^4.29.9
-        version: 4.29.9
+      '@neteasecloudmusicapienhanced/api':
+        specifier: ^4.29.11
+        version: 4.29.11
       '@pixi/app':
         specifier: ^7.4.3
         version: 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))
@@ -871,8 +871,8 @@ packages:
   '@material/material-color-utilities@0.3.0':
     resolution: {integrity: sha512-ztmtTd6xwnuh2/xu+Vb01btgV8SQWYCaK56CkRK8gEkWe5TuDyBcYJ0wgkMRn+2VcE9KUmhvkz+N9GHrqw/C0g==}
 
-  '@neteaseapireborn/api@4.29.9':
-    resolution: {integrity: sha512-VGX8BggBnbg1D7JHzNarIci39QaVHAe/DEM30AR/I6CIqxqn04BRuSno9cnvYFOUH9Xxw73i0flcNrgs3C9wOw==}
+  '@neteasecloudmusicapienhanced/api@4.29.11':
+    resolution: {integrity: sha512-6yajC4cDH74+xpI5OadFXqIeA1TgmAi67QLRv3JbPet9JIWN6DXAagCz0QJUbo0bUPIdH1CimyU/P+eEyxP5nA==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -3808,10 +3808,6 @@ packages:
     resolution: {integrity: sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ==}
     engines: {node: '>= 0.8'}
 
-  statuses@2.0.2:
-    resolution: {integrity: sha512-DvEy55V3DB7uknRo+4iOGT5fP1slR8wQohVdknigZPMpMstaKJQWhwiYBACJE3Ul2pTnATihhBYnRhZQHGBiRw==}
-    engines: {node: '>= 0.8'}
-
   stream-shift@1.0.3:
     resolution: {integrity: sha512-76ORR0DO1o1hlKwTbi/DM3EXWGf3ZJYO8cXX5RJwnul2DEg2oyoZyjLNoQM8WsvZiFKCRfC1O0J7iCvie3RZmQ==}
 
@@ -4947,7 +4943,7 @@ snapshots:
 
   '@material/material-color-utilities@0.3.0': {}
 
-  '@neteaseapireborn/api@4.29.9':
+  '@neteasecloudmusicapienhanced/api@4.29.11':
     dependencies:
       '@unblockneteasemusic/server': 0.28.0
       axios: 1.12.2
@@ -6509,7 +6505,7 @@ snapshots:
       router: 2.2.0
       send: 1.2.0
       serve-static: 2.2.0
-      statuses: 2.0.2
+      statuses: 2.0.1
       type-is: 2.0.1
       vary: 1.1.2
     transitivePeerDependencies:
@@ -6646,7 +6642,7 @@ snapshots:
       escape-html: 1.0.3
       on-finished: 2.4.1
       parseurl: 1.3.3
-      statuses: 2.0.2
+      statuses: 2.0.1
     transitivePeerDependencies:
       - supports-color
 
@@ -8046,7 +8042,7 @@ snapshots:
       ms: 2.1.3
       on-finished: 2.4.1
       range-parser: 1.2.1
-      statuses: 2.0.2
+      statuses: 2.0.1
     transitivePeerDependencies:
       - supports-color
 
@@ -8218,8 +8214,6 @@ snapshots:
   stat-mode@1.0.0: {}
 
   statuses@2.0.1: {}
-
-  statuses@2.0.2: {}
 
   stream-shift@1.0.3: {}
 

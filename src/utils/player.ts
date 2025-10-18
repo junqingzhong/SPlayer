@@ -168,10 +168,10 @@ class Player {
       return { index, lyrics };
     }
 
-    // 逐字歌词（对唱最多两句同时存在）：
+    // 逐字歌词（并发最多三句同时存在）：
     // - 计算在播放进度下处于激活区间的句子集合 activeIndices（[time, endTime)）
-    // - 若激活数 >= 2，仅保留最后两句作为对唱对（不允许三句同时有效）
-    // - 索引取该对唱对中较早的一句（保持“上一句”高亮）
+    // - 若激活数 >= 3，仅保留最后三句作为并发显示（允许三句同时有效）；否则保持最后两句
+    // - 索引取该并发集合中较早的一句（保持“上一句”高亮）
     // - 若无激活句：首句之前返回 -1；否则回退到最近一句
 
     const firstStart = lyrics[0]?.time ?? 0;
@@ -199,9 +199,10 @@ class Player {
       return { index: activeIndices[0], lyrics };
     }
 
-    // 激活句 >= 2：限制为最后两句对唱
-    const pair = activeIndices.slice(-2);
-    return { index: pair[0], lyrics };
+    // 激活句 >= 2：如果达到三句或更多，限制为最后三句并发；否则保持最后两句
+    const concurrent =
+      activeIndices.length >= 3 ? activeIndices.slice(-3) : activeIndices.slice(-2);
+    return { index: concurrent[0], lyrics };
   }
   /**
    * 获取在线播放链接

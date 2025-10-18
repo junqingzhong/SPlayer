@@ -1,4 +1,4 @@
-name: Build & Release SPlayer
+name: Build & Release
 
 on:
   push:
@@ -29,6 +29,7 @@ jobs:
       # 检出 Git 仓库
       - name: Check out git repository
         uses: actions/checkout@v4
+      # 设置 pnpm 版本
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -94,8 +95,6 @@ jobs:
       - name: Install Snapcraft
         if: runner.os == 'Linux'
         uses: samuelmeuli/action-snapcraft@v2
-        with:
-          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
       # 构建 Electron App
       - name: Build Windows x64 & ARM64 App
         if: runner.os == 'Windows'
@@ -145,6 +144,7 @@ jobs:
       # 创建 GitHub Release 并上传所有产物
       - name: Create GitHub Release and Upload Assets
         uses: softprops/action-gh-release@v2
+        continue-on-error: true
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # 自动生成 Release 说明

@@ -7,24 +7,31 @@ on:
     branches:
       - dev
 
+env:
+  NODE_VERSION: 22.x
+  PNPM_VERSION: 8
+
 jobs:
   # Windows x64 架构
-  release-x64:
-    name: Build Electron App for Windows (x64)
+  build-win:
+    name: Build Electron App for Windows
     runs-on: windows-latest
 
     steps:
       # 检出 Git 仓库
       - name: Check out git repository
         uses: actions/checkout@v4
+      # 设置 pnpm 版本
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: ${{ env.PNPM_VERSION }}
       # 安装 Node.js
       - name: Install Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: "22.x"
-      # 安装 pnpm
-      - name: Install pnpm
-        run: npm install -g pnpm
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
       # 复制环境变量文件
       - name: Copy .env.example
         run: |
@@ -44,7 +51,7 @@ jobs:
           }
       # 构建 Electron App (x64)
       - name: Build Electron App for Windows x64
-        run: pnpm run build:win -- --x64 || true
+        run: pnpm run build:win || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # 清理不必要的构建产物（保留 .exe 和 .blockmap 文件）
@@ -54,58 +61,6 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SPlayer-dev-x64
+          name: SPlayer-dev
           path: |
-            dist/*x64*.exe
-            dist/*x64*.exe.blockmap
-
-  # Windows ARM64 架构
-  release-arm64:
-    name: Build Electron App for Windows (ARM64)
-    runs-on: windows-11-arm
-
-    steps:
-      # 检出 Git 仓库
-      - name: Check out git repository
-        uses: actions/checkout@v4
-      # 安装 Node.js
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22.x"
-      # 安装 pnpm
-      - name: Install pnpm
-        run: npm install -g pnpm
-      # 复制环境变量文件
-      - name: Copy .env.example
-        run: |
-          if (-not (Test-Path .env)) {
-            Copy-Item .env.example .env
-          } else {
-            Write-Host ".env file already exists. Skipping the copy step."
-          }
-      # 安装项目依赖
-      - name: Install Dependencies
-        run: pnpm install
-      # 清理旧的构建产物
-      - name: Clean dist folder
-        run: |
-          if (Test-Path dist) {
-            Remove-Item -Recurse -Force dist
-          }
-      # 构建 Electron App (ARM64)
-      - name: Build Electron App for Windows ARM64
-        run: pnpm run build:win -- --arm64 || true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # 清理不必要的构建产物（保留 .exe 和 .blockmap 文件）
-      - name: Cleanup Artifacts
-        run: npx del-cli "dist/**/*.yaml" "dist/**/*.yml"
-      # 上传构建产物（仅上传 ARM64 架构的 .exe 文件）
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: SPlayer-dev-arm64
-          path: |
-            dist/*arm64*.exe
-            dist/*arm64*.exe.blockmap
+            dist/**.exe

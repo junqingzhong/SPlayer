@@ -40,7 +40,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@imsyy/color-utils": "^1.0.2",
     "@material/material-color-utilities": "^0.3.0",
-    "@neteaseapireborn/api": "^4.29.9",
+    "@neteasecloudmusicapienhanced/api": "^4.29.11",
     "@pixi/app": "^7.4.3",
     "@pixi/core": "^7.4.3",
     "@pixi/display": "^7.4.3",

@@ -165,6 +165,9 @@ const config: Configuration = {
   electronDownload: {
     mirror: "https://npmmirror.com/mirrors/electron/",
   },
+  // 发布配置
+  // 先留空，不自动上传
+  publish: [],
 };
 
 export default config;

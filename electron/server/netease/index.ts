@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { pathCase } from "change-case";
-import NeteaseCloudMusicApi from "@neteaseapireborn/api";
+import NeteaseCloudMusicApi from "@neteasecloudmusicapienhanced/api";
 import log from "../../main/logger";
 
 // 获取数据

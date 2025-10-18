@@ -15,7 +15,7 @@ import { getFonts } from "font-list";
 import { MainTray } from "./tray";
 import { Thumbar } from "./thumbar";
 import { StoreType } from "./store";
-import { isDev, getFileID, getFileMD5 } from "./utils";
+import { isDev, getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "./utils";
 import { isShortcutRegistered, registerShortcut, unregisterShortcuts } from "./shortcut";
 import { join, basename, resolve, relative, isAbsolute } from "path";
 import { download } from "electron-dl";
@@ -199,7 +199,7 @@ const initWinIpcMain = (
           name: common.title || basename(filePath),
           artists: common.artists?.[0] || common.artist,
           album: common.album || "",
-          alia: common.comment?.[0],
+          alia: common.comment?.[0]?.text || "",
           duration: (format?.duration ?? 0) * 1000,
           size: (size / (1024 * 1024)).toFixed(2),
           path: filePath,
@@ -226,6 +226,11 @@ const initWinIpcMain = (
         fileSize: (await fs.stat(filePath)).size / (1024 * 1024),
         // 元信息
         common,
+        // 歌词
+        lyric:
+          metaDataLyricsArrayToLrc(common?.lyrics?.[0]?.syncText || []) ||
+          common?.lyrics?.[0]?.text ||
+          "",
         // 音质信息
         format,
         // md5
@@ -242,8 +247,12 @@ const initWinIpcMain = (
     try {
       const filePath = resolve(path).replace(/\\/g, "/");
       const { common } = await parseFile(filePath);
-      const lyric = common?.lyrics;
-      if (lyric && lyric.length > 0) return String(lyric[0]);
+      const lyric = common?.lyrics?.[0]?.syncText;
+      if (lyric && lyric.length > 0) {
+        return metaDataLyricsArrayToLrc(lyric);
+      } else if (common?.lyrics?.[0]?.text) {
+        return common?.lyrics?.[0]?.text;
+      }
       // 如果歌词数据不存在，尝试读取同名的 lrc 文件
       else {
         const lrcFilePath = filePath.replace(/\.[^.]+$/, ".lrc");
