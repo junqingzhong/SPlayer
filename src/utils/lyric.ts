@@ -150,6 +150,23 @@ export const alignLyrics = (
   }
   return lyricsData;
 };
+export const alignAMLyrics = (
+  lyrics: LyricLine[],
+  otherLyrics: LyricLine[],
+  key: "translatedLyric" | "romanLyric",
+): LyricLine[] => {
+  const lyricsData = lyrics;
+  if (lyricsData.length && otherLyrics.length) {
+    lyricsData.forEach((v: LyricLine) => {
+      otherLyrics.forEach((x: LyricLine) => {
+        if (v.startTime === x.startTime || Math.abs(v.startTime - x.startTime) < 0.6) {
+          v[key] = x.words.map((word) => word.word).join("");
+        }
+      });
+    });
+  }
+  return lyricsData;
+};
 
 // 处理本地歌词
 export const parseLocalLyric = (lyric: string) => {
@@ -194,18 +211,25 @@ export const parseLocalLyric = (lyric: string) => {
 
 // 处理 AM 歌词
 const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: LyricLine[]) => {
-  return lrcData.map((line, index, lines) => ({
+  let lyricData = lrcData.map((line, index, lines) => ({
     words: line.words,
     startTime: line.words[0]?.startTime ?? 0,
     endTime:
       lines[index + 1]?.words?.[0]?.startTime ??
       line.words?.[line.words.length - 1]?.endTime ??
       Infinity,
-    translatedLyric: tranData?.[index]?.words?.[0]?.word ?? "",
-    romanLyric: romaData?.[index]?.words?.[0]?.word ?? "",
+    translatedLyric: "",
+    romanLyric: "",
     isBG: line.isBG ?? false,
     isDuet: line.isDuet ?? false,
   }));
+  if (tranData) {
+    lyricData = alignAMLyrics(lyricData, tranData, "translatedLyric");
+  }
+  if (romaData) {
+    lyricData = alignAMLyrics(lyricData, romaData, "romanLyric");
+  }
+  return lyricData;
 };
 
 /**
