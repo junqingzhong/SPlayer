@@ -301,7 +301,6 @@ class MainProcess {
       bounds.maximized = this.mainWindow?.isMaximized();
       this.store?.set("window", bounds);
     }
-    console.log("bounds", bounds);
   }
   // 显示窗口
   showWindow() {
