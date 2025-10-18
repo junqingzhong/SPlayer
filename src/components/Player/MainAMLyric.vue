@@ -12,6 +12,8 @@
           'font-weight': settingStore.lyricFontBold ? 'bold' : 'normal',
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
         }" class="am-lyric" @line-click="jumpSeek" />
+      <!-- 歌词菜单组件 -->
+      <LyricMenu />
     </div>
   </Transition>
 </template>
@@ -24,6 +26,7 @@ import { msToS } from "@/utils/time";
 import { getLyricLanguage } from "@/utils/lyric";
 import player from "@/utils/player";
 import { watch } from "vue";
+import LyricMenu from "./LyricMenu.vue";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();

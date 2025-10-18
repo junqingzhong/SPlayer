@@ -92,6 +92,10 @@
           >
             <SvgIcon :depth="statusStore.showPlayerComment ? 1 : 3" name="Message" />
           </div>
+          <!-- 桌面歌词 -->
+          <div v-if="isElectron" class="menu-icon" @click.stop="player.toggleDesktopLyric">
+            <SvgIcon name="DesktopLyric" :depth="statusStore.showDesktopLyric ? 1 : 3" />
+          </div>
           <!-- 播放模式 -->
           <div class="menu-icon" @click.stop="player.togglePlayMode(false)">
             <SvgIcon :name="statusStore.playModeIcon" />
@@ -136,6 +140,7 @@ import { secondsToTime, calculateCurrentTime } from "@/utils/time";
 import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
 import { toLikeSong } from "@/utils/auth";
 import player from "@/utils/player";
+import { isElectron } from "@/utils/helper";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
