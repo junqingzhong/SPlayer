@@ -123,8 +123,13 @@ class MainProcess {
       // 立即显示窗口
       show: false,
     };
+    const isMaximized = this.store?.get("window").maximized;
     // 初始化窗口
     this.mainWindow = this.createWindow(options);
+    // 加载完成后窗口最大化
+    this.mainWindow.on("ready-to-show", () => {
+      if (isMaximized) this.mainWindow?.maximize();
+    })
 
     // 渲染路径
     if (isDev && process.env["ELECTRON_RENDERER_URL"]) {
@@ -244,7 +249,7 @@ class MainProcess {
     this.mainWindow?.on("focus", () => {
       this.saveBounds();
     });
-    // 移动或缩放
+    // 移动、缩放、最大化、取消最大化
     this.mainWindow?.on("resized", () => {
       // 若处于全屏则不保存
       if (this.mainWindow?.isFullScreen()) return;
@@ -253,6 +258,12 @@ class MainProcess {
     this.mainWindow?.on("moved", () => {
       this.saveBounds();
     });
+    this.mainWindow?.on("maximize", () => {
+      this.saveBounds();
+    });
+    this.mainWindow?.on("unmaximize", () => {
+      this.saveBounds();
+    })
 
     // 歌词窗口缩放
     this.lyricWindow?.on("resized", () => {
@@ -276,8 +287,11 @@ class MainProcess {
   // 更新窗口大小
   saveBounds() {
     if (this.mainWindow?.isFullScreen()) return;
-    const bounds = this.mainWindow?.getBounds();
-    if (bounds) this.store?.set("window", bounds);
+    const bounds: any = this.mainWindow?.getBounds();
+    if (bounds) {
+      bounds.maximized = this.mainWindow?.isMaximized();
+      this.store?.set("window", bounds);
+    }
   }
   // 显示窗口
   showWindow() {
