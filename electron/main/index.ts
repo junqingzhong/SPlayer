@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, BrowserWindowConstructorOptions } from "elec
 import { electronApp } from "@electron-toolkit/utils";
 import { join } from "path";
 import { release, type } from "os";
-import { isDev, isMac, appName } from "./utils";
+import { isDev, isMac, appName, isLinux } from "./utils";
 import { unregisterShortcuts } from "./shortcut";
 import { initTray, MainTray } from "./tray";
 import { initThumbar, Thumbar } from "./thumbar";
@@ -261,6 +261,18 @@ class MainProcess {
     this.mainWindow?.on("unmaximize", () => {
       this.saveBounds();
     })
+
+    // Linux 无法使用 resized 和 moved
+    if (isLinux) {
+      this.mainWindow?.on("resize", () => {
+        // 若处于全屏则不保存
+        if (this.mainWindow?.isFullScreen()) return;
+        this.saveBounds();
+      })
+      this.mainWindow?.on("move", () => {
+        this.saveBounds();
+      });
+    }
 
     // 歌词窗口缩放
     this.lyricWindow?.on("resized", () => {
