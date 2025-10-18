@@ -123,13 +123,8 @@ class MainProcess {
       // 立即显示窗口
       show: false,
     };
-    const isMaximized = this.store?.get("window").maximized;
     // 初始化窗口
     this.mainWindow = this.createWindow(options);
-    // 加载完成后窗口最大化
-    this.mainWindow.on("ready-to-show", () => {
-      if (isMaximized) this.mainWindow?.maximize();
-    })
 
     // 渲染路径
     if (isDev && process.env["ELECTRON_RENDERER_URL"]) {
@@ -242,6 +237,8 @@ class MainProcess {
     this.mainWindow?.on("ready-to-show", () => {
       if (!this.mainWindow) return;
       this.thumbar = initThumbar(this.mainWindow);
+      const isMaximized = this.store?.get("window").maximized;
+      if (isMaximized) this.mainWindow.maximize();
     });
     this.mainWindow?.on("show", () => {
       // this.mainWindow?.webContents.send("lyricsScroll");
@@ -292,6 +289,7 @@ class MainProcess {
       bounds.maximized = this.mainWindow?.isMaximized();
       this.store?.set("window", bounds);
     }
+    console.log("bounds", bounds);
   }
   // 显示窗口
   showWindow() {
