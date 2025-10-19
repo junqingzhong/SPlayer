@@ -44,6 +44,9 @@ class Player {
   private message: MessageReactive | null = null;
   // 预载下一首歌曲播放地址缓存（仅存 URL，不创建 Howl）
   private nextPrefetch: { id: number; url: string | null; ublock: boolean } | null = null;
+  // 并发控制：当前播放会话与初始化/切曲状态
+  private playSessionId: number = 0;
+  private switching: boolean = false;
   constructor() {
     // 创建播放器实例
     this.player = new Howl({ src: [""], format: allowPlayFormat, autoplay: false });
@@ -332,7 +335,12 @@ class Player {
    * @param autoPlay 是否自动播放
    * @param seek 播放位置
    */
-  private async createPlayer(src: string, autoPlay: boolean = true, seek: number = 0) {
+  private async createPlayer(
+    src: string,
+    autoPlay: boolean = true,
+    seek: number = 0,
+    sessionId?: number,
+  ) {
     // 获取数据
     const dataStore = useDataStore();
     const musicStore = useMusicStore();
@@ -340,25 +348,29 @@ class Player {
     const settingStore = useSettingStore();
     // 播放信息
     const { id, path, type } = musicStore.playSong;
-    // 清理播放器
+    // 清理播放器（移除事件，停止并卸载）
+    try {
+      this.player.off();
+    } catch {}
+    Howler.stop();
     Howler.unload();
-    // 创建播放器
+    // 创建播放器（禁用内置 autoplay，统一走手动 play）
     this.player = new Howl({
       src,
       format: allowPlayFormat,
       html5: true,
-      autoplay: autoPlay,
+      autoplay: false,
       preload: "metadata",
       pool: 1,
       volume: statusStore.playVolume,
       rate: statusStore.playRate,
     });
-    // 播放器事件
-    this.playerEvent({ seek });
+    // 播放器事件（绑定当前会话）
+    this.playerEvent({ seek, sessionId });
     // 播放设备
     if (!settingStore.showSpectrums) this.toggleOutputDevice();
-    // 自动播放
-    if (autoPlay) this.play();
+    // 自动播放（仅一次性触发）
+    if (autoPlay) await this.play();
     // 获取歌曲附加信息 - 非电台和本地
     if (type !== "radio" && !path) {
       this.getLyricData(id);
@@ -384,6 +396,8 @@ class Player {
     options: {
       // 恢复进度
       seek?: number;
+      // 当前会话 id，用于忽略过期事件
+      sessionId?: number;
     } = { seek: 0 },
   ) {
     // 获取数据
@@ -393,8 +407,10 @@ class Player {
     const playSongData = this.getPlaySongData();
     // 获取配置
     const { seek } = options;
+    const currentSessionId = options.sessionId ?? this.playSessionId;
     // 初次加载
     this.player.once("load", () => {
+      if (currentSessionId !== this.playSessionId) return;
       // 允许跨域
       if (settingStore.showSpectrums) {
         const audioDom = this.getAudioDom();
@@ -415,6 +431,7 @@ class Player {
     });
     // 播放
     this.player.on("play", () => {
+      if (currentSessionId !== this.playSessionId) return;
       window.document.title = this.getPlayerInfo() || "SPlayer";
       // ipc
       if (isElectron) {
@@ -425,6 +442,7 @@ class Player {
     });
     // 暂停
     this.player.on("pause", () => {
+      if (currentSessionId !== this.playSessionId) return;
       if (!isElectron) window.document.title = "SPlayer";
       // ipc
       if (isElectron) window.electron.ipcRenderer.send("play-status-change", false);
@@ -432,13 +450,16 @@ class Player {
     });
     // 结束
     this.player.on("end", () => {
+      if (currentSessionId !== this.playSessionId) return;
       // statusStore.playStatus = false;
       console.log("⏹️ song end:", playSongData);
       this.nextOrPrev("next");
     });
     // 错误
-    this.player.on("loaderror", (sourceid, err: any) => {
-      this.errorNext(err);
+    this.player.on("loaderror", (sourceid, err: unknown) => {
+      if (currentSessionId !== this.playSessionId) return;
+      const code = typeof err === "number" ? err : undefined;
+      this.errorNext(code);
       console.error("❌ song error:", sourceid, playSongData, err);
     });
   }
@@ -700,6 +721,7 @@ class Player {
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
+    const sessionId = ++this.playSessionId;
     try {
       // 获取播放数据
       const playSongData = this.getPlaySongData();
@@ -711,7 +733,7 @@ class Player {
       statusStore.playLoading = true;
       // 本地歌曲
       if (path) {
-        await this.createPlayer(`file://${path}`, autoPlay, seek);
+        await this.createPlayer(`file://${path}`, autoPlay, seek, sessionId);
         // 获取歌曲元信息
         await this.parseLocalMusicInfo(path);
       }
@@ -723,7 +745,7 @@ class Player {
         const cached = this.nextPrefetch;
         if (cached && cached.id === songId && cached.url) {
           statusStore.playUblock = cached.ublock;
-          await this.createPlayer(cached.url, autoPlay, seek);
+          await this.createPlayer(cached.url, autoPlay, seek, sessionId);
         } else {
           // 并发启动解灰请求（仅在 Electron 且非电台且开启解灰时）
           const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
@@ -733,7 +755,7 @@ class Player {
           // 正常播放地址
           if (url) {
             statusStore.playUblock = false;
-            await this.createPlayer(url, autoPlay, seek);
+            await this.createPlayer(url, autoPlay, seek, sessionId);
           }
           // 尝试解灰
           else if (unlockUrlPromise) {
@@ -742,7 +764,7 @@ class Player {
             if (unlockUrl) {
               statusStore.playUblock = true;
               console.log("🎼 Song unlock successfully:", unlockUrl);
-              await this.createPlayer(unlockUrl, autoPlay, seek);
+              await this.createPlayer(unlockUrl, autoPlay, seek, sessionId);
             } else {
               statusStore.playUblock = false;
               // 是否为最后一首
@@ -771,6 +793,7 @@ class Player {
       console.error("❌ 初始化音乐播放器出错：", error);
       window.$message.error("播放器遇到错误，请尝试软件热重载");
       // this.errorNext();
+    } finally {
     }
   }
   /**
@@ -833,6 +856,8 @@ class Player {
    */
   async nextOrPrev(type: "next" | "prev" = "next", play: boolean = true) {
     try {
+      if (this.switching) return;
+      this.switching = true;
       const statusStore = useStatusStore();
       const dataStore = useDataStore();
       const musicStore = useMusicStore();
@@ -886,6 +911,8 @@ class Player {
     } catch (error) {
       console.error("Error in nextOrPrev:", error);
       throw error;
+    } finally {
+      this.switching = false;
     }
   }
   /**

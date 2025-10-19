@@ -161,55 +161,8 @@
           <n-text depth="2">{{ secondsToTime(statusStore.currentTime) }}</n-text>
           <n-text depth="2">{{ secondsToTime(statusStore.duration) }}</n-text>
         </div>
-        <!-- 桌面歌词 -->
-        <div v-if="isElectron" class="menu-icon" @click.stop="player.toggleDesktopLyric">
-          <SvgIcon name="DesktopLyric" :depth="statusStore.showDesktopLyric ? 1 : 3" />
-        </div>
-        <!-- 播放模式 -->
-        <n-dropdown
-          v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode"
-          :options="playModeOptions"
-          :show-arrow="true"
-          @select="(mode) => player.togglePlayMode(mode)"
-        >
-          <div class="menu-icon" @click.stop="player.togglePlayMode(false)">
-            <SvgIcon :name="statusStore.playModeIcon" />
-          </div>
-        </n-dropdown>
-        <!-- 音量调节 -->
-        <n-popover :show-arrow="false" :style="{ padding: 0 }">
-          <template #trigger>
-            <div class="menu-icon" @click.stop="player.toggleMute" @wheel="player.setVolume">
-              <SvgIcon :name="statusStore.playVolumeIcon" />
-            </div>
-          </template>
-          <div class="volume-change" @wheel="player.setVolume">
-            <n-slider
-              v-model:value="statusStore.playVolume"
-              :tooltip="false"
-              :min="0"
-              :max="1"
-              :step="0.01"
-              vertical
-              @update:value="(val) => player.setVolume(val)"
-            />
-            <n-text class="slider-num">{{ statusStore.playVolumePercent }}%</n-text>
-          </div>
-        </n-popover>
-        <!-- 播放列表 -->
-        <n-badge
-          v-if="!statusStore.personalFmMode"
-          :value="dataStore.playList?.length ?? 0"
-          :show="settingStore.showPlaylistCount"
-          :max="999"
-          :style="{
-            marginRight: settingStore.showPlaylistCount ? '12px' : null,
-          }"
-        >
-          <div class="menu-icon" @click.stop="statusStore.playListShow = !statusStore.playListShow">
-            <SvgIcon name="PlayList" />
-          </div>
-        </n-badge>
+        <!-- 功能区 -->
+        <PlayerRightMenu />
       </n-flex>
     </Transition>
   </div>
@@ -219,7 +172,7 @@
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { secondsToTime, calculateCurrentTime } from "@/utils/time";
-import { renderIcon, isElectron, coverLoaded } from "@/utils/helper";
+import { renderIcon, coverLoaded } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
 import { openDownloadSong, openJumpArtist, openPlaylistAdd } from "@/utils/modal";
 import player from "@/utils/player";
@@ -229,25 +182,6 @@ const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
-
-// 播放模式数据
-const playModeOptions = ref([
-  {
-    label: "列表循环",
-    key: "repeat",
-    icon: renderIcon("Repeat"),
-  },
-  {
-    label: "单曲循环",
-    key: "repeat-once",
-    icon: renderIcon("RepeatSong"),
-  },
-  {
-    label: "随机播放",
-    key: "shuffle",
-    icon: renderIcon("Shuffle"),
-  },
-]);
 
 // 歌曲更多操作
 const songMoreOptions = computed<DropdownOption[]>(() => {
@@ -359,6 +293,14 @@ const instantLyrics = computed(() => {
     margin: 0;
     --n-rail-height: 3px;
     --n-handle-size: 14px;
+    :deep(.n-slider-rail) {
+      .n-slider-rail__fill {
+        transition: width 0.3s;
+      }
+      .n-slider-handle-wrapper {
+        transition: left 0.3s;
+      }
+    }
   }
   .play-data {
     display: flex;
@@ -542,48 +484,6 @@ const instantLyrics = computed(() => {
         }
       }
     }
-    .menu-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
-      border-radius: 8px;
-      transition:
-        background-color 0.3s,
-        transform 0.3s;
-      cursor: pointer;
-      .n-icon {
-        font-size: 22px;
-        color: var(--primary-hex);
-      }
-      &:hover {
-        transform: scale(1.1);
-        background-color: rgba(var(--primary), 0.28);
-      }
-      &:active {
-        transform: scale(1);
-      }
-    }
-    :deep(.n-badge-sup) {
-      background-color: rgba(var(--primary), 0.28);
-      backdrop-filter: blur(20px);
-      .n-base-slot-machine {
-        color: var(--primary-hex);
-      }
-    }
-  }
-}
-// 音量调节
-.volume-change {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 64px;
-  height: 200px;
-  padding: 12px 16px;
-  .slider-num {
-    margin-top: 4px;
-    font-size: 12px;
   }
 }
 </style>

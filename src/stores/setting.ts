@@ -133,7 +133,7 @@ export const useSettingStore = defineStore("setting", {
     smtcOutputHighQualityCover: false, // 是否输出高清封面
     playSongDemo: false, // 是否播放试听歌曲
     scrobbleSong: false, // 是否打卡
-    dynamicCover: true, // 动态封面
+    dynamicCover: false, // 动态封面
     // 歌词
     lyricFontSize: 46, // 歌词大小
     lyricTranFontSize: 22, // 歌词翻译大小
