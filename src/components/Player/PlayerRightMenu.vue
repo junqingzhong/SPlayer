@@ -57,45 +57,6 @@
       </div>
     </n-badge>
   </n-flex>
-  <!-- 播放速度设置弹窗 -->
-  <n-modal
-    v-model:show="showRateModal"
-    :bordered="false"
-    :auto-focus="false"
-    :title="`播放速度`"
-    style="width: 600px"
-    preset="card"
-  >
-    <n-flex align="center" size="large" vertical>
-      <n-flex align="center" justify="center">
-        <n-tag
-          v-for="(item, index) in [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]"
-          :type="statusStore.playRate === item ? 'primary' : 'default'"
-          :bordered="statusStore.playRate === item"
-          :key="index"
-          size="large"
-          round
-          @click="player.setRate(item)"
-        >
-          {{ item }}x
-        </n-tag>
-      </n-flex>
-      <n-text :depth="3"> 当前播放速度： {{ statusStore.playRate }}x </n-text>
-      <n-slider
-        v-model:value="statusStore.playRate"
-        :step="0.1"
-        :min="0.2"
-        :max="2"
-        :tooltip="false"
-        :marks="{
-          0.2: '0.2x',
-          1: '1x',
-          2: '2x',
-        }"
-        @update:value="(value) => player.setRate(value)"
-      />
-    </n-flex>
-  </n-modal>
 </template>
 
 <script setup lang="ts">
@@ -103,17 +64,15 @@ import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { isElectron, renderIcon } from "@/utils/helper";
 import player from "@/utils/player";
+import { openAutoClose, openChangeRate } from "@/utils/modal";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
-// 速度设置弹窗
-const showRateModal = ref<boolean>(false);
-
 // 播放模式数据
-const playModeOptions = ref([
+const playModeOptions: DropdownOption[] = [
   {
     label: "列表循环",
     key: "repeat",
@@ -129,17 +88,24 @@ const playModeOptions = ref([
     key: "shuffle",
     icon: renderIcon("Shuffle"),
   },
-]);
+];
 
 // 其他控制：播放速度下拉菜单
 const controlsOptions = computed<DropdownOption[]>(() => [
   {
+    label: "自动关闭",
+    key: "autoClose",
+    icon: renderIcon("TimeAuto"),
+    props: {
+      onClick: () => openAutoClose(),
+    },
+  },
+  {
     label: "播放速度",
     key: "rate",
+    icon: renderIcon("PlayRate"),
     props: {
-      onClick: () => {
-        showRateModal.value = true;
-      },
+      onClick: () => openChangeRate(),
     },
   },
 ]);
@@ -181,10 +147,12 @@ const controlsOptions = computed<DropdownOption[]>(() => [
 .volume-change {
   padding: 12px;
   display: flex;
+  flex-direction: column;
+  height: 180px;
+  width: 58px;
   align-items: center;
-  justify-content: center;
   .slider-num {
-    margin-left: 12px;
+    margin-top: 8px;
     font-size: 13px;
     color: var(--color);
   }

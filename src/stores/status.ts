@@ -3,105 +3,127 @@ import type { SortType } from "@/types/main";
 import type { PlayModeType, RGB, ColorScheme } from "@/types/main";
 
 interface StatusState {
+  /** 菜单折叠状态 */
   menuCollapsed: boolean;
+  /** 搜索框状态 */
   searchFocus: boolean;
+  /** 搜索框输入值 */
   searchInputValue: string;
+  /** 播放控制条 */
   showPlayBar: boolean;
+  /** 全屏播放器 */
   showFullPlayer: boolean;
+  /** 全屏播放器激活状态 */
   fullPlayerActive: boolean;
+  /** 播放器功能显示 */
   playerMetaShow: boolean;
+  /** 播放列表状态 */
   playListShow: boolean;
+  /** 播放状态 */
   playStatus: boolean;
+  /** 播放加载状态 */
   playLoading: boolean;
+  /** 播放速度 */
   playRate: number;
+  /** 播放音量 */
   playVolume: number;
+  /** 静音前音量 */
   playVolumeMute: number;
+  /** 播放模式 */
   playSongMode: PlayModeType;
+  /** 心动模式 */
   playHeartbeatMode: boolean;
+  /** 封面主题 */
   songCoverTheme: {
+    /** 封面主题颜色 */
     main?: RGB;
+    /** 封面主题颜色（亮色） */
     light?: ColorScheme;
+    /** 封面主题颜色（暗色） */
     dark?: ColorScheme;
   };
+  /** 音乐频谱数据 */
   spectrumsData: number[];
+  /** 纯净歌词模式 */
   pureLyricMode: boolean;
+  /** 当前播放索引 */
   playIndex: number;
+  /** 歌词播放索引 */
   lyricIndex: number;
+  /** 当前播放时间 */
   currentTime: number;
+  /** 歌曲总时长 */
   duration: number;
-  chorus: number;
+  /** 实时播放进度 */
   progress: number;
+  /** 进度偏移 */
   currentTimeOffset: number;
+  /** 是否为解锁歌曲 */
   playUblock: boolean;
+  /** 主内容高度 */
   mainContentHeight: number;
+  /** 列表排序 */
   listSort: SortType;
+  /** 桌面歌词 */
   showDesktopLyric: boolean;
+  /** 播放器评论 */
   showPlayerComment: boolean;
+  /** 私人FM模式 */
   personalFmMode: boolean;
+  /** 更新检查 */
   updateCheck: boolean;
+  /** 自动关闭 */
+  autoClose: {
+    /** 自动关闭 */
+    enable: boolean;
+    /** 自动关闭时间（分钟） */
+    time: number;
+    /** 剩余时长（秒） */
+    remainTime: number;
+    /** 等待歌曲结束 */
+    waitSongEnd: boolean;
+  };
 }
 
 export const useStatusStore = defineStore("status", {
   state: (): StatusState => ({
-    // 菜单折叠状态
     menuCollapsed: false,
-    // 搜索框状态
     searchFocus: false,
     searchInputValue: "",
-    // 播放控制条
     showPlayBar: true,
-    // 播放状态
     playStatus: false,
     playLoading: false,
     playUblock: false,
-    // 播放列表状态
     playListShow: false,
-    // 全屏播放器状态
     showFullPlayer: false,
-    // 全屏播放器激活状态
     fullPlayerActive: false,
-    // 播放器功能显示
     playerMetaShow: true,
-    // 实时播放进度
     currentTime: 0,
     duration: 0,
     progress: 0,
-    // 副歌时间
-    chorus: 0,
-    // 进度偏移
     currentTimeOffset: 0,
-    // 封面主题
     songCoverTheme: {},
-    // 纯净歌词模式
     pureLyricMode: false,
-    // 音乐频谱数据
     spectrumsData: [],
-    // 当前播放索引
     playIndex: -1,
-    // 歌词播放索引
     lyricIndex: -1,
-    // 默认倍速
     playRate: 1,
-    // 默认音量
     playVolume: 0.7,
-    // 静音前音量
     playVolumeMute: 0,
-    // 播放模式
     playSongMode: "repeat",
-    // 心动模式
     playHeartbeatMode: false,
-    // 私人FM模式
     personalFmMode: false,
-    // 主内容高度
     mainContentHeight: 0,
-    // 列表排序
     listSort: "default",
-    // 桌面歌词
     showDesktopLyric: false,
-    // 播放器评论
     showPlayerComment: false,
-    // 更新检查
     updateCheck: false,
+    autoClose: {
+      enable: false,
+      time: 30,
+      remainTime: 0,
+      waitSongEnd: true,
+    },
   }),
   getters: {
     // 播放音量图标
@@ -159,6 +181,7 @@ export const useStatusStore = defineStore("status", {
       "showDesktopLyric",
       "playHeartbeatMode",
       "personalFmMode",
+      "autoClose",
     ],
   },
 });

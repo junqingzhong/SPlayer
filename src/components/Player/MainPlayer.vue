@@ -15,11 +15,6 @@
       :max="100"
       :tooltip="false"
       :keyboard="false"
-      :marks="
-        statusStore.chorus && statusStore.progress <= statusStore.chorus
-          ? { [statusStore.chorus]: '' }
-          : undefined
-      "
       class="player-slider"
       @dragstart="player.pause(false)"
       @dragend="sliderDragend"
@@ -61,6 +56,16 @@
               :speed="0.2"
               class="name"
             />
+            <!-- 倍速 -->
+            <n-tag
+              v-if="statusStore.playRate !== 1"
+              type="primary"
+              size="small"
+              round
+              @click="openChangeRate"
+            >
+              {{ statusStore.playRate }}x
+            </n-tag>
             <!-- 喜欢 -->
             <SvgIcon
               v-if="musicStore.playSong.type !== 'radio'"
@@ -174,7 +179,7 @@ import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/
 import { secondsToTime, calculateCurrentTime } from "@/utils/time";
 import { renderIcon, coverLoaded } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
-import { openDownloadSong, openJumpArtist, openPlaylistAdd } from "@/utils/modal";
+import { openChangeRate, openDownloadSong, openJumpArtist, openPlaylistAdd } from "@/utils/modal";
 import player from "@/utils/player";
 
 const router = useRouter();
@@ -293,14 +298,14 @@ const instantLyrics = computed(() => {
     margin: 0;
     --n-rail-height: 3px;
     --n-handle-size: 14px;
-    :deep(.n-slider-rail) {
-      .n-slider-rail__fill {
-        transition: width 0.3s;
-      }
-      .n-slider-handle-wrapper {
-        transition: left 0.3s;
-      }
-    }
+    // :deep(.n-slider-rail) {
+    //   .n-slider-rail__fill {
+    //     transition: width 0.3s;
+    //   }
+    //   .n-slider-handle-wrapper {
+    //     transition: left 0.3s;
+    //   }
+    // }
   }
   .play-data {
     display: flex;
@@ -368,6 +373,9 @@ const instantLyrics = computed(() => {
           width: max-content;
           max-width: calc(100% - 100px);
           transition: color 0.3s;
+        }
+        .n-tag {
+          margin-left: 8px;
         }
         .like {
           color: var(--primary-hex);

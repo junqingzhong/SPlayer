@@ -10,18 +10,18 @@ import {
   parseTTMLToAMLL,
   parseTTMLToYrc,
 } from "./lyric";
-import { songUrl, unlockSongUrl, songLyric, songChorus, songLyricTTML } from "@/api/song";
+import { songUrl, unlockSongUrl, songLyric, songLyricTTML } from "@/api/song";
 import { getCoverColorData } from "@/utils/color";
 import { calculateProgress } from "./time";
-import { isElectron, isDev } from "./helper";
+import { isElectron, isDev, shuffleArray } from "./helper";
 import { heartRateList } from "@/api/playlist";
 import { formatSongsList } from "./format";
 import { isLogin } from "./auth";
 import { openUserLogin } from "./modal";
 import { personalFm, personalFmToTrash } from "@/api/rec";
-import blob from "./blob";
 import { parseTTML } from "@applemusic-like-lyrics/lyric";
 import { LyricLine } from "@applemusic-like-lyrics/core";
+import blob from "./blob";
 
 // 播放器核心
 // Howler.js
@@ -34,6 +34,8 @@ class Player {
   private player: Howl;
   // 定时器
   private playerInterval: ReturnType<typeof setInterval> | undefined;
+  // 自动关闭定时器
+  private autoCloseTimer: ReturnType<typeof setTimeout> | undefined;
   // 频谱数据
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
@@ -52,39 +54,8 @@ class Player {
     this.player = new Howl({ src: [""], format: allowPlayFormat, autoplay: false });
     // 初始化媒体会话
     this.initMediaSession();
-  }
-  /**
-   * 洗牌数组（Fisher-Yates）
-   */
-  private shuffleArray<T>(arr: T[]): T[] {
-    const copy = arr.slice();
-    for (let i = copy.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-  }
-  /**
-   * 重置状态
-   */
-  resetStatus() {
-    const statusStore = useStatusStore();
-    const musicStore = useMusicStore();
-    // 重置状态
-    statusStore.$patch({
-      currentTime: 0,
-      duration: 0,
-      progress: 0,
-      chorus: 0,
-      currentTimeOffset: 0,
-      lyricIndex: -1,
-      playStatus: false,
-      playLoading: false,
-    });
-    musicStore.$patch({
-      playPlaylistId: 0,
-      playSong: {},
-    });
+    // 初始化自动关闭定时器
+    this.toggleAutoCloseTimer();
   }
   /**
    * 获取当前播放歌曲
@@ -374,7 +345,6 @@ class Player {
     // 获取歌曲附加信息 - 非电台和本地
     if (type !== "radio" && !path) {
       this.getLyricData(id);
-      this.getChorus(id);
     } else resetSongLyric();
     // 定时获取状态
     if (!this.playerInterval) this.handlePlayStatus();
@@ -416,8 +386,14 @@ class Player {
         const audioDom = this.getAudioDom();
         audioDom.crossOrigin = "anonymous";
       }
-      // 恢复进度（ 需距离本曲结束大于 2 秒 ）
-      if (seek && statusStore.duration - statusStore.currentTime > 2) this.setSeek(seek);
+      // 恢复进度（仅在明确指定且大于0时才恢复，避免切换歌曲时意外恢复进度）
+      if (seek && seek > 0) {
+        const duration = this.player.duration();
+        // 确保恢复的进度有效且距离歌曲结束大于2秒
+        if (duration && seek < duration - 2) {
+          this.setSeek(seek);
+        }
+      }
       // 更新状态
       statusStore.playLoading = false;
       // ipc
@@ -453,6 +429,15 @@ class Player {
       if (currentSessionId !== this.playSessionId) return;
       // statusStore.playStatus = false;
       console.log("⏹️ song end:", playSongData);
+      
+      // 检查是否需要在歌曲结束时执行自动关闭
+      const statusStore = useStatusStore();
+      if (statusStore.autoClose.enable && statusStore.autoClose.waitSongEnd && statusStore.autoClose.remainTime <= 0) {
+        // 执行自动关闭
+        this.executeAutoClose();
+        return;
+      }
+      
       this.nextOrPrev("next");
     });
     // 错误
@@ -607,22 +592,6 @@ class Player {
     }
   }
   /**
-   * 获取副歌时间
-   * @param id 歌曲id
-   */
-  private async getChorus(id: number) {
-    const statusStore = useStatusStore();
-    const result = await songChorus(id);
-    if (result?.code !== 200 || result?.chorus?.length === 0) {
-      statusStore.chorus = 0;
-      return;
-    }
-    // 计算并保存
-    const chorus = result?.chorus?.[0]?.startTime;
-    const time = ((chorus / 1000 / statusStore.duration) * 100).toFixed(2);
-    statusStore.chorus = Number(time);
-  }
-  /**
    * 播放错误
    * 在播放错误时，播放下一首
    */
@@ -689,6 +658,27 @@ class Player {
       window.$message.error("获取本地歌曲元信息失败");
       console.error("Failed to parse local music info:", error);
     }
+  }
+  /**
+   * 重置状态
+   */
+  resetStatus() {
+    const statusStore = useStatusStore();
+    const musicStore = useMusicStore();
+    // 重置状态
+    statusStore.$patch({
+      currentTime: 0,
+      duration: 0,
+      progress: 0,
+      currentTimeOffset: 0,
+      lyricIndex: -1,
+      playStatus: false,
+      playLoading: false,
+    });
+    musicStore.$patch({
+      playPlaylistId: 0,
+      playSong: {},
+    });
   }
   /**
    * 获取播放信息
@@ -879,6 +869,14 @@ class Player {
         statusStore.lyricIndex = -1;
         this.setSeek(0);
         await this.play();
+        return;
+      }
+      // 单曲循环
+      if (playSongMode === "repeat-once") {
+        statusStore.lyricIndex = -1;
+        this.setSeek(0);
+        await this.play();
+        return;
       }
       // 列表循环或处于心动模式或随机模式
       if (
@@ -888,13 +886,6 @@ class Player {
         playSong.type === "radio"
       ) {
         statusStore.playIndex += type === "next" ? 1 : -1;
-      }
-      // 单曲循环
-      else if (playSongMode === "repeat-once") {
-        statusStore.lyricIndex = -1;
-        this.setSeek(0);
-        await this.play();
-        return;
       } else {
         throw new Error("The play mode is not supported");
       }
@@ -904,10 +895,20 @@ class Player {
       } else if (statusStore.playIndex >= playListLength) {
         statusStore.playIndex = 0;
       }
+      // 重置播放进度和歌词索引（切换歌曲时必须重置）
+      statusStore.lyricIndex = -1;
+      statusStore.currentTime = 0;
+      statusStore.progress = 0;
+      
+      // 重置自动关闭计时器（切换歌曲时重新开始计时）
+      if (statusStore.autoClose.enable) {
+        this.startAutoCloseTimer(statusStore.autoClose.time, statusStore.autoClose.waitSongEnd);
+      }
+      
       // 暂停
       await this.pause(false);
-      // 初始化播放器
-      await this.initPlayer(play);
+      // 初始化播放器（不传入seek参数，确保从头开始播放）
+      await this.initPlayer(play, 0);
     } catch (error) {
       console.error("Error in nextOrPrev:", error);
       throw error;
@@ -950,7 +951,7 @@ class Player {
       if (currentList && currentList.length > 1) {
         const currentSongId = musicStore.playSong?.id;
         await dataStore.setOriginalPlayList(currentList);
-        const shuffled = this.shuffleArray(currentList);
+        const shuffled = shuffleArray(currentList);
         await dataStore.setPlayList(shuffled);
         if (currentSongId) {
           const newIndex = shuffled.findIndex((s: any) => s?.id === currentSongId);
@@ -1116,7 +1117,7 @@ class Player {
       // 保存原始播放列表
       await dataStore.setOriginalPlayList(cloneDeep(data));
       // 随机排序
-      processedData = this.shuffleArray(processedData);
+      processedData = shuffleArray(processedData);
     }
 
     // 更新列表
@@ -1192,9 +1193,18 @@ class Player {
     }
     // 更改状态
     statusStore.playIndex = index;
-    // 清理并播放
-    this.resetStatus();
-    await this.initPlayer();
+    // 重置播放进度和歌词索引（切换歌曲时必须重置）
+    statusStore.lyricIndex = -1;
+    statusStore.currentTime = 0;
+    statusStore.progress = 0;
+    
+    // 重置自动关闭计时器（切换歌曲时重新开始计时）
+    if (statusStore.autoClose.enable) {
+      this.startAutoCloseTimer(statusStore.autoClose.time, statusStore.autoClose.waitSongEnd);
+    }
+    
+    // 清理并播放（不传入seek参数，确保从头开始播放）
+    await this.initPlayer(true, 0);
   }
   /**
    * 移除指定歌曲
@@ -1432,6 +1442,75 @@ class Player {
     } catch (error) {
       console.error("Error adding to trash:", error);
       window.$message.error("移至垃圾桶失败，请重试");
+    }
+  }
+  /**
+   * 开始定时关闭
+   * @param time 关闭时间（秒）
+   * @param waitSongEnd 是否等待歌曲结束
+   */
+  startAutoCloseTimer(time: number, waitSongEnd: boolean = true) {
+    const statusStore = useStatusStore();
+    // 清除之前的定时器
+    clearTimeout(this.autoCloseTimer);
+    // 重置剩余时间
+    statusStore.autoClose = {
+      enable: true,
+      time,
+      remainTime: time,
+      waitSongEnd,
+    };
+    // 开始减少剩余时间
+    const { pause } = useIntervalFn(() => {
+      if (statusStore.autoClose.remainTime <= 0) pause();
+      statusStore.autoClose.remainTime--;
+    }, 1000);
+    // 设置新的定时器
+    this.autoCloseTimer = setTimeout(() => {
+      pause();
+      statusStore.autoClose.remainTime = 0;
+      // 根据设置决定如何关闭
+      if (statusStore.autoClose.waitSongEnd) {
+        // 等待歌曲结束，不在这里执行关闭，而是在歌曲结束事件中处理
+        console.log("⏰ 自动关闭计时结束，等待当前歌曲播放完毕");
+      } else {
+        // 立即执行关闭
+        this.executeAutoClose();
+      }
+    }, time * 1000);
+  }
+  /**
+   * 开启或者停止自动关闭定时器
+   */
+  toggleAutoCloseTimer() {
+    const statusStore = useStatusStore();
+    if (statusStore.autoClose.enable) {
+      this.startAutoCloseTimer(statusStore.autoClose.time, statusStore.autoClose.waitSongEnd);
+    } else {
+      clearTimeout(this.autoCloseTimer);
+    }
+  }
+  
+  /**
+   * 执行自动关闭操作
+   */
+  private executeAutoClose() {
+    console.log("🔄 执行自动关闭");
+    // 暂停播放
+    this.pause();
+    // 清除定时器
+    clearTimeout(this.autoCloseTimer);
+    // 重置状态
+    const statusStore = useStatusStore();
+    statusStore.autoClose.enable = false;
+    statusStore.autoClose.remainTime = 0;
+    
+    // 如果是 Electron 环境，关闭应用
+    if (isElectron) {
+      window.electron.ipcRenderer.send("app-close");
+    } else {
+      // 浏览器环境，显示提示信息
+      window.$message.info("自动关闭已触发，播放已暂停");
     }
   }
 }

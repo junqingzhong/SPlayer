@@ -120,6 +120,12 @@ export type CommentType = {
   likedCount?: number;
 };
 
+/**
+ * 播放模式
+ * - repeat: 重复播放
+ * - repeat-once: 重复播放当前歌曲
+ * - shuffle: 随机播放
+ */
 export type PlayModeType = "repeat" | "repeat-once" | "shuffle";
 
 export type LyricContentType = {
@@ -130,6 +136,7 @@ export type LyricContentType = {
   endsWithSpace: boolean;
 };
 
+/** 歌词类型 */
 export type LyricType = {
   /** 歌词开始时间 */
   time: number;

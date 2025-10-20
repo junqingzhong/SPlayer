@@ -17,6 +17,8 @@ import DownloadSong from "@/components/Modal/DownloadSong.vue";
 import MainSetting from "@/components/Setting/MainSetting.vue";
 import UpdateApp from "@/components/Modal/UpdateApp.vue";
 import ExcludeKeywords from "@/components/Modal/ExcludeKeywords.vue";
+import ChangeRate from "@/components/Modal/changeRate.vue";
+import AutoClose from "@/components/Modal/autoClose.vue";
 
 // 用户协议
 export const openUserAgreement = () => {
@@ -246,6 +248,34 @@ export const openLyricExclude = () => {
     title: "歌词排除内容",
     content: () => {
       return h(ExcludeKeywords);
+    },
+  });
+};
+
+/** 打开播放速度弹窗 */
+export const openChangeRate = () => {
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "600px" },
+    title: "播放速度",
+    content: () => {
+      return h(ChangeRate);
+    },
+  });
+};
+
+/** 打开自动关闭弹窗 */
+export const openAutoClose = () => {
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "600px" },
+    title: "自动关闭",
+    content: () => {
+      return h(AutoClose);
     },
   });
 };

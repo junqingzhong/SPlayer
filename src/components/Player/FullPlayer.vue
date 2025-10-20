@@ -75,10 +75,7 @@
           <div v-else-if="musicStore.isHasLrc" class="content-right">
             <!-- 数据 -->
             <PlayerData
-              v-if="
-                (statusStore.pureLyricMode && musicStore.isHasLrc) ||
-                (settingStore.playerType === 'record' && musicStore.isHasLrc)
-              "
+              v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
               :center="statusStore.pureLyricMode"
               :theme="statusStore.mainColor"
             />
