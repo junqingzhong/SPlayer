@@ -35,7 +35,7 @@ class Player {
   // 定时器
   private playerInterval: ReturnType<typeof setInterval> | undefined;
   // 自动关闭定时器
-  private autoCloseTimer: ReturnType<typeof setTimeout> | undefined;
+  private autoCloseInterval: ReturnType<typeof setInterval> | undefined;
   // 频谱数据
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
@@ -54,8 +54,6 @@ class Player {
     this.player = new Howl({ src: [""], format: allowPlayFormat, autoplay: false });
     // 初始化媒体会话
     this.initMediaSession();
-    // 初始化自动关闭定时器
-    this.toggleAutoCloseTimer();
   }
   /**
    * 获取当前播放歌曲
@@ -429,15 +427,19 @@ class Player {
       if (currentSessionId !== this.playSessionId) return;
       // statusStore.playStatus = false;
       console.log("⏹️ song end:", playSongData);
-      
+
       // 检查是否需要在歌曲结束时执行自动关闭
       const statusStore = useStatusStore();
-      if (statusStore.autoClose.enable && statusStore.autoClose.waitSongEnd && statusStore.autoClose.remainTime <= 0) {
+      if (
+        statusStore.autoClose.enable &&
+        statusStore.autoClose.waitSongEnd &&
+        statusStore.autoClose.remainTime <= 0
+      ) {
         // 执行自动关闭
         this.executeAutoClose();
         return;
       }
-      
+
       this.nextOrPrev("next");
     });
     // 错误
@@ -899,12 +901,6 @@ class Player {
       statusStore.lyricIndex = -1;
       statusStore.currentTime = 0;
       statusStore.progress = 0;
-      
-      // 重置自动关闭计时器（切换歌曲时重新开始计时）
-      if (statusStore.autoClose.enable) {
-        this.startAutoCloseTimer(statusStore.autoClose.time, statusStore.autoClose.waitSongEnd);
-      }
-      
       // 暂停
       await this.pause(false);
       // 初始化播放器（不传入seek参数，确保从头开始播放）
@@ -1197,12 +1193,7 @@ class Player {
     statusStore.lyricIndex = -1;
     statusStore.currentTime = 0;
     statusStore.progress = 0;
-    
-    // 重置自动关闭计时器（切换歌曲时重新开始计时）
-    if (statusStore.autoClose.enable) {
-      this.startAutoCloseTimer(statusStore.autoClose.time, statusStore.autoClose.waitSongEnd);
-    }
-    
+
     // 清理并播放（不传入seek参数，确保从头开始播放）
     await this.initPlayer(true, 0);
   }
@@ -1446,51 +1437,36 @@ class Player {
   }
   /**
    * 开始定时关闭
-   * @param time 关闭时间（秒）
-   * @param waitSongEnd 是否等待歌曲结束
+   * @param time 关闭时间（分钟）
+   * @param remainTime 剩余时间（秒）
    */
-  startAutoCloseTimer(time: number, waitSongEnd: boolean = true) {
+  startAutoCloseTimer(time: number, remainTime: number) {
     const statusStore = useStatusStore();
-    // 清除之前的定时器
-    clearTimeout(this.autoCloseTimer);
+    if (!time || !remainTime) return;
+    // 如已有定时器在运行，先停止以防叠加
+    if (this.autoCloseInterval) {
+      clearInterval(this.autoCloseInterval);
+      this.autoCloseInterval = undefined;
+    }
     // 重置剩余时间
-    statusStore.autoClose = {
+    Object.assign(statusStore.autoClose, {
       enable: true,
       time,
-      remainTime: time,
-      waitSongEnd,
-    };
+      remainTime,
+    });
     // 开始减少剩余时间
-    const { pause } = useIntervalFn(() => {
-      if (statusStore.autoClose.remainTime <= 0) pause();
+    this.autoCloseInterval = setInterval(() => {
+      if (statusStore.autoClose.remainTime <= 0) {
+        clearInterval(this.autoCloseInterval);
+        this.autoCloseInterval = undefined;
+        if (!statusStore.autoClose.waitSongEnd) {
+          this.executeAutoClose();
+        }
+        return;
+      }
       statusStore.autoClose.remainTime--;
     }, 1000);
-    // 设置新的定时器
-    this.autoCloseTimer = setTimeout(() => {
-      pause();
-      statusStore.autoClose.remainTime = 0;
-      // 根据设置决定如何关闭
-      if (statusStore.autoClose.waitSongEnd) {
-        // 等待歌曲结束，不在这里执行关闭，而是在歌曲结束事件中处理
-        console.log("⏰ 自动关闭计时结束，等待当前歌曲播放完毕");
-      } else {
-        // 立即执行关闭
-        this.executeAutoClose();
-      }
-    }, time * 1000);
   }
-  /**
-   * 开启或者停止自动关闭定时器
-   */
-  toggleAutoCloseTimer() {
-    const statusStore = useStatusStore();
-    if (statusStore.autoClose.enable) {
-      this.startAutoCloseTimer(statusStore.autoClose.time, statusStore.autoClose.waitSongEnd);
-    } else {
-      clearTimeout(this.autoCloseTimer);
-    }
-  }
-  
   /**
    * 执行自动关闭操作
    */
@@ -1498,20 +1474,10 @@ class Player {
     console.log("🔄 执行自动关闭");
     // 暂停播放
     this.pause();
-    // 清除定时器
-    clearTimeout(this.autoCloseTimer);
     // 重置状态
-    const statusStore = useStatusStore();
-    statusStore.autoClose.enable = false;
-    statusStore.autoClose.remainTime = 0;
-    
-    // 如果是 Electron 环境，关闭应用
-    if (isElectron) {
-      window.electron.ipcRenderer.send("app-close");
-    } else {
-      // 浏览器环境，显示提示信息
-      window.$message.info("自动关闭已触发，播放已暂停");
-    }
+    const { autoClose } = useStatusStore();
+    autoClose.enable = false;
+    autoClose.remainTime = autoClose.time * 60;
   }
 }
 

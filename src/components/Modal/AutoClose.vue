@@ -11,7 +11,11 @@
             </n-text>
           </Transition>
         </n-flex>
-        <n-switch v-model:value="statusStore.autoClose.enable" :round="false" />
+        <n-switch
+          v-model:value="statusStore.autoClose.enable"
+          :round="false"
+          @update:value="handleUpdate"
+        />
       </n-flex>
     </n-card>
     <!-- 时间选择 -->
@@ -23,6 +27,7 @@
         type="primary"
         size="large"
         round
+        @click="player.startAutoCloseTimer(item, item * 60)"
       >
         {{ item }}min
       </n-tag>
@@ -35,13 +40,19 @@
           type: 'primary',
         }"
         :show-icon="false"
+        @positive-click="player.startAutoCloseTimer(customTime, customTime * 60)"
       >
         <template #trigger>
           <n-tag :bordered="false" type="primary" size="large" round> 自定义时长 </n-tag>
         </template>
         <n-flex vertical>
           <n-text>自定义时长（分钟）</n-text>
-          <n-input-number v-model:value="statusStore.autoClose.remainTime" />
+          <n-input-number
+            v-model:value="customTime"
+            :min="1"
+            :max="120"
+            placeholder="请输入自定义时长"
+          />
         </n-flex>
       </n-popconfirm>
     </n-flex>
@@ -55,8 +66,22 @@
 <script setup lang="ts">
 import { useStatusStore } from "@/stores";
 import { convertSecondsToTime } from "@/utils/time";
+import player from "@/utils/player";
 
 const statusStore = useStatusStore();
+
+// 自定义时长
+const customTime = ref(1);
+
+// 是否开启
+const handleUpdate = (value: boolean) => {
+  if (value) {
+    player.startAutoCloseTimer(statusStore.autoClose.time, statusStore.autoClose.remainTime);
+  } else {
+    statusStore.autoClose.enable = false;
+    statusStore.autoClose.remainTime = statusStore.autoClose.time * 60;
+  }
+};
 </script>
 
 <style scoped lang="scss">

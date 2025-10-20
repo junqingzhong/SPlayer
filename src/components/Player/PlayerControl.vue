@@ -140,7 +140,7 @@ const sliderDragend = () => {
     height: 100%;
     padding: 0 30px;
     transition: opacity 0.3s;
-    .menu-icon {
+    :deep(.menu-icon) {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -160,6 +160,12 @@ const sliderDragend = () => {
       }
       &:active {
         transform: scale(1);
+      }
+    }
+    :deep(.n-badge-sup) {
+      background-color: rgba(var(--main-color), 0.14);
+      .n-base-slot-machine {
+        color: rgb(var(--main-color));
       }
     }
   }

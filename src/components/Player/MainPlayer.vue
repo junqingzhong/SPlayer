@@ -161,11 +161,34 @@
         class="play-menu"
         justify="end"
       >
-        <!-- 播放时间 -->
-        <div class="time">
-          <n-text depth="2">{{ secondsToTime(statusStore.currentTime) }}</n-text>
-          <n-text depth="2">{{ secondsToTime(statusStore.duration) }}</n-text>
-        </div>
+        <!-- 时间相关 -->
+        <Transition name="fade" mode="out-in">
+          <n-flex
+            :key="statusStore.autoClose.enable ? 'autoClose' : 'time'"
+            :size="4"
+            justify="center"
+            class="time-container"
+            vertical
+          >
+            <div class="time">
+              <n-text depth="2">{{ secondsToTime(statusStore.currentTime) }}</n-text>
+              <n-text depth="2">{{ secondsToTime(statusStore.duration) }}</n-text>
+            </div>
+            <!-- 定时关闭 -->
+            <n-tag
+              v-if="statusStore.autoClose.enable"
+              size="small"
+              type="primary"
+              round
+              @click="openAutoClose"
+            >
+              {{ convertSecondsToTime(statusStore.autoClose.remainTime) }}
+              <template #icon>
+                <SvgIcon name="TimeAuto" />
+              </template>
+            </n-tag>
+          </n-flex>
+        </Transition>
         <!-- 功能区 -->
         <PlayerRightMenu />
       </n-flex>
@@ -176,10 +199,16 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { secondsToTime, calculateCurrentTime } from "@/utils/time";
+import { secondsToTime, calculateCurrentTime, convertSecondsToTime } from "@/utils/time";
 import { renderIcon, coverLoaded } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
-import { openChangeRate, openDownloadSong, openJumpArtist, openPlaylistAdd } from "@/utils/modal";
+import {
+  openAutoClose,
+  openChangeRate,
+  openDownloadSong,
+  openJumpArtist,
+  openPlaylistAdd,
+} from "@/utils/modal";
 import player from "@/utils/player";
 
 const router = useRouter();
@@ -476,11 +505,17 @@ const instantLyrics = computed(() => {
     }
   }
   .play-menu {
+    .time-container {
+      margin-right: 8px;
+      .n-tag {
+        justify-content: center;
+        font-size: 12px;
+      }
+    }
     .time {
       display: flex;
       align-items: center;
       font-size: 12px;
-      margin-right: 8px;
       .n-text {
         color: var(--primary-hex);
         opacity: 0.8;
