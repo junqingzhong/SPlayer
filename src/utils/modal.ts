@@ -19,6 +19,7 @@ import UpdateApp from "@/components/Modal/UpdateApp.vue";
 import ExcludeKeywords from "@/components/Modal/ExcludeKeywords.vue";
 import ChangeRate from "@/components/Modal/ChangeRate.vue";
 import AutoClose from "@/components/Modal/AutoClose.vue";
+import Equalizer from "@/components/Modal/Equalizer.vue";
 
 // 用户协议
 export const openUserAgreement = () => {
@@ -276,6 +277,20 @@ export const openAutoClose = () => {
     title: "自动关闭",
     content: () => {
       return h(AutoClose);
+    },
+  });
+};
+
+/** 打开均衡器弹窗 */
+export const openEqualizer = () => {
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "600px" },
+    title: "均衡器",
+    content: () => {
+      return h(Equalizer);
     },
   });
 };

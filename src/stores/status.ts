@@ -72,6 +72,12 @@ interface StatusState {
   personalFmMode: boolean;
   /** 更新检查 */
   updateCheck: boolean;
+  /** 均衡器是否开启 */
+  eqEnabled: boolean;
+  /** 均衡器 10 段增益（dB） */
+  eqBands: number[];
+  /** 均衡器当前预设 key */
+  eqPreset: string;
   /** 自动关闭 */
   autoClose: {
     /** 自动关闭 */
@@ -118,6 +124,9 @@ export const useStatusStore = defineStore("status", {
     showDesktopLyric: false,
     showPlayerComment: false,
     updateCheck: false,
+    eqEnabled: false,
+    eqBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    eqPreset: "acoustic",
     autoClose: {
       enable: false,
       time: 30,
@@ -196,6 +205,28 @@ export const useStatusStore = defineStore("status", {
         delete this.currentTimeOffsetMap[songId];
       }
     },
+    /**
+     * 设置 EQ 开关
+     * @param enabled 是否开启
+     */
+    setEqEnabled(enabled: boolean) {
+      this.eqEnabled = enabled;
+    },
+    /**
+     * 设置 EQ 10 段增益（dB）
+     * @param bands 长度 10 的 dB 数组
+     */
+    setEqBands(bands: number[]) {
+      if (Array.isArray(bands) && bands.length === 10) {
+        this.eqBands = [...bands];
+      }
+    },
+    /**
+     * 设置 EQ 预设名
+     */
+    setEqPreset(preset: string) {
+      this.eqPreset = preset;
+    },
   },
   // 持久化
   persist: {
@@ -220,6 +251,9 @@ export const useStatusStore = defineStore("status", {
       "playHeartbeatMode",
       "personalFmMode",
       "autoClose",
+      "eqEnabled",
+      "eqBands",
+      "eqPreset",
     ],
   },
 });

@@ -64,7 +64,7 @@ import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { isElectron, renderIcon } from "@/utils/helper";
 import player from "@/utils/player";
-import { openAutoClose, openChangeRate } from "@/utils/modal";
+import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
@@ -92,6 +92,14 @@ const playModeOptions: DropdownOption[] = [
 
 // 其他控制：播放速度下拉菜单
 const controlsOptions = computed<DropdownOption[]>(() => [
+  {
+    label: "均衡器",
+    key: "equalizer",
+    icon: renderIcon("Eq"),
+    props: {
+      onClick: () => openEqualizer(),
+    },
+  },
   {
     label: "自动关闭",
     key: "autoClose",

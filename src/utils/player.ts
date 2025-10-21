@@ -19,6 +19,7 @@ import {
   getUnlockSongUrl,
 } from "./player-utils/song";
 import { getLyricData } from "./player-utils/lyric";
+import audioContextManager from "@/utils/player-utils/context";
 import blob from "./blob";
 
 // 播放器核心
@@ -38,7 +39,6 @@ class Player {
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private dataArray: Uint8Array<ArrayBuffer> | null = null;
-  private source: MediaElementAudioSourceNode | null = null;
   /** 其他数据 */
   private testNumber: number = 0;
   private message: MessageReactive | null = null;
@@ -243,7 +243,15 @@ class Player {
       // 允许跨域
       if (settingStore.showSpectrums) {
         const audioDom = this.getAudioDom();
-        audioDom.crossOrigin = "anonymous";
+        if (audioDom) audioDom.crossOrigin = "anonymous";
+      }
+      // 恢复均衡器：如持久化为开启，则在音频节点可用后立即构建 EQ 链
+      if (isElectron && statusStore.eqEnabled) {
+        try {
+          this.enableEq({ bands: statusStore.eqBands });
+        } catch {
+          /* empty */
+        }
       }
       // 恢复进度（仅在明确指定且大于0时才恢复，避免切换歌曲时意外恢复进度）
       if (seek && seek > 0) {
@@ -439,12 +447,14 @@ class Player {
   /**
    * 获取 Audio Dom
    */
-  private getAudioDom() {
-    const audioDom = (this.player as any)._sounds[0]._node;
-    if (!audioDom) {
-      throw new Error("Audio Dom is null");
+  private getAudioDom(): HTMLMediaElement | null {
+    try {
+      const sounds = (this.player as any)?._sounds;
+      const node = sounds && sounds.length ? sounds[0]?._node : null;
+      return node || null;
+    } catch {
+      return null;
     }
-    return audioDom;
   }
   /**
    * 获取本地歌曲元信息
@@ -1071,21 +1081,18 @@ class Player {
   initSpectrumData() {
     try {
       if (this.audioContext || !isElectron) return;
-      // AudioContext
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       // 获取音频元素
       const audioDom = this.getAudioDom();
-      // 媒体元素源
-      this.source = this.audioContext.createMediaElementSource(audioDom);
-      // AnalyserNode
-      this.analyser = this.audioContext.createAnalyser();
-      // 频谱分析器 FFT
-      this.analyser.fftSize = 512;
-      // 连接源和分析节点
-      this.source.connect(this.analyser);
-      // 连接分析节点到 AudioContext
+      if (!audioDom) return;
+      // 通过统一管理器创建/获取基础图
+      const nodes = audioContextManager.getOrCreateBasicGraph(audioDom);
+      if (!nodes) return;
+      // 记录节点
+      this.audioContext = nodes.context;
+      this.analyser = nodes.analyser;
+      // 可视化保持与原有行为一致：连接到输出
       this.analyser.connect(this.audioContext.destination);
-      // 配置 AnalyserNode
+      // 配置数据缓冲
       const bufferLength = this.analyser.frequencyBinCount;
       this.dataArray = new Uint8Array(bufferLength);
       // 更新频谱数据
@@ -1093,6 +1100,61 @@ class Player {
       console.log("🎼 Initialize music spectrum successfully");
     } catch (error) {
       console.error("🎼 Initialize music spectrum failed:", error);
+    }
+  }
+
+  /**
+   * 启用均衡器
+   * @param options 配置
+   * @param options.bands 各频段 dB 值（与 frequencies 对齐），直接写入 filter.gain
+   * @param options.preamp 前级增益 dB，转换为线性增益写入 preGain.gain
+   * @param options.q peaking 类型的 Q 值统一更新（shelf 不适用 Q）
+   * @param options.frequencies 自定义中心频率
+   */
+  enableEq(options?: { bands?: number[]; preamp?: number; q?: number; frequencies?: number[] }) {
+    if (!isElectron) return;
+    const audioDom = this.getAudioDom();
+    if (!audioDom) return;
+    const nodes = audioContextManager.enableEq(audioDom, options);
+    if (!nodes) return;
+    // 连接到输出，确保声音从 WebAudio 输出
+    try {
+      nodes.analyser.connect(nodes.context.destination);
+    } catch {
+      /* empty */
+    }
+  }
+
+  /**
+   * 更新均衡器参数
+   * @param options 配置
+   * @param options.bands 各频段 dB 值（与 frequencies 对齐），直接写入 filter.gain
+   * @param options.preamp 前级增益 dB，转换为线性增益写入 preGain.gain
+   * @param options.q peaking 类型的 Q 值统一更新（shelf 不适用 Q）
+   */
+  updateEq(options: { bands?: number[]; preamp?: number; q?: number }) {
+    if (!isElectron) return;
+    const audioDom = this.getAudioDom();
+    if (!audioDom) return;
+    audioContextManager.updateEq(audioDom, options);
+  }
+
+  /**
+   * 禁用均衡器并恢复直出（保持频谱可用）
+   */
+  disableEq() {
+    if (!isElectron) return;
+    const audioDom = this.getAudioDom();
+    if (!audioDom) return;
+    audioContextManager.disableEq(audioDom);
+    // 恢复 analyser 输出
+    const nodes = audioContextManager.getOrCreateBasicGraph(audioDom);
+    if (nodes) {
+      try {
+        nodes.analyser.connect(nodes.context.destination);
+      } catch {
+        /* empty */
+      }
     }
   }
   /**
