@@ -1,5 +1,6 @@
 <template>
-  <div class="equalizer">
+  <n-flex class="equalizer" size="large" vertical>
+    <n-alert :show-icon="false"> 实验性功能，请谨慎使用 </n-alert>
     <n-flex align="center" justify="space-between" :size="8">
       <n-flex wrap :size="8" class="eq-presets">
         <n-tag
@@ -18,22 +19,21 @@
     </n-flex>
 
     <div class="eq-sliders">
-      <div v-for="(freq, i) in frequencies" :key="freq" class="eq-col">
-        <div class="eq-freq">{{ freqLabels[i] }}</div>
+      <div v-for="(freq, i) in freqLabels" :key="freq" class="eq-col">
+        <div class="eq-freq">{{ freq }}</div>
         <n-slider
           v-model:value="bands[i]"
           :min="-12"
           :max="12"
-          :step="0.5"
-          :tooltip="false"
-          vertical
+          :step="0.1"
           :disabled="!enabled || !isElectron"
+          vertical
           @update:value="onBandChange(i, $event)"
         />
         <div class="eq-value">{{ formatDb(bands[i]) }}</div>
       </div>
     </div>
-  </div>
+  </n-flex>
 </template>
 
 <script setup lang="ts">
@@ -46,34 +46,30 @@ const statusStore = useStatusStore();
 type PresetKey = keyof typeof presetList;
 
 // 10 段中心频率
-const frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
-const freqLabels = [
-  "31Hz",
-  "62Hz",
-  "125Hz",
-  "250Hz",
-  "500Hz",
-  "1kHz",
-  "2kHz",
-  "4kHz",
-  "8kHz",
-  "16kHz",
-];
+const frequencies = [31, 63, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+
+// 频率文本
+const freqLabels = frequencies.map((f) => (f >= 1000 ? `${f / 1000}kHz` : `${f}Hz`));
 
 // 预设（单位 dB），范围建议在 [-12, 12]
 const presetList = {
   acoustic: { label: "原声", bands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
-  pop: { label: "流行", bands: [0, 2, 4, 4, 1, -1, -1, 1, 2, 2] },
-  rock: { label: "摇滚", bands: [4, 3, 2, 0, -1, 1, 2, 3, 3, 2] },
-  classical: { label: "古典", bands: [0, 0, 1, 2, 3, 3, 2, 1, 0, 0] },
-  jazz: { label: "爵士", bands: [0, 2, 3, 2, 0, 1, 2, 2, 1, 0] },
+  pop: { label: "流行", bands: [-1, -1, 0, 2, 4, 4, 2, 1, -1, 1] },
+  dance: { label: "舞曲", bands: [4, 6, 7, 0, 2, 3, 5, 4, 3, 0] },
+  rock: { label: "摇滚", bands: [5, 3, 3, 1, 0, -1, 0, 2, 3, 5] },
+  classical: { label: "古典", bands: [5, 4, 3, 2, -1, -1, 0, 2, 3, 5] },
+  jazz: { label: "爵士", bands: [3, 3, 2, 2, -1, -1, 0, 2, 2, 5] },
   vocal: { label: "人声", bands: [-2, -1, 0, 2, 4, 4, 2, 0, -1, -2] },
-  dance: { label: "舞曲", bands: [5, 4, 3, 1, -1, 0, 2, 3, 3, 2] },
+  bass: { label: "重低音", bands: [6, 6, 8, 2, 0, 0, 0, 0, 0, 0] },
   custom: { label: "自定义", bands: [] as number[] },
 } as const;
 
 const enabled = ref<boolean>(statusStore.eqEnabled);
+
+// 当前预设
 const currentPreset = ref<PresetKey>((statusStore.eqPreset as PresetKey) || "custom");
+
+// 当前频段
 const bands = ref<number[]>(
   statusStore.eqBands?.length === 10 ? [...statusStore.eqBands] : Array(10).fill(0),
 );
@@ -126,11 +122,6 @@ const onBandChange = (index: number, value: number) => {
 };
 
 watch(enabled, () => applyEq());
-
-onMounted(() => {
-  // 初始状态：若持久化为开启，则直接应用
-  if (isElectron && enabled.value) player.enableEq({ bands: bands.value, frequencies });
-});
 </script>
 
 <style scoped lang="scss">
@@ -154,6 +145,8 @@ onMounted(() => {
         height: 160px;
       }
       .eq-value {
+        width: 46px;
+        text-align: center;
         margin-top: 6px;
         font-size: 12px;
         opacity: 0.8;

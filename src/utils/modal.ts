@@ -287,7 +287,7 @@ export const openEqualizer = () => {
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    style: { width: "620px" },
     title: "均衡器",
     content: () => {
       return h(Equalizer);
