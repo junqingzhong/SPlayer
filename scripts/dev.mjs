@@ -44,7 +44,7 @@ if (isWindows) {
   startElectronVite();
 }
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+ 
 const startElectronVite = () => {
   console.log("🔧 正在启动 Electron Vite 开发服务器...");
 

@@ -26,28 +26,29 @@ import blob from "./blob";
 // 播放器核心
 // Howler.js
 
-// 允许播放格式
+/* *允许播放格式 */
 const allowPlayFormat = ["mp3", "flac", "webm", "ogg", "wav"];
 
 class Player {
-  // 播放器
+  /** 播放器 */
   private player: Howl;
-  // 定时器
+  /** 定时器 */
   private playerInterval: ReturnType<typeof setInterval> | undefined;
-  // 自动关闭定时器
+  /** 自动关闭定时器 */
   private autoCloseInterval: ReturnType<typeof setInterval> | undefined;
-  // 频谱数据
+  /** 频谱数据 */
   private audioContext: AudioContext | null = null;
   private analyser: AnalyserNode | null = null;
   private dataArray: Uint8Array<ArrayBuffer> | null = null;
   private source: MediaElementAudioSourceNode | null = null;
-  // 其他数据
+  /** 其他数据 */
   private testNumber: number = 0;
   private message: MessageReactive | null = null;
-  // 预载下一首歌曲播放地址缓存（仅存 URL，不创建 Howl）
+  /** 预载下一首歌曲播放地址缓存（仅存 URL，不创建 Howl） */
   private nextPrefetch: { id: number; url: string | null; ublock: boolean } | null = null;
-  // 并发控制：当前播放会话与初始化/切曲状态
+  /** 并发控制：当前播放会话与初始化/切曲状态 */
   private playSessionId: number = 0;
+  /** 是否正在切换歌曲 */
   private switching: boolean = false;
   constructor() {
     // 创建播放器实例
@@ -320,7 +321,9 @@ class Player {
     // 清理播放器（移除事件，停止并卸载）
     try {
       this.player.off();
-    } catch {}
+    } catch {
+      /* empty */
+    }
     Howler.stop();
     Howler.unload();
     // 创建播放器（禁用内置 autoplay，统一走手动 play）
@@ -786,6 +789,7 @@ class Player {
       window.$message.error("播放器遇到错误，请尝试软件热重载");
       // this.errorNext();
     } finally {
+      this.switching = false;
     }
   }
   /**
