@@ -1070,7 +1070,7 @@ class Player {
    */
   initSpectrumData() {
     try {
-      if (this.audioContext) return;
+      if (this.audioContext || !isElectron) return;
       // AudioContext
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       // 获取音频元素

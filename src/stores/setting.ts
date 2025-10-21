@@ -193,7 +193,7 @@ export const useSettingStore = defineStore("setting", {
     playerBackgroundType: "blur",
     memoryLastSeek: true,
     showPlaylistCount: true,
-    showSpectrums: true,
+    showSpectrums: false,
     smtcOpen: true,
     smtcOutputHighQualityCover: false,
     playSongDemo: false,
