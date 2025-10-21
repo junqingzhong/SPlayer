@@ -174,9 +174,10 @@ const lyricScroll = ref<InstanceType<typeof NScrollbar> | null>(null);
 // 实时播放进度
 const playSeek = ref<number>(player.getSeek());
 
-// 实时更新播放进度
+// 实时更新播放进度（按歌曲 id 应用偏移）
 const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
-  playSeek.value = player.getSeek() + statusStore.currentTimeOffset;
+  const songId = musicStore.playSong?.id as number | undefined;
+  playSeek.value = player.getSeek() + statusStore.getSongOffset(songId);
 });
 
 // 鼠标移出歌词区域
@@ -334,7 +335,6 @@ onBeforeUnmount(() => {
       transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
     cursor: pointer;
     width: 100%;
-    box-sizing: border-box; /* 新增：确保 padding 不影响宽度 */
     .content {
       display: block;
       font-size: var(--lrc-size);

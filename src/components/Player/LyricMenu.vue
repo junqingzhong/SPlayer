@@ -1,12 +1,12 @@
 <template>
   <n-flex class="menu" justify="center" vertical>
-    <div class="menu-icon" @click="statusStore.currentTimeOffset -= 0.5">
+    <div class="menu-icon" @click="changeOffset(-0.5)">
       <SvgIcon name="Replay5" />
     </div>
-    <span class="time" @click="statusStore.currentTimeOffset = 0">
+    <span class="time" @click="resetOffset()">
       {{ currentTimeOffsetValue }}
     </span>
-    <div class="menu-icon" @click="statusStore.currentTimeOffset += 0.5">
+    <div class="menu-icon" @click="changeOffset(0.5)">
       <SvgIcon name="Forward5" />
     </div>
     <div class="divider" />
@@ -17,15 +17,39 @@
 </template>
 
 <script setup lang="ts">
-import { useStatusStore } from "@/stores";
+import { useMusicStore, useStatusStore } from "@/stores";
 import { openSetting } from "@/utils/modal";
 
+const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 
+/**
+ * 当前歌曲 id
+ */
+const currentSongId = computed(() => musicStore.playSong?.id as number | undefined);
+
+/**
+ * 当前进度偏移值
+ */
 const currentTimeOffsetValue = computed(() => {
-  const currentTimeOffset = statusStore.currentTimeOffset;
+  const currentTimeOffset = statusStore.getSongOffset(currentSongId.value);
   return currentTimeOffset > 0 ? `+${currentTimeOffset}` : currentTimeOffset;
 });
+
+/**
+ * 改变进度偏移
+ * @param delta 偏移量
+ */
+const changeOffset = (delta: number) => {
+  statusStore.incSongOffset(currentSongId.value, delta);
+};
+
+/**
+ * 重置进度偏移
+ */
+const resetOffset = () => {
+  statusStore.resetSongOffset(currentSongId.value);
+};
 </script>
 
 <style lang="scss" scoped>

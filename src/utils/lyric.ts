@@ -1,6 +1,6 @@
 import { LyricLine, parseLrc, parseYrc, TTMLLyric } from "@applemusic-like-lyrics/lyric";
 import type { LyricType } from "@/types/main";
-import { useMusicStore, useSettingStore } from "@/stores";
+import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { msToS } from "./time";
 
 // 歌词排除内容
@@ -335,4 +335,68 @@ export const getLyricLanguage = (lyric: string): string => {
   if (/[\u4e00-\u9fa5]/.test(lyric)) return "zh-CN";
   // 默认英语
   return "en";
+};
+
+/**
+ * 计算歌词索引
+ * - 普通歌词(LRC)：沿用当前按开始时间定位的算法
+ * - 逐字歌词(YRC)：当播放时间位于某句 [time, endTime) 区间内时，索引为该句；
+ *   若下一句开始时间落在上一句区间（对唱重叠），仍保持上一句索引，直到上一句结束。
+ */
+export const calculateLyricIndex = (
+  currentTime: number,
+): { index: number; lyrics: LyricType[] } => {
+  const musicStore = useMusicStore();
+  const statusStore = useStatusStore();
+  const settingStore = useSettingStore();
+  // 应用实时偏移（按歌曲 id 记忆） + 0.3s（解决对唱时歌词延迟问题）
+  const songId = musicStore.playSong?.id as number | undefined;
+  const playSeek = currentTime + statusStore.getSongOffset(songId) + 0.3;
+  // 选择歌词类型
+  const useYrc = !!(settingStore.showYrc && musicStore.songLyric.yrcData.length);
+  const lyrics = useYrc ? musicStore.songLyric.yrcData : musicStore.songLyric.lrcData;
+  // 无歌词时
+  if (!lyrics || !lyrics.length) return { index: -1, lyrics: [] };
+
+  // 普通歌词：保持原有计算方式
+  if (!useYrc) {
+    const idx = lyrics.findIndex((v) => (v?.time ?? 0) >= playSeek);
+    const index = idx === -1 ? lyrics.length - 1 : idx - 1;
+    return { index, lyrics };
+  }
+
+  // 逐字歌词（并发最多三句同时存在）：
+  // - 计算在播放进度下处于激活区间的句子集合 activeIndices（[time, endTime)）
+  // - 若激活数 >= 3，仅保留最后三句作为并发显示（允许三句同时有效）；否则保持最后两句
+  // - 索引取该并发集合中较早的一句（保持“上一句”高亮）
+  // - 若无激活句：首句之前返回 -1；否则回退到最近一句
+
+  const firstStart = lyrics[0]?.time ?? 0;
+  if (playSeek < firstStart) {
+    return { index: -1, lyrics };
+  }
+
+  const activeIndices: number[] = [];
+  for (let i = 0; i < lyrics.length; i++) {
+    const start = lyrics[i]?.time ?? 0;
+    const end = lyrics[i]?.endTime ?? Infinity;
+    if (playSeek >= start && playSeek < end) {
+      activeIndices.push(i);
+    }
+  }
+
+  if (activeIndices.length === 0) {
+    // 不在任何句子的区间里：退回到最近一句（按开始时间）
+    const nextIdx = lyrics.findIndex((v) => (v?.time ?? 0) > playSeek);
+    const index = nextIdx === -1 ? lyrics.length - 1 : nextIdx - 1;
+    return { index, lyrics };
+  }
+
+  if (activeIndices.length === 1) {
+    return { index: activeIndices[0], lyrics };
+  }
+
+  // 激活句 >= 2：如果达到三句或更多，限制为最后三句并发；否则保持最后两句
+  const concurrent = activeIndices.length >= 3 ? activeIndices.slice(-3) : activeIndices.slice(-2);
+  return { index: concurrent[0], lyrics };
 };

@@ -1,17 +1,9 @@
-import type { SongType, PlayModeType, LyricType } from "@/types/main";
+import type { SongType, PlayModeType } from "@/types/main";
 import type { MessageReactive } from "naive-ui";
 import { Howl, Howler } from "howler";
 import { cloneDeep } from "lodash-es";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import {
-  parsedLyricsData,
-  resetSongLyric,
-  parseLocalLyric,
-  parseTTMLToAMLL,
-  parseTTMLToYrc,
-} from "./lyric";
-import { songUrl, unlockSongUrl, songLyric, songLyricTTML } from "@/api/song";
-import { getCoverColorData } from "@/utils/color";
+import { resetSongLyric, parseLocalLyric, calculateLyricIndex } from "./lyric";
 import { calculateProgress } from "./time";
 import { isElectron, isDev, shuffleArray } from "./helper";
 import { heartRateList } from "@/api/playlist";
@@ -19,8 +11,14 @@ import { formatSongsList } from "./format";
 import { isLogin } from "./auth";
 import { openUserLogin } from "./modal";
 import { personalFm, personalFmToTrash } from "@/api/rec";
-import { parseTTML } from "@applemusic-like-lyrics/lyric";
-import { LyricLine } from "@applemusic-like-lyrics/core";
+import {
+  getCoverColor,
+  getOnlineUrl,
+  getPlayerInfo,
+  getPlaySongData,
+  getUnlockSongUrl,
+} from "./player-utils/song";
+import { getLyricData } from "./player-utils/lyric";
 import blob from "./blob";
 
 // 播放器核心
@@ -57,32 +55,6 @@ class Player {
     this.initMediaSession();
   }
   /**
-   * 获取当前播放歌曲
-   * @returns 当前播放歌曲
-   */
-  private getPlaySongData(): SongType | null {
-    const dataStore = useDataStore();
-    const musicStore = useMusicStore();
-    const statusStore = useStatusStore();
-    // 若为私人FM
-    if (statusStore.personalFmMode) {
-      return musicStore.personalFMSong;
-    }
-    // 播放列表
-    const playlist = dataStore.playList;
-    if (!playlist.length) return null;
-    return playlist[statusStore.playIndex];
-  }
-  /**
-   * 获取淡入淡出时间
-   * @returns 播放音量
-   */
-  private getFadeTime(): number {
-    const settingStore = useSettingStore();
-    const { songVolumeFade, songVolumeFadeTime } = settingStore;
-    return songVolumeFade ? songVolumeFadeTime : 0;
-  }
-  /**
    * 处理播放状态
    */
   private handlePlayStatus() {
@@ -99,7 +71,7 @@ class Player {
       // 计算进度条距离
       const progress = calculateProgress(currentTime, duration);
       // 计算歌词索引（支持 LRC 与逐字 YRC，对唱重叠处理）
-      const { index: lyricIndex, lyrics } = this.calculateLyricIndex(currentTime);
+      const { index: lyricIndex, lyrics } = calculateLyricIndex(currentTime);
       // 更新状态
       statusStore.$patch({ currentTime, duration, progress, lyricIndex });
       // 客户端事件
@@ -115,130 +87,6 @@ class Player {
         }
       }
     }, 250);
-  }
-  /**
-   * 计算歌词索引
-   * - 普通歌词(LRC)：沿用当前按开始时间定位的算法
-   * - 逐字歌词(YRC)：当播放时间位于某句 [time, endTime) 区间内时，索引为该句；
-   *   若下一句开始时间落在上一句区间（对唱重叠），仍保持上一句索引，直到上一句结束。
-   */
-  private calculateLyricIndex(currentTime: number): { index: number; lyrics: LyricType[] } {
-    const musicStore = useMusicStore();
-    const statusStore = useStatusStore();
-    const settingStore = useSettingStore();
-    // 应用实时偏移 + 0.3s（解决对唱时歌词延迟问题）
-    const playSeek = currentTime + statusStore.currentTimeOffset + 0.3;
-    // 选择歌词类型
-    const useYrc = !!(settingStore.showYrc && musicStore.songLyric.yrcData.length);
-    const lyrics = useYrc ? musicStore.songLyric.yrcData : musicStore.songLyric.lrcData;
-    // 无歌词时
-    if (!lyrics || !lyrics.length) return { index: -1, lyrics: [] };
-
-    // 普通歌词：保持原有计算方式
-    if (!useYrc) {
-      const idx = lyrics.findIndex((v) => (v?.time ?? 0) >= playSeek);
-      const index = idx === -1 ? lyrics.length - 1 : idx - 1;
-      return { index, lyrics };
-    }
-
-    // 逐字歌词（并发最多三句同时存在）：
-    // - 计算在播放进度下处于激活区间的句子集合 activeIndices（[time, endTime)）
-    // - 若激活数 >= 3，仅保留最后三句作为并发显示（允许三句同时有效）；否则保持最后两句
-    // - 索引取该并发集合中较早的一句（保持“上一句”高亮）
-    // - 若无激活句：首句之前返回 -1；否则回退到最近一句
-
-    const firstStart = lyrics[0]?.time ?? 0;
-    if (playSeek < firstStart) {
-      return { index: -1, lyrics };
-    }
-
-    const activeIndices: number[] = [];
-    for (let i = 0; i < lyrics.length; i++) {
-      const start = lyrics[i]?.time ?? 0;
-      const end = lyrics[i]?.endTime ?? Infinity;
-      if (playSeek >= start && playSeek < end) {
-        activeIndices.push(i);
-      }
-    }
-
-    if (activeIndices.length === 0) {
-      // 不在任何句子的区间里：退回到最近一句（按开始时间）
-      const nextIdx = lyrics.findIndex((v) => (v?.time ?? 0) > playSeek);
-      const index = nextIdx === -1 ? lyrics.length - 1 : nextIdx - 1;
-      return { index, lyrics };
-    }
-
-    if (activeIndices.length === 1) {
-      return { index: activeIndices[0], lyrics };
-    }
-
-    // 激活句 >= 2：如果达到三句或更多，限制为最后三句并发；否则保持最后两句
-    const concurrent =
-      activeIndices.length >= 3 ? activeIndices.slice(-3) : activeIndices.slice(-2);
-    return { index: concurrent[0], lyrics };
-  }
-  /**
-   * 获取在线播放链接
-   * @param id 歌曲id
-   * @returns 播放链接
-   */
-  private async getOnlineUrl(id: number): Promise<string | null> {
-    const settingStore = useSettingStore();
-    const res = await songUrl(id, settingStore.songLevel);
-    console.log(`🌐 ${id} music data:`, res);
-    const songData = res.data?.[0];
-    // 是否有播放地址
-    if (!songData || !songData?.url) return null;
-    // 是否仅能试听
-    if (songData?.freeTrialInfo !== null) {
-      if (settingStore.playSongDemo) {
-        window.$message.warning("当前歌曲仅可试听，请开通会员后重试");
-      } else return null;
-    }
-    // 返回歌曲地址
-    // 客户端直接返回，网页端转 https, 并转换url以便解决音乐链接cors问题
-    const url = isElectron
-      ? songData.url
-      : songData.url
-          .replace(/^http:/, "https:")
-          .replace(/m804\.music\.126\.net/g, "m801.music.126.net")
-          .replace(/m704\.music\.126\.net/g, "m701.music.126.net");
-    console.log(`🎧 ${id} music url:`, url);
-    return url;
-  }
-  /**
-   * 获取解锁播放链接
-   * @param songData 歌曲数据
-   * @returns
-   */
-  private async getUnlockSongUrl(songData: SongType): Promise<string | null> {
-    try {
-      const songId = songData.id;
-      const artist = Array.isArray(songData.artists) ? songData.artists[0].name : songData.artists;
-      const keyWord = songData.name + "-" + artist;
-      if (!songId || !keyWord) return null;
-      // 尝试解锁
-      const results = await Promise.allSettled([
-        unlockSongUrl(songId, keyWord, "netease"),
-        unlockSongUrl(songId, keyWord, "kuwo"),
-      ]);
-      // 解析结果
-      const [neteaseRes, kuwoRes] = results;
-      if (
-        neteaseRes.status === "fulfilled" &&
-        neteaseRes.value.code === 200 &&
-        neteaseRes.value.url
-      ) {
-        return neteaseRes.value.url;
-      }
-      if (kuwoRes.status === "fulfilled" && kuwoRes.value.code === 200 && kuwoRes.value.url) {
-        return kuwoRes.value.url;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error in getUnlockSongUrl", error);
-      return null;
-    }
   }
   /**
    * 预载下一首歌曲的播放地址（优先官方，失败则并发尝试解灰）
@@ -285,15 +133,25 @@ class Player {
         return;
       }
       const canUnlock = isElectron && nextSong.type !== "radio" && settingStore.useSongUnlock;
-      const unlockUrlPromise = canUnlock ? this.getUnlockSongUrl(nextSong) : null;
-      const url = await this.getOnlineUrl(songId);
-      if (url) {
-        this.nextPrefetch = { id: songId, url, ublock: false };
-      } else if (unlockUrlPromise) {
-        const unlockUrl = await unlockUrlPromise;
-        this.nextPrefetch = { id: songId, url: unlockUrl || null, ublock: !!unlockUrl };
+      // 先请求官方地址
+      const { url: officialUrl, isTrial } = await getOnlineUrl(songId);
+      if (officialUrl && !isTrial) {
+        // 官方可播放且非试听
+        this.nextPrefetch = { id: songId, url: officialUrl, ublock: false };
+      } else if (canUnlock) {
+        // 官方失败或为试听时尝试解锁
+        const unlockUrl = await getUnlockSongUrl(nextSong);
+        if (unlockUrl) {
+          this.nextPrefetch = { id: songId, url: unlockUrl, ublock: true };
+        } else if (officialUrl) {
+          // 解锁失败，若官方为试听且允许试听，保留官方试听地址
+          this.nextPrefetch = { id: songId, url: officialUrl, ublock: false };
+        } else {
+          this.nextPrefetch = { id: songId, url: null, ublock: false };
+        }
       } else {
-        this.nextPrefetch = { id: songId, url: null, ublock: false };
+        // 不可解锁，仅保留官方结果（可能为空）
+        this.nextPrefetch = { id: songId, url: officialUrl, ublock: false };
       }
     } catch (error) {
       console.error("Error prefetching next song url:", error);
@@ -345,14 +203,14 @@ class Player {
     if (autoPlay) await this.play();
     // 获取歌曲附加信息 - 非电台和本地
     if (type !== "radio" && !path) {
-      this.getLyricData(id);
+      getLyricData(id);
     } else resetSongLyric();
     // 定时获取状态
     if (!this.playerInterval) this.handlePlayStatus();
     // 新增播放历史
     if (type !== "radio") dataStore.setHistory(musicStore.playSong);
     // 获取歌曲封面主色
-    if (!path) this.getCoverColor(musicStore.songCover);
+    if (!path) getCoverColor(musicStore.songCover);
     // 更新 MediaSession
     if (!path) this.updateMediaSession();
     // 开发模式
@@ -375,7 +233,7 @@ class Player {
     const dataStore = useDataStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
-    const playSongData = this.getPlaySongData();
+    const playSongData = getPlaySongData();
     // 获取配置
     const { seek } = options;
     const currentSessionId = options.sessionId ?? this.playSessionId;
@@ -399,7 +257,7 @@ class Player {
       statusStore.playLoading = false;
       // ipc
       if (isElectron) {
-        window.electron.ipcRenderer.send("play-song-change", this.getPlayerInfo());
+        window.electron.ipcRenderer.send("play-song-change", getPlayerInfo());
         window.electron.ipcRenderer.send(
           "like-status-change",
           dataStore.isLikeSong(playSongData?.id || 0),
@@ -409,11 +267,11 @@ class Player {
     // 播放
     this.player.on("play", () => {
       if (currentSessionId !== this.playSessionId) return;
-      window.document.title = this.getPlayerInfo() || "SPlayer";
+      window.document.title = getPlayerInfo() || "SPlayer";
       // ipc
       if (isElectron) {
         window.electron.ipcRenderer.send("play-status-change", true);
-        window.electron.ipcRenderer.send("play-song-change", this.getPlayerInfo());
+        window.electron.ipcRenderer.send("play-song-change", getPlayerInfo());
       }
       console.log("▶️ song play:", playSongData);
     });
@@ -475,7 +333,7 @@ class Player {
     const musicStore = useMusicStore();
     const settingStore = useSettingStore();
     // 获取播放数据
-    const playSongData = this.getPlaySongData();
+    const playSongData = getPlaySongData();
     if (!playSongData) return;
     // 播放状态
     const isRadio = playSongData.type === "radio";
@@ -551,52 +409,6 @@ class Player {
     updateSpectrumData();
   }
   /**
-   * 获取歌词
-   * @param id 歌曲id
-   */
-  private async getLyricData(id: number) {
-    if (!id) {
-      resetSongLyric();
-      return;
-    }
-
-    try {
-      const musicStore = useMusicStore();
-      const settingStore = useSettingStore();
-      const [lyricRes, ttmlContent] = await Promise.all([
-        songLyric(id),
-        settingStore.enableTTMLLyric && songLyricTTML(id),
-      ]);
-      parsedLyricsData(lyricRes);
-      if (ttmlContent) {
-        const parsedResult = parseTTML(ttmlContent);
-        if (!parsedResult?.lines?.length) return;
-        const ttmlLyric = parseTTMLToAMLL(parsedResult);
-        const ttmlYrcLyric = parseTTMLToYrc(parsedResult);
-        console.log("TTML lyrics:", ttmlLyric, ttmlYrcLyric);
-        // 合并数据
-        const updates: Partial<{ yrcAMData: LyricLine[]; yrcData: LyricType[] }> = {};
-        if (ttmlLyric?.length) {
-          updates.yrcAMData = ttmlLyric;
-          console.log("✅ TTML AMLL lyrics success");
-        }
-        if (ttmlYrcLyric?.length) {
-          updates.yrcData = ttmlYrcLyric;
-          console.log("✅ TTML Yrc lyrics success");
-        }
-        if (Object.keys(updates).length) {
-          musicStore.songLyric = {
-            ...musicStore.songLyric,
-            ...updates,
-          };
-        }
-      }
-    } catch (error) {
-      console.error("❌ Error loading lyrics:", error);
-      resetSongLyric();
-    }
-  }
-  /**
    * 播放错误
    * 在播放错误时，播放下一首
    */
@@ -653,7 +465,7 @@ class Player {
         musicStore.playSong.cover = "/images/song.jpg?assest";
       }
       // 获取主色
-      this.getCoverColor(musicStore.playSong.cover);
+      getCoverColor(musicStore.playSong.cover);
       // 获取歌词数据
       const lrcData = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
       parseLocalLyric(lrcData);
@@ -675,7 +487,6 @@ class Player {
       currentTime: 0,
       duration: 0,
       progress: 0,
-      currentTimeOffset: 0,
       lyricIndex: -1,
       playStatus: false,
       playLoading: false,
@@ -684,26 +495,6 @@ class Player {
       playPlaylistId: 0,
       playSong: {},
     });
-  }
-  /**
-   * 获取播放信息
-   * @param song 歌曲
-   * @param sep 分隔符
-   * @returns 播放信息
-   */
-  getPlayerInfo(song?: SongType, sep: string = "/"): string | null {
-    const playSongData = song || this.getPlaySongData();
-    if (!playSongData) return null;
-    // 标题
-    const title = `${playSongData.name || "未知歌曲"}`;
-    // 歌手
-    const artist =
-      playSongData.type === "radio"
-        ? "播客电台"
-        : Array.isArray(playSongData.artists)
-          ? playSongData.artists.map((artists: { name: string }) => artists.name).join(sep)
-          : String(playSongData?.artists || "未知歌手");
-    return `${title} - ${artist}`;
   }
   /**
    * 初始化播放器
@@ -719,7 +510,7 @@ class Player {
     const sessionId = ++this.playSessionId;
     try {
       // 获取播放数据
-      const playSongData = this.getPlaySongData();
+      const playSongData = getPlaySongData();
       if (!playSongData) return;
       const { id, dj, path, type } = playSongData;
       // 更改当前播放歌曲
@@ -742,27 +533,40 @@ class Player {
           statusStore.playUblock = cached.ublock;
           await this.createPlayer(cached.url, autoPlay, seek, sessionId);
         } else {
-          // 并发启动解灰请求（仅在 Electron 且非电台且开启解灰时）
+          // 官方地址失败或仅为试听时再尝试解锁（Electron 且非电台且开启解灰）
           const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
-          const unlockUrlPromise = canUnlock ? this.getUnlockSongUrl(playSongData) : null;
-          // 先请求正常播放地址
-          const url = await this.getOnlineUrl(songId);
-          // 正常播放地址
-          if (url) {
+          const { url: officialUrl, isTrial } = await getOnlineUrl(songId);
+          if (officialUrl && !isTrial) {
+            // 官方可播放且非试听
             statusStore.playUblock = false;
-            await this.createPlayer(url, autoPlay, seek, sessionId);
-          }
-          // 尝试解灰
-          else if (unlockUrlPromise) {
-            // 若正常地址不可用，则等待并使用并发中的解灰结果
-            const unlockUrl = await unlockUrlPromise;
+            await this.createPlayer(officialUrl, autoPlay, seek, sessionId);
+          } else if (canUnlock) {
+            // 官方失败或为试听时尝试解锁
+            const unlockUrl = await getUnlockSongUrl(playSongData);
             if (unlockUrl) {
               statusStore.playUblock = true;
               console.log("🎼 Song unlock successfully:", unlockUrl);
               await this.createPlayer(unlockUrl, autoPlay, seek, sessionId);
+            } else if (officialUrl) {
+              // 解锁失败，若允许试听则播放试听
+              if (isTrial && settingStore.playSongDemo) {
+                window.$message.warning("当前歌曲仅可试听，请开通会员后重试");
+                statusStore.playUblock = false;
+                await this.createPlayer(officialUrl, autoPlay, seek, sessionId);
+              } else {
+                // 不允许试听
+                statusStore.playUblock = false;
+                if (statusStore.playIndex === dataStore.playList.length - 1) {
+                  statusStore.$patch({ playStatus: false, playLoading: false });
+                  window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
+                } else {
+                  window.$message.error("该歌曲暂无音源，跳至下一首");
+                  this.nextOrPrev("next");
+                }
+              }
             } else {
+              // 无任何可用地址
               statusStore.playUblock = false;
-              // 是否为最后一首
               if (statusStore.playIndex === dataStore.playList.length - 1) {
                 statusStore.$patch({ playStatus: false, playLoading: false });
                 window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
@@ -797,6 +601,7 @@ class Player {
    */
   async play() {
     const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
     // 已在播放
     if (this.player.playing()) {
       statusStore.playStatus = true;
@@ -808,7 +613,7 @@ class Player {
       this.player.once("play", () => {
         // 在淡入开始时立即设置播放状态
         statusStore.playStatus = true;
-        this.player.fade(0, statusStore.playVolume, this.getFadeTime());
+        this.player.fade(0, statusStore.playVolume, settingStore.getFadeTime);
         resolve();
       });
     });
@@ -819,6 +624,7 @@ class Player {
    */
   async pause(changeStatus: boolean = true) {
     const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
 
     // 播放器未加载完成
     if (this.player.state() !== "loaded") {
@@ -830,7 +636,7 @@ class Player {
 
     // 淡出
     await new Promise<void>((resolve) => {
-      this.player.fade(statusStore.playVolume, 0, this.getFadeTime());
+      this.player.fade(statusStore.playVolume, 0, settingStore.getFadeTime);
       this.player.once("fade", () => {
         this.player.pause();
         resolve();
@@ -1059,26 +865,6 @@ class Player {
       statusStore.playVolume = 0;
     }
     this.player.volume(statusStore.playVolume);
-  }
-  /**
-   * 获取歌曲封面颜色数据
-   * @param coverUrl 歌曲封面地址
-   */
-  async getCoverColor(coverUrl: string) {
-    if (!coverUrl) return;
-    const statusStore = useStatusStore();
-    // 创建图像元素
-    const image = new Image();
-    image.crossOrigin = "Anonymous";
-    image.src = coverUrl;
-    // 图像加载完成
-    image.onload = () => {
-      // 获取图片数据
-      const coverColorData = getCoverColorData(image);
-      if (coverColorData) statusStore.songCoverTheme = coverColorData;
-      // 移除元素
-      image.remove();
-    };
   }
   /**
    * 更新播放列表
@@ -1349,7 +1135,7 @@ class Player {
       this.message?.destroy();
       this.message = window.$message.loading("心动模式开启中", { duration: 0 });
       // 获取所需数据
-      const playSongData = this.getPlaySongData();
+      const playSongData = getPlaySongData();
       const likeSongsList: any = await dataStore.getUserLikePlaylist();
       // if (!playSongData || !likeSongsList) {
       //   throw new Error("获取播放数据或喜欢列表失败");

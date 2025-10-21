@@ -56,8 +56,8 @@ interface StatusState {
   duration: number;
   /** 实时播放进度 */
   progress: number;
-  /** 进度偏移 */
-  currentTimeOffset: number;
+  /** 每首歌曲的进度偏移（按歌曲 id 记忆） */
+  currentTimeOffsetMap: Record<number, number>;
   /** 是否为解锁歌曲 */
   playUblock: boolean;
   /** 主内容高度 */
@@ -101,7 +101,7 @@ export const useStatusStore = defineStore("status", {
     currentTime: 0,
     duration: 0,
     progress: 0,
-    currentTimeOffset: 0,
+    currentTimeOffsetMap: {},
     songCoverTheme: {},
     pureLyricMode: false,
     spectrumsData: [],
@@ -159,7 +159,44 @@ export const useStatusStore = defineStore("status", {
       return `${mainColor.r}, ${mainColor.g}, ${mainColor.b}`;
     },
   },
-  actions: {},
+  actions: {
+    /** 获取指定歌曲的偏移（默认 0） */
+    getSongOffset(songId?: number): number {
+      if (!songId) return 0;
+      return this.currentTimeOffsetMap?.[songId] ?? 0;
+    },
+    /** 设置指定歌曲的偏移 */
+    setSongOffset(songId?: number, offset: number = 0) {
+      if (!songId) return;
+      if (!this.currentTimeOffsetMap) this.currentTimeOffsetMap = {};
+      const fixed = Number(offset.toFixed(2));
+      if (fixed === 0) {
+        // 为 0 时移除记录，避免占用空间
+        delete this.currentTimeOffsetMap[songId];
+      } else {
+        this.currentTimeOffsetMap[songId] = fixed;
+      }
+    },
+    /** 调整指定歌曲的偏移（增量） */
+    incSongOffset(songId?: number, delta: number = 0.5) {
+      if (!songId) return;
+      const current = this.getSongOffset(songId);
+      const next = Number((current + delta).toFixed(2));
+      if (next === 0) {
+        delete this.currentTimeOffsetMap[songId];
+      } else {
+        this.setSongOffset(songId, next);
+      }
+    },
+    /** 重置指定歌曲的偏移为 0 */
+    resetSongOffset(songId?: number) {
+      if (!songId) return;
+      // 直接删除该歌曲记录
+      if (this.currentTimeOffsetMap && songId in this.currentTimeOffsetMap) {
+        delete this.currentTimeOffsetMap[songId];
+      }
+    },
+  },
   // 持久化
   persist: {
     key: "status-store",
@@ -169,6 +206,7 @@ export const useStatusStore = defineStore("status", {
       "currentTime",
       "duration",
       "progress",
+      "currentTimeOffsetMap",
       "pureLyricMode",
       "playIndex",
       "playRate",

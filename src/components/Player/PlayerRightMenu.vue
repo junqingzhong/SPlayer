@@ -155,6 +155,7 @@ const controlsOptions = computed<DropdownOption[]>(() => [
     margin-top: 8px;
     font-size: 13px;
     color: var(--color);
+    white-space: nowrap;
   }
 }
 </style>
