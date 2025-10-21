@@ -9,7 +9,7 @@ import JumpArtist from "@/components/Modal/JumpArtist.vue";
 import UserAgreement from "@/components/Modal/UserAgreement.vue";
 import SongInfoEditor from "@/components/Modal/SongInfoEditor.vue";
 import PlaylistAdd from "@/components/Modal/PlaylistAdd.vue";
-import batchList from "@/components/Modal/batchList.vue";
+import BatchList from "@/components/Modal/BatchList.vue";
 import CloudMatch from "@/components/Modal/CloudMatch.vue";
 import CreatePlaylist from "@/components/Modal/CreatePlaylist.vue";
 import UpdatePlaylist from "@/components/Modal/UpdatePlaylist.vue";
@@ -17,8 +17,8 @@ import DownloadSong from "@/components/Modal/DownloadSong.vue";
 import MainSetting from "@/components/Setting/MainSetting.vue";
 import UpdateApp from "@/components/Modal/UpdateApp.vue";
 import ExcludeKeywords from "@/components/Modal/ExcludeKeywords.vue";
-import ChangeRate from "@/components/Modal/changeRate.vue";
-import AutoClose from "@/components/Modal/autoClose.vue";
+import ChangeRate from "@/components/Modal/ChangeRate.vue";
+import AutoClose from "@/components/Modal/AutoClose.vue";
 
 // 用户协议
 export const openUserAgreement = () => {
@@ -133,7 +133,7 @@ export const openBatchList = (data: SongType[], isLocal: boolean, playListId?: n
       maxWidth: "70vw",
     },
     title: "批量操作",
-    content: () => h(batchList, { data, isLocal, playListId }),
+    content: () => h(BatchList, { data, isLocal, playListId }),
   });
 };
 
