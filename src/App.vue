@@ -117,7 +117,8 @@ onMounted(async () => {
     transform 0.3s var(--n-bezier),
     opacity 0.3s var(--n-bezier);
   #main-layout {
-    background-color: rgba(var(--background), 0.58);
+    // background-color: rgba(var(--background), 0.58);
+    background-color: rgba(var(--background));
   }
   #main-content {
     top: 70px;

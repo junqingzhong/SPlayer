@@ -246,40 +246,49 @@ const initWinIpcMain = (
   });
 
   // 获取音乐歌词
-  ipcMain.handle("get-music-lyric", async (_, path: string): Promise<{
-    lyric: string, format: "lrc" | "ttml"
-  }> => {
-    try {
-      const filePath = resolve(path).replace(/\\/g, "/");
-      const { common } = await parseFile(filePath);
+  ipcMain.handle(
+    "get-music-lyric",
+    async (
+      _,
+      path: string,
+    ): Promise<{
+      lyric: string;
+      format: "lrc" | "ttml";
+    }> => {
+      try {
+        const filePath = resolve(path).replace(/\\/g, "/");
+        const { common } = await parseFile(filePath);
 
-      // 尝试获取同名的歌词文件
-      const filePathWithoutExt = filePath.replace(/\.[^.]+$/, "");
-      for (let ext of ["ttml", "lrc"] as const) {
-        const lyricPath = `${filePathWithoutExt}.${ext}`;
-        console.log("lyricPath", lyricPath);
-        try {
-          await fs.access(lyricPath);
-          const lyric = await fs.readFile(lyricPath, "utf-8")
-          if (lyric && lyric != "") return { lyric, format: ext };
-        } catch {}
+        // 尝试获取同名的歌词文件
+        const filePathWithoutExt = filePath.replace(/\.[^.]+$/, "");
+        for (const ext of ["ttml", "lrc"] as const) {
+          const lyricPath = `${filePathWithoutExt}.${ext}`;
+          console.log("lyricPath", lyricPath);
+          try {
+            await fs.access(lyricPath);
+            const lyric = await fs.readFile(lyricPath, "utf-8");
+            if (lyric && lyric != "") return { lyric, format: ext };
+          } catch {
+            /* empty */
+          }
+        }
+
+        // 尝试获取元数据
+        const lyric = common?.lyrics?.[0]?.syncText;
+        if (lyric && lyric.length > 0) {
+          return { lyric: metaDataLyricsArrayToLrc(lyric), format: "lrc" };
+        } else if (common?.lyrics?.[0]?.text) {
+          return { lyric: common?.lyrics?.[0]?.text, format: "lrc" };
+        }
+
+        // 没有歌词
+        return { lyric: "", format: "lrc" };
+      } catch (error) {
+        log.error("❌ Error fetching music lyric:", error);
+        throw error;
       }
-
-      // 尝试获取元数据
-      const lyric = common?.lyrics?.[0]?.syncText;
-      if (lyric && lyric.length > 0) {
-        return { lyric: metaDataLyricsArrayToLrc(lyric), format: "lrc" };
-      } else if (common?.lyrics?.[0]?.text) {
-        return { lyric: common?.lyrics?.[0]?.text, format: "lrc" };
-      }
-
-      // 没有歌词
-      return { lyric: "", format: "lrc" };
-    } catch (error) {
-      log.error("❌ Error fetching music lyric:", error);
-      throw error;
-    }
-  });
+    },
+  );
 
   // 获取音乐封面
   ipcMain.handle(
@@ -308,17 +317,21 @@ const initWinIpcMain = (
     },
   );
 
-
   // 读取本地歌词
-  ipcMain.handle("read-local-lyric", async (_, lyricDir: string, id: number, ext: string): Promise<string> => {
-    const lyricPath = path.join(lyricDir, `${id}.${ext}`);
-    try {
-      await fs.access(lyricPath);
-      const lyric = await fs.readFile(lyricPath, "utf-8")
-      if (lyric) return lyric;
-    } catch {}
-    return "";
-  });
+  ipcMain.handle(
+    "read-local-lyric",
+    async (_, lyricDir: string, id: number, ext: string): Promise<string> => {
+      const lyricPath = path.join(lyricDir, `${id}.${ext}`);
+      try {
+        await fs.access(lyricPath);
+        const lyric = await fs.readFile(lyricPath, "utf-8");
+        if (lyric) return lyric;
+      } catch {
+        /* empty */
+      }
+      return "";
+    },
+  );
 
   // 删除文件
   ipcMain.handle("delete-file", async (_, path: string) => {

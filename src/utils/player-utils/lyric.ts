@@ -18,6 +18,7 @@ export const getLyricData = async (id: number) => {
   try {
     const musicStore = useMusicStore();
     const settingStore = useSettingStore();
+    // 检测本地歌词覆盖
     const getLyric = getLyricFun(settingStore.localLyricPath, id);
     const [lyricRes, ttmlContent] = await Promise.all([
       getLyric("lrc", songLyric),
@@ -53,10 +54,21 @@ export const getLyricData = async (id: number) => {
   }
 };
 
-const getLyricFun = (paths: string[], id: number) => async (ext: string, getOnline: (id: number) => Promise<string | null>): Promise<string | null> => {
-  for (let path of paths) {
-    const lyric = await window.electron.ipcRenderer.invoke("read-local-lyric", path, id, ext);
-    if (lyric) return lyric;
-  }
-  return await getOnline(id);
-};
+/**
+ * 获取歌词函数生成器
+ * @param paths 本地歌词路径数组
+ * @param id 歌曲ID
+ * @returns 返回一个函数，该函数接受扩展名和在线获取函数作为参数
+ */
+const getLyricFun =
+  (paths: string[], id: number) =>
+  async (
+    ext: string,
+    getOnline: (id: number) => Promise<string | null>,
+  ): Promise<string | null> => {
+    for (const path of paths) {
+      const lyric = await window.electron.ipcRenderer.invoke("read-local-lyric", path, id, ext);
+      if (lyric) return lyric;
+    }
+    return await getOnline(id);
+  };

@@ -26,7 +26,7 @@
         @after-enter="lyricsScroll(statusStore.lyricIndex)"
         @after-leave="lyricsScroll(statusStore.lyricIndex)"
       >
-        <n-scrollbar ref="lyricScroll" class="lyric-scroll">
+        <n-scrollbar ref="lyricScroll" class="lyric-scroll" tabindex="-1">
           <!-- 逐字歌词 -->
           <template v-if="settingStore.showYrc && musicStore.isHasYrc">
             <div id="lrc-placeholder" class="placeholder">

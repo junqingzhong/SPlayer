@@ -53,6 +53,8 @@ class Player {
     this.player = new Howl({ src: [""], format: allowPlayFormat, autoplay: false });
     // 初始化媒体会话
     this.initMediaSession();
+    // 挂载全局
+    window.$player = this;
   }
   /**
    * 处理播放状态
