@@ -183,7 +183,7 @@ export const parseLocalLyric = (lyric: string, format: "lrc" | "ttml") => {
       parseLocalLyricAM(lyric, musicStore)
       break;
   }
-}
+};
 const parseLocalLyricLrc = (lyric: string, musicStore: any) => {
   // 解析
   const lrc: LyricLine[] = parseLrc(lyric);

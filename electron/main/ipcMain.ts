@@ -316,7 +316,7 @@ const initWinIpcMain = (
       if (lyric) return lyric;
     } catch {}
     return "";
-  })
+  });
 
   // 删除文件
   ipcMain.handle("delete-file", async (_, path: string) => {

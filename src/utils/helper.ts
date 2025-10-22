@@ -345,7 +345,7 @@ const changeLocalPath = (
     console.error(`${errorConsole}: `, error);
     window.$message.error(errorMessage);
   }
-}
+};
 
 /**
  * 更改本地音乐目录
@@ -366,7 +366,7 @@ export const changeLocalLyricPath = changeLocalPath(
   "localLyricPath", false,
   "Error changing local lyric path",
   "更改本地歌词文件夹出错，请重试",
-)
+);
 
 /**
  * 洗牌数组（Fisher-Yates）
