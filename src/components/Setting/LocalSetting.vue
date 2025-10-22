@@ -158,7 +158,7 @@
 
 <script setup lang="ts">
 import { useSettingStore } from "@/stores";
-import { changeLocalLyricPath, changeLocalMusicPath, changeLocalPath } from "@/utils/helper";
+import { changeLocalLyricPath, changeLocalMusicPath } from "@/utils/helper";
 
 const settingStore = useSettingStore();
 
