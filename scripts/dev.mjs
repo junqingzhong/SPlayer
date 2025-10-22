@@ -41,10 +41,10 @@ if (isWindows) {
   console.log(`🐧 ${isMacOS ? "macOS" : "Linux"} 环境 - 正在设置 UTF-8 编码`);
   env.LC_ALL = "en_US.UTF-8";
   env.LANG = "en_US.UTF-8";
-  startElectronVite();
+  setTimeout(() => startElectronVite(), 0);
 }
 
- 
+
 const startElectronVite = () => {
   console.log("🔧 正在启动 Electron Vite 开发服务器...");
 
