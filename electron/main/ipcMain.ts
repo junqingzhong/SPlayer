@@ -62,6 +62,8 @@ const initWinIpcMain = (
     if (loadingWin && !loadingWin.isDestroyed()) loadingWin.close();
     win?.show();
     win?.focus();
+    const isMaximized = store?.get("window")?.maximized;
+    if (isMaximized) win?.maximize();
   });
 
   // 最小化

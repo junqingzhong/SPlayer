@@ -237,8 +237,6 @@ class MainProcess {
     this.mainWindow?.on("ready-to-show", () => {
       if (!this.mainWindow) return;
       this.thumbar = initThumbar(this.mainWindow);
-      const isMaximized = this.store?.get("window").maximized;
-      if (isMaximized) this.mainWindow.maximize();
     });
     this.mainWindow?.on("show", () => {
       // this.mainWindow?.webContents.send("lyricsScroll");
