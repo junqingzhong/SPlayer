@@ -477,8 +477,8 @@ class Player {
       // 获取主色
       getCoverColor(musicStore.playSong.cover);
       // 获取歌词数据
-      const lrcData = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
-      parseLocalLyric(lrcData);
+      const { lyric, format } = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
+      parseLocalLyric(lyric, format);
       // 更新媒体会话
       this.updateMediaSession();
     } catch (error) {

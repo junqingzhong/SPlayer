@@ -135,6 +135,8 @@ interface SettingState {
   preventSleep: boolean;
   /** 本地文件路径 */
   localFilesPath: string[];
+  /** 本地歌词路径 */
+  localLyricPath: string[];
   /** 本地文件分隔符 */
   localSeparators: string[];
   /** 显示本地封面 */
@@ -216,6 +218,7 @@ export const useSettingStore = defineStore("setting", {
     lrcMousePause: false,
     excludeKeywords: keywords,
     localFilesPath: [],
+    localLyricPath: [],
     showDefaultLocalPath: true,
     localSeparators: ["/", "&"],
     showLocalCover: true,

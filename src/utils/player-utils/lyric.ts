@@ -18,9 +18,10 @@ export const getLyricData = async (id: number) => {
   try {
     const musicStore = useMusicStore();
     const settingStore = useSettingStore();
+    const getLyric = getLyricFun(settingStore.localLyricPath, id);
     const [lyricRes, ttmlContent] = await Promise.all([
-      songLyric(id),
-      settingStore.enableTTMLLyric && songLyricTTML(id),
+      getLyric("lrc", songLyric),
+      settingStore.enableTTMLLyric && getLyric("ttml", songLyricTTML),
     ]);
     parsedLyricsData(lyricRes);
     if (ttmlContent) {
@@ -50,4 +51,12 @@ export const getLyricData = async (id: number) => {
     console.error("❌ Error loading lyrics:", error);
     resetSongLyric();
   }
+};
+
+const getLyricFun = (paths: string[], id: number) => async (ext: string, getOnline: (id: number) => Promise<string | null>): Promise<string | null> => {
+  for (let path of paths) {
+    const lyric = await window.electron.ipcRenderer.invoke("read-local-lyric", path, id, ext);
+    if (lyric) return lyric;
+  }
+  return await getOnline(id);
 };
