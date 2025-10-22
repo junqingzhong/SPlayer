@@ -262,9 +262,9 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">启用 TTML 歌词</n-text>
+          <n-text class="name">启用在线 TTML 歌词</n-text>
           <n-text class="tip" :depth="3">
-            是否启用 TTML 歌词（如有），TTML 歌词支持逐字、翻译、音译等功能, 将会在下一首歌生效
+            是否从 AMLL TTML DB 获取歌词（如有），TTML 歌词支持逐字、翻译、音译等功能，将会在下一首歌生效
           </n-text>
         </div>
         <n-switch v-model:value="settingStore.enableTTMLLyric" class="set" :round="false" />

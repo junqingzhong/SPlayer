@@ -127,7 +127,7 @@ interface SettingState {
   useAMLyrics: boolean;
   /** 是否使用 AM 歌词弹簧效果 */
   useAMSpring: boolean;
-  /** 是否启用 TTML 歌词 */
+  /** 是否启用在线 TTML 歌词 */
   enableTTMLLyric: boolean;
   /** 菜单显示封面 */
   menuShowCover: boolean;
