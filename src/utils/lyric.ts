@@ -1,4 +1,4 @@
-import { LyricLine, parseLrc, parseYrc, TTMLLyric } from "@applemusic-like-lyrics/lyric";
+import { LyricLine, parseLrc, parseTTML, parseYrc, TTMLLyric } from "@applemusic-like-lyrics/lyric";
 import type { LyricType } from "@/types/main";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { msToS } from "./time";
@@ -169,12 +169,22 @@ export const alignAMLyrics = (
 };
 
 // 处理本地歌词
-export const parseLocalLyric = (lyric: string) => {
+export const parseLocalLyric = (lyric: string, format: "lrc" | "ttml") => {
   if (!lyric) {
     resetSongLyric();
     return;
   }
   const musicStore = useMusicStore();
+  switch (format) {
+    case "lrc":
+      parseLocalLyricLrc(lyric, musicStore)
+      break;
+    case "ttml":
+      parseLocalLyricAM(lyric, musicStore)
+      break;
+  }
+}
+const parseLocalLyricLrc = (lyric: string, musicStore: any) => {
   // 解析
   const lrc: LyricLine[] = parseLrc(lyric);
   const lrcData: LyricType[] = parseLrcData(lrc);
@@ -207,6 +217,19 @@ export const parseLocalLyric = (lyric: string) => {
     yrcData: [],
     yrcAMData: [],
   };
+};
+const parseLocalLyricAM = (lyric: string, musicStore: any) => {
+  const ttml = parseTTML(lyric);
+  const yrcAMData = parseTTMLToAMLL(ttml);
+  const yrcData = parseTTMLToYrc(ttml);
+  musicStore.songLyric = {
+    lrcData: yrcData,
+    lrcAMData: yrcAMData,
+    yrcAMData,
+    yrcData,
+  };
+  console.log(ttml);
+  console.log(yrcAMData);
 };
 
 // 处理 AM 歌词
