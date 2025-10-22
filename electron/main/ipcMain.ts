@@ -25,6 +25,7 @@ import log from "../main/logger";
 import Store from "electron-store";
 import fg from "fast-glob";
 import openLoginWin from "./loginWin";
+import path from "node:path";
 
 // 注册 ipcMain
 const initIpcMain = (
@@ -304,6 +305,18 @@ const initWinIpcMain = (
       }
     },
   );
+
+
+  // 读取本地歌词
+  ipcMain.handle("read-local-lyric", async (_, lyricDir: string, id: number, ext: string): Promise<string> => {
+    const lyricPath = path.join(lyricDir, `${id}.${ext}`);
+    try {
+      await fs.access(lyricPath);
+      const lyric = await fs.readFile(lyricPath, "utf-8")
+      if (lyric) return lyric;
+    } catch {}
+    return "";
+  })
 
   // 删除文件
   ipcMain.handle("delete-file", async (_, path: string) => {

@@ -302,37 +302,71 @@ export const getUpdateLog = async (): Promise<UpdateLogType[]> => {
 };
 
 /**
- * 更改本地目录
- * @param delIndex 删除文件夹路径的索引
+ * 获取 更改本地目录 函数
+ * @param settingsKey 设置项 key
+ * @param includeSubFolders 是否包含子文件夹
+ * @param errorConsole 控制台输出的错误信息
+ * @param errorMessage 错误信息
+ * @param defaultPath 默认路径
  */
-export const changeLocalPath = async (delIndex?: number) => {
+const changeLocalPath = (
+  settingsKey: string, includeSubFolders: boolean, errorConsole: string, errorMessage: string, defaultPath?: string
+) => async (delIndex?: number) => {
   try {
     if (!isElectron) return;
     const settingStore = useSettingStore();
     if (typeof delIndex === "number" && delIndex >= 0) {
-      settingStore.localFilesPath.splice(delIndex, 1);
+      settingStore[settingsKey].splice(delIndex, 1);
     } else {
       const selectedDir = await window.electron.ipcRenderer.invoke("choose-path");
       if (!selectedDir) return;
       // 检查是否为子文件夹
-      const defaultMusicPath = await window.electron.ipcRenderer.invoke("get-default-dir", "music");
-      const allPath = [defaultMusicPath, ...settingStore.localFilesPath];
-      const isSubfolder = await window.electron.ipcRenderer.invoke(
-        "check-if-subfolder",
-        allPath,
-        selectedDir,
-      );
-      if (!isSubfolder) {
-        settingStore.localFilesPath.push(selectedDir);
+      const allPath = defaultPath ? [defaultPath, ...settingStore[settingsKey]] : settingStore[settingsKey];
+      if (includeSubFolders) {
+        const isSubfolder = await window.electron.ipcRenderer.invoke(
+          "check-if-subfolder",
+          allPath,
+          selectedDir,
+        );
+        if (!isSubfolder) {
+          settingStore[settingsKey].push(selectedDir);
+        } else {
+          window.$message.error("添加的目录与现有目录有重叠，请重新选择");
+        }
       } else {
-        window.$message.error("添加的目录与现有目录有重叠，请重新选择");
+        if (allPath.includes(selectedDir)) {
+          window.$message.error("添加的目录已存在");
+        } else {
+          settingStore[settingsKey].push(selectedDir);
+        }
       }
     }
   } catch (error) {
-    console.error("Error changing local path:", error);
-    window.$message.error("更改本地歌曲文件夹出错，请重试");
+    console.error(`${errorConsole}: `, error);
+    window.$message.error(errorMessage);
   }
-};
+}
+
+/**
+ * 更改本地音乐目录
+ * @param delIndex 删除文件夹路径的索引
+ */
+export const changeLocalMusicPath = changeLocalPath(
+  "localFilesPath", true,
+  "Error changing local path",
+  "更改本地歌曲文件夹出错，请重试",
+  await window.electron.ipcRenderer.invoke("get-default-dir", "music")
+);
+
+/**
+ * 更改本地歌词目录
+ * @param delIndex 删除文件夹路径的索引
+ */
+export const changeLocalLyricPath = changeLocalPath(
+  "localLyricPath", false,
+  "Error changing local lyric path",
+  "更改本地歌词文件夹出错，请重试",
+)
 
 /**
  * 洗牌数组（Fisher-Yates）
