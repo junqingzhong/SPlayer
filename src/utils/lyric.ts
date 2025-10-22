@@ -228,8 +228,6 @@ const parseLocalLyricAM = (lyric: string, musicStore: any) => {
     yrcAMData,
     yrcData,
   };
-  console.log(ttml);
-  console.log(yrcAMData);
 };
 
 // 处理 AM 歌词
