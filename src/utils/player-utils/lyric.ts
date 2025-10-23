@@ -22,7 +22,7 @@ export const getLyricData = async (id: number) => {
     const getLyric = getLyricFun(settingStore.localLyricPath, id);
     const [lyricRes, ttmlContent] = await Promise.all([
       getLyric("lrc", songLyric),
-      settingStore.enableTTMLLyric && getLyric("ttml", songLyricTTML),
+      settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : getLyric("ttml"),
     ]);
     parsedLyricsData(lyricRes);
     if (ttmlContent) {
@@ -64,11 +64,11 @@ const getLyricFun =
   (paths: string[], id: number) =>
   async (
     ext: string,
-    getOnline: (id: number) => Promise<string | null>,
+    getOnline?: (id: number) => Promise<string | null>,
   ): Promise<string | null> => {
     for (const path of paths) {
       const lyric = await window.electron.ipcRenderer.invoke("read-local-lyric", path, id, ext);
       if (lyric) return lyric;
     }
-    return await getOnline(id);
+    return getOnline ? await getOnline(id) : null;
   };
