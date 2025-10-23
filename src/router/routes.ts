@@ -285,6 +285,12 @@ const routes: Array<RouteRecordRaw> = [
     component: AppLayout,
     children: [...appRoutes],
   },
+  // 桌面歌词
+  {
+    path: "/desktop-lyrics",
+    name: "desktop-lyrics",
+    component: () => import("@/views/DesktopLyrics/index.vue"),
+  },
 ];
 
 export default routes;

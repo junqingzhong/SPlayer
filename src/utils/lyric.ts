@@ -6,6 +6,8 @@ import { msToS } from "./time";
 // 歌词排除内容
 const getExcludeKeywords = () => {
   const settingStore = useSettingStore();
+  // 如果未启用排除功能，返回空数组
+  if (!settingStore.enableExcludeKeywords) return [];
   return settingStore.excludeKeywords;
 };
 
@@ -177,10 +179,10 @@ export const parseLocalLyric = (lyric: string, format: "lrc" | "ttml") => {
   const musicStore = useMusicStore();
   switch (format) {
     case "lrc":
-      parseLocalLyricLrc(lyric, musicStore)
+      parseLocalLyricLrc(lyric, musicStore);
       break;
     case "ttml":
-      parseLocalLyricAM(lyric, musicStore)
+      parseLocalLyricAM(lyric, musicStore);
       break;
   }
 };
@@ -232,18 +234,31 @@ const parseLocalLyricAM = (lyric: string, musicStore: any) => {
 
 // 处理 AM 歌词
 const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: LyricLine[]) => {
-  let lyricData = lrcData.map((line, index, lines) => ({
-    words: line.words,
-    startTime: line.words[0]?.startTime ?? 0,
-    endTime:
-      lines[index + 1]?.words?.[0]?.startTime ??
-      line.words?.[line.words.length - 1]?.endTime ??
-      Infinity,
-    translatedLyric: "",
-    romanLyric: "",
-    isBG: line.isBG ?? false,
-    isDuet: line.isDuet ?? false,
-  }));
+  let lyricData = lrcData
+    .map((line, index, lines) => {
+      // 获取歌词文本内容
+      const content = line.words
+        .map((word) => word.word)
+        .join("")
+        .trim();
+      // 排除包含关键词的内容
+      if (!content || getExcludeKeywords().some((keyword) => content.includes(keyword))) {
+        return null;
+      }
+      return {
+        words: line.words,
+        startTime: line.words[0]?.startTime ?? 0,
+        endTime:
+          lines[index + 1]?.words?.[0]?.startTime ??
+          line.words?.[line.words.length - 1]?.endTime ??
+          Infinity,
+        translatedLyric: "",
+        romanLyric: "",
+        isBG: line.isBG ?? false,
+        isDuet: line.isDuet ?? false,
+      };
+    })
+    .filter((line): line is NonNullable<typeof line> => line !== null);
   if (tranData) {
     lyricData = alignAMLyrics(lyricData, tranData, "translatedLyric");
   }
@@ -263,17 +278,27 @@ export const parseTTMLToAMLL = (ttmlContent: TTMLLyric): LyricLine[] => {
 
   try {
     const validLines = ttmlContent.lines
-      .filter((line): line is any => line && typeof line === "object" && Array.isArray(line.words))
+      .filter((line) => line && typeof line === "object" && Array.isArray(line.words))
       .map((line) => {
         const words = line.words
-          .filter((word: any) => word && typeof word === "object")
-          .map((word: any) => ({
+          .filter((word) => word && typeof word === "object")
+          .map((word) => ({
             word: String(word.word || " "),
             startTime: Number(word.startTime) || 0,
             endTime: Number(word.endTime) || 0,
           }));
 
         if (!words.length) return null;
+
+        // 获取歌词文本内容
+        const content = words
+          .map((word) => word.word)
+          .join("")
+          .trim();
+        // 排除包含关键词的内容
+        if (!content || getExcludeKeywords().some((keyword) => content.includes(keyword))) {
+          return null;
+        }
 
         const startTime = words[0].startTime;
         const endTime = words[words.length - 1].endTime;

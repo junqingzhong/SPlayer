@@ -155,6 +155,8 @@ interface SettingState {
   dynamicCover: boolean;
   /** 是否使用 keep-alive */
   useKeepAlive: boolean;
+  /** 是否启用排除歌词关键字 */
+  enableExcludeKeywords: boolean;
   /** 排除歌词关键字 */
   excludeKeywords: string[];
   /** 显示默认本地路径 */
@@ -216,6 +218,7 @@ export const useSettingStore = defineStore("setting", {
     lyricsBlur: false,
     lyricsScrollPosition: "start",
     lrcMousePause: false,
+    enableExcludeKeywords: true,
     excludeKeywords: keywords,
     localFilesPath: [],
     localLyricPath: [],

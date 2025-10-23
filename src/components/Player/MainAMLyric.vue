@@ -1,17 +1,29 @@
 <template>
   <Transition>
-    <div :key="amLyricsData?.[0]?.startTime" :class="['lyric-am', { pure: statusStore.pureLyricMode }]">
-      <LyricPlayer ref="lyricPlayerRef" :lyricLines="amLyricsData" :currentTime="playSeek"
-        :playing="statusStore.playStatus" :enableSpring="settingStore.useAMSpring"
+    <div
+      :key="amLyricsData?.[0]?.startTime"
+      :class="['lyric-am', { pure: statusStore.pureLyricMode }]"
+    >
+      <LyricPlayer
+        ref="lyricPlayerRef"
+        :lyricLines="amLyricsData"
+        :currentTime="playSeek"
+        :playing="statusStore.playStatus"
+        :enableSpring="settingStore.useAMSpring"
         :enableScale="settingStore.useAMSpring"
         :alignPosition="settingStore.lyricsScrollPosition === 'center' ? 0.5 : 0.2"
-        :enableBlur="settingStore.lyricsBlur" :style="{
+        :enableBlur="settingStore.lyricsBlur"
+        :style="{
           '--amll-lyric-view-color': mainColor,
           '--amll-lyric-player-font-size': settingStore.lyricFontSize + 'px',
-          '--ja-font-family': settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
+          '--ja-font-family':
+            settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
           'font-weight': settingStore.lyricFontBold ? 'bold' : 'normal',
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
-        }" class="am-lyric" @line-click="jumpSeek" />
+        }"
+        class="am-lyric"
+        @line-click="jumpSeek"
+      />
       <!-- 歌词菜单组件 -->
       <LyricMenu />
     </div>
@@ -52,16 +64,20 @@ const mainColor = computed(() => {
 // 检查是否为纯音乐歌词
 const isPureInstrumental = (lyrics: LyricLine[]): boolean => {
   if (!lyrics || lyrics.length === 0) return false;
-  const instrumentalKeywords = ['纯音乐', 'instrumental', '请欣赏'];
+  const instrumentalKeywords = ["纯音乐", "instrumental", "请欣赏"];
 
   if (lyrics.length === 1) {
-    const content = lyrics[0].words?.[0]?.word || '';
-    return instrumentalKeywords.some(keyword => content.toLowerCase().includes(keyword.toLowerCase()));
+    const content = lyrics[0].words?.[0]?.word || "";
+    return instrumentalKeywords.some((keyword) =>
+      content.toLowerCase().includes(keyword.toLowerCase()),
+    );
   }
 
   if (lyrics.length <= 3) {
-    const allContent = lyrics.map(line => line.words?.[0]?.word || '').join('');
-    return instrumentalKeywords.some(keyword => allContent.toLowerCase().includes(keyword.toLowerCase()));
+    const allContent = lyrics.map((line) => line.words?.[0]?.word || "").join("");
+    return instrumentalKeywords.some((keyword) =>
+      allContent.toLowerCase().includes(keyword.toLowerCase()),
+    );
   }
   return false;
 };
@@ -130,13 +146,15 @@ onBeforeUnmount(() => {
   height: 100%;
   overflow: hidden;
   filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));
-  mask: linear-gradient(180deg,
-      hsla(0, 0%, 100%, 0) 0,
-      hsla(0, 0%, 100%, 0.6) 5%,
-      #fff 10%,
-      #fff 75%,
-      hsla(0, 0%, 100%, 0.6) 85%,
-      hsla(0, 0%, 100%, 0));
+  mask: linear-gradient(
+    180deg,
+    hsla(0, 0%, 100%, 0) 0,
+    hsla(0, 0%, 100%, 0.6) 5%,
+    #fff 10%,
+    #fff 75%,
+    hsla(0, 0%, 100%, 0.6) 85%,
+    hsla(0, 0%, 100%, 0)
+  );
 
   :deep(.am-lyric) {
     width: 100%;
@@ -146,7 +164,7 @@ onBeforeUnmount(() => {
     top: 0;
     padding-left: 10px;
     padding-right: 80px;
-    margin-left: -2rem;
+    // margin-left: -2rem;
   }
 
   &.pure {
