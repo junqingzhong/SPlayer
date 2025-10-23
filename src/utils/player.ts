@@ -311,7 +311,7 @@ class Player {
         return;
       }
 
-      this.nextOrPrev("next");
+      this.nextOrPrev("next", true, true);
     });
     // 错误
     this.player.on("loaderror", (sourceid, err: unknown) => {
@@ -667,8 +667,9 @@ class Player {
    * 下一首或上一首
    * @param type 切换类别 next 下一首 prev 上一首
    * @param play 是否立即播放
+   * @param autoEnd 是否为歌曲自动播放结束
    */
-  async nextOrPrev(type: "next" | "prev" = "next", play: boolean = true) {
+  async nextOrPrev(type: "next" | "prev" = "next", play: boolean = true, autoEnd: boolean = false) {
     try {
       if (this.switching) return;
       this.switching = true;
@@ -696,15 +697,16 @@ class Player {
         return;
       }
       // 单曲循环
-      if (playSongMode === "repeat-once") {
+      if (playSongMode === "repeat-once" && autoEnd && !playHeartbeatMode) {
         statusStore.lyricIndex = -1;
         this.setSeek(0);
         await this.play();
         return;
       }
-      // 列表循环或处于心动模式或随机模式
+      // 列表循环、单曲循环（手动切歌）、处于心动模式或随机模式
       if (
         playSongMode === "repeat" ||
+        playSongMode === "repeat-once" ||
         playSongMode === "shuffle" ||
         playHeartbeatMode ||
         playSong.type === "radio"
