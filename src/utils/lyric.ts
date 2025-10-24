@@ -315,6 +315,7 @@ export const parseTTMLToAMLL = (ttmlContent: TTMLLyric): LyricLine[] => {
   if (!ttmlContent) return [];
 
   try {
+    const settingsStore = useSettingStore()
     const validLines = ttmlContent.lines
       .filter((line) => line && typeof line === "object" && Array.isArray(line.words))
       .map((line) => {
@@ -334,7 +335,7 @@ export const parseTTMLToAMLL = (ttmlContent: TTMLLyric): LyricLine[] => {
           .join("")
           .trim();
         // 排除包含关键词的内容
-        if (!content || isLyricExcluded(content)) {
+        if (!content || (settingsStore.enableTTMLExclude && isLyricExcluded(content))) {
           return null;
         }
 
