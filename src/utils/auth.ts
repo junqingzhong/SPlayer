@@ -21,6 +21,7 @@ import { dailyRecommend } from "@/api/rec";
 import { isElectron } from "./helper";
 import { likePlaylist, playlistTracks } from "@/api/playlist";
 import { likeArtist } from "@/api/artist";
+import { likeAlbum } from "@/api/album";
 import { radioSub } from "@/api/radio";
 
 /**
@@ -255,6 +256,32 @@ export const toLikePlaylist = debounce(
       await updateUserLikePlaylist();
     } else {
       window.$message.success((like ? "收藏" : "取消收藏") + "歌单失败，请重试");
+      return;
+    }
+  },
+  300,
+  { leading: true, trailing: false },
+);
+
+// 收藏/取消收藏歌单
+export const toLikeAlbum = debounce(
+  async (id: number, like: boolean) => {
+    if (!id) return;
+    if (!isLogin()) {
+      window.$message.warning("请登录后使用");
+      return;
+    }
+    if (isLogin() === 2) {
+      window.$message.warning("该登录模式暂不支持该操作");
+      return;
+    }
+    const { code } = await likeAlbum(id, like ? 1 : 2);
+    if (code === 200) {
+      window.$message.success((like ? "收藏" : "取消收藏") + "专辑成功");
+      // 更新
+      await updateUserLikeAlbums();
+    } else {
+      window.$message.success((like ? "收藏" : "取消收藏") + "专辑失败，请重试");
       return;
     }
   },

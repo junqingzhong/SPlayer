@@ -101,7 +101,13 @@
                 </template>
                 {{ loading ? "加载中..." : "播放" }}
               </n-button>
-              <n-button :focusable="false" strong secondary round>
+              <n-button
+                :focusable="false"
+                strong
+                secondary
+                round
+                @click="toLikeAlbum(albumId, !isLikeAlbum)"
+              >
                 <template #icon>
                   <SvgIcon :name="isLikeAlbum ? 'Favorite' : 'FavoriteBorder'" />
                 </template>
@@ -170,7 +176,7 @@
 import type { CoverType, SongType } from "@/types/main";
 import type { DropdownOption } from "naive-ui";
 import { songDetail } from "@/api/song";
-import { albumDetail } from "@/api/album";
+import { albumDetail, likeAlbum } from "@/api/album";
 import { formatCoverList, formatSongsList } from "@/utils/format";
 import { coverLoaded, fuzzySearch, renderIcon } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
@@ -179,6 +185,7 @@ import { debounce } from "lodash-es";
 import { formatTimestamp } from "@/utils/time";
 import { openJumpArtist } from "@/utils/modal";
 import player from "@/utils/player";
+import { toLikeAlbum } from "@/utils/auth";
 
 const router = useRouter();
 const dataStore = useDataStore();
