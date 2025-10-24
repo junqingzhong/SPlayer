@@ -7,7 +7,7 @@
         <n-dynamic-tags v-model:value="settingStore.excludeKeywords" />
       </n-tab-pane>
       <n-tab-pane name="regexes" tab="正则表达式">
-        <n-dynamic-tags v-model:value="regexesString" />
+        <n-dynamic-tags v-model:value="settingStore.excludeRegexes" />
       </n-tab-pane>
 
       <template #suffix>
@@ -35,14 +35,6 @@ const reset = () => {
       break;
   }
 };
-
-const regexesString = computed({
-  get: () => settingStore.excludeRegexes.map((regex) => regex.source),
-  set: (values) => settingStore.excludeRegexes = values.map((value) => new RegExp(value)),
-});
-
-console.log(settingStore.excludeRegexes);
-console.log(regexesString.value);
 </script>
 
 <style lang="scss" scoped>

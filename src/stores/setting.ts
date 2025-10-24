@@ -160,7 +160,7 @@ export interface SettingState {
   /** 排除歌词关键字 */
   excludeKeywords: string[];
   /** 排除歌词正则表达式 */
-  excludeRegexes: RegExp[],
+  excludeRegexes: string[],
   /** 显示默认本地路径 */
   showDefaultLocalPath: boolean;
 }

@@ -13,7 +13,7 @@ const getExcludeKeywords = (settings: SettingState = useSettingStore()): string[
 // 歌词排除正则
 const getExcludeRegexes = (settings: SettingState = useSettingStore()): RegExp[] => {
   if (!settings.enableExcludeLyrics) return [];
-  return settings.excludeRegexes;
+  return settings.excludeRegexes.map((regex) => new RegExp(regex));
 };
 
 // 是否排除歌词行

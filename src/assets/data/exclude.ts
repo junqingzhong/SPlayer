@@ -75,4 +75,4 @@ export const keywords = [
 export const regexes = [
   /^[Oo][Pp]\s*[:：]/,
   /^[Ss][Pp]\s*[:：]/,
-];
+].map((regex) => regex.source);
