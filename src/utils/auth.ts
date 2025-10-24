@@ -275,7 +275,7 @@ const toLikeSomething =
 // 收藏/取消收藏歌单
 export const toLikePlaylist = toLikeSomething("收藏", "歌单", () => likePlaylist, updateUserLikePlaylist)
 
-// 收藏/取消收藏歌单
+// 收藏/取消收藏专辑
 export const toLikeAlbum = toLikeSomething("收藏", "专辑", () => likeAlbum, updateUserLikeAlbums)
 
 // 收藏/取消收藏歌手

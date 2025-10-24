@@ -176,7 +176,7 @@
 import type { CoverType, SongType } from "@/types/main";
 import type { DropdownOption } from "naive-ui";
 import { songDetail } from "@/api/song";
-import { albumDetail, likeAlbum } from "@/api/album";
+import { albumDetail } from "@/api/album";
 import { formatCoverList, formatSongsList } from "@/utils/format";
 import { coverLoaded, fuzzySearch, renderIcon } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
