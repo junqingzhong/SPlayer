@@ -23,19 +23,25 @@ export const getLyricData = async (id: number) => {
   try {
     // 检测本地歌词覆盖
     const getLyric = getLyricFun(settingStore.localLyricPath, id);
-    const [lyricRes, ttmlContent] = await Promise.all([
+    const [
+      { lyric: lyricRes, isLocal: lyricLocal },
+      { lyric: ttmlContent, isLocal: ttmlLocal },
+    ] = await Promise.all([
       getLyric("lrc", songLyric),
       settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : getLyric("ttml"),
     ]);
-    parsedLyricsData(lyricRes);
+    parsedLyricsData(lyricRes, lyricLocal && !settingStore.enableExcludeLocalLyrics);
     if (ttmlContent) {
       const parsedResult = parseTTML(ttmlContent);
       if (!parsedResult?.lines?.length) {
         statusStore.usingTTMLLyric = false;
         return;
       }
-      const ttmlLyric = parseTTMLToAMLL(parsedResult);
-      const ttmlYrcLyric = parseTTMLToYrc(parsedResult);
+      const skipExcludeLocal = ttmlLocal && !settingStore.enableExcludeLocalLyrics;
+      const skipExcludeTTML = !settingStore.enableExcludeTTML;
+      const skipExclude = skipExcludeLocal || skipExcludeTTML;
+      const ttmlLyric = parseTTMLToAMLL(parsedResult, skipExclude);
+      const ttmlYrcLyric = parseTTMLToYrc(parsedResult, skipExclude);
       console.log("TTML lyrics:", ttmlLyric, ttmlYrcLyric);
       // 合并数据
       const updates: Partial<{ yrcAMData: LyricLine[]; yrcData: LyricType[] }> = {};
@@ -59,6 +65,8 @@ export const getLyricData = async (id: number) => {
     } else {
       statusStore.usingTTMLLyric = false;
     }
+
+    console.log("Lyrics: ", musicStore.songLyric);
   } catch (error) {
     console.error("❌ Error loading lyrics:", error);
     statusStore.usingTTMLLyric = false;
@@ -77,10 +85,10 @@ const getLyricFun =
   async (
     ext: string,
     getOnline?: (id: number) => Promise<string | null>,
-  ): Promise<string | null> => {
+  ): Promise<{ lyric: string | null; isLocal: boolean }> => {
     for (const path of paths) {
       const lyric = await window.electron.ipcRenderer.invoke("read-local-lyric", path, id, ext);
-      if (lyric) return lyric;
+      if (lyric) return { lyric, isLocal: true };
     }
-    return getOnline ? await getOnline(id) : null;
+    return { lyric: getOnline ? await getOnline(id) : null, isLocal: false };
   };
