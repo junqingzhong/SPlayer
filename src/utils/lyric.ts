@@ -18,13 +18,9 @@ const getExcludeRegexes = (settings: SettingState = useSettingStore()): RegExp[]
 
 // 是否排除歌词行
 const isLyricExcluded = (line: string) => {
-  const statusStore = useStatusStore();
   const settingStore = useSettingStore();
 
   if (!settingStore.enableExcludeLyrics) {
-    return false;
-  }
-  if (statusStore.usingTTMLLyric && !settingStore.enableExcludeTTML) {
     return false;
   }
   const excludeKeywords = getExcludeKeywords(settingStore);

@@ -30,7 +30,7 @@ export const getLyricData = async (id: number) => {
       getLyric("lrc", songLyric),
       settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : getLyric("ttml"),
     ]);
-    parsedLyricsData(lyricRes, lyricLocal && settingStore.enableExcludeLocalLyrics);
+    parsedLyricsData(lyricRes, lyricLocal && !settingStore.enableExcludeLocalLyrics);
     if (ttmlContent) {
       const parsedResult = parseTTML(ttmlContent);
       if (!parsedResult?.lines?.length) {
@@ -65,6 +65,8 @@ export const getLyricData = async (id: number) => {
     } else {
       statusStore.usingTTMLLyric = false;
     }
+
+    console.log("Lyrics: ", musicStore.songLyric);
   } catch (error) {
     console.error("❌ Error loading lyrics:", error);
     statusStore.usingTTMLLyric = false;
