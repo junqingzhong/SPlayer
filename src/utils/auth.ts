@@ -243,34 +243,32 @@ const toLikeSomething =
     thingName: string,
     request: () => (id: number, t: 1 | 2) => Promise<{ code: number }>,
     update: () => Promise<void>,
-  ) => {
-    return debounce(
-      async (id: number, like: boolean) => {
-        // 错误情况
-        if (!id) return;
-        if (!isLogin()) {
-          window.$message.warning("请登录后使用");
-          return;
-        }
-        if (isLogin() === 2) {
-          window.$message.warning("该登录模式暂不支持该操作");
-          return;
-        }
-        // 请求
-        const { code } = await request()(id, like ? 1 : 2);
-        if (code === 200) {
-          window.$message.success((like ? "" : "取消") + actionName + thingName + "成功");
-          // 更新
-          await update();
-        } else {
-          window.$message.success((like ? "" : "取消") + actionName + thingName + "失败，请重试");
-          return;
-        }
-      },
-      300,
-      { leading: true, trailing: false },
-    );
-  };
+  ) => debounce(
+    async (id: number, like: boolean) => {
+      // 错误情况
+      if (!id) return;
+      if (!isLogin()) {
+        window.$message.warning("请登录后使用");
+        return;
+      }
+      if (isLogin() === 2) {
+        window.$message.warning("该登录模式暂不支持该操作");
+        return;
+      }
+      // 请求
+      const { code } = await request()(id, like ? 1 : 2);
+      if (code === 200) {
+        window.$message.success((like ? "" : "取消") + actionName + thingName + "成功");
+        // 更新
+        await update();
+      } else {
+        window.$message.success((like ? "" : "取消") + actionName + thingName + "失败，请重试");
+        return;
+      }
+    },
+    300,
+    { leading: true, trailing: false },
+  );
 
 // 收藏/取消收藏歌单
 export const toLikePlaylist = toLikeSomething("收藏", "歌单", () => likePlaylist, updateUserLikePlaylist)
