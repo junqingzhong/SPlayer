@@ -24,7 +24,7 @@ const isLyricExcluded = (line: string) => {
   if (!settingStore.enableExcludeLyrics) {
     return false;
   }
-  if (statusStore.usingTTMLLyric && !settingStore.enableTTMLExclude) {
+  if (statusStore.usingTTMLLyric && !settingStore.enableExcludeTTML) {
     return false;
   }
   const excludeKeywords = getExcludeKeywords(settingStore);
@@ -49,7 +49,7 @@ export const resetSongLyric = () => {
 };
 
 // 解析歌词数据
-export const parsedLyricsData = (lyricData: any) => {
+export const parsedLyricsData = (lyricData: any, skipExclude: boolean = false) => {
   const musicStore = useMusicStore();
   if (lyricData.code !== 200) {
     resetSongLyric();
@@ -67,7 +67,7 @@ export const parsedLyricsData = (lyricData: any) => {
   // 普通歌词
   if (lyricData?.lrc?.lyric) {
     lrcParseData = parseLrc(lyricData.lrc.lyric);
-    lrcData = parseLrcData(lrcParseData);
+    lrcData = parseLrcData(lrcParseData, skipExclude);
     // 其他翻译
     if (lyricData?.tlyric?.lyric) {
       tlyricParseData = parseLrc(lyricData.tlyric.lyric);
@@ -81,7 +81,7 @@ export const parsedLyricsData = (lyricData: any) => {
   // 逐字歌词
   if (lyricData?.yrc?.lyric) {
     yrcParseData = parseYrc(lyricData.yrc.lyric);
-    yrcData = parseYrcData(yrcParseData);
+    yrcData = parseYrcData(yrcParseData, skipExclude);
     // 其他翻译
     if (lyricData?.ytlrc?.lyric) {
       ytlrcParseData = parseLrc(lyricData.ytlrc.lyric);
@@ -95,13 +95,13 @@ export const parsedLyricsData = (lyricData: any) => {
   musicStore.songLyric = {
     lrcData,
     yrcData,
-    lrcAMData: parseAMData(lrcParseData, tlyricParseData, romalrcParseData),
-    yrcAMData: parseAMData(yrcParseData, ytlrcParseData, yromalrcParseData),
+    lrcAMData: parseAMData(lrcParseData, tlyricParseData, romalrcParseData, skipExclude),
+    yrcAMData: parseAMData(yrcParseData, ytlrcParseData, yromalrcParseData, skipExclude),
   };
 };
 
 // 解析普通歌词
-export const parseLrcData = (lrcData: LyricLine[]): LyricType[] => {
+export const parseLrcData = (lrcData: LyricLine[], skipExclude: boolean = false): LyricType[] => {
   if (!lrcData) return [];
   // 数据处理
   const lrcList = lrcData
@@ -110,7 +110,7 @@ export const parseLrcData = (lrcData: LyricLine[]): LyricType[] => {
       const time = msToS(words[0].startTime);
       const content = words[0].word.trim();
       // 排除内容
-      if (!content || isLyricExcluded(content)) {
+      if (!content || (!skipExclude && isLyricExcluded(content))) {
         return null;
       }
       return {
@@ -124,7 +124,7 @@ export const parseLrcData = (lrcData: LyricLine[]): LyricType[] => {
 };
 
 // 解析逐字歌词
-export const parseYrcData = (yrcData: LyricLine[]): LyricType[] => {
+export const parseYrcData = (yrcData: LyricLine[], skipExclude: boolean = false): LyricType[] => {
   if (!yrcData) return [];
   // 数据处理
   const yrcList = yrcData
@@ -146,7 +146,7 @@ export const parseYrcData = (yrcData: LyricLine[]): LyricType[] => {
         .map((word) => word.content + (word.endsWithSpace ? " " : ""))
         .join("");
       // 排除内容
-      if (!contentStr || isLyricExcluded(contentStr)) {
+      if (!contentStr || (!skipExclude && isLyricExcluded(contentStr))) {
         return null;
       }
       return {
@@ -222,9 +222,10 @@ export const parseLocalLyric = (lyric: string, format: "lrc" | "ttml") => {
  */
 const parseLocalLyricLrc = (lyric: string) => {
   const musicStore = useMusicStore();
+  const settingStore = useSettingStore();
   // 解析
   const lrc: LyricLine[] = parseLrc(lyric);
-  const lrcData: LyricType[] = parseLrcData(lrc);
+  const lrcData: LyricType[] = parseLrcData(lrc, !settingStore.enableExcludeLocalLyrics);
   // 处理结果
   const lrcDataParsed: LyricType[] = [];
   // 翻译提取
@@ -262,9 +263,15 @@ const parseLocalLyricLrc = (lyric: string) => {
  */
 const parseLocalLyricAM = (lyric: string) => {
   const musicStore = useMusicStore();
+  const settingStore = useSettingStore();
+
+  const skipExcludeLocal = !settingStore.enableExcludeLocalLyrics;
+  const skipExcludeTTML = !settingStore.enableTTMLLyric;
+  const skipExclude = skipExcludeLocal || skipExcludeTTML;
+
   const ttml = parseTTML(lyric);
-  const yrcAMData = parseTTMLToAMLL(ttml);
-  const yrcData = parseTTMLToYrc(ttml);
+  const yrcAMData = parseTTMLToAMLL(ttml, skipExclude);
+  const yrcData = parseTTMLToYrc(ttml, skipExclude);
   musicStore.songLyric = {
     lrcData: yrcData,
     lrcAMData: yrcAMData,
@@ -274,7 +281,7 @@ const parseLocalLyricAM = (lyric: string) => {
 };
 
 // 处理 AM 歌词
-const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: LyricLine[]) => {
+const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: LyricLine[], skipExclude: boolean = false) => {
   let lyricData = lrcData
     .map((line, index, lines) => {
       // 获取歌词文本内容
@@ -283,7 +290,7 @@ const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: Ly
         .join("")
         .trim();
       // 排除包含关键词的内容
-      if (!content || isLyricExcluded(content)) {
+      if (!content || (!skipExclude && isLyricExcluded(content))) {
         return null;
       }
       return {
@@ -312,13 +319,13 @@ const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: Ly
 /**
  * 从TTML格式解析歌词并转换为AMLL格式
  * @param ttmlContent TTML格式的歌词内容
+ * @param skipExclude 是否跳过排除
  * @returns AMLL格式的歌词行数组
  */
-export const parseTTMLToAMLL = (ttmlContent: TTMLLyric): LyricLine[] => {
+export const parseTTMLToAMLL = (ttmlContent: TTMLLyric, skipExclude: boolean = false): LyricLine[] => {
   if (!ttmlContent) return [];
 
   try {
-    const settingsStore = useSettingStore()
     const validLines = ttmlContent.lines
       .filter((line) => line && typeof line === "object" && Array.isArray(line.words))
       .map((line) => {
@@ -338,7 +345,7 @@ export const parseTTMLToAMLL = (ttmlContent: TTMLLyric): LyricLine[] => {
           .join("")
           .trim();
         // 排除包含关键词的内容
-        if (!content || (settingsStore.enableTTMLExclude && isLyricExcluded(content))) {
+        if (!content || (!skipExclude && isLyricExcluded(content))) {
           return null;
         }
 
@@ -367,13 +374,13 @@ export const parseTTMLToAMLL = (ttmlContent: TTMLLyric): LyricLine[] => {
 /**
  * 从TTML格式解析歌词并转换为默认Yrc格式
  * @param ttmlContent TTML格式的歌词内容
+ * @param skipExclude 是否跳过排除
  * @returns 默认Yrc格式的歌词行数组
  */
-export const parseTTMLToYrc = (ttmlContent: TTMLLyric): LyricType[] => {
+export const parseTTMLToYrc = (ttmlContent: TTMLLyric, skipExclude: boolean = false): LyricType[] => {
   if (!ttmlContent) return [];
 
   try {
-    const settingStore = useSettingStore()
     // 数据处理
     const yrcList = ttmlContent.lines
       .map((line) => {
@@ -394,7 +401,7 @@ export const parseTTMLToYrc = (ttmlContent: TTMLLyric): LyricType[] => {
           .map((word) => word.content + (word.endsWithSpace ? " " : ""))
           .join("");
         // 排除内容
-        if (!contentStr || (settingStore.enableTTMLExclude && isLyricExcluded(contentStr))) {
+        if (!contentStr || (!skipExclude && isLyricExcluded(contentStr))) {
           return null;
         }
         return {

@@ -250,7 +250,16 @@
               AMLL TTML DB 对此有硬性规定，不得包含作词、作曲等歌词无关内容，因此大多情况下无需开启
             </n-text>
           </div>
-          <n-switch v-model:value="settingStore.enableTTMLExclude" class="set" :round="false" />
+          <n-switch v-model:value="settingStore.enableExcludeTTML" class="set" :round="false" />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">本地歌词排除</n-text>
+            <n-text class="tip" :depth="3">
+              是否要对来自本地的歌词进行歌词排除，这包含本地覆盖的在线歌词和本地歌曲中的歌词
+            </n-text>
+          </div>
+          <n-switch v-model:value="settingStore.enableExcludeLocalLyrics" class="set" :round="false" />
         </n-card>
         <n-card class="set-item">
           <div class="label">
