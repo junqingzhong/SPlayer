@@ -278,7 +278,7 @@ const sliderDragend = () => {
 
 // 是否展示歌词
 const isShowLyrics = computed(() => {
-  const isHasLrc = musicStore.isHasLrc;
+  const isHasLrc = settingStore.showYrc ? musicStore.isHasYrc : musicStore.isHasLrc;
   return (
     isHasLrc &&
     settingStore.barLyricShow &&

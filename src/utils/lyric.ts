@@ -21,6 +21,9 @@ const isLyricExcluded = (line: string) => {
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
 
+  if (!settingStore.enableExcludeLyrics) {
+    return false;
+  }
   if (statusStore.usingTTMLLyric && !settingStore.enableTTMLExclude) {
     return false;
   }
@@ -370,6 +373,7 @@ export const parseTTMLToYrc = (ttmlContent: TTMLLyric): LyricType[] => {
   if (!ttmlContent) return [];
 
   try {
+    const settingStore = useSettingStore()
     // 数据处理
     const yrcList = ttmlContent.lines
       .map((line) => {
@@ -390,7 +394,7 @@ export const parseTTMLToYrc = (ttmlContent: TTMLLyric): LyricType[] => {
           .map((word) => word.content + (word.endsWithSpace ? " " : ""))
           .join("");
         // 排除内容
-        if (!contentStr || isLyricExcluded(contentStr)) {
+        if (!contentStr || (settingStore.enableTTMLExclude && isLyricExcluded(contentStr))) {
           return null;
         }
         return {
