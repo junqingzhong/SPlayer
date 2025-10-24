@@ -157,6 +157,8 @@ export interface SettingState {
   useKeepAlive: boolean;
   /** 是否启用排除歌词 */
   enableExcludeLyrics: boolean;
+  /** 「排除歌词」是否适用于 TTML */
+  enableTTMLExclude: boolean;
   /** 排除歌词关键字 */
   excludeKeywords: string[];
   /** 排除歌词正则表达式 */
@@ -221,6 +223,7 @@ export const useSettingStore = defineStore("setting", {
     lyricsScrollPosition: "start",
     lrcMousePause: false,
     enableExcludeLyrics: true,
+    enableTTMLExclude: false,
     excludeKeywords: keywords,
     excludeRegexes: regexes,
     localFilesPath: [],

@@ -244,6 +244,16 @@
       <n-collapse-transition :show="settingStore.enableExcludeLyrics">
         <n-card class="set-item">
           <div class="label">
+            <n-text class="name">TTML 歌词排除</n-text>
+            <n-text class="tip" :depth="3">
+              是否要对 TTML 歌词进行歌词排除 <br/>
+              AMLL TTML DB 对此有硬性规定，不得包含作词、作曲等歌词无关内容，因此大多情况下无需开启
+            </n-text>
+          </div>
+          <n-switch v-model:value="settingStore.enableTTMLExclude" class="set" :round="false" />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
             <n-text class="name">歌词排除内容</n-text>
             <n-text class="tip" :depth="3"> 包含关键词或匹配正则表达式的歌词行将不会显示 </n-text>
           </div>
