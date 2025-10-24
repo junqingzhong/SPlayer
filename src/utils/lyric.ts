@@ -101,7 +101,7 @@ export const parseLrcData = (lrcData: LyricLine[]): LyricType[] => {
       const time = msToS(words[0].startTime);
       const content = words[0].word.trim();
       // 排除内容
-      if (!content || getExcludeKeywords().some((keyword) => content.includes(keyword))) {
+      if (!content || isLyricExcluded(content)) {
         return null;
       }
       return {
@@ -137,7 +137,7 @@ export const parseYrcData = (yrcData: LyricLine[]): LyricType[] => {
         .map((word) => word.content + (word.endsWithSpace ? " " : ""))
         .join("");
       // 排除内容
-      if (!contentStr || getExcludeKeywords().some((keyword) => contentStr.includes(keyword))) {
+      if (!contentStr || isLyricExcluded(contentStr)) {
         return null;
       }
       return {
@@ -274,7 +274,7 @@ const parseAMData = (lrcData: LyricLine[], tranData?: LyricLine[], romaData?: Ly
         .join("")
         .trim();
       // 排除包含关键词的内容
-      if (!content || getExcludeKeywords().some((keyword) => content.includes(keyword))) {
+      if (!content || isLyricExcluded(content)) {
         return null;
       }
       return {
@@ -328,7 +328,7 @@ export const parseTTMLToAMLL = (ttmlContent: TTMLLyric): LyricLine[] => {
           .join("")
           .trim();
         // 排除包含关键词的内容
-        if (!content || getExcludeKeywords().some((keyword) => content.includes(keyword))) {
+        if (!content || isLyricExcluded(content)) {
           return null;
         }
 
@@ -383,7 +383,7 @@ export const parseTTMLToYrc = (ttmlContent: TTMLLyric): LyricType[] => {
           .map((word) => word.content + (word.endsWithSpace ? " " : ""))
           .join("");
         // 排除内容
-        if (!contentStr || getExcludeKeywords().some((keyword) => contentStr.includes(keyword))) {
+        if (!contentStr || isLyricExcluded(contentStr)) {
           return null;
         }
         return {
