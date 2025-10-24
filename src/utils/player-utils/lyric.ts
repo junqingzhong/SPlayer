@@ -1,4 +1,4 @@
-import { useMusicStore, useSettingStore } from "@/stores";
+import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { parsedLyricsData, parseTTMLToAMLL, parseTTMLToYrc, resetSongLyric } from "../lyric";
 import { songLyric, songLyricTTML } from "@/api/song";
 import { parseTTML } from "@applemusic-like-lyrics/lyric";
@@ -10,14 +10,17 @@ import { LyricType } from "@/types/main";
  * @param id 歌曲id
  */
 export const getLyricData = async (id: number) => {
+  const musicStore = useMusicStore();
+  const settingStore = useSettingStore();
+  const statusStore = useStatusStore();
+
   if (!id) {
+    statusStore.usingTTMLLyric = false;
     resetSongLyric();
     return;
   }
 
   try {
-    const musicStore = useMusicStore();
-    const settingStore = useSettingStore();
     // 检测本地歌词覆盖
     const getLyric = getLyricFun(settingStore.localLyricPath, id);
     const [lyricRes, ttmlContent] = await Promise.all([
@@ -27,7 +30,10 @@ export const getLyricData = async (id: number) => {
     parsedLyricsData(lyricRes);
     if (ttmlContent) {
       const parsedResult = parseTTML(ttmlContent);
-      if (!parsedResult?.lines?.length) return;
+      if (!parsedResult?.lines?.length) {
+        statusStore.usingTTMLLyric = false;
+        return;
+      }
       const ttmlLyric = parseTTMLToAMLL(parsedResult);
       const ttmlYrcLyric = parseTTMLToYrc(parsedResult);
       console.log("TTML lyrics:", ttmlLyric, ttmlYrcLyric);
@@ -46,10 +52,16 @@ export const getLyricData = async (id: number) => {
           ...musicStore.songLyric,
           ...updates,
         };
+        statusStore.usingTTMLLyric = true;
+      } else {
+        statusStore.usingTTMLLyric = false;
       }
+    } else {
+      statusStore.usingTTMLLyric = false;
     }
   } catch (error) {
     console.error("❌ Error loading lyrics:", error);
+    statusStore.usingTTMLLyric = false;
     resetSongLyric();
   }
 };

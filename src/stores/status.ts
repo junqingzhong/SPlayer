@@ -46,6 +46,8 @@ interface StatusState {
   spectrumsData: number[];
   /** 纯净歌词模式 */
   pureLyricMode: boolean;
+  /** 是否使用 TTML 歌词 */
+  usingTTMLLyric: boolean;
   /** 当前播放索引 */
   playIndex: number;
   /** 歌词播放索引 */
@@ -110,6 +112,7 @@ export const useStatusStore = defineStore("status", {
     currentTimeOffsetMap: {},
     songCoverTheme: {},
     pureLyricMode: false,
+    usingTTMLLyric: false,
     spectrumsData: [],
     playIndex: -1,
     lyricIndex: -1,

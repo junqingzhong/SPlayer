@@ -217,9 +217,6 @@ const changeGlobalTheme = () => {
           railColor: toRGBA(primaryRGB, 0.2),
           railColorHover: toRGBA(primaryRGB, 0.3),
         },
-        Popover: {
-          color: `rgb(${surfaceContainerRGB})`,
-        },
       };
     }
   } catch (error) {

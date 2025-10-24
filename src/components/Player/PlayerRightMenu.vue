@@ -37,7 +37,7 @@
           :max="1"
           :step="0.01"
           vertical
-          @update:value="(val) => player.setVolume(val)"
+          @update:value="(val: number) => player.setVolume(val)"
         />
         <n-text class="slider-num">{{ statusStore.playVolumePercent }}%</n-text>
       </div>

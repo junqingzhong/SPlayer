@@ -14,12 +14,14 @@ const getExcludeKeywords = () => {
 // 恢复默认
 export const resetSongLyric = () => {
   const musicStore = useMusicStore();
+  const statusStore = useStatusStore();
   musicStore.songLyric = {
     lrcData: [],
     lrcAMData: [],
     yrcData: [],
     yrcAMData: [],
   };
+  statusStore.usingTTMLLyric = false;
 };
 
 // 解析歌词数据
@@ -172,21 +174,30 @@ export const alignAMLyrics = (
 
 // 处理本地歌词
 export const parseLocalLyric = (lyric: string, format: "lrc" | "ttml") => {
+  const statusStore = useStatusStore();
+
   if (!lyric) {
     resetSongLyric();
     return;
   }
-  const musicStore = useMusicStore();
   switch (format) {
     case "lrc":
-      parseLocalLyricLrc(lyric, musicStore);
+      parseLocalLyricLrc(lyric);
+      statusStore.usingTTMLLyric = false;
       break;
     case "ttml":
-      parseLocalLyricAM(lyric, musicStore);
+      parseLocalLyricAM(lyric);
+      statusStore.usingTTMLLyric = true;
       break;
   }
 };
-const parseLocalLyricLrc = (lyric: string, musicStore: any) => {
+
+/**
+ * 解析本地LRC歌词
+ * @param lyric LRC格式的歌词内容
+ */
+const parseLocalLyricLrc = (lyric: string) => {
+  const musicStore = useMusicStore();
   // 解析
   const lrc: LyricLine[] = parseLrc(lyric);
   const lrcData: LyricType[] = parseLrcData(lrc);
@@ -220,7 +231,13 @@ const parseLocalLyricLrc = (lyric: string, musicStore: any) => {
     yrcAMData: [],
   };
 };
-const parseLocalLyricAM = (lyric: string, musicStore: any) => {
+
+/**
+ * 解析本地AM歌词
+ * @param lyric AM格式的歌词内容
+ */
+const parseLocalLyricAM = (lyric: string) => {
+  const musicStore = useMusicStore();
   const ttml = parseTTML(lyric);
   const yrcAMData = parseTTMLToAMLL(ttml);
   const yrcData = parseTTMLToYrc(ttml);
