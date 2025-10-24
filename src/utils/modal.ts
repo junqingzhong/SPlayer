@@ -16,7 +16,7 @@ import UpdatePlaylist from "@/components/Modal/UpdatePlaylist.vue";
 import DownloadSong from "@/components/Modal/DownloadSong.vue";
 import MainSetting from "@/components/Setting/MainSetting.vue";
 import UpdateApp from "@/components/Modal/UpdateApp.vue";
-import ExcludeKeywords from "@/components/Modal/ExcludeKeywords.vue";
+import ExcludeLyrics from "@/components/Modal/ExcludeLyrics.vue";
 import ChangeRate from "@/components/Modal/ChangeRate.vue";
 import AutoClose from "@/components/Modal/AutoClose.vue";
 import Equalizer from "@/components/Modal/Equalizer.vue";
@@ -248,7 +248,7 @@ export const openLyricExclude = () => {
     style: { width: "600px" },
     title: "歌词排除内容",
     content: () => {
-      return h(ExcludeKeywords);
+      return h(ExcludeLyrics);
     },
   });
 };

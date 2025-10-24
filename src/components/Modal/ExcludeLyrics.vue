@@ -40,6 +40,9 @@ const regexesString = computed({
   get: () => settingStore.excludeRegexes.map((regex) => regex.source),
   set: (values) => settingStore.excludeRegexes = values.map((value) => new RegExp(value)),
 });
+
+console.log(settingStore.excludeRegexes);
+console.log(regexesString.value);
 </script>
 
 <style lang="scss" scoped>
