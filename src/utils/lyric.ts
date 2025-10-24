@@ -1,14 +1,29 @@
 import { LyricLine, parseLrc, parseTTML, parseYrc, TTMLLyric } from "@applemusic-like-lyrics/lyric";
 import type { LyricType } from "@/types/main";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { SettingState } from "@/stores/setting";
 import { msToS } from "./time";
 
-// 歌词排除内容
-const getExcludeKeywords = () => {
-  const settingStore = useSettingStore();
-  // 如果未启用排除功能，返回空数组
-  if (!settingStore.enableExcludeKeywords) return [];
-  return settingStore.excludeKeywords;
+// 歌词排除关键词
+const getExcludeKeywords = (settings: SettingState = useSettingStore()): string[] => {
+  if (!settings.enableExcludeLyrics) return [];
+  return settings.excludeKeywords;
+};
+
+// 歌词排除正则
+const getExcludeRegexes = (settings: SettingState = useSettingStore()): RegExp[] => {
+  if (!settings.enableExcludeLyrics) return [];
+  return settings.excludeRegexes;
+};
+
+// 是否排除歌词行
+const isLyricExcluded = (line: string) => {
+  const excludeKeywords = getExcludeKeywords();
+  const excludeRegexes = getExcludeRegexes();
+  return (
+    excludeKeywords.some((keyword) => line.includes(keyword)) ||
+    excludeRegexes.some((regex) => regex.test(line))
+  );
 };
 
 // 恢复默认

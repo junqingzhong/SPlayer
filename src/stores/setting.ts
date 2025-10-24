@@ -1,7 +1,7 @@
 import { defineStore } from "pinia";
-import { keywords } from "@/assets/data/exclude";
+import { keywords, regexes } from "@/assets/data/exclude";
 
-interface SettingState {
+export interface SettingState {
   /** 明暗模式 */
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
@@ -155,10 +155,12 @@ interface SettingState {
   dynamicCover: boolean;
   /** 是否使用 keep-alive */
   useKeepAlive: boolean;
-  /** 是否启用排除歌词关键字 */
-  enableExcludeKeywords: boolean;
+  /** 是否启用排除歌词 */
+  enableExcludeLyrics: boolean;
   /** 排除歌词关键字 */
   excludeKeywords: string[];
+  /** 排除歌词正则表达式 */
+  excludeRegexes: RegExp[],
   /** 显示默认本地路径 */
   showDefaultLocalPath: boolean;
 }
@@ -218,8 +220,9 @@ export const useSettingStore = defineStore("setting", {
     lyricsBlur: false,
     lyricsScrollPosition: "start",
     lrcMousePause: false,
-    enableExcludeKeywords: true,
+    enableExcludeLyrics: true,
     excludeKeywords: keywords,
+    excludeRegexes: regexes,
     localFilesPath: [],
     localLyricPath: [],
     showDefaultLocalPath: true,
