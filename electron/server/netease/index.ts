@@ -1,7 +1,7 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { pathCase } from "change-case";
+import { serverLog } from "../../main/logger";
 import NeteaseCloudMusicApi from "@neteasecloudmusicapienhanced/api";
-import log from "../../main/logger";
 
 // 获取数据
 const getHandler = (name: string, neteaseApi: (params: any) => any) => {
@@ -9,7 +9,7 @@ const getHandler = (name: string, neteaseApi: (params: any) => any) => {
     req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
     reply: FastifyReply,
   ) => {
-    log.info("🌐 Request NcmAPI:", name);
+    serverLog.log("🌐 Request NcmAPI:", name);
     // 获取 NcmAPI 数据
     try {
       const result = await neteaseApi({
@@ -19,7 +19,7 @@ const getHandler = (name: string, neteaseApi: (params: any) => any) => {
       });
       return reply.send(result.body);
     } catch (error: any) {
-      log.error("❌ NcmAPI Error:", error);
+      serverLog.error("❌ NcmAPI Error:", error);
       if ([400, 301].includes(error.status)) {
         return reply.status(error.status).send(error.body);
       }
@@ -60,7 +60,7 @@ const initNcmAPI = async (fastify: FastifyInstance) => {
     }
   });
 
-  log.info("🌐 Register NcmAPI successfully");
+  serverLog.info("🌐 Register NcmAPI successfully");
 };
 
 export default initNcmAPI;

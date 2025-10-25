@@ -1,7 +1,7 @@
 import { BrowserWindow, nativeImage, nativeTheme, ThumbarButton } from "electron";
 import { join } from "path";
-import { isWin } from "./utils";
-import log from "./logger";
+import { isWin } from "../utils/config";
+import { thumbarLog } from "../logger";
 
 enum ThumbarKeys {
   Play = "play",
@@ -16,6 +16,9 @@ export interface Thumbar {
   clearThumbar(): void;
   updateThumbar(playing: boolean, clean?: boolean): void;
 }
+
+// 缩略图单例
+let thumbar: Thumbar | null = null;
 
 // 工具栏图标
 const thumbarIcon = (filename: string) => {
@@ -86,14 +89,26 @@ class createThumbar implements Thumbar {
   }
 }
 
+/**
+ * 初始化缩略图工具栏
+ * @param win 窗口
+ * @returns 缩略图工具栏
+ */
 export const initThumbar = (win: BrowserWindow) => {
   try {
     // 若非 Win
     if (!isWin) return null;
-    log.info("🚀 ThumbarButtons Startup");
-    return new createThumbar(win);
+    thumbarLog.info("🚀 ThumbarButtons Startup");
+    thumbar = new createThumbar(win);
+    return thumbar;
   } catch (error) {
-    log.error("❌ ThumbarButtons Error", error);
+    thumbarLog.error("❌ ThumbarButtons Error", error);
     throw error;
   }
 };
+
+/**
+ * 获取缩略图工具栏
+ * @returns 缩略图工具栏
+ */
+export const getThumbar = () => thumbar;

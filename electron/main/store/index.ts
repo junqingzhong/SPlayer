@@ -1,8 +1,8 @@
-import Store from "electron-store";
 import { screen } from "electron";
-import log from "./logger";
+import { storeLog } from "../logger";
+import Store from "electron-store";
 
-log.info("🌱 Store init");
+storeLog.info("🌱 Store init");
 
 export interface StoreType {
   window: {
@@ -25,8 +25,11 @@ export interface StoreType {
   proxy: string;
 }
 
-// 初始化仓库
-export const initStore = () => {
+/**
+ * 使用 Store
+ * @returns Store<StoreType>
+ */
+export const useStore = () => {
   return new Store<StoreType>({
     defaults: {
       window: {

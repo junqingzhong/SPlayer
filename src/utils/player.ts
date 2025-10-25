@@ -290,7 +290,9 @@ class Player {
       if (currentSessionId !== this.playSessionId) return;
       if (!isElectron) window.document.title = "SPlayer";
       // ipc
-      if (isElectron) window.electron.ipcRenderer.send("play-status-change", false);
+      if (isElectron) {
+        window.electron.ipcRenderer.send("play-status-change", false);
+      }
       console.log("⏸️ song pause:", playSongData);
     });
     // 结束
