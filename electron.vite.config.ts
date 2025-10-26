@@ -6,6 +6,7 @@ import vue from "@vitejs/plugin-vue";
 import AutoImport from "unplugin-auto-import/vite";
 import Components from "unplugin-vue-components/vite";
 import viteCompression from "vite-plugin-compression";
+import VueDevTools from "vite-plugin-vue-devtools";
 import wasm from "vite-plugin-wasm";
 
 export default defineConfig(({ command, mode }) => {
@@ -48,6 +49,7 @@ export default defineConfig(({ command, mode }) => {
       root: ".",
       plugins: [
         vue(),
+        mode === "development" && VueDevTools(),
         AutoImport({
           imports: [
             "vue",
