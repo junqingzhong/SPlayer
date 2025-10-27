@@ -53,6 +53,8 @@ export interface SettingState {
   showYrc: boolean;
   /** 显示逐字歌词动画 */
   showYrcAnimation: boolean;
+  /** 显示逐字歌词长音发光效果 */
+  showYrcLongEffect: boolean;
   /** 显示歌词翻译 */
   showTran: boolean;
   /** 显示歌词音译 */
@@ -164,7 +166,7 @@ export interface SettingState {
   /** 排除歌词关键字 */
   excludeKeywords: string[];
   /** 排除歌词正则表达式 */
-  excludeRegexes: string[],
+  excludeRegexes: string[];
   /** 显示默认本地路径 */
   showDefaultLocalPath: boolean;
 }
@@ -218,6 +220,7 @@ export const useSettingStore = defineStore("setting", {
     enableTTMLLyric: true,
     showYrc: true,
     showYrcAnimation: true,
+    showYrcLongEffect: true,
     showTran: true,
     showRoma: true,
     lyricsPosition: "flex-start",

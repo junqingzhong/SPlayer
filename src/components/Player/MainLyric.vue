@@ -69,7 +69,10 @@
                   :key="textIndex"
                   :class="{
                     'content-text': true,
-                    'content-long': text.duration >= 1.5 && playSeek <= text.endTime,
+                    'content-long':
+                      settingStore.showYrcLongEffect &&
+                      text.duration >= 1.5 &&
+                      playSeek <= text.endTime,
                     'end-with-space': text.endsWithSpace,
                   }"
                 >
@@ -203,46 +206,64 @@ const lyricsScroll = (index: number) => {
   }
 };
 
-// 逐字歌词样式计算
+/**
+ * 不活跃的普通歌词动画样式
+ */
+const INACTIVE_NO_ANIMATION_STYLE = { opacity: 0 } as const;
+
+/**
+ * 逐字歌词样式计算
+ * @param wordData 逐字歌词数据
+ * @param lyricIndex 歌词索引
+ * @returns 逐字歌词动画样式
+ */
 const getYrcStyle = (wordData: LyricContentType, lyricIndex: number) => {
+  // 获取当前歌词行数据
+  const currentLine = musicStore.songLyric.yrcData[lyricIndex];
+  // 缓存 playSeek 值，避免多次访问响应式变量
+  const currentSeek = playSeek.value;
+
+  // 判断当前行是否处于激活状态
+  const isLineActive =
+    (currentSeek >= currentLine.time && currentSeek < currentLine.endTime) ||
+    statusStore.lyricIndex === lyricIndex;
+
+  // 如果当前歌词行不是激活状态，返回固定样式，避免不必要的计算
+  if (!isLineActive) {
+    if (settingStore.showYrcAnimation) {
+      // 判断单词是否已经唱过：已唱过保持填充状态(0%)，未唱到保持未填充状态(100%)
+      const hasPlayed = currentSeek >= wordData.time + wordData.duration;
+      return {
+        WebkitMaskPositionX: hasPlayed ? "0%" : "100%",
+      };
+    } else {
+      return INACTIVE_NO_ANIMATION_STYLE;
+    }
+  }
+
+  // 激活状态的样式计算
   if (settingStore.showYrcAnimation) {
-    // 如果当前歌词索引与播放歌曲的歌词索引不匹配
-    // if (statusStore.lyricIndex !== lyricIndex) {
-    //   return {
-    //     transitionDuration: `0ms, 0ms, 0.35s`,
-    //     transitionDelay: `0ms`,
-    //   };
-    // }
     // 如果播放状态不是加载中，且当前单词的时间加上持续时间减去播放进度大于 0
-    if (
-      statusStore.playLoading === false &&
-      wordData.time + wordData.duration - playSeek.value > 0
-    ) {
+    if (statusStore.playLoading === false && wordData.time + wordData.duration - currentSeek > 0) {
       return {
         transitionDuration: `0s, 0s, 0.35s`,
         transitionDelay: `0ms`,
         WebkitMaskPositionX: `${
-          100 - Math.max(((playSeek.value - wordData.time) / wordData.duration) * 100, 0)
+          100 - Math.max(((currentSeek - wordData.time) / wordData.duration) * 100, 0)
         }%`,
       };
     }
-    // 如果以上条件都不满足
+    // 预计算时间差，避免重复计算
+    const timeDiff = wordData.time - currentSeek;
     return {
       transitionDuration: `${wordData.duration}ms, ${wordData.duration * 0.8}ms, 0.35s`,
-      transitionDelay: `${wordData.time - playSeek.value}ms, ${
-        wordData.time - playSeek.value + wordData.duration * 0.5
-      }ms, 0ms`,
+      transitionDelay: `${timeDiff}ms, ${timeDiff + wordData.duration * 0.5}ms, 0ms`,
     };
   } else {
-    // 如果当前歌词索引与播放歌曲的歌词索引不匹配，或者播放状态不是加载中且当前单词的时间大于等于播放进度
-    if (
-      statusStore.lyricIndex !== lyricIndex ||
-      (statusStore.playLoading === false && wordData.time >= playSeek.value)
-    ) {
-      return { opacity: 0 };
-    }
-    // 如果以上条件都不满足
-    return { opacity: 1 };
+    // 无动画模式：根据单词时间判断透明度
+    return statusStore.playLoading === false && wordData.time >= currentSeek
+      ? { opacity: 0 }
+      : { opacity: 1 };
   }
 };
 
