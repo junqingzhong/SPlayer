@@ -61,27 +61,6 @@ const mainColor = computed(() => {
   return `rgb(${statusStore.mainColor})`;
 });
 
-// 检查是否为纯音乐歌词
-const isPureInstrumental = (lyrics: LyricLine[]): boolean => {
-  if (!lyrics || lyrics.length === 0) return false;
-  const instrumentalKeywords = ["纯音乐", "instrumental", "请欣赏"];
-
-  if (lyrics.length === 1) {
-    const content = lyrics[0].words?.[0]?.word || "";
-    return instrumentalKeywords.some((keyword) =>
-      content.toLowerCase().includes(keyword.toLowerCase()),
-    );
-  }
-
-  if (lyrics.length <= 3) {
-    const allContent = lyrics.map((line) => line.words?.[0]?.word || "").join("");
-    return instrumentalKeywords.some((keyword) =>
-      allContent.toLowerCase().includes(keyword.toLowerCase()),
-    );
-  }
-  return false;
-};
-
 // 当前歌词
 const amLyricsData = computed<LyricLine[]>(() => {
   const { songLyric } = musicStore;
@@ -93,9 +72,6 @@ const amLyricsData = computed<LyricLine[]>(() => {
 
   // 简单检查歌词有效性
   if (!Array.isArray(lyrics) || lyrics.length === 0) return [];
-
-  // 检查是否为纯音乐
-  if (isPureInstrumental(lyrics)) return [];
 
   return lyrics;
 });
