@@ -128,13 +128,7 @@
             },
             {
               label: '封面主色',
-              disabled: true,
               value: 'color',
-            },
-            {
-              label: '无背景',
-              disabled: true,
-              value: 'none',
             },
           ]"
           class="set"

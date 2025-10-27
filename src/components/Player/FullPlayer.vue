@@ -8,27 +8,8 @@
     class="full-player"
     @mouseleave="playerLeave"
   >
-    <!-- 遮罩 -->
-    <Transition name="fade" mode="out-in">
-      <div
-        :key="musicStore.playSong?.id ?? 0"
-        :class="['overlay', settingStore.playerBackgroundType]"
-      >
-        <!-- 背景模糊 -->
-        <img
-          v-if="settingStore.playerBackgroundType === 'blur'"
-          :src="musicStore.songCover"
-          class="overlay-img"
-          alt="cover"
-        />
-        <!-- 流体背景 -->
-        <PlayerBackground
-          v-else-if="settingStore.playerBackgroundType === 'animation'"
-          :album="musicStore.songCover"
-          :fps="60"
-        />
-      </div>
-    </Transition>
+    <!-- 背景 -->
+    <PlayerBackground />
     <!-- 独立歌词 -->
     <Transition name="fade" mode="out-in">
       <div
@@ -200,36 +181,6 @@ onBeforeUnmount(() => {
   backdrop-filter: blur(80px);
   overflow: hidden;
   z-index: 1000;
-  .overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    z-index: -1;
-    &::after {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(20px);
-    }
-    &.blur {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      .overlay-img {
-        width: 100%;
-        height: auto;
-        transform: scale(1.5);
-        filter: blur(80px) contrast(1.2);
-      }
-    }
-  }
   .lrc-instant {
     position: absolute;
     top: 0;
@@ -269,8 +220,8 @@ onBeforeUnmount(() => {
       justify-content: center;
       transition:
         width 0.3s,
-        opacity 0.3s,
-        transform 0.3s;
+        opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+        transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .content-right {
       position: absolute;

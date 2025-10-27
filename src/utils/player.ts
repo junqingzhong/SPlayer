@@ -693,14 +693,12 @@ class Player {
       }
       // 只有一首歌的特殊处理
       if (playListLength === 1) {
-        statusStore.lyricIndex = -1;
         this.setSeek(0);
         await this.play();
         return;
       }
       // 单曲循环
       if (playSongMode === "repeat-once" && autoEnd && !playHeartbeatMode) {
-        statusStore.lyricIndex = -1;
         this.setSeek(0);
         await this.play();
         return;
@@ -723,8 +721,7 @@ class Player {
       } else if (statusStore.playIndex >= playListLength) {
         statusStore.playIndex = 0;
       }
-      // 重置播放进度和歌词索引（切换歌曲时必须重置）
-      statusStore.lyricIndex = -1;
+      // 重置播放进度（切换歌曲时必须重置）
       statusStore.currentTime = 0;
       statusStore.progress = 0;
       // 暂停
@@ -995,8 +992,7 @@ class Player {
     }
     // 更改状态
     statusStore.playIndex = index;
-    // 重置播放进度和歌词索引（切换歌曲时必须重置）
-    statusStore.lyricIndex = -1;
+    // 重置播放进度（切换歌曲时必须重置）
     statusStore.currentTime = 0;
     statusStore.progress = 0;
 

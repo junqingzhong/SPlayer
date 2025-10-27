@@ -48,6 +48,8 @@ export const resetSongLyric = () => {
     yrcAMData: [],
   };
   statusStore.usingTTMLLyric = false;
+  // 重置歌词索引
+  statusStore.lyricIndex = -1;
 };
 
 /**
@@ -58,6 +60,7 @@ export const resetSongLyric = () => {
  */
 export const parsedLyricsData = (lyricData: any, skipExclude: boolean = false): void => {
   const musicStore = useMusicStore();
+  const statusStore = useStatusStore();
   if (lyricData.code !== 200) {
     resetSongLyric();
     return;
@@ -105,6 +108,8 @@ export const parsedLyricsData = (lyricData: any, skipExclude: boolean = false): 
     lrcAMData: parseAMData(lrcParseData, tlyricParseData, romalrcParseData, skipExclude),
     yrcAMData: parseAMData(yrcParseData, ytlrcParseData, yromalrcParseData, skipExclude),
   };
+  // 重置歌词索引
+  statusStore.lyricIndex = -1;
 };
 
 /**
@@ -257,6 +262,7 @@ export const parseLocalLyric = (lyric: string, format: "lrc" | "ttml") => {
  */
 const parseLocalLyricLrc = (lyric: string) => {
   const musicStore = useMusicStore();
+  const statusStore = useStatusStore();
   const settingStore = useSettingStore();
   // 解析
   const lrc: LyricLine[] = parseLrc(lyric);
@@ -290,6 +296,8 @@ const parseLocalLyricLrc = (lyric: string) => {
     yrcData: [],
     yrcAMData: [],
   };
+  // 重置歌词索引
+  statusStore.lyricIndex = -1;
 };
 
 /**
@@ -298,6 +306,7 @@ const parseLocalLyricLrc = (lyric: string) => {
  */
 const parseLocalLyricAM = (lyric: string) => {
   const musicStore = useMusicStore();
+  const statusStore = useStatusStore();
   const settingStore = useSettingStore();
 
   const skipExcludeLocal = !settingStore.enableExcludeLocalLyrics;
@@ -313,6 +322,8 @@ const parseLocalLyricAM = (lyric: string) => {
     yrcAMData,
     yrcData,
   };
+  // 重置歌词索引
+  statusStore.lyricIndex = -1;
 };
 
 /**

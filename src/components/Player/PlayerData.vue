@@ -127,13 +127,6 @@ const jumpPage = debounce(
       line-clamp: 2;
       -webkit-line-clamp: 2;
     }
-    .extra-info {
-      position: absolute;
-      right: -34px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
     .n-icon {
       margin-left: 12px;
       transform: translateY(1px);
@@ -209,6 +202,13 @@ const jumpPage = debounce(
     .name {
       .name-text {
         font-size: 30px;
+      }
+      .extra-info {
+        position: absolute;
+        right: -34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
     }
   }
