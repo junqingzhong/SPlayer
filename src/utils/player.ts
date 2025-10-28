@@ -59,14 +59,20 @@ class Player {
   /**
    * 处理播放状态
    */
-  private handlePlayStatus() {
+  private handlePlayStatus(sessionId?: number) {
     // const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
+    const currentSessionId = sessionId ?? this.playSessionId;
     // 清理定时器
     clearInterval(this.playerInterval);
     // 更新播放状态
     this.playerInterval = setInterval(() => {
+      // 检查会话是否过期
+      if (currentSessionId !== this.playSessionId) {
+        clearInterval(this.playerInterval);
+        return;
+      }
       if (!this.player.playing()) return;
       const currentTime = this.getSeek();
       const duration = this.player.duration();
@@ -178,6 +184,12 @@ class Player {
     const settingStore = useSettingStore();
     // 播放信息
     const { id, path, type } = musicStore.playSong;
+    const currentSessionId = sessionId ?? this.playSessionId;
+    // 检查会话是否过期
+    if (currentSessionId !== this.playSessionId) {
+      console.log("🚫 Session expired, skipping player creation");
+      return;
+    }
     // 清理播放器（移除事件，停止并卸载）
     try {
       this.player.off();
@@ -186,6 +198,13 @@ class Player {
     }
     Howler.stop();
     Howler.unload();
+    // 清理所有定时器
+    this.cleanupAllTimers();
+    // 再次检查会话是否过期（异步操作后）
+    if (currentSessionId !== this.playSessionId) {
+      console.log("🚫 Session expired after cleanup, aborting");
+      return;
+    }
     // 创建播放器（禁用内置 autoplay，统一走手动 play）
     this.player = new Howl({
       src,
@@ -198,7 +217,7 @@ class Player {
       rate: statusStore.playRate,
     });
     // 播放器事件（绑定当前会话）
-    this.playerEvent({ seek, sessionId });
+    this.playerEvent({ seek, sessionId: currentSessionId });
     // 播放设备
     if (!settingStore.showSpectrums) this.toggleOutputDevice();
     // 自动播放（仅一次性触发）
@@ -208,7 +227,7 @@ class Player {
       getLyricData(id);
     } else resetSongLyric();
     // 定时获取状态
-    if (!this.playerInterval) this.handlePlayStatus();
+    if (!this.playerInterval) this.handlePlayStatus(currentSessionId);
     // 新增播放历史
     if (type !== "radio") dataStore.setHistory(musicStore.playSong);
     // 获取歌曲封面主色
@@ -616,6 +635,11 @@ class Player {
   async play() {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
+    // 检查播放器状态
+    if (!this.player || this.player.state() === "unloaded") {
+      console.warn("⚠️ Player not ready for play");
+      return;
+    }
     // 已在播放
     if (this.player.playing()) {
       statusStore.playStatus = true;
@@ -640,14 +664,13 @@ class Player {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
 
-    // 播放器未加载完成
-    if (this.player.state() !== "loaded") {
+    // 播放器未加载完成或不存在
+    if (!this.player || this.player.state() !== "loaded") {
+      if (changeStatus) statusStore.playStatus = false;
       return;
     }
-
     // 立即设置播放状态
     if (changeStatus) statusStore.playStatus = false;
-
     // 淡出
     await new Promise<void>((resolve) => {
       this.player.fade(statusStore.playVolume, 0, settingStore.getFadeTime);
@@ -672,12 +695,20 @@ class Player {
    * @param autoEnd 是否为歌曲自动播放结束
    */
   async nextOrPrev(type: "next" | "prev" = "next", play: boolean = true, autoEnd: boolean = false) {
+    const statusStore = useStatusStore();
+    const dataStore = useDataStore();
+    const musicStore = useMusicStore();
     try {
-      if (this.switching) return;
+      if (this.switching) {
+        console.log("🔄 Already switching, ignoring request");
+        return;
+      }
       this.switching = true;
-      const statusStore = useStatusStore();
-      const dataStore = useDataStore();
-      const musicStore = useMusicStore();
+
+      // 立即更新UI状态，防止用户重复点击
+      statusStore.playLoading = true;
+      statusStore.playStatus = false;
+
       // 获取数据
       const { playList } = dataStore;
       const { playSong } = musicStore;
@@ -724,12 +755,15 @@ class Player {
       // 重置播放进度（切换歌曲时必须重置）
       statusStore.currentTime = 0;
       statusStore.progress = 0;
-      // 暂停
+      // 暂停当前播放
       await this.pause(false);
+      // 清理定时器，防止旧定时器继续运行
+      this.cleanupAllTimers();
       // 初始化播放器（不传入seek参数，确保从头开始播放）
       await this.initPlayer(play, 0);
     } catch (error) {
       console.error("Error in nextOrPrev:", error);
+      statusStore.playLoading = false;
       throw error;
     } finally {
       this.switching = false;
@@ -815,6 +849,11 @@ class Player {
    */
   setSeek(time: number) {
     const statusStore = useStatusStore();
+    // 检查播放器状态
+    if (!this.player || this.player.state() !== "loaded") {
+      console.warn("⚠️ Player not ready for seek");
+      return;
+    }
     this.player.seek(time);
     statusStore.currentTime = time;
   }
@@ -823,6 +862,8 @@ class Player {
    * @returns 播放进度
    */
   getSeek(): number {
+    // 检查播放器状态
+    if (!this.player || this.player.state() !== "loaded") return 0;
     return this.player.seek();
   }
   /**
@@ -981,23 +1022,43 @@ class Player {
   async togglePlayIndex(index: number, play: boolean = false) {
     const dataStore = useDataStore();
     const statusStore = useStatusStore();
-    // 获取数据
-    const { playList } = dataStore;
-    // 若超出播放列表
-    if (index >= playList.length) return;
-    // 相同
-    if (!play && statusStore.playIndex === index) {
-      this.play();
-      return;
+    try {
+      if (this.switching) {
+        console.log("🔄 Already switching, ignoring request");
+        return;
+      }
+      this.switching = true;
+      // 立即更新UI状态，防止用户重复点击
+      statusStore.playLoading = true;
+      statusStore.playStatus = false;
+      // 获取数据
+      const { playList } = dataStore;
+      // 若超出播放列表
+      if (index >= playList.length) return;
+      // 相同
+      if (!play && statusStore.playIndex === index) {
+        this.play();
+        return;
+      }
+      // 更改状态
+      statusStore.playIndex = index;
+      // 重置播放进度（切换歌曲时必须重置）
+      statusStore.currentTime = 0;
+      statusStore.progress = 0;
+      statusStore.lyricIndex = -1;
+      // 暂停当前播放
+      await this.pause(false);
+      // 清理定时器，防止旧定时器继续运行
+      this.cleanupAllTimers();
+      // 清理并播放（不传入seek参数，确保从头开始播放）
+      await this.initPlayer(true, 0);
+    } catch (error) {
+      console.error("Error in togglePlayIndex:", error);
+      statusStore.playLoading = false;
+      throw error;
+    } finally {
+      this.switching = false;
     }
-    // 更改状态
-    statusStore.playIndex = index;
-    // 重置播放进度（切换歌曲时必须重置）
-    statusStore.currentTime = 0;
-    statusStore.progress = 0;
-
-    // 清理并播放（不传入seek参数，确保从头开始播放）
-    await this.initPlayer(true, 0);
   }
   /**
    * 移除指定歌曲
@@ -1322,7 +1383,24 @@ class Player {
     }, 1000);
   }
   /**
-   * 执行自动关闭操作
+   * 清理所有定时器和资源
+   */
+  private cleanupAllTimers() {
+    // 清理播放状态定时器
+    if (this.playerInterval) {
+      clearInterval(this.playerInterval);
+      this.playerInterval = undefined;
+    }
+    // 清理自动关闭定时器
+    if (this.autoCloseInterval) {
+      clearInterval(this.autoCloseInterval);
+      this.autoCloseInterval = undefined;
+    }
+    console.log("🧹 All timers cleaned up");
+  }
+
+  /**
+   * 执行自动关闭
    */
   private executeAutoClose() {
     console.log("🔄 执行自动关闭");

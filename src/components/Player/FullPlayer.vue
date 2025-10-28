@@ -246,9 +246,8 @@ onBeforeUnmount(() => {
     }
     &.show-comment {
       .content-left {
-        position: static;
-        min-width: 40vw;
-        max-width: 50vh;
+        min-width: 40%;
+        width: 40%;
         padding: 0 60px;
         .player-cover,
         .player-data {

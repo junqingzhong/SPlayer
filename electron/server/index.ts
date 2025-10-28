@@ -1,8 +1,9 @@
 import { join } from "path";
 import { isDev } from "../main/utils/config";
 import { serverLog } from "../main/logger";
-import initNcmAPI from "./netease";
-import initUnblockAPI from "./unblock";
+import { initNcmAPI } from "./netease";
+import { initUnblockAPI } from "./unblock";
+import { initControlAPI } from "./control";
 import fastifyCookie from "@fastify/cookie";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
@@ -47,6 +48,7 @@ const initAppServer = async () => {
     // 注册接口
     server.register(initNcmAPI, { prefix: "/api" });
     server.register(initUnblockAPI, { prefix: "/api" });
+    server.register(initControlAPI, { prefix: "/api" });
     // 启动端口
     const port = Number(process.env["VITE_SERVER_PORT"] || 25884);
     await server.listen({ port });

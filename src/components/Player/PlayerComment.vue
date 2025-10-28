@@ -118,9 +118,11 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .player-comment {
+  position: absolute;
+  right: 0;
+  width: 60%;
   flex: 1;
   height: 100%;
-  width: 100%;
   overflow: hidden;
   filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));
   mask: linear-gradient(

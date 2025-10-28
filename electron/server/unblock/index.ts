@@ -26,7 +26,7 @@ const getNeteaseSongUrl = async (id: number | string): Promise<SongUrlResult> =>
 };
 
 // 初始化 UnblockAPI
-const UnblockAPI = async (fastify: FastifyInstance) => {
+export const initUnblockAPI = async (fastify: FastifyInstance) => {
   // 主信息
   fastify.get("/unblock", (_, reply) => {
     reply.send({
@@ -64,5 +64,3 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
 
   serverLog.info("🌐 Register UnblockAPI successfully");
 };
-
-export default UnblockAPI;

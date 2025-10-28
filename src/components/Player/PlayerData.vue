@@ -221,7 +221,7 @@ const jumpPage = debounce(
   }
 }
 .player-tip {
-  width: 240px;
+  max-width: 240px;
   padding: 12px 20px;
   border-radius: 12px;
   color: rgb(var(--theme));

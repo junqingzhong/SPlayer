@@ -29,7 +29,7 @@ const getHandler = (name: string, neteaseApi: (params: any) => any) => {
 };
 
 // 初始化 NcmAPI
-const initNcmAPI = async (fastify: FastifyInstance) => {
+export const initNcmAPI = async (fastify: FastifyInstance) => {
   // 主信息
   fastify.get("/netease", (_, reply) => {
     reply.send({
@@ -62,5 +62,3 @@ const initNcmAPI = async (fastify: FastifyInstance) => {
 
   serverLog.info("🌐 Register NcmAPI successfully");
 };
-
-export default initNcmAPI;
