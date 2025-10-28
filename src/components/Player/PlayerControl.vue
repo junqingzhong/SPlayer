@@ -187,6 +187,7 @@ const sliderDragend = () => {
         width: 38px;
         height: 38px;
         border-radius: 50%;
+        will-change: transform;
         transition:
           backdrop-filter 0.3s,
           background-color 0.3s,

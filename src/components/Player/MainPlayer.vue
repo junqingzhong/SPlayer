@@ -488,6 +488,7 @@ const instantLyrics = computed(() => {
       width: 38px;
       height: 38px;
       border-radius: 50%;
+      will-change: transform;
       transition:
         background-color 0.3s,
         transform 0.3s;

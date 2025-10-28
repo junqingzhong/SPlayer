@@ -291,6 +291,11 @@ const routes: Array<RouteRecordRaw> = [
     name: "desktop-lyrics",
     component: () => import("@/views/DesktopLyrics/index.vue"),
   },
+  // 404
+  {
+    path: "/:pathMatch(.*)*",
+    redirect: "/404",
+  },
 ];
 
 export default routes;

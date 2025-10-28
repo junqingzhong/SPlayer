@@ -752,13 +752,13 @@ class Player {
       } else if (statusStore.playIndex >= playListLength) {
         statusStore.playIndex = 0;
       }
+      // 立即清理定时器，防止旧定时器继续更新UI
+      this.cleanupAllTimers();
       // 重置播放进度（切换歌曲时必须重置）
       statusStore.currentTime = 0;
       statusStore.progress = 0;
       // 暂停当前播放
       await this.pause(false);
-      // 清理定时器，防止旧定时器继续运行
-      this.cleanupAllTimers();
       // 初始化播放器（不传入seek参数，确保从头开始播放）
       await this.initPlayer(play, 0);
     } catch (error) {
