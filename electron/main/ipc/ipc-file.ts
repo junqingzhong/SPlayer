@@ -27,7 +27,7 @@ const initFileIpc = (): void => {
       const filePath = resolve(dirPath).replace(/\\/g, "/");
       console.info(`📂 Fetching music files from: ${filePath}`);
       // 查找指定目录下的所有音乐文件
-      const musicFiles = await FastGlob("**/*.{mp3,wav,flac}", { cwd: filePath });
+      const musicFiles = await FastGlob("**/*.{mp3,wav,flac,aac,webm}", { cwd: filePath });
       // 解析元信息
       const metadataPromises = musicFiles.map(async (file) => {
         const filePath = join(dirPath, file);

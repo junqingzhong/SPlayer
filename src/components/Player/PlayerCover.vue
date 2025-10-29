@@ -11,6 +11,7 @@
     <s-image
       :key="musicStore.getSongCover()"
       :src="musicStore.getSongCover('l')"
+      :observe-visibility="false"
       class="cover-img"
     />
     <!-- 动态封面 -->

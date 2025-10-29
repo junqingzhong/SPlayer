@@ -5,7 +5,7 @@ import { cloneDeep } from "lodash-es";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { resetSongLyric, parseLocalLyric, calculateLyricIndex } from "./lyric";
 import { calculateProgress } from "./time";
-import { isElectron, isDev, shuffleArray } from "./helper";
+import { isElectron, isDev, shuffleArray, runIdle } from "./helper";
 import { heartRateList } from "@/api/playlist";
 import { formatSongsList } from "./format";
 import { isLogin } from "./auth";
@@ -40,7 +40,6 @@ class Player {
   private analyser: AnalyserNode | null = null;
   private dataArray: Uint8Array<ArrayBuffer> | null = null;
   /** 其他数据 */
-  private testNumber: number = 0;
   private message: MessageReactive | null = null;
   /** 预载下一首歌曲播放地址缓存（仅存 URL，不创建 Howl） */
   private nextPrefetch: { id: number; url: string | null; ublock: boolean } | null = null;
@@ -48,6 +47,8 @@ class Player {
   private playSessionId: number = 0;
   /** 是否正在切换歌曲 */
   private switching: boolean = false;
+  /** 当前曲目重试信息（按歌曲维度计数） */
+  private retryInfo: { songId: number; count: number } = { songId: 0, count: 0 };
   constructor() {
     // 创建播放器实例
     this.player = new Howl({ src: [""], format: allowPlayFormat, autoplay: false });
@@ -57,13 +58,50 @@ class Player {
     window.$player = this;
   }
   /**
+   * 新建会话并返回会话 id
+   */
+  private newSession(): number {
+    this.playSessionId += 1;
+    return this.playSessionId;
+  }
+  /**
+   * 检查传入会话是否过期
+   */
+  private isStale(sessionId: number): boolean {
+    return sessionId !== this.playSessionId;
+  }
+  /**
+   * 保护执行：会话过期则早退
+   */
+  private guard<T>(sessionId: number, fn: () => T): T | undefined {
+    if (this.isStale(sessionId)) return;
+    return fn();
+  }
+  /**
+   * 重置底层播放器与定时器（幂等）
+   */
+  private resetPlayerCore() {
+    try {
+      this.player?.off();
+    } catch {
+      /* empty */
+    }
+    try {
+      Howler.stop();
+      Howler.unload();
+    } catch {
+      /* empty */
+    }
+    this.cleanupAllTimers();
+  }
+  /**
    * 处理播放状态
    */
-  private handlePlayStatus(sessionId?: number) {
+  private handlePlayStatus() {
     // const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
-    const currentSessionId = sessionId ?? this.playSessionId;
+    const currentSessionId = this.playSessionId;
     // 清理定时器
     clearInterval(this.playerInterval);
     // 更新播放状态
@@ -171,12 +209,7 @@ class Player {
    * @param autoPlay 是否自动播放
    * @param seek 播放位置
    */
-  private async createPlayer(
-    src: string,
-    autoPlay: boolean = true,
-    seek: number = 0,
-    sessionId?: number,
-  ) {
+  private async createPlayer(src: string, autoPlay: boolean = true, seek: number = 0) {
     // 获取数据
     const dataStore = useDataStore();
     const musicStore = useMusicStore();
@@ -184,23 +217,15 @@ class Player {
     const settingStore = useSettingStore();
     // 播放信息
     const { id, path, type } = musicStore.playSong;
-    const currentSessionId = sessionId ?? this.playSessionId;
+    const currentSessionId = this.playSessionId;
     // 检查会话是否过期
     if (currentSessionId !== this.playSessionId) {
       console.log("🚫 Session expired, skipping player creation");
       return;
     }
-    // 清理播放器（移除事件，停止并卸载）
-    try {
-      this.player.off();
-    } catch {
-      /* empty */
-    }
-    Howler.stop();
-    Howler.unload();
-    // 清理所有定时器
-    this.cleanupAllTimers();
-    // 再次检查会话是否过期（异步操作后）
+    // 统一重置底层播放器
+    this.resetPlayerCore();
+    // 二次检查会话
     if (currentSessionId !== this.playSessionId) {
       console.log("🚫 Session expired after cleanup, aborting");
       return;
@@ -217,27 +242,29 @@ class Player {
       rate: statusStore.playRate,
     });
     // 播放器事件（绑定当前会话）
-    this.playerEvent({ seek, sessionId: currentSessionId });
+    this.playerEvent({ seek });
     // 播放设备
     if (!settingStore.showSpectrums) this.toggleOutputDevice();
     // 自动播放（仅一次性触发）
     if (autoPlay) await this.play();
     // 获取歌曲附加信息 - 非电台和本地
     if (type !== "radio" && !path) {
-      getLyricData(id);
+      runIdle(() => getLyricData(id));
     } else resetSongLyric();
     // 定时获取状态
-    if (!this.playerInterval) this.handlePlayStatus(currentSessionId);
+    if (!this.playerInterval) this.handlePlayStatus();
     // 新增播放历史
     if (type !== "radio") dataStore.setHistory(musicStore.playSong);
     // 获取歌曲封面主色
-    if (!path) getCoverColor(musicStore.songCover);
+    if (!path) runIdle(() => getCoverColor(musicStore.songCover));
     // 更新 MediaSession
-    if (!path) this.updateMediaSession();
+    if (!path) runIdle(() => this.updateMediaSession());
     // 开发模式
     if (isDev) window.player = this.player;
-    // 异步预载下一首播放地址（不阻塞当前播放）
-    void this.prefetchNextSongUrl();
+    // 预载下一首播放地址
+    runIdle(() => {
+      void this.prefetchNextSongUrl();
+    });
   }
   /**
    * 播放器事件
@@ -246,8 +273,6 @@ class Player {
     options: {
       // 恢复进度
       seek?: number;
-      // 当前会话 id，用于忽略过期事件
-      sessionId?: number;
     } = { seek: 0 },
   ) {
     // 获取数据
@@ -257,7 +282,7 @@ class Player {
     const playSongData = getPlaySongData();
     // 获取配置
     const { seek } = options;
-    const currentSessionId = options.sessionId ?? this.playSessionId;
+    const currentSessionId = this.playSessionId;
     // 初次加载
     this.player.once("load", () => {
       if (currentSessionId !== this.playSessionId) return;
@@ -284,6 +309,14 @@ class Player {
       }
       // 更新状态
       statusStore.playLoading = false;
+      // 重置当前曲目重试计数
+      try {
+        const current = getPlaySongData();
+        const sid = current?.type === "radio" ? current?.dj?.id : current?.id;
+        this.retryInfo = { songId: Number(sid || 0), count: 0 };
+      } catch {
+        /* empty */
+      }
       // ipc
       if (isElectron) {
         window.electron.ipcRenderer.send("play-song-change", getPlayerInfo());
@@ -297,6 +330,14 @@ class Player {
     this.player.on("play", () => {
       if (currentSessionId !== this.playSessionId) return;
       window.document.title = getPlayerInfo() || "SPlayer";
+      // 重置重试计数
+      try {
+        const current = getPlaySongData();
+        const sid = current?.type === "radio" ? current?.dj?.id : current?.id;
+        this.retryInfo = { songId: Number(sid || 0), count: 0 };
+      } catch {
+        /* empty */
+      }
       // ipc
       if (isElectron) {
         window.electron.ipcRenderer.send("play-status-change", true);
@@ -338,8 +379,14 @@ class Player {
     this.player.on("loaderror", (sourceid, err: unknown) => {
       if (currentSessionId !== this.playSessionId) return;
       const code = typeof err === "number" ? err : undefined;
-      this.errorNext(code);
+      this.handlePlaybackError(code);
       console.error("❌ song error:", sourceid, playSongData, err);
+    });
+    this.player.on("playerror", (sourceid, err: unknown) => {
+      if (currentSessionId !== this.playSessionId) return;
+      const code = typeof err === "number" ? err : undefined;
+      this.handlePlaybackError(code);
+      console.error("❌ song play error:", sourceid, playSongData, err);
     });
   }
   /**
@@ -440,27 +487,31 @@ class Player {
     updateSpectrumData();
   }
   /**
-   * 播放错误
-   * 在播放错误时，播放下一首
+   * 集中处理播放错误与重试策略
    */
-  private async errorNext(errCode?: number) {
+  private async handlePlaybackError(errCode?: number) {
     const dataStore = useDataStore();
-    // 次数加一
-    this.testNumber++;
-    if (this.testNumber > 5) {
-      this.testNumber = 0;
-      this.resetStatus();
-      window.$message.error("当前重试次数过多，请稍后再试");
-      return;
+    const playSongData = getPlaySongData();
+    const currentSongId = playSongData?.type === "radio" ? playSongData.dj?.id : playSongData?.id;
+    // 初始化/切换曲目时重置计数
+    if (!this.retryInfo.songId || this.retryInfo.songId !== Number(currentSongId || 0)) {
+      this.retryInfo = { songId: Number(currentSongId || 0), count: 0 };
     }
-    // 错误 2 通常为网络地址过期
-    if (errCode === 2) {
-      // 重载播放器
+    this.retryInfo.count += 1;
+    // 错误码 2：资源过期或临时网络错误，允许较少次数的刷新
+    if (errCode === 2 && this.retryInfo.count <= 2) {
       await this.initPlayer(true, this.getSeek());
       return;
     }
-    // 播放下一曲
+    // 其它错误：最多 3 次
+    if (this.retryInfo.count <= 3) {
+      await this.initPlayer(true, 0);
+      return;
+    }
+    // 超过次数：切到下一首或清空
+    this.retryInfo.count = 0;
     if (dataStore.playList.length > 1) {
+      window.$message.error("当前歌曲播放失败，已跳至下一首");
       await this.nextOrPrev("next");
     } else {
       window.$message.error("当前列表暂无可播放歌曲");
@@ -498,12 +549,12 @@ class Player {
         musicStore.playSong.cover = "/images/song.jpg?assest";
       }
       // 获取主色
-      getCoverColor(musicStore.playSong.cover);
+      runIdle(() => getCoverColor(musicStore.playSong.cover));
       // 获取歌词数据
       const { lyric, format } = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
       parseLocalLyric(lyric, format);
       // 更新媒体会话
-      this.updateMediaSession();
+      runIdle(() => this.updateMediaSession());
     } catch (error) {
       window.$message.error("获取本地歌曲元信息失败");
       console.error("Failed to parse local music info:", error);
@@ -540,7 +591,7 @@ class Player {
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
-    const sessionId = ++this.playSessionId;
+    const sessionId = this.newSession();
     try {
       // 获取播放数据
       const playSongData = getPlaySongData();
@@ -550,9 +601,12 @@ class Player {
       musicStore.playSong = playSongData;
       // 更改状态
       statusStore.playLoading = true;
+      // 清理旧播放器与计时器
+      this.resetPlayerCore();
       // 本地歌曲
       if (path) {
-        await this.createPlayer(`file://${path}`, autoPlay, seek, sessionId);
+        if (this.isStale(sessionId)) return;
+        await this.createPlayer(`file://${path}`, autoPlay, seek);
         // 获取歌曲元信息
         await this.parseLocalMusicInfo(path);
       }
@@ -564,7 +618,8 @@ class Player {
         const cached = this.nextPrefetch;
         if (cached && cached.id === songId && cached.url) {
           statusStore.playUblock = cached.ublock;
-          await this.createPlayer(cached.url, autoPlay, seek, sessionId);
+          if (this.isStale(sessionId)) return;
+          await this.createPlayer(cached.url, autoPlay, seek);
         } else {
           // 官方地址失败或仅为试听时再尝试解锁（Electron 且非电台且开启解灰）
           const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
@@ -572,20 +627,23 @@ class Player {
           if (officialUrl && !isTrial) {
             // 官方可播放且非试听
             statusStore.playUblock = false;
-            await this.createPlayer(officialUrl, autoPlay, seek, sessionId);
+            if (this.isStale(sessionId)) return;
+            await this.createPlayer(officialUrl, autoPlay, seek);
           } else if (canUnlock) {
             // 官方失败或为试听时尝试解锁
             const unlockUrl = await getUnlockSongUrl(playSongData);
             if (unlockUrl) {
               statusStore.playUblock = true;
               console.log("🎼 Song unlock successfully:", unlockUrl);
-              await this.createPlayer(unlockUrl, autoPlay, seek, sessionId);
+              if (this.isStale(sessionId)) return;
+              await this.createPlayer(unlockUrl, autoPlay, seek);
             } else if (officialUrl) {
               // 解锁失败，若允许试听则播放试听
               if (isTrial && settingStore.playSongDemo) {
                 window.$message.warning("当前歌曲仅可试听，请开通会员后重试");
                 statusStore.playUblock = false;
-                await this.createPlayer(officialUrl, autoPlay, seek, sessionId);
+                if (this.isStale(sessionId)) return;
+                await this.createPlayer(officialUrl, autoPlay, seek);
               } else {
                 // 不允许试听
                 statusStore.playUblock = false;
@@ -663,6 +721,7 @@ class Player {
   async pause(changeStatus: boolean = true) {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
+    const localSession = this.playSessionId;
 
     // 播放器未加载完成或不存在
     if (!this.player || this.player.state() !== "loaded") {
@@ -675,7 +734,7 @@ class Player {
     await new Promise<void>((resolve) => {
       this.player.fade(statusStore.playVolume, 0, settingStore.getFadeTime);
       this.player.once("fade", () => {
-        this.player.pause();
+        this.guard(localSession, () => this.player.pause());
         resolve();
       });
     });

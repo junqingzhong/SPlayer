@@ -14,6 +14,7 @@
       <s-image
         v-else-if="settingStore.playerBackgroundType === 'blur'"
         :src="musicStore.songCover"
+        :observe-visibility="false"
         class="bg-img"
         alt="cover"
       />

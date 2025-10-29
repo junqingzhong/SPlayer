@@ -393,3 +393,38 @@ export const shuffleArray = <T>(arr: T[]): T[] => {
   }
   return copy;
 };
+
+/**
+ * 在浏览器空闲时执行任务
+ * @param task 要执行的任务
+ */
+export const runIdle = (task: () => void) => {
+  try {
+    const ric = window?.requestIdleCallback as ((cb: () => void) => number) | undefined;
+    if (typeof ric === "function") {
+      ric(() => {
+        try {
+          task();
+        } catch {
+          /* empty */
+        }
+      });
+    } else {
+      setTimeout(() => {
+        try {
+          task();
+        } catch {
+          /* empty */
+        }
+      }, 0);
+    }
+  } catch {
+    setTimeout(() => {
+      try {
+        task();
+      } catch {
+        /* empty */
+      }
+    }, 0);
+  }
+};
