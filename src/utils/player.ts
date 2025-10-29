@@ -230,7 +230,7 @@ class Player {
       console.log("🚫 Session expired after cleanup, aborting");
       return;
     }
-    // 创建播放器（禁用内置 autoplay，统一走手动 play）
+    // 创建播放器
     this.player = new Howl({
       src,
       format: allowPlayFormat,
@@ -241,11 +241,11 @@ class Player {
       volume: statusStore.playVolume,
       rate: statusStore.playRate,
     });
-    // 播放器事件（绑定当前会话）
+    // 播放器事件
     this.playerEvent({ seek });
     // 播放设备
     if (!settingStore.showSpectrums) this.toggleOutputDevice();
-    // 自动播放（仅一次性触发）
+    // 自动播放
     if (autoPlay) await this.play();
     // 获取歌曲附加信息 - 非电台和本地
     if (type !== "radio" && !path) {
@@ -1455,7 +1455,6 @@ class Player {
       clearInterval(this.autoCloseInterval);
       this.autoCloseInterval = undefined;
     }
-    console.log("🧹 All timers cleaned up");
   }
 
   /**

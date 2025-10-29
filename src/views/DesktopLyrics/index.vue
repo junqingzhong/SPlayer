@@ -3,7 +3,6 @@
     <div ref="desktopLyricsRef" class="desktop-lyrics">
       {{ lyricData.playName }}
       {{ lyricConfig }}
-      456456
       <div class="header" align="center" justify="space-between">
         <n-flex :wrap="false" align="center" justify="flex-start" size="small">
           <div class="menu-btn" title="返回应用">

@@ -65,19 +65,13 @@ export const songLyric = (id: number) => {
   });
 };
 
-// 获取格式TTML的歌词
-export const songLyricTTML = async (id: number) => {
-  const url = `https://amll-ttml-db.stevexmh.net/ncm/${id}`;
-  try {
-    const response = await fetch(url);
-    if (response === null || response.status !== 200) {
-      return null;
-    }
-    const data = await response.text();
-    return data;
-  } catch {
-    return null;
-  }
+/**
+ * 获取歌曲 TTML 歌词
+ * @param id 音乐 id
+ * @returns TTML 格式歌词
+ */
+export const songLyricTTML = (id: number) => {
+  return request({ url: "/lyric/ttml", params: { id } });
 };
 
 /**

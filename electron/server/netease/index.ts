@@ -60,5 +60,28 @@ export const initNcmAPI = async (fastify: FastifyInstance) => {
     }
   });
 
+  // 获取 TTML 歌词
+  fastify.get(
+    "/netease/lyric/ttml",
+    async (req: FastifyRequest<{ Querystring: { id: string } }>, reply: FastifyReply) => {
+      const { id } = req.query;
+      if (!id) {
+        return reply.status(400).send({ error: "id is required" });
+      }
+      const url = `https://amll-ttml-db.stevexmh.net/ncm/${id}`;
+      try {
+        const response = await fetch(url);
+        if (response.status !== 200) {
+          return reply.send(null);
+        }
+        const data = await response.text();
+        return reply.send(data);
+      } catch (error) {
+        serverLog.error("❌ TTML Lyric Fetch Error:", error);
+        return reply.status(500).send(null);
+      }
+    },
+  );
+
   serverLog.info("🌐 Register NcmAPI successfully");
 };

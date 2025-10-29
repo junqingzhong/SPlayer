@@ -51,7 +51,8 @@ jobs:
           }
       # 构建 Electron App (x64)
       - name: Build Electron App for Windows x64
-        run: pnpm run build:win
+        # 仅 x64
+        run: pnpm run build:win -- --arch=x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # 清理不必要的构建产物（保留 .exe 和 .blockmap 文件）
