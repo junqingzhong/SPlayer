@@ -1,8 +1,8 @@
 import { ipcMain, screen } from "electron";
-import lyricWindow from "../windows/lyric-window";
-import { useStore } from "../store";
-import mainWindow from "../windows/main-window";
 import { isAbsolute, relative, resolve } from "path";
+import { useStore } from "../store";
+import lyricWindow from "../windows/lyric-window";
+import mainWindow from "../windows/main-window";
 
 /**
  * 歌词相关 IPC

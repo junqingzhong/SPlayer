@@ -29,8 +29,6 @@ export const createWindow = (
         // 启用 Node.js
         nodeIntegration: true,
         nodeIntegrationInWorker: true,
-        // 启用上下文隔离
-        contextIsolation: false,
       },
     };
     // 合并参数

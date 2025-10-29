@@ -78,7 +78,6 @@ class LoginWindow {
         spellcheck: false,
         nodeIntegration: true,
         nodeIntegrationInWorker: true,
-        contextIsolation: false,
         session: loginSession,
       },
     });
