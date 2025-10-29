@@ -5,7 +5,7 @@
       <span class="name-text text-hidden">{{ musicStore.playSong.name || "未知曲目" }}</span>
       <!-- 额外信息 -->
       <div v-if="statusStore.playUblock || musicStore.playSong.pc" class="extra-info">
-        <n-popover :show-arrow="false" placement="right-center" raw>
+        <n-popover :show-arrow="false" placement="right" raw>
           <template #trigger>
             <SvgIcon
               :depth="3"
