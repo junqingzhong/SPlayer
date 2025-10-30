@@ -11,6 +11,8 @@ export interface LyricData {
   /** 歌词数据 */
   lrcData: LyricType[];
   yrcData: LyricType[];
+  /** 歌词播放索引 */
+  lyricIndex: number;
 }
 
 /** 桌面歌词配置 */

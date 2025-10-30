@@ -42,7 +42,7 @@
             </template>
           </n-image>
           <!-- 打开播放器 -->
-          <SvgIcon name="Zoom" :size="30" />
+          <SvgIcon name="Expand" :size="30" />
         </div>
       </Transition>
       <!-- 信息 -->

@@ -1,8 +1,14 @@
 <template>
   <n-config-provider :theme="null">
-    <div ref="desktopLyricsRef" class="desktop-lyrics">
-      {{ lyricData.playName }}
-      {{ lyricConfig }}
+    <div
+      ref="desktopLyricsRef"
+      :class="[
+        'desktop-lyrics',
+        {
+          locked: lyricConfig.isLock,
+        },
+      ]"
+    >
       <div class="header" align="center" justify="space-between">
         <n-flex :wrap="false" align="center" justify="flex-start" size="small">
           <div class="menu-btn" title="返回应用">
@@ -39,6 +45,18 @@
           </div>
         </n-flex>
       </div>
+      <div
+        :style="{
+          fontSize: lyricConfig.fontSize + 'px',
+          fontFamily: lyricConfig.fontFamily,
+          lineHeight: lyricConfig.lineHeight + 'px',
+        }"
+        class="lyrics-container"
+      >
+        <span v-for="(item, index) in displayLyricLines" :key="index" class="lyric-line">
+          {{ item }}
+        </span>
+      </div>
     </div>
   </n-config-provider>
 </template>
@@ -54,6 +72,7 @@ const lyricData = reactive<LyricData>({
   progress: 0,
   lrcData: [],
   yrcData: [],
+  lyricIndex: -1,
 });
 
 // 桌面歌词配置
@@ -72,6 +91,36 @@ const lyricConfig = reactive<LyricConfig>({
 
 // 桌面歌词元素
 const desktopLyricsRef = useTemplateRef<HTMLElement>("desktopLyricsRef");
+
+// 需要显示的歌词行
+const displayLyricLines = computed<string[]>(() => {
+  // 优先使用逐字歌词，无则使用普通歌词
+  const lyrics = lyricData.yrcData.length ? lyricData.yrcData : lyricData.lrcData;
+  if (!lyrics.length) return ["纯音乐，请欣赏"];
+  // 当前播放歌词索引
+  let idx = lyricData.lyricIndex;
+  if (idx < 0) idx = 0; // 开头之前按首句处理
+  // 当前与下一句
+  const current = lyrics[idx];
+  const next = lyrics[idx + 1];
+  if (!current) return [];
+  // 若当前句有翻译，无论单/双行设置都显示两行：原文 + 翻译
+  if (current.tran && current.tran.trim().length > 0) {
+    return [current.content, current.tran];
+  }
+  // 单行：仅返回当前句原文
+  if (!lyricConfig.isDoubleLine) {
+    return [current.content];
+  }
+  // 双行：两行内容交替
+  const isEven = idx % 2 === 0;
+  if (isEven) {
+    // 偶数句：第一行当前句，第二行下一句
+    return [current.content, next?.content ?? ""];
+  }
+  // 奇数句：第一行下一句，第二行当前句
+  return [next?.content ?? "", current.content];
+});
 
 // 桌面歌词拖动
 const lyricDragMove = (position: Position) => {
@@ -112,6 +161,8 @@ onMounted(() => {
       font-size: 1em;
       text-align: left;
       flex: 1 1 auto;
+      line-height: 36px;
+      padding: 0 8px;
       min-width: 0;
       overflow: hidden;
       text-overflow: ellipsis;
