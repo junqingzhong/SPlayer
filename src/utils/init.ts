@@ -25,6 +25,7 @@ const init = async () => {
 
   // 加载数据
   await dataStore.loadData();
+  
   // 初始化播放器
   player.initPlayer(
     settingStore.autoPlay,

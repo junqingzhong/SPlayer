@@ -78,7 +78,7 @@ export const initNcmAPI = async (fastify: FastifyInstance) => {
         return reply.send(data);
       } catch (error) {
         serverLog.error("❌ TTML Lyric Fetch Error:", error);
-        return reply.status(500).send(null);
+        return reply.send(null);
       }
     },
   );

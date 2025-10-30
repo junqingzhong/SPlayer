@@ -1,7 +1,7 @@
 <template>
-  <Transition>
+  <Transition name="fade" mode="out-in">
     <div
-      :key="amLyricsData?.[0]?.startTime"
+      :key="amLyricsData?.[0]?.words?.length"
       :class="['lyric-am', { pure: statusStore.pureLyricMode }]"
     >
       <LyricPlayer

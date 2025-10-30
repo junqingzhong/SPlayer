@@ -100,7 +100,7 @@ export const useStatusStore = defineStore("status", {
     searchInputValue: "",
     showPlayBar: true,
     playStatus: false,
-    playLoading: false,
+    playLoading: true,
     playUblock: false,
     playListShow: false,
     showFullPlayer: false,

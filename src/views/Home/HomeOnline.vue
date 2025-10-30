@@ -136,8 +136,8 @@ const recData = ref<RecDataType>({
 // 获取全部推荐
 const getAllRecData = async () => {
   try {
-    // 延时 50ms
-    await sleep(50);
+    // 延时
+    await sleep(300);
 
     // 歌单
     try {
@@ -199,9 +199,10 @@ const getAllRecData = async () => {
   }
 };
 
+onActivated(getAllRecData);
+
 onMounted(() => {
   getAllRecData();
-  onActivated(getAllRecData);
 });
 </script>
 

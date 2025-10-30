@@ -71,21 +71,9 @@ class Player {
     return sessionId !== this.playSessionId;
   }
   /**
-   * 保护执行：会话过期则早退
-   */
-  private guard<T>(sessionId: number, fn: () => T): T | undefined {
-    if (this.isStale(sessionId)) return;
-    return fn();
-  }
-  /**
    * 重置底层播放器与定时器（幂等）
    */
   private resetPlayerCore() {
-    try {
-      this.player?.off();
-    } catch {
-      /* empty */
-    }
     try {
       Howler.stop();
       Howler.unload();
@@ -248,9 +236,8 @@ class Player {
     // 自动播放
     if (autoPlay) await this.play();
     // 获取歌曲附加信息 - 非电台和本地
-    if (type !== "radio" && !path) {
-      runIdle(() => getLyricData(id));
-    } else resetSongLyric();
+    if (type !== "radio" && !path) getLyricData(id);
+    else resetSongLyric();
     // 定时获取状态
     if (!this.playerInterval) this.handlePlayStatus();
     // 新增播放历史
@@ -258,13 +245,11 @@ class Player {
     // 获取歌曲封面主色
     if (!path) runIdle(() => getCoverColor(musicStore.songCover));
     // 更新 MediaSession
-    if (!path) runIdle(() => this.updateMediaSession());
+    if (!path) this.updateMediaSession();
     // 开发模式
     if (isDev) window.player = this.player;
     // 预载下一首播放地址
-    runIdle(() => {
-      void this.prefetchNextSongUrl();
-    });
+    this.prefetchNextSongUrl();
   }
   /**
    * 播放器事件
@@ -554,7 +539,7 @@ class Player {
       const { lyric, format } = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
       parseLocalLyric(lyric, format);
       // 更新媒体会话
-      runIdle(() => this.updateMediaSession());
+      this.updateMediaSession();
     } catch (error) {
       window.$message.error("获取本地歌曲元信息失败");
       console.error("Failed to parse local music info:", error);
@@ -595,7 +580,10 @@ class Player {
     try {
       // 获取播放数据
       const playSongData = getPlaySongData();
-      if (!playSongData) return;
+      if (!playSongData) {
+        statusStore.playLoading = false;
+        return;
+      }
       const { id, dj, path, type } = playSongData;
       // 更改当前播放歌曲
       musicStore.playSong = playSongData;
@@ -695,7 +683,7 @@ class Player {
     const settingStore = useSettingStore();
     // 检查播放器状态
     if (!this.player || this.player.state() === "unloaded") {
-      console.warn("⚠️ Player not ready for play");
+      window.$message.warning("播放器未加载完成，请稍后重试");
       return;
     }
     // 已在播放
@@ -721,7 +709,6 @@ class Player {
   async pause(changeStatus: boolean = true) {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
-    const localSession = this.playSessionId;
 
     // 播放器未加载完成或不存在
     if (!this.player || this.player.state() !== "loaded") {
@@ -734,7 +721,7 @@ class Player {
     await new Promise<void>((resolve) => {
       this.player.fade(statusStore.playVolume, 0, settingStore.getFadeTime);
       this.player.once("fade", () => {
-        this.guard(localSession, () => this.player.pause());
+        this.player.pause();
         resolve();
       });
     });
