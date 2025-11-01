@@ -39,8 +39,18 @@ if (isWindows) {
 } else {
   // macOS 和 Linux 环境
   console.log(`🐧 ${isMacOS ? "macOS" : "Linux"} 环境 - 正在设置 UTF-8 编码`);
-  env.LC_ALL = "en_US.UTF-8";
-  env.LANG = "en_US.UTF-8";
+  const langVar = env.LC_ALL || env.LANG;
+  if (langVar.endsWith("UTF-8")) {
+    console.log("✅ 当前环境已设置 UTF-8 编码");
+  } else {
+    if (langVar.startsWith("zh_CN")) {
+      env.LC_ALL = "zh_CN.UTF-8";
+      env.LANG = "zh_CN.UTF-8";
+    } else {
+      env.LC_ALL = "en_US.UTF-8";
+      env.LANG = "en_US.UTF-8";
+    }
+  }
   setTimeout(() => startElectronVite(), 0);
 }
 
