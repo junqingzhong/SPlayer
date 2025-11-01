@@ -112,8 +112,6 @@ watch(lyricPlayerRef, (player) => {
 onMounted(() => {
   // 恢复进度
   resumeSeek();
-  // 处理歌词语言
-  nextTick(() => processLyricLanguage());
 });
 
 onBeforeUnmount(() => {
