@@ -85,8 +85,11 @@ const jumpSeek = (line: any) => {
 };
 
 // 处理歌词语言
-const processLyricLanguage = () => {
-  const lyricLinesEl = lyricPlayerRef.value?.lyricPlayer?.lyricLinesEl ?? [];
+const processLyricLanguage = (player = lyricPlayerRef.value) => {
+  const lyricLinesEl = player?.lyricPlayer?.lyricLinesEl;
+  if (!lyricLinesEl || lyricLinesEl.length === 0) {
+    return;
+  }
   // 遍历歌词行
   for (let e of lyricLinesEl) {
     // 获取歌词行内容 (合并逐字歌词为一句)
@@ -99,15 +102,16 @@ const processLyricLanguage = () => {
 };
 
 // 切换歌曲时处理歌词语言
-watch(amLyricsData, () => {
-  nextTick(() => processLyricLanguage());
+watch(amLyricsData, (data) => {
+  if (data) nextTick(() => processLyricLanguage());
+});
+watch(lyricPlayerRef, (player) => {
+  if (player) nextTick(() => processLyricLanguage(player));
 });
 
 onMounted(() => {
   // 恢复进度
   resumeSeek();
-  // 处理歌词语言
-  nextTick(() => processLyricLanguage());
 });
 
 onBeforeUnmount(() => {
