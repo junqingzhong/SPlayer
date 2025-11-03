@@ -75,8 +75,12 @@ class Player {
    */
   private resetPlayerCore() {
     try {
-      Howler.stop();
-      Howler.unload();
+      // 仅卸载当前播放器实例
+      if (this.player) {
+        this.player.stop();
+        this.player.off();
+        this.player.unload();
+      }
     } catch {
       /* empty */
     }
