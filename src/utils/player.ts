@@ -770,12 +770,14 @@ class Player {
       }
       // 只有一首歌的特殊处理
       if (playListLength === 1) {
+        statusStore.playLoading = false;
         this.setSeek(0);
         await this.play();
         return;
       }
       // 单曲循环
       if (playSongMode === "repeat-once" && autoEnd && !playHeartbeatMode) {
+        statusStore.playLoading = false;
         this.setSeek(0);
         await this.play();
         return;

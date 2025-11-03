@@ -12,7 +12,11 @@ type CoverDataType = {
   };
 };
 
-// 格式化歌曲列表
+/**
+ * 格式化歌曲列表
+ * @param data 歌曲数据
+ * @returns 格式化后的歌曲列表
+ */
 export const formatSongsList = (data: any[]): SongType[] => {
   if (!data) return [];
   data = isArray(data) ? data : [data];
@@ -72,7 +76,11 @@ export const formatSongsList = (data: any[]): SongType[] => {
   });
 };
 
-// 格式化封面列表
+/**
+ * 格式化封面列表
+ * @param data 封面数据
+ * @returns 格式化后的封面列表
+ */
 export const formatCoverList = (data: any[]): CoverType[] => {
   if (!data) return [];
   data = isArray(data) ? data : [data];
@@ -128,7 +136,11 @@ export const formatCoverList = (data: any[]): CoverType[] => {
   });
 };
 
-// 格式化歌手列表
+/**
+ * 格式化歌手列表
+ * @param data 歌手数据
+ * @returns 格式化后的歌手列表
+ */
 export const formatArtistsList = (data: any[]): ArtistType[] => {
   if (!data) return [];
   data = isArray(data) ? data : [data];
@@ -146,7 +158,11 @@ export const formatArtistsList = (data: any[]): ArtistType[] => {
   }));
 };
 
-// 格式化评论列表
+/**
+ * 格式化评论列表
+ * @param data 评论数据
+ * @returns 格式化后的评论列表
+ */
 export const formatCommentList = (data: any[]): CommentType[] => {
   data = isArray(data) ? data : [data];
   return data.map((item) => ({
@@ -184,7 +200,11 @@ export const formatCommentList = (data: any[]): CommentType[] => {
   }));
 };
 
-// 格式化分类列表
+/**
+ * 格式化分类列表
+ * @param data 分类数据
+ * @returns 格式化后的分类列表
+ */
 export const formatCategoryList = (data: any[]): CatType[] => {
   data = isArray(data) ? data : [data];
   return data.map((item) => ({
@@ -195,7 +215,11 @@ export const formatCategoryList = (data: any[]): CatType[] => {
   }));
 };
 
-// 获取图片的 url
+/**
+ * 获取封面图片 URL
+ * @param item 封面数据项
+ * @returns 格式化后的封面数据
+ */
 const getCoverUrl = (item: any): CoverDataType => {
   const cover =
     item.cover ||
@@ -215,7 +239,12 @@ const getCoverUrl = (item: any): CoverDataType => {
   return { cover, coverSize };
 };
 
-// 获取图片不同尺寸
+/**
+ * 获取封面图片不同尺寸 URL
+ * @param url 封面图片 URL
+ * @param size 尺寸参数（可选）
+ * @returns 格式化后的封面图片 URL
+ */
 const getCoverSizeUrl = (url: string, size: number | null = null) => {
   try {
     if (!url) return "/images/song.jpg?assest";
