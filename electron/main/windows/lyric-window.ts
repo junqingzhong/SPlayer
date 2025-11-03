@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron";
 import { createWindow } from "./index";
 import { useStore } from "../store";
-import { join } from "path";
+import { lyricWinUrl } from "../utils/config";
 
 class LyricWindow {
   private win: BrowserWindow | null = null;
@@ -12,6 +12,10 @@ class LyricWindow {
    */
   private event(): void {
     if (!this.win) return;
+    // 准备好显示
+    this.win.on("ready-to-show", () => {
+      this.win?.show();
+    });
     // 歌词窗口缩放
     this.win?.on("resized", () => {
       const store = useStore();
@@ -56,7 +60,7 @@ class LyricWindow {
     });
     if (!this.win) return null;
     // 加载地址
-    this.win.loadFile(join(__dirname, "../main/web/lyric.html"));
+    this.win.loadURL(lyricWinUrl);
     // 窗口事件
     this.event();
     return this.win;

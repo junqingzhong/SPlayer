@@ -117,7 +117,7 @@
 </template>
 
 <script setup lang="ts">
-import { isElectron } from "@/utils/helper";
+import { isElectron } from "@/utils/env";
 
 const emit = defineEmits<{
   close: [];

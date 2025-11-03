@@ -1,4 +1,4 @@
-import { isElectron } from "@/utils/helper";
+import { isElectron } from "@/utils/env";
 
 /**
  * 针对单个 HTMLMediaElement 的音频图节点集合

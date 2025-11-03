@@ -1,4 +1,4 @@
-import { isElectron } from "./helper";
+import { isElectron } from "./env";
 import { openUpdateApp } from "./modal";
 import { useMusicStore, useDataStore, useStatusStore } from "@/stores";
 import { toLikeSong } from "./auth";

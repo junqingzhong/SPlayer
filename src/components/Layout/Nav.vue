@@ -91,8 +91,9 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useSettingStore } from "@/stores";
-import { isElectron, isDev, renderIcon } from "@/utils/helper";
+import { renderIcon } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
+import { isDev, isElectron } from "@/utils/env";
 
 const router = useRouter();
 const settingStore = useSettingStore();
@@ -199,12 +200,9 @@ onMounted(() => {
   // 获取窗口状态并监听主进程的状态变更
   if (isElectron) {
     isMax.value = window.electron.ipcRenderer.sendSync("win-state");
-    window.electron.ipcRenderer.on(
-      "win-state-change",
-      (_event, value: boolean) => {
-        isMax.value = value;
-      },
-    );
+    window.electron.ipcRenderer.on("win-state-change", (_event, value: boolean) => {
+      isMax.value = value;
+    });
   }
 });
 </script>

@@ -23,13 +23,11 @@ export const getLyricData = async (id: number) => {
   try {
     // 检测本地歌词覆盖
     const getLyric = getLyricFun(settingStore.localLyricPath, id);
-    const [
-      { lyric: lyricRes, isLocal: lyricLocal },
-      { lyric: ttmlContent, isLocal: ttmlLocal },
-    ] = await Promise.all([
-      getLyric("lrc", songLyric),
-      settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : getLyric("ttml"),
-    ]);
+    const [{ lyric: lyricRes, isLocal: lyricLocal }, { lyric: ttmlContent, isLocal: ttmlLocal }] =
+      await Promise.all([
+        getLyric("lrc", songLyric),
+        settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : getLyric("ttml"),
+      ]);
     parsedLyricsData(lyricRes, lyricLocal && !settingStore.enableExcludeLocalLyrics);
     if (ttmlContent) {
       const parsedResult = parseTTML(ttmlContent);
@@ -54,10 +52,7 @@ export const getLyricData = async (id: number) => {
         console.log("✅ TTML Yrc lyrics success");
       }
       if (Object.keys(updates).length) {
-        musicStore.songLyric = {
-          ...musicStore.songLyric,
-          ...updates,
-        };
+        musicStore.setSongLyric(updates);
         statusStore.usingTTMLLyric = true;
       } else {
         statusStore.usingTTMLLyric = false;

@@ -10,6 +10,7 @@ import {
 import { isWin, appName } from "../utils/config";
 import { join } from "path";
 import { trayLog } from "../logger";
+import lyricWindow from "../windows/lyric-window";
 
 // 播放模式
 type PlayMode = "repeat" | "repeat-once" | "shuffle";
@@ -49,7 +50,7 @@ const trayIcon = (filename: string) => {
 // 托盘菜单
 const createTrayMenu = (
   win: BrowserWindow,
-  lyricWin: BrowserWindow,
+  lyricWin: BrowserWindow | null,
 ): MenuItemConstructorOptions[] => {
   // 区分明暗图标
   const showIcon = (iconName: string) => {
@@ -145,8 +146,12 @@ const createTrayMenu = (
       id: "toogleDesktopLyricLock",
       label: `${desktopLyricLock ? "解锁" : "锁定"}桌面歌词`,
       icon: showIcon(desktopLyricLock ? "lock" : "unlock"),
-      visible: desktopLyricShow,
-      click: () => lyricWin.webContents.send("toogleDesktopLyricLock", !desktopLyricLock),
+      visible: desktopLyricShow && lyricWin !== null,
+      click: () => {
+        if (lyricWin) {
+          lyricWin.webContents.send("toogleDesktopLyricLock", !desktopLyricLock);
+        }
+      },
     },
     {
       type: "separator",
@@ -182,14 +187,14 @@ const createTrayMenu = (
 class CreateTray implements MainTray {
   // 窗口
   private _win: BrowserWindow;
-  private _lyricWin: BrowserWindow;
+  private _lyricWin: BrowserWindow | null;
   // 托盘
   private _tray: Tray;
   // 菜单
   private _menu: MenuItemConstructorOptions[];
   private _contextMenu: Menu;
 
-  constructor(win: BrowserWindow, lyricWin: BrowserWindow) {
+  constructor(win: BrowserWindow) {
     // 托盘图标
     const icon = trayIcon(isWin ? "tray.ico" : "tray@32.png").resize({
       height: 32,
@@ -197,7 +202,7 @@ class CreateTray implements MainTray {
     });
     // 初始化数据
     this._win = win;
-    this._lyricWin = lyricWin;
+    this._lyricWin = lyricWindow.getWin();
     this._tray = new Tray(icon);
     this._menu = createTrayMenu(this._win, this._lyricWin);
     this._contextMenu = Menu.buildFromTemplate(this._menu);
@@ -301,10 +306,10 @@ class CreateTray implements MainTray {
  * @param lyricWin 歌词窗口
  * @returns 托盘实例
  */
-export const initTray = (win: BrowserWindow, lyricWin: BrowserWindow) => {
+export const initTray = (win: BrowserWindow) => {
   try {
     trayLog.info("🚀 Tray Process Startup");
-    const tray = new CreateTray(win, lyricWin);
+    const tray = new CreateTray(win);
     // 保存单例实例
     mainTrayInstance = tray;
     return tray;

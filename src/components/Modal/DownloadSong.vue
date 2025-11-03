@@ -67,10 +67,11 @@ import { useSettingStore } from "@/stores";
 import { songLevelData, getLevelsUpTo } from "@/utils/meta";
 import { formatSongsList } from "@/utils/format";
 import { cloneDeep, reduce } from "lodash-es";
-import { formatFileSize, isElectron } from "@/utils/helper";
+import { formatFileSize } from "@/utils/helper";
 import { getPlayerInfo } from "@/utils/player-utils/song";
 import { openSetting } from "@/utils/modal";
 import { saveAs } from "file-saver";
+import { isElectron } from "@/utils/env";
 
 const props = defineProps<{ id: number }>();
 const emit = defineEmits<{ close: [] }>();

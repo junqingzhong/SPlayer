@@ -1,6 +1,8 @@
 import { defineStore } from "pinia";
 import type { LyricLine } from "@applemusic-like-lyrics/core";
 import type { SongType, LyricType } from "@/types/main";
+import { isElectron } from "@/utils/env";
+import { cloneDeep } from "lodash-es";
 
 interface MusicState {
   playSong: SongType;
@@ -92,6 +94,38 @@ export const useMusicStore = defineStore("music", {
         lrcAMData: [],
         yrcAMData: [],
       };
+    },
+    /**
+     * 设置/更新歌曲歌词数据
+     * @param updates 部分或完整歌词数据
+     * @param replace 是否覆盖（true：用提供的数据覆盖并为缺省字段置空；false：合并更新）
+     */
+    setSongLyric(updates: Partial<MusicState["songLyric"]>, replace: boolean = false) {
+      if (replace) {
+        this.songLyric = {
+          lrcData: updates.lrcData ?? [],
+          yrcData: updates.yrcData ?? [],
+          lrcAMData: updates.lrcAMData ?? [],
+          yrcAMData: updates.yrcAMData ?? [],
+        };
+      } else {
+        this.songLyric = {
+          lrcData: updates.lrcData ?? this.songLyric.lrcData,
+          yrcData: updates.yrcData ?? this.songLyric.yrcData,
+          lrcAMData: updates.lrcAMData ?? this.songLyric.lrcAMData,
+          yrcAMData: updates.yrcAMData ?? this.songLyric.yrcAMData,
+        };
+      }
+      // 更新歌词窗口数据
+      if (isElectron) {
+        window.electron.ipcRenderer.send(
+          "play-lyric-change",
+          cloneDeep({
+            lrcData: this.songLyric.lrcData ?? [],
+            yrcData: this.songLyric.yrcData ?? [],
+          }),
+        );
+      }
     },
     // 获取歌曲封面
     getSongCover(size: "s" | "m" | "l" | "xl" | "cover" = "s") {

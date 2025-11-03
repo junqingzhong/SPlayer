@@ -217,7 +217,8 @@
 import type { SelectOption } from "naive-ui";
 import { useSettingStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
-import { isElectron, renderOption } from "@/utils/helper";
+import { renderOption } from "@/utils/helper";
+import { isElectron } from "@/utils/env";
 import { uniqBy } from "lodash";
 import player from "@/utils/player";
 

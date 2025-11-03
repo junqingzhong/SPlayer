@@ -389,7 +389,7 @@
 <script setup lang="ts">
 import { useSettingStore, useStatusStore } from "@/stores";
 import { cloneDeep, isEqual } from "lodash-es";
-import { isElectron } from "@/utils/helper";
+import { isElectron } from "@/utils/env";
 import player from "@/utils/player";
 import { openLyricExclude } from "@/utils/modal";
 

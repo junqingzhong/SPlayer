@@ -9,7 +9,6 @@ import initAppServer from "../server";
 import { initSingleLock } from "./utils/single-lock";
 import loadWindow from "./windows/load-window";
 import mainWindow from "./windows/main-window";
-import lyricWindow from "./windows/lyric-window";
 import initIpc from "./ipc";
 
 // 屏蔽报错
@@ -19,7 +18,6 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 class MainProcess {
   // 窗口
   mainWindow: BrowserWindow | null = null;
-  lyricWindow: BrowserWindow | null = null;
   loadWindow: BrowserWindow | null = null;
   // 托盘
   mainTray: MainTray | null = null;
@@ -44,9 +42,8 @@ class MainProcess {
       // 启动窗口
       this.loadWindow = loadWindow.create();
       this.mainWindow = mainWindow.create();
-      this.lyricWindow = lyricWindow.create();
       // 注册其他服务
-      this.mainTray = initTray(this.mainWindow!, this.lyricWindow!);
+      this.mainTray = initTray(this.mainWindow!);
       // 注册 IPC 通信
       initIpc();
     });

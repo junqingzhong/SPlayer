@@ -204,6 +204,7 @@ onMounted(() => {
 
 <style>
 body {
-  background-image: url("https://picsum.photos/1920/1080");
+  background-color: transparent !important;
+  /* background-image: url("https://picsum.photos/1920/1080"); */
 }
 </style>

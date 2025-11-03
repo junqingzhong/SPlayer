@@ -42,6 +42,15 @@ export const mainWinUrl =
     : `http://localhost:${port}`;
 
 /**
+ * 歌词窗口加载地址
+ * @returns string
+ */
+export const lyricWinUrl =
+  isDev && process.env["ELECTRON_RENDERER_URL"]
+    ? `${process.env["ELECTRON_RENDERER_URL"]}/#/desktop-lyric`
+    : `http://localhost:${port}/#/desktop-lyric`;
+
+/**
  * 加载窗口地址
  * @returns string
  */

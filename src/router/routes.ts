@@ -287,9 +287,9 @@ const routes: Array<RouteRecordRaw> = [
   },
   // 桌面歌词
   {
-    path: "/desktop-lyrics",
-    name: "desktop-lyrics",
-    component: () => import("@/views/DesktopLyrics/index.vue"),
+    path: "/desktop-lyric",
+    name: "desktop-lyric",
+    component: () => import("@/views/DesktopLyric/index.vue"),
   },
   // 404
   {

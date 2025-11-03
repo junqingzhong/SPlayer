@@ -278,7 +278,7 @@
 <script setup lang="ts">
 import type { SelectOption } from "naive-ui";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import { isDev, isElectron } from "@/utils/helper";
+import { isDev, isElectron } from "@/utils/env";
 import { getCoverColor } from "@/utils/player-utils/song";
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";

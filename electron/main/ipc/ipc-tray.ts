@@ -34,7 +34,7 @@ const initTrayIpc = (): void => {
   });
 
   // 桌面歌词开关
-  ipcMain.on("change-desktop-lyric", (_, val: boolean) => {
+  ipcMain.on("toggle-desktop-lyric", (_, val: boolean) => {
     tray?.setDesktopLyricShow(val);
   });
 

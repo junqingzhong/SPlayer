@@ -1,5 +1,4 @@
-import { ipcMain, screen } from "electron";
-import { isAbsolute, relative, resolve } from "path";
+import { BrowserWindow, ipcMain, screen } from "electron";
 import { useStore } from "../store";
 import lyricWindow from "../windows/lyric-window";
 import mainWindow from "../windows/main-window";
@@ -10,30 +9,54 @@ import mainWindow from "../windows/main-window";
 const initLyricIpc = (): void => {
   const store = useStore();
   const mainWin = mainWindow.getWin();
-  const lyricWin = lyricWindow.getWin();
+
+  // 歌词窗口
+  let lyricWin: BrowserWindow | null = null;
 
   // 切换桌面歌词
-  ipcMain.on("change-desktop-lyric", (_event, val: boolean) => {
+  ipcMain.on("toggle-desktop-lyric", (_event, val: boolean) => {
     if (val) {
-      lyricWin?.show();
+      lyricWin = lyricWindow.create();
       lyricWin?.setAlwaysOnTop(true, "screen-saver");
-    } else lyricWin?.hide();
+    } else {
+      lyricWin?.destroy();
+      lyricWin = null;
+    }
+  });
+
+  // 更新歌词窗口数据
+  ipcMain.on("update-desktop-lyric-data", (_, lyricData) => {
+    if (!lyricData || !lyricWin) return;
+    lyricWin?.webContents.send("update-desktop-lyric-data", lyricData);
+  });
+
+  // 更新歌词窗口配置
+  ipcMain.on("update-desktop-lyric-option", (_, option) => {
+    if (!option || !lyricWin) return;
+    lyricWin?.webContents.send("desktop-lyric-option-change", option);
+  });
+
+  // 播放状态更改
+  ipcMain.on("play-status-change", (_, status) => {
+    if (!status || !lyricWin) return;
+    lyricWin?.webContents.send("update-desktop-lyric-data", { playStatus: status });
   });
 
   // 音乐名称更改
   ipcMain.on("play-song-change", (_, title) => {
-    if (!title) return;
-    lyricWin?.webContents.send("play-song-change", title);
+    if (!title || !lyricWin) return;
+    lyricWin?.webContents.send("update-desktop-lyric-data", { playName: title });
   });
 
   // 音乐歌词更改
   ipcMain.on("play-lyric-change", (_, lyricData) => {
-    if (!lyricData) return;
-    lyricWin?.webContents.send("play-lyric-change", lyricData);
+    if (!lyricData || !lyricWin) return;
+    lyricWin?.webContents.send("update-desktop-lyric-data", lyricData);
   });
 
   // 获取窗口位置
   ipcMain.handle("get-window-bounds", () => {
+    if (!lyricWin) return {};
     return lyricWin?.getBounds();
   });
 
@@ -45,7 +68,8 @@ const initLyricIpc = (): void => {
 
   // 移动窗口
   ipcMain.on("move-window", (_, x, y, width, height) => {
-    lyricWin?.setBounds({ x, y, width, height });
+    if (!lyricWin) return;
+    lyricWin.setBounds({ x, y, width, height });
     // 保存配置
     store.set("lyric", { ...store.get("lyric"), x, y, width, height });
     // 保持置顶
@@ -82,7 +106,8 @@ const initLyricIpc = (): void => {
 
   // 关闭桌面歌词
   ipcMain.on("closeDesktopLyric", () => {
-    lyricWin?.hide();
+    if (!lyricWin) return;
+    lyricWin.hide();
     mainWin?.webContents.send("closeDesktopLyric");
   });
 
@@ -95,16 +120,6 @@ const initLyricIpc = (): void => {
     } else {
       lyricWin.setIgnoreMouseEvents(false);
     }
-  });
-
-  // 检查是否是子文件夹
-  ipcMain.handle("check-if-subfolder", (_, localFilesPath: string[], selectedDir: string) => {
-    const resolvedSelectedDir = resolve(selectedDir);
-    const allPaths = localFilesPath.map((p) => resolve(p));
-    return allPaths.some((existingPath) => {
-      const relativePath = relative(existingPath, resolvedSelectedDir);
-      return relativePath && !relativePath.startsWith("..") && !isAbsolute(relativePath);
-    });
   });
 };
 

@@ -5,7 +5,7 @@ import { cloneDeep } from "lodash-es";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { resetSongLyric, parseLocalLyric, calculateLyricIndex } from "./lyric";
 import { calculateProgress } from "./time";
-import { isElectron, isDev, shuffleArray, runIdle } from "./helper";
+import { shuffleArray, runIdle } from "./helper";
 import { heartRateList } from "@/api/playlist";
 import { formatSongsList } from "./format";
 import { isLogin } from "./auth";
@@ -18,6 +18,7 @@ import {
   getPlaySongData,
   getUnlockSongUrl,
 } from "./player-utils/song";
+import { isDev, isElectron } from "./env";
 import { getLyricData } from "./player-utils/lyric";
 import audioContextManager from "@/utils/player-utils/context";
 import blob from "./blob";
@@ -109,16 +110,18 @@ class Player {
       // 计算进度条距离
       const progress = calculateProgress(currentTime, duration);
       // 计算歌词索引（支持 LRC 与逐字 YRC，对唱重叠处理）
-      const { index: lyricIndex, lyrics } = calculateLyricIndex(currentTime);
+      const lyricIndex = calculateLyricIndex(currentTime);
       // 更新状态
       statusStore.$patch({ currentTime, duration, progress, lyricIndex });
       // 客户端事件
       if (isElectron) {
         // 歌词变化
-        window.electron.ipcRenderer.send("play-lyric-change", {
-          index: lyricIndex,
-          lyric: cloneDeep(lyrics),
-        });
+        window.electron.ipcRenderer.send(
+          "play-lyric-change",
+          cloneDeep({
+            lyricIndex,
+          }),
+        );
         // 进度条
         if (settingStore.showTaskbarProgress) {
           window.electron.ipcRenderer.send("set-bar", progress);
@@ -1279,7 +1282,7 @@ class Player {
     const statusStore = useStatusStore();
     const show = !statusStore.showDesktopLyric;
     statusStore.showDesktopLyric = show;
-    window.electron.ipcRenderer.send("change-desktop-lyric", show);
+    window.electron.ipcRenderer.send("toggle-desktop-lyric", show);
     window.$message.success(`${show ? "已开启" : "已关闭"}桌面歌词`);
   }
   /**

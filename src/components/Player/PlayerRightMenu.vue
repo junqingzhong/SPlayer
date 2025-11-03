@@ -62,9 +62,10 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { isElectron, renderIcon } from "@/utils/helper";
-import player from "@/utils/player";
 import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
+import { isElectron } from "@/utils/env";
+import { renderIcon } from "@/utils/helper";
+import player from "@/utils/player";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();

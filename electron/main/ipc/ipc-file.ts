@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
-import { basename, join, resolve } from "path";
+import { basename, isAbsolute, join, relative, resolve } from "path";
 import { access, readFile, stat, unlink, writeFile } from "fs/promises";
 import { parseFile } from "music-metadata";
 import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
@@ -371,6 +371,16 @@ const initFileIpc = (): void => {
       }
     },
   );
+
+  // 检查是否是子文件夹
+  ipcMain.handle("check-if-subfolder", (_, localFilesPath: string[], selectedDir: string) => {
+    const resolvedSelectedDir = resolve(selectedDir);
+    const allPaths = localFilesPath.map((p) => resolve(p));
+    return allPaths.some((existingPath) => {
+      const relativePath = relative(existingPath, resolvedSelectedDir);
+      return relativePath && !relativePath.startsWith("..") && !isAbsolute(relativePath);
+    });
+  });
 };
 
 export default initFileIpc;

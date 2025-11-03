@@ -153,13 +153,14 @@
 <script setup lang="ts">
 import type { SongType } from "@/types/main";
 import { useStatusStore, useMusicStore, useDataStore } from "@/stores";
-import { formatNumber, isElectron } from "@/utils/helper";
+import { formatNumber } from "@/utils/helper";
 import { openJumpArtist } from "@/utils/modal";
 import { toLikeSong } from "@/utils/auth";
 import { isObject } from "lodash-es";
 import { formatTimestamp, msToTime } from "@/utils/time";
 import player from "@/utils/player";
 import blob from "@/utils/blob";
+import { isElectron } from "@/utils/env";
 
 const props = defineProps<{
   // 歌曲

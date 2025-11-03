@@ -1,4 +1,4 @@
-import { isElectron } from "@/utils/helper";
+import { isElectron } from "@/utils/env";
 import { songLevelData } from "@/utils/meta";
 import request from "@/utils/request";
 

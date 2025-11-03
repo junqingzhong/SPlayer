@@ -82,7 +82,7 @@
 
 <script setup lang="ts">
 import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
-import { isElectron } from "@/utils/helper";
+import { isElectron } from "@/utils/env";
 import { throttle } from "lodash-es";
 import player from "@/utils/player";
 

@@ -18,7 +18,7 @@ import { logout, refreshLogin } from "@/api/login";
 import { debounce, isFunction } from "lodash-es";
 import { isBeforeSixAM } from "./time";
 import { dailyRecommend } from "@/api/rec";
-import { isElectron } from "./helper";
+import { isElectron } from "./env";
 import { likePlaylist, playlistTracks } from "@/api/playlist";
 import { likeArtist } from "@/api/artist";
 import { likeAlbum } from "@/api/album";
@@ -237,13 +237,13 @@ export const toLikeSong = debounce(
   { leading: true, trailing: false },
 );
 
-const toLikeSomething =
-  (
-    actionName: string,
-    thingName: string,
-    request: () => (id: number, t: 1 | 2) => Promise<{ code: number }>,
-    update: () => Promise<void>,
-  ) => debounce(
+const toLikeSomething = (
+  actionName: string,
+  thingName: string,
+  request: () => (id: number, t: 1 | 2) => Promise<{ code: number }>,
+  update: () => Promise<void>,
+) =>
+  debounce(
     async (id: number, like: boolean) => {
       // 错误情况
       if (!id) return;
@@ -271,16 +271,26 @@ const toLikeSomething =
   );
 
 // 收藏/取消收藏歌单
-export const toLikePlaylist = toLikeSomething("收藏", "歌单", () => likePlaylist, updateUserLikePlaylist)
+export const toLikePlaylist = toLikeSomething(
+  "收藏",
+  "歌单",
+  () => likePlaylist,
+  updateUserLikePlaylist,
+);
 
 // 收藏/取消收藏专辑
-export const toLikeAlbum = toLikeSomething("收藏", "专辑", () => likeAlbum, updateUserLikeAlbums)
+export const toLikeAlbum = toLikeSomething("收藏", "专辑", () => likeAlbum, updateUserLikeAlbums);
 
 // 收藏/取消收藏歌手
-export const toLikeArtist = toLikeSomething("收藏", "歌手", () => likeArtist, updateUserLikeArtists)
+export const toLikeArtist = toLikeSomething(
+  "收藏",
+  "歌手",
+  () => likeArtist,
+  updateUserLikeArtists,
+);
 
 // 订阅/取消订阅播客
-export const toSubRadio = toLikeSomething("订阅", "播客", () => radioSub, updateUserLikeDjs)
+export const toSubRadio = toLikeSomething("订阅", "播客", () => radioSub, updateUserLikeDjs);
 
 // 循环获取用户喜欢数据
 const setUserLikeDataLoop = async <T>(
