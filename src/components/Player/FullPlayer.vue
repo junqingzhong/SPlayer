@@ -3,9 +3,9 @@
     v-show="statusStore.showFullPlayer"
     :style="{
       '--main-color': statusStore.mainColor,
-      cursor: statusStore.playerMetaShow ? 'auto' : 'none',
+      cursor: statusStore.playerMetaShow || isShowComment ? 'auto' : 'none',
     }"
-    class="full-player"
+    :class="['full-player', { 'show-comment': isShowComment }]"
     @mouseleave="playerLeave"
   >
     <!-- 背景 -->
@@ -24,14 +24,13 @@
     <!-- 菜单 -->
     <PlayerMenu @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
     <!-- 主内容 -->
-    <Transition name="fade" mode="out-in">
+    <Transition name="zoom" mode="out-in">
       <div
         :key="playerContentKey"
         :class="[
           'player-content',
           {
             pure: statusStore.pureLyricMode && musicStore.isHasLrc,
-            'show-comment': isShowComment,
             'no-lrc': !musicStore.isHasLrc,
           },
         ]"
@@ -52,8 +51,6 @@
             <PlayerData :center="playerDataCenter" :theme="statusStore.mainColor" />
           </div>
         </Transition>
-        <!-- 评论 -->
-        <PlayerComment v-if="isShowComment && !statusStore.pureLyricMode" />
         <!-- 歌词 -->
         <div class="content-right">
           <!-- 数据 -->
@@ -67,6 +64,10 @@
           <MainLyric v-else />
         </div>
       </div>
+    </Transition>
+    <!-- 评论 -->
+    <Transition name="zoom" mode="out-in">
+      <PlayerComment v-show="isShowComment && !statusStore.pureLyricMode" />
     </Transition>
     <!-- 控制中心 -->
     <PlayerControl @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
@@ -96,7 +97,7 @@ const isShowComment = computed<boolean>(
 );
 
 // 主内容 key
-const playerContentKey = computed(() => `${statusStore.pureLyricMode}-${isShowComment.value}`);
+const playerContentKey = computed(() => `${statusStore.pureLyricMode}`);
 
 // 数据是否居中
 const playerDataCenter = computed<boolean>(
@@ -104,8 +105,7 @@ const playerDataCenter = computed<boolean>(
     !musicStore.isHasLrc ||
     statusStore.pureLyricMode ||
     settingStore.playerType === "record" ||
-    musicStore.playSong.type === "radio" ||
-    isShowComment.value,
+    musicStore.playSong.type === "radio",
 );
 
 // 当前实时歌词
@@ -207,6 +207,9 @@ onBeforeUnmount(() => {
     width: 100%;
     height: calc(100vh - 160px);
     z-index: 0;
+    transition:
+      opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+      transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     .content-left {
       position: absolute;
       left: 0;
@@ -218,9 +221,7 @@ onBeforeUnmount(() => {
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      will-change: width, opacity, transform;
       transition:
-        width 0.3s,
         opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
         transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
@@ -234,6 +235,7 @@ onBeforeUnmount(() => {
       display: flex;
       flex-direction: column;
       transition: opacity 0.3s;
+      transition-delay: 0.5s;
       .player-data {
         margin-top: 0;
         margin-bottom: 26px;
@@ -246,38 +248,21 @@ onBeforeUnmount(() => {
         max-width: 100%;
       }
     }
-    &.show-comment {
-      .content-left {
-        min-width: 40%;
-        width: 40%;
-        padding: 0 60px;
-        .player-cover,
-        .player-data {
-          width: 100%;
-        }
-        .player-cover {
-          &.record {
-            :deep(.cover-img) {
-              width: 100%;
-              height: 100%;
-              min-width: auto;
-            }
-            :deep(.pointer) {
-              top: -13.5vh;
-            }
-          }
-        }
-      }
-      .content-right {
-        opacity: 0;
-      }
-    }
     // 无歌词
     &.no-lrc {
       .content-left {
-        width: 100%;
+        transform: translateX(50%);
       }
       .content-right {
+        opacity: 0;
+        pointer-events: none;
+      }
+    }
+  }
+  &.show-comment {
+    .player-content {
+      &:not(.pure) {
+        transform: scale(0.8);
         opacity: 0;
       }
     }
