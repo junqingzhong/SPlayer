@@ -47,7 +47,11 @@ export const songUrl = (
 };
 
 // 获取解锁歌曲 URL
-export const unlockSongUrl = (id: number, keyword: string, server: "netease" | "kuwo") => {
+export const unlockSongUrl = (
+  id: number,
+  keyword: string,
+  server: "netease" | "kuwo" | "bodian",
+) => {
   const params = server === "netease" ? { id } : { keyword };
   return request({
     baseURL: "/api/unblock",

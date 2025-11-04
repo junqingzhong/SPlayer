@@ -5,11 +5,6 @@ import { parseTTML } from "@applemusic-like-lyrics/lyric";
 import { LyricLine } from "@applemusic-like-lyrics/core";
 import { LyricType } from "@/types/main";
 
-// 歌词加载并发保护：始终只允许最新一次请求写入
-let lyricSessionCounter = 0;
-const newLyricSession = () => ++lyricSessionCounter;
-const isStale = (sid: number) => sid !== lyricSessionCounter;
-
 /**
  * 获取歌词
  * @param id 歌曲id
@@ -20,8 +15,6 @@ export const getLyricData = async (id: number) => {
   const statusStore = useStatusStore();
   // 切歌或重新获取时，先标记为加载中
   statusStore.lyricLoading = true;
-  // 为本次歌词请求创建会话 ID，用于防止旧请求覆盖新结果
-  const currentSessionId = newLyricSession();
 
   if (!id) {
     statusStore.usingTTMLLyric = false;
@@ -38,8 +31,6 @@ export const getLyricData = async (id: number) => {
     const ttmlPromise = settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : null;
 
     const { lyric: lyricRes, isLocal: lyricLocal } = await lrcPromise;
-    // 如果已经发起了新的歌词请求，直接放弃旧结果
-    if (isStale(currentSessionId)) return;
     parsedLyricsData(lyricRes, lyricLocal && !settingStore.enableExcludeLocalLyrics);
     // LRC 到达后即可认为加载完成
     statusStore.lyricLoading = false;
@@ -49,15 +40,11 @@ export const getLyricData = async (id: number) => {
       statusStore.usingTTMLLyric = false;
       void ttmlPromise
         .then(({ lyric: ttmlContent, isLocal: ttmlLocal }) => {
-          // 如果已经发起了新的歌词请求，直接放弃旧结果
-          if (isStale(currentSessionId)) return;
           if (!ttmlContent) {
             statusStore.usingTTMLLyric = false;
             return;
           }
           const parsedResult = parseTTML(ttmlContent);
-          // 如果已经发起了新的歌词请求，直接放弃旧结果
-          if (isStale(currentSessionId)) return;
           if (!parsedResult?.lines?.length) {
             statusStore.usingTTMLLyric = false;
             return;
@@ -78,7 +65,6 @@ export const getLyricData = async (id: number) => {
             updates.yrcData = ttmlYrcLyric;
             console.log("✅ TTML Yrc lyrics success");
           }
-          if (isStale(currentSessionId)) return;
           if (Object.keys(updates).length) {
             musicStore.setSongLyric(updates);
             statusStore.usingTTMLLyric = true;
@@ -88,25 +74,18 @@ export const getLyricData = async (id: number) => {
         })
         .catch((err) => {
           console.error("❌ Error loading TTML lyrics:", err);
-          // 旧请求错误不影响当前状态
-          if (!isStale(currentSessionId)) {
-            statusStore.usingTTMLLyric = false;
-          }
+          statusStore.usingTTMLLyric = false;
         });
     } else {
       statusStore.usingTTMLLyric = false;
     }
 
-    // 如果已经发起了新的歌词请求，跳过日志输出以避免混淆
-    if (!isStale(currentSessionId)) console.log("Lyrics: ", musicStore.songLyric);
+    console.log("Lyrics: ", musicStore.songLyric);
   } catch (error) {
     console.error("❌ Error loading lyrics:", error);
-    // 旧请求错误不影响当前最新状态
-    if (!isStale(currentSessionId)) {
-      statusStore.usingTTMLLyric = false;
-      resetSongLyric();
-      statusStore.lyricLoading = false;
-    }
+    statusStore.usingTTMLLyric = false;
+    resetSongLyric();
+    statusStore.lyricLoading = false;
   }
 };
 

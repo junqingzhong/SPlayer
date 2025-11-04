@@ -86,8 +86,8 @@ export const getUnlockSongUrl = async (songData: SongType): Promise<string | nul
     if (!songId || !keyWord) return null;
     // 尝试解锁
     const results = await Promise.allSettled([
+      unlockSongUrl(songId, keyWord, "bodian"),
       unlockSongUrl(songId, keyWord, "netease"),
-      unlockSongUrl(songId, keyWord, "kuwo"),
     ]);
     // 解析结果
     const [neteaseRes, kuwoRes] = results;
