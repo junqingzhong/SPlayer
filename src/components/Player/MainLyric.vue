@@ -26,7 +26,8 @@
         @after-enter="lyricsScroll(statusStore.lyricIndex)"
         @after-leave="lyricsScroll(statusStore.lyricIndex)"
       >
-        <n-scrollbar ref="lyricScroll" class="lyric-scroll" tabindex="-1">
+        <div v-if="statusStore.lyricLoading" class="lyric-loading">歌词正在加载中...</div>
+        <n-scrollbar v-else ref="lyricScroll" class="lyric-scroll" tabindex="-1">
           <!-- 逐字歌词 -->
           <template v-if="settingStore.showYrc && musicStore.isHasYrc">
             <div id="lrc-placeholder" class="placeholder">
@@ -595,5 +596,16 @@ onBeforeUnmount(() => {
       filter: blur(0) !important;
     }
   }
+}
+</style>
+
+<style scoped>
+.lyric-loading {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
 }
 </style>

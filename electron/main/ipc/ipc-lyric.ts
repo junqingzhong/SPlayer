@@ -16,11 +16,16 @@ const initLyricIpc = (): void => {
   // 切换桌面歌词
   ipcMain.on("toggle-desktop-lyric", (_event, val: boolean) => {
     if (val) {
-      lyricWin = lyricWindow.create();
+      if (!lyricWin) {
+        lyricWin = lyricWindow.create();
+      } else {
+        lyricWin?.show();
+      }
       lyricWin?.setAlwaysOnTop(true, "screen-saver");
     } else {
-      lyricWin?.destroy();
-      lyricWin = null;
+      // 关闭：不销毁窗口，直接隐藏，保留位置与状态
+      if (!lyricWin) return;
+      lyricWin.hide();
     }
   });
 

@@ -73,7 +73,7 @@ export const songLyric = (id: number) => {
  */
 export const songLyricTTML = async (id: number) => {
   if (isElectron) {
-    return request({ url: "/lyric/ttml", params: { id } });
+    return request({ url: "/lyric/ttml", params: { id, noCookie: true } });
   } else {
     const url = `https://amll-ttml-db.stevexmh.net/ncm/${id}`;
     try {

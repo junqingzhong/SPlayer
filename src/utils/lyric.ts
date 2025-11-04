@@ -44,6 +44,8 @@ export const resetSongLyric = () => {
   // 重置歌词数据
   musicStore.setSongLyric({}, true);
   statusStore.usingTTMLLyric = false;
+  // 标记为加载中（切歌时防止显示上一首歌词）
+  statusStore.lyricLoading = true;
   // 重置歌词索引
   statusStore.lyricIndex = -1;
 };
@@ -109,6 +111,8 @@ export const parsedLyricsData = (lyricData: any, skipExclude: boolean = false): 
   );
   // 重置歌词索引
   statusStore.lyricIndex = -1;
+  // 歌词已加载完成
+  statusStore.lyricLoading = false;
 };
 
 /**

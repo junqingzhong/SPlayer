@@ -647,7 +647,10 @@ class Player {
                   window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
                 } else {
                   window.$message.error("该歌曲暂无音源，跳至下一首");
-                  this.nextOrPrev("next");
+                  // 防止切歌保护状态阻塞跳转
+                  this.switching = false;
+                  await this.nextOrPrev("next");
+                  return;
                 }
               }
             } else {
@@ -658,7 +661,10 @@ class Player {
                 window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
               } else {
                 window.$message.error("该歌曲暂无音源，跳至下一首");
-                this.nextOrPrev("next");
+                // 防止切歌保护状态阻塞跳转
+                this.switching = false;
+                await this.nextOrPrev("next");
+                return;
               }
             }
           } else {
@@ -668,7 +674,9 @@ class Player {
               return;
             } else {
               window.$message.error("该歌曲无法播放，跳至下一首");
-              this.nextOrPrev();
+              // 防止切歌保护状态阻塞跳转
+              this.switching = false;
+              await this.nextOrPrev();
               return;
             }
           }

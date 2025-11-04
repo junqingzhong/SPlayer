@@ -55,7 +55,7 @@
         <!-- 评论 -->
         <PlayerComment v-if="isShowComment && !statusStore.pureLyricMode" />
         <!-- 歌词 -->
-        <div v-else-if="musicStore.isHasLrc" class="content-right">
+        <div class="content-right">
           <!-- 数据 -->
           <PlayerData
             v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
@@ -218,6 +218,7 @@ onBeforeUnmount(() => {
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      will-change: width, opacity, transform;
       transition:
         width 0.3s,
         opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
@@ -232,6 +233,7 @@ onBeforeUnmount(() => {
       max-width: 50%;
       display: flex;
       flex-direction: column;
+      transition: opacity 0.3s;
       .player-data {
         margin-top: 0;
         margin-bottom: 26px;
@@ -271,6 +273,9 @@ onBeforeUnmount(() => {
     &.no-lrc {
       .content-left {
         width: 100%;
+      }
+      .content-right {
+        opacity: 0;
       }
     }
   }
