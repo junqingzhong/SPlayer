@@ -268,6 +268,9 @@ onBeforeUnmount(() => {
           }
         }
       }
+      .content-right {
+        opacity: 0;
+      }
     }
     // 无歌词
     &.no-lrc {

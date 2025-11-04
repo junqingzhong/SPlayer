@@ -383,6 +383,8 @@ onBeforeUnmount(() => {
           top: 0;
           transform: none;
           will-change: -webkit-mask-position-x, transform, opacity;
+          // padding: 2px 8px;
+          // margin: -2px -8px;
           mask-image: linear-gradient(
             to right,
             rgb(0, 0, 0) 45.4545454545%,
@@ -399,7 +401,7 @@ onBeforeUnmount(() => {
           -webkit-mask-repeat: no-repeat;
           transition:
             opacity 0.3s,
-            filter 0.5s,
+            filter 0.3s,
             margin 0.3s,
             padding 0.3s !important;
         }
