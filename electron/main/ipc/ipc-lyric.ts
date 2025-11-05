@@ -62,9 +62,14 @@ const initLyricIpc = (): void => {
   });
 
   // 更新歌词窗口配置
-  ipcMain.on("update-desktop-lyric-option", (_, option) => {
+  ipcMain.on("update-desktop-lyric-option", (_, option, callback: boolean = false) => {
     if (!option || !isWinAlive(lyricWin)) return;
-    lyricWin.webContents.send("desktop-lyric-option-change", option);
+    store.set("lyric.config", option);
+    // 触发窗口更新
+    if (callback && isWinAlive(lyricWin)) {
+      lyricWin.webContents.send("update-desktop-lyric-option", option);
+    }
+    mainWin?.webContents.send("update-desktop-lyric-option", option);
   });
 
   // 播放状态更改
@@ -132,18 +137,14 @@ const initLyricIpc = (): void => {
   });
 
   // 获取配置
-  ipcMain.handle("get-desktop-lyric-option", () => {
-    return store.get("lyric");
-  });
+  ipcMain.handle("request-desktop-lyric-option", () => {
+    const config = store.get("lyric.config");
+    console.log(config);
 
-  // 保存配置
-  ipcMain.on("set-desktop-lyric-option", (_, option, callback: boolean = false) => {
-    store.set("lyric", option);
-    // 触发窗口更新
-    if (callback && isWinAlive(lyricWin)) {
-      lyricWin.webContents.send("desktop-lyric-option-change", option);
+    if (isWinAlive(lyricWin)) {
+      lyricWin.webContents.send("update-desktop-lyric-option", config);
     }
-    mainWin?.webContents.send("desktop-lyric-option-change", option);
+    return config;
   });
 
   // 发送主程序事件

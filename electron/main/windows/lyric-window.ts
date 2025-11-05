@@ -2,6 +2,7 @@ import { BrowserWindow } from "electron";
 import { createWindow } from "./index";
 import { useStore } from "../store";
 import { lyricWinUrl } from "../utils/config";
+import mainWindow from "./main-window";
 
 class LyricWindow {
   private win: BrowserWindow | null = null;
@@ -24,6 +25,11 @@ class LyricWindow {
         const { width, height } = bounds;
         store.set("lyric", { ...store.get("lyric"), width, height });
       }
+    });
+    // 歌词窗口关闭
+    this.win?.on("close", () => {
+      const mainWin = mainWindow?.getWin();
+      mainWin?.webContents.send("closeDesktopLyric");
     });
   }
   /**

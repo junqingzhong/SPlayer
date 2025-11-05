@@ -23,10 +23,8 @@ export interface LyricConfig {
   playedColor: string;
   /** 未播放颜色 */
   unplayedColor: string;
-  /** 描边 */
-  stroke: string;
-  /** 描边宽度 */
-  strokeWidth: number;
+  /** 阴影颜色 */
+  shadowColor: string;
   /** 字体 */
   fontFamily: string;
   /** 字体大小 */

@@ -1,7 +1,7 @@
 <template>
   <n-config-provider :theme="null">
     <div
-      ref="desktopLyricsRef"
+      ref="desktopLyricRef"
       :class="[
         'desktop-lyric',
         {
@@ -23,17 +23,17 @@
           <span class="song-name">{{ lyricData.playName }}</span>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="center" size="small" @pointerdown.stop>
-          <div class="menu-btn" title="上一曲" @click.stop="sendToMain('playPrev')">
+          <div class="menu-btn" title="上一曲" @click.stop="sendToMainWin('playPrev')">
             <SvgIcon name="SkipPrev" />
           </div>
           <div
             class="menu-btn"
             :title="lyricData.playStatus ? '暂停' : '播放'"
-            @click.stop="sendToMain('playOrPause')"
+            @click.stop="sendToMainWin('playOrPause')"
           >
             <SvgIcon :name="lyricData.playStatus ? 'Pause' : 'Play'" />
           </div>
-          <div class="menu-btn" title="下一曲" @click.stop="sendToMain('playNext')">
+          <div class="menu-btn" title="下一曲" @click.stop="sendToMainWin('playNext')">
             <SvgIcon name="SkipNext" />
           </div>
         </n-flex>
@@ -44,7 +44,7 @@
           <div class="menu-btn" title="解锁">
             <SvgIcon name="LockOpen" />
           </div>
-          <div class="menu-btn" title="关闭">
+          <div class="menu-btn" title="关闭" @click.stop="sendToMain('closeDesktopLyric')">
             <SvgIcon name="Close" />
           </div>
         </n-flex>
@@ -53,6 +53,7 @@
         :style="{
           fontSize: lyricConfig.fontSize + 'px',
           fontFamily: lyricConfig.fontFamily,
+          textShadow: `0 0 4px ${lyricConfig.shadowColor}`,
         }"
         :class="['lyric-container', lyricConfig.position]"
         vertical
@@ -66,6 +67,10 @@
           }"
         >
           {{ line.text }}
+        </span>
+        <!-- 占位 -->
+        <span v-if="lyricConfig.isDoubleLine && renderLyricLines.length === 1" class="lyric-line">
+          &nbsp;
         </span>
       </n-flex>
     </div>
@@ -91,8 +96,7 @@ const lyricConfig = reactive<LyricConfig>({
   isLock: false,
   playedColor: "#fe7971",
   unplayedColor: "#ccc",
-  stroke: "#000",
-  strokeWidth: 2,
+  shadowColor: "rgba(0, 0, 0, 0.5)",
   fontFamily: "system-ui",
   fontSize: 24,
   isDoubleLine: true,
@@ -101,7 +105,7 @@ const lyricConfig = reactive<LyricConfig>({
 });
 
 // 桌面歌词元素
-const desktopLyricsRef = useTemplateRef<HTMLElement>("desktopLyricsRef");
+const desktopLyricRef = ref<HTMLElement>();
 
 /**
  * 渲染的歌词行
@@ -207,7 +211,7 @@ const lyricDragMove = async (_position: Position, event: PointerEvent) => {
 };
 
 // 监听桌面歌词拖动
-useDraggable(desktopLyricsRef, {
+useDraggable(desktopLyricRef, {
   onStart: (position, event) => {
     lyricDragStart(position, event);
   },
@@ -219,28 +223,27 @@ useDraggable(desktopLyricsRef, {
   },
 });
 
-// 发送至主窗口
+// 发送至主进程
 const sendToMain = (eventName: string, ...args: any[]) => {
-  // 特殊处理
-  if (eventName === "win-show") {
-    window.electron.ipcRenderer.send("win-show");
-    return;
-  }
-  window.electron.ipcRenderer.send("send-to-main", eventName, ...args);
+  window.electron.ipcRenderer.send(eventName, ...args);
 };
 
-// 处理歌词数据
-const handleLyricData = (data: LyricData) => {
-  Object.assign(lyricData, data);
+// 发送至主窗口
+const sendToMainWin = (eventName: string, ...args: any[]) => {
+  window.electron.ipcRenderer.send("send-to-main", eventName, ...args);
 };
 
 onMounted(() => {
   // 接收歌词数据
   window.electron.ipcRenderer.on("update-desktop-lyric-data", (_event, data: LyricData) => {
-    handleLyricData(data);
+    Object.assign(lyricData, data);
+  });
+  window.electron.ipcRenderer.on("update-desktop-lyric-option", (_event, config: LyricConfig) => {
+    Object.assign(lyricConfig, config);
   });
   // 请求歌词数据及配置
   window.electron.ipcRenderer.send("request-desktop-lyric-data");
+  window.electron.ipcRenderer.invoke("request-desktop-lyric-option");
 });
 </script>
 
@@ -254,7 +257,6 @@ onMounted(() => {
   background-color: transparent;
   padding: 12px;
   border-radius: 12px;
-  height: 100%;
   overflow: hidden;
   transition: background-color 0.3s;
   cursor: move;
@@ -305,16 +307,29 @@ onMounted(() => {
   }
   .lyric-container {
     padding: 0 8px;
+    .lyric-line {
+      // 单行
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     &.center {
       align-items: center;
+      .lyric-line {
+        text-align: center;
+      }
     }
     &.right {
       align-items: flex-end;
+      .lyric-line {
+        text-align: right;
+      }
     }
     &.both {
       .lyric-line {
         &:nth-child(2n) {
-          margin-left: auto;
+          text-align: right;
         }
       }
     }
