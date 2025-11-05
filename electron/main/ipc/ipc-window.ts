@@ -29,6 +29,16 @@ const initWindowsIpc = (): void => {
     if (isMaximized) mainWin?.maximize();
     mainWin?.show();
     mainWin?.focus();
+    // 解决窗口不立即显示
+    mainWin?.setAlwaysOnTop(true);
+    // 100ms 后取消置顶
+    const timer = setTimeout(() => {
+      if (mainWin && !mainWin.isDestroyed()) {
+        mainWin.setAlwaysOnTop(false);
+        mainWin.focus();
+        clearTimeout(timer);
+      }
+    }, 100);
     // 初始化缩略图工具栏
     if (mainWin) initThumbar(mainWin);
   });
@@ -64,6 +74,7 @@ const initWindowsIpc = (): void => {
   // 显示
   ipcMain.on("win-show", () => {
     mainWin?.show();
+    mainWin?.focus();
   });
 
   // 重启

@@ -38,25 +38,27 @@ class LyricWindow {
       height: height || 180,
       minWidth: 440,
       minHeight: 120,
-      maxWidth: 1600,
-      maxHeight: 300,
+      center: !(x && y), // 没有指定位置时居中显示
+      // maxWidth: 1600,
+      // maxHeight: 300,
       // 窗口位置
       x,
       y,
-      transparent: true,
-      backgroundColor: "rgba(0, 0, 0, 0)",
+      // transparent: true,
+      // backgroundColor: "rgba(0, 0, 0, 0)",
       alwaysOnTop: true,
       resizable: true,
       movable: true,
       show: false,
       // 不在任务栏显示
-      skipTaskbar: true,
-      // 窗口不能最小化
-      minimizable: false,
-      // 窗口不能最大化
-      maximizable: false,
-      // 窗口不能进入全屏状态
-      fullscreenable: false,
+      // skipTaskbar: true,
+      // // 窗口不能最小化
+      // minimizable: false,
+      // // 窗口不能最大化
+      // maximizable: false,
+      // // 窗口不能进入全屏状态
+      // fullscreenable: false,
+      frame: true,
     });
     if (!this.win) return null;
     // 加载地址

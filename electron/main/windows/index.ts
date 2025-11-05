@@ -12,7 +12,7 @@ export const createWindow = (
       title: appName,
       width: 1280,
       height: 720,
-      frame: false, // 创建后是否显示窗口
+      frame: false, // 是否显示窗口边框
       center: true, // 窗口居中
       icon, // 窗口图标
       autoHideMenuBar: true, // 隐藏菜单栏

@@ -3,16 +3,16 @@ import { LyricType } from "@/types/main";
 /** 桌面歌词数据 */
 export interface LyricData {
   /** 播放歌曲名称 */
-  playName: string;
+  playName?: string;
   /** 播放状态 */
-  playStatus: boolean;
+  playStatus?: boolean;
   /** 播放进度 */
-  progress: number;
+  progress?: number;
   /** 歌词数据 */
-  lrcData: LyricType[];
-  yrcData: LyricType[];
+  lrcData?: LyricType[];
+  yrcData?: LyricType[];
   /** 歌词播放索引 */
-  lyricIndex: number;
+  lyricIndex?: number;
 }
 
 /** 桌面歌词配置 */
@@ -31,10 +31,22 @@ export interface LyricConfig {
   fontFamily: string;
   /** 字体大小 */
   fontSize: number;
-  /** 行高 */
-  lineHeight: number;
   /** 是否双行 */
   isDoubleLine: boolean;
   /** 文本排版位置 */
   position: "left" | "center" | "right" | "both";
+  /** 是否限制在屏幕边界内拖动 */
+  limitBounds: boolean;
+}
+
+/**
+ * 渲染的歌词行
+ */
+interface RenderLine {
+  /** 歌词文本 */
+  text: string;
+  /** 唯一键 */
+  key: string;
+  /** 是否高亮 */
+  active: boolean;
 }
