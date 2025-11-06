@@ -165,12 +165,12 @@ const lyricDragStart = async (_position: Position, event: PointerEvent) => {
   if (lyricConfig.isLock) return;
   dragState.isDragging = true;
   const { x, y, width, height } = await window.electron.ipcRenderer.invoke("get-window-bounds");
-  dragState.startX = (event?.screenX ?? 0) as number;
-  dragState.startY = (event?.screenY ?? 0) as number;
-  dragState.startWinX = x as number;
-  dragState.startWinY = y as number;
-  dragState.winWidth = width as number;
-  dragState.winHeight = height as number;
+  dragState.startX = event?.screenX ?? 0;
+  dragState.startY = event?.screenY ?? 0;
+  dragState.startWinX = x;
+  dragState.startWinY = y;
+  dragState.winWidth = width;
+  dragState.winHeight = height;
 };
 
 /**
@@ -180,17 +180,17 @@ const lyricDragStart = async (_position: Position, event: PointerEvent) => {
  */
 const lyricDragMove = async (_position: Position, event: PointerEvent) => {
   if (!dragState.isDragging || lyricConfig.isLock) return;
-  const screenX = (event?.screenX ?? 0) as number;
-  const screenY = (event?.screenY ?? 0) as number;
-  let newWinX = dragState.startWinX + (screenX - dragState.startX);
-  let newWinY = dragState.startWinY + (screenY - dragState.startY);
+  const screenX = event?.screenX ?? 0;
+  const screenY = event?.screenY ?? 0;
+  let newWinX = Math.round(dragState.startWinX + (screenX - dragState.startX));
+  let newWinY = Math.round(dragState.startWinY + (screenY - dragState.startY));
   // 可选：限制在屏幕边界（支持多屏）
   if (lyricConfig.limitBounds) {
     const { minX, minY, maxX, maxY } = await window.electron.ipcRenderer.invoke(
       "get-virtual-screen-bounds",
     );
-    newWinX = Math.max(minX as number, Math.min((maxX as number) - dragState.winWidth, newWinX));
-    newWinY = Math.max(minY as number, Math.min((maxY as number) - dragState.winHeight, newWinY));
+    newWinX = Math.round(Math.max(minX as number, Math.min(maxX - dragState.winWidth, newWinX)));
+    newWinY = Math.round(Math.max(minY as number, Math.min(maxY - dragState.winHeight, newWinY)));
   }
   window.electron.ipcRenderer.send(
     "move-window",
@@ -209,7 +209,16 @@ useDraggable(desktopLyricRef, {
   onMove: (position, event) => {
     lyricDragMove(position, event);
   },
-  onEnd: () => {
+  onEnd: async () => {
+    const { width, height } = await window.electron.ipcRenderer.invoke("get-window-bounds");
+    // 若不等于初始宽高
+    if (width !== dragState.winWidth || height !== dragState.winHeight) {
+      window.electron.ipcRenderer.send(
+        "update-lyric-size",
+        dragState.winWidth,
+        dragState.winHeight,
+      );
+    }
     dragState.isDragging = false;
   },
 });

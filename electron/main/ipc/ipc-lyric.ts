@@ -126,6 +126,14 @@ const initLyricIpc = (): void => {
     store.set("lyric", { ...store.get("lyric"), x, y, width, height });
   });
 
+  // 更新歌词窗口宽高
+  ipcMain.on("update-lyric-size", (_, width, height) => {
+    if (!isWinAlive(lyricWin)) return;
+    // 更新窗口宽度
+    lyricWin.setBounds({ width, height });
+    store.set("lyric", { ...store.get("lyric"), width, height });
+  });
+
   // 更新高度
   ipcMain.on("update-window-height", (_, height) => {
     if (!isWinAlive(lyricWin)) return;
