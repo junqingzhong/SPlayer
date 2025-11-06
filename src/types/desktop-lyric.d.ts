@@ -29,6 +29,8 @@ export interface LyricConfig {
   fontFamily: string;
   /** 字体大小 */
   fontSize: number;
+  /** 字体是否加粗 */
+  fontIsBold: boolean;
   /** 是否双行 */
   isDoubleLine: boolean;
   /** 文本排版位置 */

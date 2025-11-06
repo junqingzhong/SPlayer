@@ -387,16 +387,58 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">桌面歌词文字大小</n-text>
+          <n-text class="name">歌词字体</n-text>
+          <n-text class="tip" :depth="3"> 更改桌面歌词字体 </n-text>
+        </div>
+        <n-flex>
+          <Transition name="fade" mode="out-in">
+            <n-button
+              v-if="desktopLyricConfig.fontFamily !== 'system-ui'"
+              type="primary"
+              strong
+              secondary
+              @click="
+                () => {
+                  desktopLyricConfig.fontFamily = 'system-ui';
+                  saveDesktopLyricConfig();
+                }
+              "
+            >
+              恢复默认
+            </n-button>
+          </Transition>
+          <n-select
+            v-model:value="desktopLyricConfig.fontFamily"
+            :options="allFontsData"
+            class="set"
+            @update:value="saveDesktopLyricConfig"
+          />
+        </n-flex>
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">文字加粗</n-text>
+          <n-text class="tip" :depth="3">是否加粗桌面歌词文字</n-text>
+        </div>
+        <n-switch
+          v-model:value="desktopLyricConfig.fontIsBold"
+          :round="false"
+          class="set"
+          @update:value="saveDesktopLyricConfig"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">文字大小</n-text>
           <n-text class="tip" :depth="3">翻译或其他文字将会跟随变化</n-text>
         </div>
         <n-select
           v-model:value="desktopLyricConfig.fontSize"
           :options="
-            Array.from({ length: 41 }, (_, i) => {
+            Array.from({ length: 96 - 20 + 1 }, (_, i) => {
               return {
-                label: `${10 + i} px`,
-                value: 10 + i,
+                label: `${20 + i} px`,
+                value: 20 + i,
               };
             })
           "
@@ -458,29 +500,22 @@ import { useSettingStore, useStatusStore } from "@/stores";
 import { cloneDeep, isEqual } from "lodash-es";
 import { isElectron } from "@/utils/env";
 import { openLyricExclude } from "@/utils/modal";
-import player from "@/utils/player";
 import { LyricConfig } from "@/types/desktop-lyric";
+import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
+import player from "@/utils/player";
+import { SelectOption } from "naive-ui";
 
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
+// 全部字体
+const allFontsData = ref<SelectOption[]>([]);
+
 // 桌面歌词配置
-const defaultDesktopLyricConfig = {
-  isLock: false,
-  playedColor: "#fe7971",
-  unplayedColor: "#ccc",
-  shadowColor: "rgba(0, 0, 0, 0.5)",
-  fontFamily: "system-ui",
-  fontSize: 24,
-  isDoubleLine: true,
-  position: "both",
-  limitBounds: false,
-} as LyricConfig;
 const desktopLyricConfig = reactive<LyricConfig>({ ...defaultDesktopLyricConfig });
 
 // 获取桌面歌词配置
 const getDesktopLyricConfig = async () => {
-  if (!isElectron) return;
   const config = await window.electron.ipcRenderer.invoke("request-desktop-lyric-option");
   if (config) Object.assign(desktopLyricConfig, config);
   // 监听更新
@@ -527,8 +562,35 @@ const restoreDesktopLyricConfig = () => {
   }
 };
 
+// 获取全部系统字体
+const getAllSystemFonts = async () => {
+  const allFonts = await window.electron.ipcRenderer.invoke("get-all-fonts");
+  allFonts.map((v: string) => {
+    // 去除前后的引号
+    v = v.replace(/^['"]+|['"]+$/g, "");
+    allFontsData.value.push({
+      label: v,
+      value: v,
+      style: {
+        fontFamily: v,
+      },
+    });
+  });
+  // 添加默认选项
+  allFontsData.value.unshift({
+    label: "系统默认",
+    value: "system-ui",
+    style: {
+      fontFamily: "system-ui",
+    },
+  });
+};
+
 onMounted(() => {
-  getDesktopLyricConfig();
+  if (isElectron) {
+    getDesktopLyricConfig();
+    getAllSystemFonts();
+  }
 });
 </script>
 

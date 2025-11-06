@@ -64,6 +64,11 @@ const initLyricIpc = (): void => {
   // 更新歌词窗口配置
   ipcMain.on("update-desktop-lyric-option", (_, option, callback: boolean = false) => {
     if (!option || !isWinAlive(lyricWin)) return;
+    // 增量更新
+    const prevOption = store.get("lyric.config");
+    if (prevOption) {
+      option = { ...prevOption, ...option };
+    }
     store.set("lyric.config", option);
     // 触发窗口更新
     if (callback && isWinAlive(lyricWin)) {
@@ -124,9 +129,11 @@ const initLyricIpc = (): void => {
   // 更新高度
   ipcMain.on("update-window-height", (_, height) => {
     if (!isWinAlive(lyricWin)) return;
+    const store = useStore();
     const { width } = lyricWin.getBounds();
     // 更新窗口高度
     lyricWin.setBounds({ width, height });
+    store.set("lyric", { ...store.get("lyric"), height });
   });
 
   // 请求歌词数据及配置
@@ -139,8 +146,6 @@ const initLyricIpc = (): void => {
   // 获取配置
   ipcMain.handle("request-desktop-lyric-option", () => {
     const config = store.get("lyric.config");
-    console.log(config);
-
     if (isWinAlive(lyricWin)) {
       lyricWin.webContents.send("update-desktop-lyric-option", config);
     }

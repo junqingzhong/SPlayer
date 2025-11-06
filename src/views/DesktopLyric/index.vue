@@ -14,12 +14,6 @@
           <div class="menu-btn" title="返回应用" @click.stop="sendToMain('win-show')">
             <SvgIcon name="Music" />
           </div>
-          <div class="menu-btn" title="增加字体大小">
-            <SvgIcon :offset="-1" name="TextSizeAdd" />
-          </div>
-          <div class="menu-btn" title="减少字体大小">
-            <SvgIcon :offset="-1" name="TextSizeReduce" />
-          </div>
           <span class="song-name">{{ lyricData.playName }}</span>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="center" size="small" @pointerdown.stop>
@@ -38,6 +32,9 @@
           </div>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="flex-end" size="small" @pointerdown.stop>
+          <div class="menu-btn" title="设置">
+            <SvgIcon name="Settings" />
+          </div>
           <div class="menu-btn" title="锁定">
             <SvgIcon name="Lock" />
           </div>
@@ -53,9 +50,12 @@
         :style="{
           fontSize: lyricConfig.fontSize + 'px',
           fontFamily: lyricConfig.fontFamily,
+          fontWeight: lyricConfig.fontIsBold ? 'bold' : 'normal',
           textShadow: `0 0 4px ${lyricConfig.shadowColor}`,
         }"
         :class="['lyric-container', lyricConfig.position]"
+        :size="0"
+        justify="space-around"
         vertical
       >
         <span
@@ -69,9 +69,7 @@
           {{ line.text }}
         </span>
         <!-- 占位 -->
-        <span v-if="lyricConfig.isDoubleLine && renderLyricLines.length === 1" class="lyric-line">
-          &nbsp;
-        </span>
+        <span v-if="renderLyricLines.length === 1" class="lyric-line"> &nbsp; </span>
       </n-flex>
     </div>
   </n-config-provider>
@@ -80,6 +78,7 @@
 <script setup lang="ts">
 import { Position } from "@vueuse/core";
 import { LyricConfig, LyricData, RenderLine } from "@/types/desktop-lyric";
+import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
 // 桌面歌词数据
 const lyricData = reactive<LyricData>({
@@ -93,15 +92,7 @@ const lyricData = reactive<LyricData>({
 
 // 桌面歌词配置
 const lyricConfig = reactive<LyricConfig>({
-  isLock: false,
-  playedColor: "#fe7971",
-  unplayedColor: "#ccc",
-  shadowColor: "rgba(0, 0, 0, 0.5)",
-  fontFamily: "system-ui",
-  fontSize: 24,
-  isDoubleLine: true,
-  position: "both",
-  limitBounds: false,
+  ...defaultDesktopLyricConfig,
 });
 
 // 桌面歌词元素
@@ -223,6 +214,68 @@ useDraggable(desktopLyricRef, {
   },
 });
 
+// 监听窗口大小变化
+const { height: winHeight } = useWindowSize();
+
+/**
+ * 根据窗口高度计算字体大小
+ * 线性映射并取整，范围 20-96
+ */
+const computedFontSize = computed(() => {
+  const h = Number(winHeight?.value ?? 0);
+  const minH = 140;
+  const maxH = 360;
+  const minF = 20;
+  const maxF = 96;
+  if (!Number.isFinite(h) || h <= minH) return minF;
+  if (h >= maxH) return maxF;
+  const ratio = (h - minH) / (maxH - minH);
+  return Math.round(minF + ratio * (maxF - minF));
+});
+
+// 监听字体大小变化，同步更新窗口高度
+watch(
+  computedFontSize,
+  (size) => {
+    if (!Number.isFinite(size)) return;
+    if (size === lyricConfig.fontSize) return;
+    const next = { fontSize: size };
+    window.electron.ipcRenderer.send("update-desktop-lyric-option", next, true);
+  },
+  { immediate: true },
+);
+
+/**
+ * 根据字体大小计算窗口高度（20-96 <-> 140-360）
+ * @param size 字体大小
+ * @returns 窗口高度
+ */
+const fontSizeToHeight = (size: number) => {
+  const minH = 140;
+  const maxH = 360;
+  const minF = 20;
+  const maxF = 96;
+  const s = Math.min(Math.max(Math.round(size), minF), maxF);
+  const ratio = (s - minF) / (maxF - minF);
+  return Math.round(minH + ratio * (maxH - minH));
+};
+
+// 防抖推送窗口高度更新，避免频繁抖动
+const pushWindowHeight = useDebounceFn((nextHeight: number) => {
+  if (!Number.isFinite(nextHeight)) return;
+  window.electron.ipcRenderer.send("update-window-height", nextHeight);
+}, 100);
+
+// 监听配置中的字体大小变化，同步更新窗口高度
+watch(
+  () => lyricConfig.fontSize,
+  (size) => {
+    const height = fontSizeToHeight(size);
+    if (height) pushWindowHeight(height);
+  },
+  { immediate: true },
+);
+
 // 发送至主进程
 const sendToMain = (eventName: string, ...args: any[]) => {
   window.electron.ipcRenderer.send(eventName, ...args);
@@ -253,6 +306,9 @@ onMounted(() => {
   height: 100%;
 }
 .desktop-lyric {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   color: #fff;
   background-color: transparent;
   padding: 12px;
@@ -306,10 +362,11 @@ onMounted(() => {
     }
   }
   .lyric-container {
+    height: 100%;
     padding: 0 8px;
     .lyric-line {
-      // 单行
       width: 100%;
+      line-height: normal;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -336,7 +393,7 @@ onMounted(() => {
   }
   &:hover {
     &:not(.locked) {
-      background-color: rgba(0, 0, 0, 0.3);
+      background-color: rgba(0, 0, 0, 0.6);
       .header {
         opacity: 1;
       }
@@ -352,9 +409,9 @@ onMounted(() => {
 }
 </style>
 
-<!-- <style>
+<style>
 body {
   background-color: transparent !important;
   /* background-image: url("https://picsum.photos/1920/1080"); */
 }
-</style> -->
+</style>

@@ -43,28 +43,28 @@ class LyricWindow {
       width: width || 800,
       height: height || 180,
       minWidth: 440,
-      minHeight: 120,
-      center: !(x && y), // 没有指定位置时居中显示
-      // maxWidth: 1600,
-      // maxHeight: 300,
+      minHeight: 140,
+      maxWidth: 1600,
+      maxHeight: 360,
+      // 没有指定位置时居中显示
+      center: !(x && y),
       // 窗口位置
       x,
       y,
-      // transparent: true,
-      // backgroundColor: "rgba(0, 0, 0, 0)",
+      transparent: true,
+      backgroundColor: "rgba(0, 0, 0, 0)",
       alwaysOnTop: true,
       resizable: true,
       movable: true,
       show: false,
       // 不在任务栏显示
       // skipTaskbar: true,
-      // // 窗口不能最小化
-      // minimizable: false,
-      // // 窗口不能最大化
-      // maximizable: false,
-      // // 窗口不能进入全屏状态
-      // fullscreenable: false,
-      frame: true,
+      // 窗口不能最小化
+      minimizable: false,
+      // 窗口不能最大化
+      maximizable: false,
+      // 窗口不能进入全屏状态
+      fullscreenable: false,
     });
     if (!this.win) return null;
     // 加载地址
