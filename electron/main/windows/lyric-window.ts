@@ -58,7 +58,7 @@ class LyricWindow {
       movable: true,
       show: false,
       // 不在任务栏显示
-      // skipTaskbar: true,
+      skipTaskbar: true,
       // 窗口不能最小化
       minimizable: false,
       // 窗口不能最大化

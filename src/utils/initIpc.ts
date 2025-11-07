@@ -1,10 +1,11 @@
 import { isElectron } from "./env";
-import { openUpdateApp } from "./modal";
+import { openSetting, openUpdateApp } from "./modal";
 import { useMusicStore, useDataStore, useStatusStore } from "@/stores";
 import { toLikeSong } from "./auth";
 import player from "./player";
 import { cloneDeep } from "lodash-es";
 import { getPlayerInfo } from "./player-utils/song";
+import { SettingType } from "@/types/main";
 
 // 关闭更新状态
 const closeUpdateStatus = () => {
@@ -38,6 +39,8 @@ const initIpc = () => {
       const musicStore = useMusicStore();
       await toLikeSong(musicStore.playSong, !dataStore.isLikeSong(musicStore.playSong.id));
     });
+    // 开启设置
+    window.electron.ipcRenderer.on("openSetting", (_, type: SettingType) => openSetting(type));
     // 桌面歌词开关
     window.electron.ipcRenderer.on("toogleDesktopLyric", () => player.toggleDesktopLyric());
     window.electron.ipcRenderer.on("closeDesktopLyric", () => player.toggleDesktopLyric());

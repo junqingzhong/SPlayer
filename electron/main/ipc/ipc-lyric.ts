@@ -195,6 +195,10 @@ const initLyricIpc = (): void => {
     } else {
       lyricWin.setIgnoreMouseEvents(false);
     }
+    store.set("lyric.config", { ...store.get("lyric.config"), isLock });
+    // 触发窗口更新
+    const config = store.get("lyric.config");
+    mainWin?.webContents.send("update-desktop-lyric-option", config);
   });
 };
 

@@ -43,7 +43,7 @@ export const useStore = () => {
         x: screenData.workAreaSize.width / 2 - 400,
         y: screenData.workAreaSize.height - 90,
         width: 800,
-        height: 152,
+        height: 136,
         config: defaultLyricConfig,
       },
       proxy: "",

@@ -118,6 +118,13 @@ const initWindowsIpc = (): void => {
 
   // 开启登录窗口
   ipcMain.on("open-login-web", () => loginWindow.create(mainWin!));
+
+  // 开启设置
+  ipcMain.on("open-setting", (_, type) => {
+    mainWin?.show();
+    mainWin?.focus();
+    mainWin?.webContents.send("openSetting", type);
+  });
 };
 
 export default initWindowsIpc;

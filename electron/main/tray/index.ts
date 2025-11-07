@@ -10,6 +10,7 @@ import {
 import { isWin, appName } from "../utils/config";
 import { join } from "path";
 import { trayLog } from "../logger";
+import { useStore } from "../store";
 import lyricWindow from "../windows/lyric-window";
 
 // 播放模式
@@ -48,10 +49,7 @@ const trayIcon = (filename: string) => {
 };
 
 // 托盘菜单
-const createTrayMenu = (
-  win: BrowserWindow,
-  lyricWin: BrowserWindow | null,
-): MenuItemConstructorOptions[] => {
+const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
   // 区分明暗图标
   const showIcon = (iconName: string) => {
     const isDark = nativeTheme.shouldUseDarkColors;
@@ -146,11 +144,16 @@ const createTrayMenu = (
       id: "toogleDesktopLyricLock",
       label: `${desktopLyricLock ? "解锁" : "锁定"}桌面歌词`,
       icon: showIcon(desktopLyricLock ? "lock" : "unlock"),
-      visible: desktopLyricShow && lyricWin !== null,
+      visible: desktopLyricShow,
       click: () => {
-        if (lyricWin) {
-          lyricWin.webContents.send("toogleDesktopLyricLock", !desktopLyricLock);
-        }
+        const store = useStore();
+        // 更新锁定状态
+        store.set("lyric.config", { ...store.get("lyric.config"), isLock: !desktopLyricLock });
+        // 触发窗口更新
+        const config = store.get("lyric.config");
+        const lyricWin = lyricWindow.getWin();
+        if (!lyricWin) return;
+        lyricWin.webContents.send("update-desktop-lyric-option", config);
       },
     },
     {
@@ -187,7 +190,6 @@ const createTrayMenu = (
 class CreateTray implements MainTray {
   // 窗口
   private _win: BrowserWindow;
-  private _lyricWin: BrowserWindow | null;
   // 托盘
   private _tray: Tray;
   // 菜单
@@ -202,9 +204,8 @@ class CreateTray implements MainTray {
     });
     // 初始化数据
     this._win = win;
-    this._lyricWin = lyricWindow.getWin();
     this._tray = new Tray(icon);
-    this._menu = createTrayMenu(this._win, this._lyricWin);
+    this._menu = createTrayMenu(this._win);
     this._contextMenu = Menu.buildFromTemplate(this._menu);
     // 初始化事件
     this.initTrayMenu();
@@ -213,7 +214,7 @@ class CreateTray implements MainTray {
   }
   // 托盘菜单
   private initTrayMenu() {
-    this._menu = createTrayMenu(this._win, this._lyricWin);
+    this._menu = createTrayMenu(this._win);
     this._contextMenu = Menu.buildFromTemplate(this._menu);
     this._tray.setContextMenu(this._contextMenu);
   }

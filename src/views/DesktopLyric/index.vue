@@ -32,14 +32,15 @@
           </div>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="flex-end" size="small" @pointerdown.stop>
-          <div class="menu-btn" title="设置">
+          <div class="menu-btn" title="设置" @click.stop="sendToMain('open-setting', 'lyrics')">
             <SvgIcon name="Settings" />
           </div>
-          <div class="menu-btn" title="锁定">
-            <SvgIcon name="Lock" />
-          </div>
-          <div class="menu-btn" title="解锁">
-            <SvgIcon name="LockOpen" />
+          <div
+            class="menu-btn lock-btn"
+            :title="lyricConfig.isLock ? '解锁' : '锁定'"
+            @click.stop="toggleLyricLock"
+          >
+            <SvgIcon :name="lyricConfig.isLock ? 'LockOpen' : 'Lock'" />
           </div>
           <div class="menu-btn" title="关闭" @click.stop="sendToMain('closeDesktopLyric')">
             <SvgIcon name="Close" />
@@ -247,7 +248,7 @@ const { height: winHeight } = useWindowSize();
  * 线性映射并取整，范围 20-96
  */
 const computedFontSize = computed(() => {
-  const h = Number(winHeight?.value ?? 0);
+  const h = dragState.isDragging ? dragState.winHeight : Math.round(Number(winHeight?.value ?? 0));
   const minH = 140;
   const maxH = 360;
   const minF = 20;
@@ -259,7 +260,7 @@ const computedFontSize = computed(() => {
 });
 
 // 监听字体大小变化，同步更新窗口高度
-watch(
+watchThrottled(
   computedFontSize,
   (size) => {
     if (!Number.isFinite(size)) return;
@@ -268,7 +269,7 @@ watch(
     const next = { fontSize: size };
     window.electron.ipcRenderer.send("update-desktop-lyric-option", next, true);
   },
-  { immediate: true },
+  { immediate: true, throttle: 100 },
 );
 
 /**
@@ -286,12 +287,12 @@ const fontSizeToHeight = (size: number) => {
   return Math.round(minH + ratio * (maxH - minH));
 };
 
-// 防抖推送窗口高度更新，避免频繁抖动
-const pushWindowHeight = useDebounceFn((nextHeight: number) => {
+// 推送窗口高度更新
+const pushWindowHeight = (nextHeight: number) => {
   if (!Number.isFinite(nextHeight)) return;
   if (dragState.isDragging) return;
   window.electron.ipcRenderer.send("update-window-height", nextHeight);
-}, 100);
+};
 
 // 监听配置中的字体大小变化，同步更新窗口高度
 watch(
@@ -313,6 +314,12 @@ const sendToMainWin = (eventName: string, ...args: any[]) => {
   window.electron.ipcRenderer.send("send-to-main", eventName, ...args);
 };
 
+// 切换桌面歌词锁定状态
+const toggleLyricLock = () => {
+  sendToMain("toogleDesktopLyricLock", !lyricConfig.isLock);
+  lyricConfig.isLock = !lyricConfig.isLock;
+};
+
 onMounted(() => {
   // 接收歌词数据
   window.electron.ipcRenderer.on("update-desktop-lyric-data", (_event, data: LyricData) => {
@@ -323,10 +330,17 @@ onMounted(() => {
     // 根据文字大小改变一次高度
     const height = fontSizeToHeight(config.fontSize);
     if (height) pushWindowHeight(height);
+    // 是否锁定
+    sendToMain("toogleDesktopLyricLock", config.isLock);
   });
   // 请求歌词数据及配置
   window.electron.ipcRenderer.send("request-desktop-lyric-data");
   window.electron.ipcRenderer.invoke("request-desktop-lyric-option");
+
+  // 鼠标移入
+  document.addEventListener("mouseenter", () => {
+    console.log("进入");
+  });
 });
 </script>
 
@@ -383,6 +397,9 @@ onMounted(() => {
       .n-icon {
         font-size: 24px;
       }
+      &.lock-btn {
+        pointer-events: auto;
+      }
       &:hover {
         background-color: rgba(255, 255, 255, 0.3);
       }
@@ -430,7 +447,7 @@ onMounted(() => {
     }
   }
   &.locked {
-    pointer-events: none;
+    // pointer-events: none;
     cursor: default;
     .header {
       opacity: 0;
