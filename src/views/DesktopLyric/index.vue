@@ -164,13 +164,20 @@ const dragState = reactive({
 const lyricDragStart = async (_position: Position, event: PointerEvent) => {
   if (lyricConfig.isLock) return;
   dragState.isDragging = true;
-  const { x, y, width, height } = await window.electron.ipcRenderer.invoke("get-window-bounds");
+  const { x, y } = await window.electron.ipcRenderer.invoke("get-window-bounds");
+  const { width, height } = await window.api.store.get("lyric");
+  // 直接限制最大宽高
+  window.electron.ipcRenderer.send("toggle-fixed-max-size", {
+    width,
+    height,
+    fixed: true,
+  });
   dragState.startX = event?.screenX ?? 0;
   dragState.startY = event?.screenY ?? 0;
   dragState.startWinX = x;
   dragState.startWinY = y;
-  dragState.winWidth = width;
-  dragState.winHeight = height;
+  dragState.winWidth = width ?? 0;
+  dragState.winHeight = height ?? 0;
 };
 
 /**
@@ -209,17 +216,26 @@ useDraggable(desktopLyricRef, {
   onMove: (position, event) => {
     lyricDragMove(position, event);
   },
-  onEnd: async () => {
-    const { width, height } = await window.electron.ipcRenderer.invoke("get-window-bounds");
-    // 若不等于初始宽高
-    if (width !== dragState.winWidth || height !== dragState.winHeight) {
+  onEnd: () => {
+    // 关闭拖拽状态
+    dragState.isDragging = false;
+    requestAnimationFrame(() => {
+      // 恢复拖拽前宽高
       window.electron.ipcRenderer.send(
         "update-lyric-size",
         dragState.winWidth,
         dragState.winHeight,
       );
-    }
-    dragState.isDragging = false;
+      // 根据字体大小恢复一次高度
+      const height = fontSizeToHeight(lyricConfig.fontSize);
+      if (height) pushWindowHeight(height);
+      // 恢复最大宽高
+      window.electron.ipcRenderer.send("toggle-fixed-max-size", {
+        width: dragState.winWidth,
+        height: dragState.winHeight,
+        fixed: false,
+      });
+    });
   },
 });
 
@@ -247,6 +263,7 @@ watch(
   computedFontSize,
   (size) => {
     if (!Number.isFinite(size)) return;
+    if (dragState.isDragging) return;
     if (size === lyricConfig.fontSize) return;
     const next = { fontSize: size };
     window.electron.ipcRenderer.send("update-desktop-lyric-option", next, true);
@@ -272,6 +289,7 @@ const fontSizeToHeight = (size: number) => {
 // 防抖推送窗口高度更新，避免频繁抖动
 const pushWindowHeight = useDebounceFn((nextHeight: number) => {
   if (!Number.isFinite(nextHeight)) return;
+  if (dragState.isDragging) return;
   window.electron.ipcRenderer.send("update-window-height", nextHeight);
 }, 100);
 
@@ -302,6 +320,9 @@ onMounted(() => {
   });
   window.electron.ipcRenderer.on("update-desktop-lyric-option", (_event, config: LyricConfig) => {
     Object.assign(lyricConfig, config);
+    // 根据文字大小改变一次高度
+    const height = fontSizeToHeight(config.fontSize);
+    if (height) pushWindowHeight(height);
   });
   // 请求歌词数据及配置
   window.electron.ipcRenderer.send("request-desktop-lyric-data");

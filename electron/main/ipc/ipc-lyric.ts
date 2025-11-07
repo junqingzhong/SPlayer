@@ -144,6 +144,20 @@ const initLyricIpc = (): void => {
     store.set("lyric", { ...store.get("lyric"), height });
   });
 
+  // 是否固定当前最大宽高
+  ipcMain.on(
+    "toggle-fixed-max-size",
+    (_, options: { width: number; height: number; fixed: boolean }) => {
+      if (!isWinAlive(lyricWin)) return;
+      const { width, height, fixed } = options;
+      if (fixed) {
+        lyricWin.setMaximumSize(width, height);
+      } else {
+        lyricWin.setMaximumSize(1400, 360);
+      }
+    },
+  );
+
   // 请求歌词数据及配置
   ipcMain.on("request-desktop-lyric-data", () => {
     if (!isWinAlive(lyricWin)) return;

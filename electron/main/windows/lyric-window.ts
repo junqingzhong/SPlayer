@@ -42,9 +42,9 @@ class LyricWindow {
     this.win = createWindow({
       width: width || 800,
       height: height || 180,
-      minWidth: 440,
+      minWidth: 640,
       minHeight: 140,
-      maxWidth: 1600,
+      maxWidth: 1400,
       maxHeight: 360,
       // 没有指定位置时居中显示
       center: !(x && y),
