@@ -304,6 +304,8 @@ const parseLocalLyricLrc = (lyric: string) => {
   );
   // 重置歌词索引
   statusStore.lyricIndex = -1;
+  // 歌词已加载完成
+  statusStore.lyricLoading = false;
 };
 
 /**
@@ -333,6 +335,8 @@ const parseLocalLyricAM = (lyric: string) => {
   );
   // 重置歌词索引
   statusStore.lyricIndex = -1;
+  // 歌词已加载完成
+  statusStore.lyricLoading = false;
 };
 
 /**
