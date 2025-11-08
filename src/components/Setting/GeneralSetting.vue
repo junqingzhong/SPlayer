@@ -161,7 +161,12 @@
               恢复默认
             </n-button>
           </Transition>
-          <n-select v-model:value="settingStore.globalFont" :options="allFontsData" class="set" />
+          <n-select
+            v-model:value="settingStore.globalFont"
+            :options="allFontsData"
+            class="set"
+            filterable
+          />
         </n-flex>
       </n-card>
       <n-card class="set-item">
@@ -188,6 +193,7 @@
               ...allFontsData.filter((v) => v.value !== 'default'),
             ]"
             class="set"
+            filterable
           />
         </n-flex>
       </n-card>
@@ -215,6 +221,7 @@
               ...allFontsData.filter((v) => v.value !== 'default'),
             ]"
             class="set"
+            filterable
           />
         </n-flex>
       </n-card>

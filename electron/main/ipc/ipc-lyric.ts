@@ -50,11 +50,6 @@ const initLyricIpc = (): void => {
     }
   });
 
-  // 向主窗口发送事件
-  ipcMain.on("send-to-main", (_, eventName, ...args) => {
-    mainWin?.webContents.send(eventName, ...args);
-  });
-
   // 更新歌词窗口数据
   ipcMain.on("update-desktop-lyric-data", (_, lyricData) => {
     if (!lyricData || !isWinAlive(lyricWin)) return;
@@ -158,25 +153,20 @@ const initLyricIpc = (): void => {
     },
   );
 
-  // 请求歌词数据及配置
+  // 请求歌词数据
   ipcMain.on("request-desktop-lyric-data", () => {
     if (!isWinAlive(lyricWin)) return;
     // 触发窗口更新
     mainWin?.webContents.send("request-desktop-lyric-data");
   });
 
-  // 获取配置
+  // 请求歌词配置
   ipcMain.handle("request-desktop-lyric-option", () => {
     const config = store.get("lyric.config");
     if (isWinAlive(lyricWin)) {
       lyricWin.webContents.send("update-desktop-lyric-option", config);
     }
     return config;
-  });
-
-  // 发送主程序事件
-  ipcMain.on("send-main-event", (_, name, val) => {
-    mainWin?.webContents.send(name, val);
   });
 
   // 关闭桌面歌词
@@ -187,7 +177,7 @@ const initLyricIpc = (): void => {
   });
 
   // 锁定/解锁桌面歌词
-  ipcMain.on("toogleDesktopLyricLock", (_, isLock: boolean) => {
+  ipcMain.on("toogleDesktopLyricLock", (_, isLock: boolean, isTemp: boolean = false) => {
     if (!isWinAlive(lyricWin)) return;
     // 是否穿透
     if (isLock) {
@@ -195,6 +185,7 @@ const initLyricIpc = (): void => {
     } else {
       lyricWin.setIgnoreMouseEvents(false);
     }
+    if (isTemp) return;
     store.set("lyric.config", { ...store.get("lyric.config"), isLock });
     // 触发窗口更新
     const config = store.get("lyric.config");

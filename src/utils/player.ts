@@ -91,7 +91,7 @@ class Player {
    * 处理播放状态
    */
   private handlePlayStatus() {
-    // const musicStore = useMusicStore();
+    const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     const currentSessionId = this.playSessionId;
@@ -120,6 +120,9 @@ class Player {
           "play-lyric-change",
           cloneDeep({
             lyricIndex,
+            currentTime,
+            songId: musicStore.playSong?.id,
+            songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
           }),
         );
         // 进度条

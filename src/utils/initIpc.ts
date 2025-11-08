@@ -54,6 +54,9 @@ const initIpc = () => {
           cloneDeep({
             playStatus: statusStore.playStatus,
             playName: getPlayerInfo() ?? "未知歌曲",
+            currentTime: statusStore.currentTime,
+            songId: musicStore.playSong?.id,
+            songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
             lrcData: musicStore.songLyric.lrcData ?? [],
             yrcData: musicStore.songLyric.yrcData ?? [],
             lyricIndex: statusStore.lyricIndex,

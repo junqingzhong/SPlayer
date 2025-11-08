@@ -83,6 +83,11 @@ const initWindowsIpc = (): void => {
     app.relaunch();
   });
 
+  // 向主窗口发送事件
+  ipcMain.on("send-to-mainWin", (_, eventName, ...args) => {
+    mainWin?.webContents.send(eventName, ...args);
+  });
+
   // 显示进度
   ipcMain.on("set-bar", (_event, val: number | "none" | "indeterminate" | "error" | "paused") => {
     switch (val) {

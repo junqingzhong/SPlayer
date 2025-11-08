@@ -121,6 +121,7 @@ export const useMusicStore = defineStore("music", {
         window.electron.ipcRenderer.send(
           "play-lyric-change",
           cloneDeep({
+            songId: this.playSong?.id,
             lrcData: this.songLyric.lrcData ?? [],
             yrcData: this.songLyric.yrcData ?? [],
           }),

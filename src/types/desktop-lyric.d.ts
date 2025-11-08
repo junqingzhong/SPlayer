@@ -6,8 +6,12 @@ export interface LyricData {
   playName?: string;
   /** 播放状态 */
   playStatus?: boolean;
-  /** 播放进度 */
-  progress?: number;
+  /** 当前播放进度 */
+  currentTime?: number;
+  /** 当前播放歌曲 id（用于偏移校准） */
+  songId?: number;
+  /** 当前歌曲的时间偏移（秒，正负均可） */
+  songOffset?: number;
   /** 歌词数据 */
   lrcData?: LyricType[];
   yrcData?: LyricType[];
@@ -42,9 +46,11 @@ export interface LyricConfig {
 /**
  * 渲染的歌词行
  */
-interface RenderLine {
-  /** 歌词文本 */
-  text: string;
+export interface RenderLine {
+  /** 当前整行歌词数据（用于逐字渲染） */
+  line: LyricType;
+  /** 当前行在歌词数组中的索引 */
+  index: number;
   /** 唯一键 */
   key: string;
   /** 是否高亮 */

@@ -411,6 +411,7 @@
             v-model:value="desktopLyricConfig.fontFamily"
             :options="allFontsData"
             class="set"
+            filterable
             @update:value="saveDesktopLyricConfig"
           />
         </n-flex>
