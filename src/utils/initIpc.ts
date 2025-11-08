@@ -43,7 +43,8 @@ const initIpc = () => {
     window.electron.ipcRenderer.on("openSetting", (_, type: SettingType) => openSetting(type));
     // 桌面歌词开关
     window.electron.ipcRenderer.on("toogleDesktopLyric", () => player.toggleDesktopLyric());
-    window.electron.ipcRenderer.on("closeDesktopLyric", () => player.toggleDesktopLyric());
+    // 显式关闭桌面歌词
+    window.electron.ipcRenderer.on("closeDesktopLyric", () => player.setDesktopLyricShow(false));
     // 请求歌词数据
     window.electron.ipcRenderer.on("request-desktop-lyric-data", () => {
       const musicStore = useMusicStore();

@@ -29,6 +29,7 @@ class LyricWindow {
     // 歌词窗口关闭
     this.win?.on("close", () => {
       const mainWin = mainWindow?.getWin();
+      if (!mainWin || mainWin.isDestroyed() || mainWin.webContents.isDestroyed()) return;
       mainWin?.webContents.send("closeDesktopLyric");
     });
   }

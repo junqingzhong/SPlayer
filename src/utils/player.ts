@@ -1289,6 +1289,16 @@ class Player {
     window.$message.success(`${show ? "已开启" : "已关闭"}桌面歌词`);
   }
   /**
+   * 显式设置桌面歌词显示/隐藏
+   */
+  setDesktopLyricShow(show: boolean) {
+    const statusStore = useStatusStore();
+    if (statusStore.showDesktopLyric === show) return;
+    statusStore.showDesktopLyric = show;
+    window.electron.ipcRenderer.send("toggle-desktop-lyric", show);
+    window.$message.success(`${show ? "已开启" : "已关闭"}桌面歌词`);
+  }
+  /**
    * 切换心动模式
    * @param open 是否开启
    */
