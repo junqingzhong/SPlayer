@@ -587,6 +587,7 @@ class Player {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     const sessionId = this.newSession();
+
     try {
       // 获取播放数据
       const playSongData = getPlaySongData();
@@ -595,100 +596,91 @@ class Player {
         return;
       }
       const { id, dj, path, type } = playSongData;
+
       // 更改当前播放歌曲
       musicStore.playSong = playSongData;
-      // 更改状态
       statusStore.playLoading = true;
+
       // 清理旧播放器与计时器
       this.resetPlayerCore();
+
       // 本地歌曲
       if (path) {
         if (this.isStale(sessionId)) return;
-        await this.createPlayer(`file://${path}`, autoPlay, seek);
-        // 获取歌曲元信息
-        await this.parseLocalMusicInfo(path);
+        try {
+          await this.createPlayer(`file://${path}`, autoPlay, seek);
+          await this.parseLocalMusicInfo(path);
+        } catch (err) {
+          console.error("播放器初始化错误（本地）：", err);
+        }
       }
       // 在线歌曲
       else if (id && dataStore.playList.length) {
-        const songId = type === "radio" ? dj?.id : id;
-        if (!songId) throw new Error("Get song id error");
-        // 优先使用预载的下一首 URL（若命中缓存）
-        const cached = this.nextPrefetch;
-        if (cached && cached.id === songId && cached.url) {
-          statusStore.playUblock = cached.ublock;
-          if (this.isStale(sessionId)) return;
-          await this.createPlayer(cached.url, autoPlay, seek);
-        } else {
-          // 官方地址失败或仅为试听时再尝试解锁（Electron 且非电台且开启解灰）
-          const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
-          const { url: officialUrl, isTrial } = await getOnlineUrl(songId);
-          if (officialUrl && !isTrial) {
-            // 官方可播放且非试听
-            statusStore.playUblock = false;
-            if (this.isStale(sessionId)) return;
-            await this.createPlayer(officialUrl, autoPlay, seek);
-          } else if (canUnlock) {
-            // 官方失败或为试听时尝试解锁
-            const unlockUrl = await getUnlockSongUrl(playSongData);
-            if (unlockUrl) {
-              statusStore.playUblock = true;
-              console.log("🎼 Song unlock successfully:", unlockUrl);
-              if (this.isStale(sessionId)) return;
-              await this.createPlayer(unlockUrl, autoPlay, seek);
-            } else if (officialUrl) {
-              // 解锁失败，若允许试听则播放试听
-              if (isTrial && settingStore.playSongDemo) {
-                window.$message.warning("当前歌曲仅可试听，请开通会员后重试");
-                statusStore.playUblock = false;
-                if (this.isStale(sessionId)) return;
-                await this.createPlayer(officialUrl, autoPlay, seek);
-              } else {
-                // 不允许试听
-                statusStore.playUblock = false;
-                if (statusStore.playIndex === dataStore.playList.length - 1) {
-                  statusStore.$patch({ playStatus: false, playLoading: false });
-                  window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
-                } else {
-                  window.$message.error("该歌曲暂无音源，跳至下一首");
-                  // 防止切歌保护状态阻塞跳转
-                  this.switching = false;
-                  await this.nextOrPrev("next");
-                  return;
-                }
-              }
-            } else {
-              // 无任何可用地址
-              statusStore.playUblock = false;
-              if (statusStore.playIndex === dataStore.playList.length - 1) {
-                statusStore.$patch({ playStatus: false, playLoading: false });
-                window.$message.warning("当前列表歌曲无法播放，请更换歌曲");
-              } else {
-                window.$message.error("该歌曲暂无音源，跳至下一首");
-                // 防止切歌保护状态阻塞跳转
-                this.switching = false;
-                await this.nextOrPrev("next");
-                return;
-              }
-            }
+        let playerUrl: string | null = null;
+
+        // 获取歌曲 URL 单独 try-catch
+        try {
+          const songId = type === "radio" ? dj?.id : id;
+          if (!songId) throw new Error("获取歌曲 ID 失败");
+
+          // 使用预载缓存
+          const cached = this.nextPrefetch;
+          if (cached && cached.id === songId && cached.url) {
+            playerUrl = cached.url;
+            statusStore.playUblock = cached.ublock;
           } else {
-            if (dataStore.playList.length === 1) {
-              this.resetStatus();
-              window.$message.warning("当前播放列表已无可播放歌曲，请更换");
-              return;
+            const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
+            const { url: officialUrl, isTrial } = await getOnlineUrl(songId);
+
+            if (officialUrl && !isTrial) {
+              playerUrl = officialUrl;
+              statusStore.playUblock = false;
+            } else if (canUnlock) {
+              const unlockUrl = await getUnlockSongUrl(playSongData);
+              if (unlockUrl) {
+                playerUrl = unlockUrl;
+                statusStore.playUblock = true;
+                console.log("🎼 Song unlock successfully:", unlockUrl);
+              } else if (officialUrl && isTrial && settingStore.playSongDemo) {
+                window.$message.warning("当前歌曲仅可试听，请开通会员后重试");
+                playerUrl = officialUrl;
+                statusStore.playUblock = false;
+              } else {
+                playerUrl = null;
+              }
             } else {
-              window.$message.error("该歌曲无法播放，跳至下一首");
-              // 防止切歌保护状态阻塞跳转
-              this.switching = false;
-              await this.nextOrPrev();
-              return;
+              playerUrl = null;
             }
+          }
+
+          if (!playerUrl) {
+            window.$message.error("该歌曲暂无音源，跳至下一首");
+            this.switching = false;
+            await this.nextOrPrev("next");
+            return;
+          }
+        } catch (err) {
+          console.error("❌ 获取歌曲地址出错：", err);
+          window.$message.error("获取歌曲地址失败，跳至下一首");
+          this.switching = false;
+          await this.nextOrPrev("next");
+          return;
+        }
+
+        // 有有效 URL 才创建播放器
+        if (playerUrl && !this.isStale(sessionId)) {
+          try {
+            await this.createPlayer(playerUrl, autoPlay, seek);
+          } catch (err) {
+            console.error("播放器初始化错误（在线）：", err);
           }
         }
       }
-    } catch (error) {
-      console.error("❌ 初始化音乐播放器出错：", error);
-      window.$message.error("播放器遇到错误，请尝试软件热重载");
-      // this.errorNext();
+    } catch (err) {
+      console.error("❌ 初始化音乐播放器出错：", err);
+      window.$message.error("播放遇到错误，尝试下一首");
+      this.switching = false;
+      await this.nextOrPrev("next");
     } finally {
       this.switching = false;
     }

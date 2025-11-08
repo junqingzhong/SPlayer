@@ -156,6 +156,7 @@
         :loading="loading"
         :height="songListHeight"
         :radioId="radioId"
+        :doubleClickAction="searchData?.length ? 'add' : 'all'"
         type="radio"
         @scroll="listScroll"
       />

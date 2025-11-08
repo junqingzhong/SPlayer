@@ -37,6 +37,10 @@ export interface LyricConfig {
   fontIsBold: boolean;
   /** 是否双行 */
   isDoubleLine: boolean;
+  /** 显示翻译 */
+  showTran: boolean;
+  /** 是否开启逐字歌词 */
+  showYrc: boolean;
   /** 文本排版位置 */
   position: "left" | "center" | "right" | "both";
   /** 是否限制在屏幕边界内拖动 */

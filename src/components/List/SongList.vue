@@ -60,7 +60,11 @@
               :hiddenCover="hiddenCover"
               :hiddenAlbum="hiddenAlbum"
               :hiddenSize="hiddenSize"
-              @dblclick.stop="player.updatePlayList(listData, itemData, playListId)"
+              @dblclick.stop="
+                doubleClickAction === 'add'
+                  ? player.addNextSong(itemData, true)
+                  : player.updatePlayList(listData, itemData, playListId)
+              "
               @contextmenu.stop="
                 songListMenuRef?.openDropdown(
                   $event,
@@ -153,6 +157,8 @@ const props = withDefaults(
     playListId?: number;
     // 是否为每日推荐
     isDailyRecommend?: boolean;
+    // 双击播放操作
+    doubleClickAction?: "all" | "add";
   }>(),
   {
     type: "song",

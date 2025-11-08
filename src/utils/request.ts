@@ -3,6 +3,7 @@ import { isDev, isElectron } from "./env";
 import { useSettingStore } from "@/stores";
 import { getCookie } from "./cookie";
 import { isLogin } from "./auth";
+import axiosRetry from "axios-retry";
 
 // 全局地址
 const baseURL: string = String(isDev ? "/api/netease" : import.meta.env["VITE_API_URL"]);
@@ -14,6 +15,12 @@ const server: AxiosInstance = axios.create({
   withCredentials: true,
   // 超时时间
   timeout: 15000,
+});
+
+// 请求重试
+axiosRetry(server, {
+  // 重试次数
+  retries: 3,
 });
 
 // 请求拦截器
@@ -33,7 +40,11 @@ server.interceptors.request.use(
     }
     // 自定义 realIP
     if (settingStore.useRealIP) {
-      request.params.realIP = settingStore.realIP || "116.25.146.177";
+      if (settingStore.realIP) {
+        request.params.realIP = settingStore.realIP;
+      } else {
+        request.params.randomCNIP = true;
+      }
     }
     // proxy
     if (settingStore.proxyProtocol !== "off") {
@@ -90,8 +101,6 @@ server.interceptors.response.use(
     //   meta: "若持续发生，可尝试软件热重载",
     //   duration: 5000,
     // });
-    // 控制台输出
-    window.$message.warning("请求出错，若持续发生，可尝试软件热重载");
     // 返回错误
     return Promise.reject(error);
   },

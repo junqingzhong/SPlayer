@@ -155,6 +155,7 @@
         :data="albumDataShow"
         :loading="loading"
         :height="songListHeight"
+        :doubleClickAction="searchData?.length ? 'add' : 'all'"
         hidden-album
         @scroll="listScroll"
       />

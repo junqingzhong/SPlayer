@@ -69,7 +69,9 @@
           :ref="(el) => line.active && (currentLineRef = el as HTMLElement)"
         >
           <!-- 逐字歌词渲染 -->
-          <template v-if="lyricData?.yrcData?.length && line.line?.contents?.length">
+          <template
+            v-if="lyricConfig.showYrc && lyricData?.yrcData?.length && line.line?.contents?.length"
+          >
             <span
               class="scroll-content"
               :style="getScrollStyle(line)"
@@ -210,7 +212,7 @@ const renderLyricLines = computed<RenderLine[]>(() => {
   if (!current) return [];
   const safeEnd = getSafeEndTime(lyrics, idx);
   // 有翻译：保留第二行显示翻译，第一行显示原文（逐字由 contents 驱动）
-  if (current.tran && current.tran.trim().length > 0) {
+  if (lyricConfig.showTran && current.tran && current.tran.trim().length > 0) {
     const lines: RenderLine[] = [
       { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
       {
@@ -279,7 +281,7 @@ const currentContentRef = ref<HTMLElement | null>(null);
 const scrollStartAtProgress = 0.5;
 
 /**
- * 逐字歌词滚动样式计算（基于毫秒游标插值）
+ * 歌词滚动样式计算
  * - 容器 `currentLineRef` 与内容 `currentContentRef` 分别记录当前激活行与其文本内容
  * - 当内容宽度超过容器宽度（overflow > 0）时，才会触发水平滚动
  * - 进度采用毫秒锚点插值（`playSeekMs`），并以当前行的 `time` 与有效 `endTime` 计算区间
@@ -440,7 +442,11 @@ watchThrottled(
     const next = { fontSize: size };
     window.electron.ipcRenderer.send("update-desktop-lyric-option", next, true);
   },
-  { immediate: true, throttle: 100 },
+  {
+    leading: true,
+    immediate: true,
+    throttle: 100,
+  },
 );
 
 /**

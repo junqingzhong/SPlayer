@@ -246,7 +246,7 @@ export const useSettingStore = defineStore("setting", {
     proxyServe: "127.0.0.1",
     proxyPort: 80,
     useRealIP: false,
-    realIP: "116.25.146.177",
+    realIP: "",
   }),
   getters: {
     /**

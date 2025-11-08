@@ -418,6 +418,30 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">显示逐字歌词</n-text>
+          <n-text class="tip" :depth="3">是否显示桌面歌词逐字效果</n-text>
+        </div>
+        <n-switch
+          v-model:value="desktopLyricConfig.showYrc"
+          :round="false"
+          class="set"
+          @update:value="saveDesktopLyricConfig"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">显示翻译</n-text>
+          <n-text class="tip" :depth="3">是否显示桌面歌词翻译</n-text>
+        </div>
+        <n-switch
+          v-model:value="desktopLyricConfig.showTran"
+          :round="false"
+          class="set"
+          @update:value="saveDesktopLyricConfig"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">文字加粗</n-text>
           <n-text class="tip" :depth="3">是否加粗桌面歌词文字</n-text>
         </div>
@@ -549,13 +573,21 @@ const saveDesktopLyricConfig = () => {
 const restoreDesktopLyricConfig = () => {
   try {
     if (!isElectron) return;
-    window.electron.ipcRenderer.send(
-      "update-desktop-lyric-option",
-      defaultDesktopLyricConfig,
-      true,
-    );
-    window.$message.success("桌面歌词配置已恢复默认");
-    console.log(defaultDesktopLyricConfig, desktopLyricConfig);
+    window.$dialog.warning({
+      title: "警告",
+      content: "此操作将恢复所有桌面歌词配置为默认值，是否继续?",
+      positiveText: "确定",
+      negativeText: "取消",
+      onPositiveClick: () => {
+        window.electron.ipcRenderer.send(
+          "update-desktop-lyric-option",
+          defaultDesktopLyricConfig,
+          true,
+        );
+        window.$message.success("桌面歌词配置已恢复默认");
+        console.log(defaultDesktopLyricConfig, desktopLyricConfig);
+      },
+    });
   } catch (error) {
     console.error("Failed to save options:", error);
     window.$message.error("桌面歌词配置恢复默认失败");

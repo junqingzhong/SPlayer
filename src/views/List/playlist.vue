@@ -194,6 +194,7 @@
         :loading="loading"
         :height="songListHeight"
         :playListId="playlistId"
+        :doubleClickAction="searchData?.length ? 'add' : 'all'"
         @scroll="listScroll"
         @removeSong="removeSong"
       />

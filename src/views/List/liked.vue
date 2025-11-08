@@ -149,6 +149,7 @@
         :loading="loading"
         :height="songListHeight"
         :playListId="playlistId"
+        :doubleClickAction="searchData?.length ? 'add' : 'all'"
         @scroll="listScroll"
         @removeSong="removeSong"
       />
@@ -418,7 +419,7 @@ onMounted(async () => {
       return;
     }
   }
-  
+
   // 获取我喜欢的音乐歌单ID
   const likedPlaylistId = dataStore.userLikeData.playlists?.[0]?.id;
   if (likedPlaylistId) {

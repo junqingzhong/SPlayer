@@ -8,6 +8,8 @@ const config: LyricConfig = {
   fontFamily: "system-ui",
   fontSize: 24,
   fontIsBold: false,
+  showTran: true,
+  showYrc: true,
   isDoubleLine: true,
   position: "both",
   limitBounds: false,
