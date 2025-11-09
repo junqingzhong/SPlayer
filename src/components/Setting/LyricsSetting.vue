@@ -287,7 +287,10 @@
       </n-collapse-transition>
     </div>
     <div class="set-list">
-      <n-h3 prefix="bar"> Apple Music-like Lyrics </n-h3>
+      <n-h3 prefix="bar">
+        Apple Music-like Lyrics
+        <n-tag type="warning" size="small" round>Beta</n-tag>
+      </n-h3>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">使用 Apple Music-like Lyrics</n-text>
@@ -318,7 +321,10 @@
       </n-card>
     </div>
     <div v-if="isElectron" class="set-list">
-      <n-h3 prefix="bar"> 桌面歌词 </n-h3>
+      <n-h3 prefix="bar">
+        桌面歌词
+        <n-tag type="warning" size="small" round>Beta</n-tag>
+      </n-h3>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">开启桌面歌词</n-text>

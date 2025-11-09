@@ -3,7 +3,7 @@ import { isDev, isElectron } from "./env";
 import { useSettingStore } from "@/stores";
 import { getCookie } from "./cookie";
 import { isLogin } from "./auth";
-import axiosRetry from "axios-retry";
+// import axiosRetry from "axios-retry";
 
 // 全局地址
 const baseURL: string = String(isDev ? "/api/netease" : import.meta.env["VITE_API_URL"]);
@@ -18,10 +18,10 @@ const server: AxiosInstance = axios.create({
 });
 
 // 请求重试
-axiosRetry(server, {
-  // 重试次数
-  retries: 3,
-});
+// axiosRetry(server, {
+//   // 重试次数
+//   retries: 3,
+// });
 
 // 请求拦截器
 server.interceptors.request.use(

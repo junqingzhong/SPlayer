@@ -26,61 +26,78 @@ export const getLyricData = async (id: number) => {
   try {
     // 检测本地歌词覆盖
     const getLyric = getLyricFun(settingStore.localLyricPath, id);
-    // 先加载 LRC，不阻塞到 TTML 完成
+    // 并发请求：如果 TTML 先到并且有效，则直接采用 TTML，不再等待或覆盖为 LRC
     const lrcPromise = getLyric("lrc", songLyric);
     const ttmlPromise = settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : null;
 
-    const { lyric: lyricRes, isLocal: lyricLocal } = await lrcPromise;
-    parsedLyricsData(lyricRes, lyricLocal && !settingStore.enableExcludeLocalLyrics);
-    // LRC 到达后即可认为加载完成
-    statusStore.lyricLoading = false;
+    let settled = false; // 是否已采用某一种歌词并结束加载状态
+    let ttmlAdopted = false; // 是否已采用 TTML
 
-    // TTML 并行加载，完成后增量更新，不阻塞整体流程
-    if (ttmlPromise) {
-      statusStore.usingTTMLLyric = false;
-      void ttmlPromise
-        .then(({ lyric: ttmlContent, isLocal: ttmlLocal }) => {
-          if (!ttmlContent) {
-            statusStore.usingTTMLLyric = false;
-            return;
-          }
-          const parsedResult = parseTTML(ttmlContent);
-          if (!parsedResult?.lines?.length) {
-            statusStore.usingTTMLLyric = false;
-            return;
-          }
-          const skipExcludeLocal = ttmlLocal && !settingStore.enableExcludeLocalLyrics;
-          const skipExcludeTTML = !settingStore.enableExcludeTTML;
-          const skipExclude = skipExcludeLocal || skipExcludeTTML;
-          const ttmlLyric = parseTTMLToAMLL(parsedResult, skipExclude);
-          const ttmlYrcLyric = parseTTMLToYrc(parsedResult, skipExclude);
-          console.log("TTML lyrics:", ttmlLyric, ttmlYrcLyric);
-          // 合并数据
-          const updates: Partial<{ yrcAMData: LyricLine[]; yrcData: LyricType[] }> = {};
-          if (ttmlLyric?.length) {
-            updates.yrcAMData = ttmlLyric;
-            console.log("✅ TTML AMLL lyrics success");
-          }
-          if (ttmlYrcLyric?.length) {
-            updates.yrcData = ttmlYrcLyric;
-            console.log("✅ TTML Yrc lyrics success");
-          }
-          if (Object.keys(updates).length) {
-            musicStore.setSongLyric(updates);
-            statusStore.usingTTMLLyric = true;
-          } else {
-            statusStore.usingTTMLLyric = false;
-          }
-        })
-        .catch((err) => {
-          console.error("❌ Error loading TTML lyrics:", err);
+    const adoptTTML = async () => {
+      if (!ttmlPromise) {
+        statusStore.usingTTMLLyric = false;
+        return;
+      }
+      try {
+        const { lyric: ttmlContent, isLocal: ttmlLocal } = await ttmlPromise;
+        if (!ttmlContent) {
           statusStore.usingTTMLLyric = false;
-        });
-    } else {
-      statusStore.usingTTMLLyric = false;
-    }
+          return;
+        }
+        const parsedResult = parseTTML(ttmlContent);
+        if (!parsedResult?.lines?.length) {
+          statusStore.usingTTMLLyric = false;
+          return;
+        }
+        const skipExcludeLocal = ttmlLocal && !settingStore.enableExcludeLocalLyrics;
+        const skipExcludeTTML = !settingStore.enableExcludeTTML;
+        const skipExclude = skipExcludeLocal || skipExcludeTTML;
+        const ttmlLyric = parseTTMLToAMLL(parsedResult, skipExclude);
+        const ttmlYrcLyric = parseTTMLToYrc(parsedResult, skipExclude);
 
-    console.log("Lyrics: ", musicStore.songLyric);
+        const updates: Partial<{ yrcAMData: LyricLine[]; yrcData: LyricType[] }> = {};
+        if (ttmlLyric?.length) updates.yrcAMData = ttmlLyric;
+        if (ttmlYrcLyric?.length) updates.yrcData = ttmlYrcLyric;
+
+        if (Object.keys(updates).length) {
+          musicStore.setSongLyric(updates);
+          statusStore.usingTTMLLyric = true;
+          ttmlAdopted = true;
+          if (!settled) {
+            statusStore.lyricLoading = false;
+            settled = true;
+          }
+          console.log("✅ TTML lyrics adopted (prefer TTML)");
+        } else {
+          statusStore.usingTTMLLyric = false;
+        }
+      } catch (err) {
+        console.error("❌ Error loading TTML lyrics:", err);
+        statusStore.usingTTMLLyric = false;
+      }
+    };
+
+    const adoptLRC = async () => {
+      try {
+        const { lyric: lyricRes, isLocal: lyricLocal } = await lrcPromise;
+        // 如果 TTML 已采用，则忽略 LRC
+        if (ttmlAdopted) return;
+        parsedLyricsData(lyricRes, lyricLocal && !settingStore.enableExcludeLocalLyrics);
+        statusStore.usingTTMLLyric = false;
+        if (!settled) {
+          statusStore.lyricLoading = false;
+          settled = true;
+        }
+        console.log("✅ LRC lyrics adopted");
+      } catch (err) {
+        console.error("❌ Error loading LRC lyrics:", err);
+        if (!settled) statusStore.lyricLoading = false;
+      }
+    };
+
+    // 启动并发任务：TTML 与 LRC 同时进行，哪个先成功就先用
+    void adoptLRC();
+    void adoptTTML();
   } catch (error) {
     console.error("❌ Error loading lyrics:", error);
     statusStore.usingTTMLLyric = false;

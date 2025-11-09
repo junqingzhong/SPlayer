@@ -118,7 +118,7 @@
 </template>
 
 <script setup lang="ts">
-import { Position, useRafFn } from "@vueuse/core";
+import { useRafFn } from "@vueuse/core";
 import { LyricContentType, LyricType } from "@/types/main";
 import { LyricConfig, LyricData, RenderLine } from "@/types/desktop-lyric";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
@@ -332,40 +332,50 @@ const dragState = reactive({
 
 /**
  * 桌面歌词拖动开始
- * @param _position 拖动位置
  * @param event 指针事件
  */
-const lyricDragStart = async (_position: Position, event: PointerEvent) => {
+const onDocPointerDown = async (event: PointerEvent) => {
   if (lyricConfig.isLock) return;
+  // 仅左键触发
+  if (event.button !== 0) return;
+  const target = event?.target as HTMLElement | null;
+  if (!target) return;
+  // 过滤 header 中的按钮：不触发拖拽
+  if (target.closest(".menu-btn")) return;
+  startDrag(event);
+};
+
+/**
+ * 桌面歌词拖动开始
+ * @param event 指针事件
+ */
+const startDrag = async (event: PointerEvent) => {
   dragState.isDragging = true;
   const { x, y } = await window.electron.ipcRenderer.invoke("get-window-bounds");
   const { width, height } = await window.api.store.get("lyric");
-  // 直接限制最大宽高
-  window.electron.ipcRenderer.send("toggle-fixed-max-size", {
-    width,
-    height,
-    fixed: true,
-  });
+  window.electron.ipcRenderer.send("toggle-fixed-max-size", { width, height, fixed: true });
   dragState.startX = event?.screenX ?? 0;
   dragState.startY = event?.screenY ?? 0;
   dragState.startWinX = x;
   dragState.startWinY = y;
   dragState.winWidth = width ?? 0;
   dragState.winHeight = height ?? 0;
+  document.addEventListener("pointermove", onDocPointerMove, { capture: true });
+  document.addEventListener("pointerup", onDocPointerUp, { capture: true });
+  event.preventDefault();
 };
 
 /**
  * 桌面歌词拖动移动
- * @param _position 拖动位置
  * @param event 指针事件
  */
-const lyricDragMove = async (_position: Position, event: PointerEvent) => {
+const onDocPointerMove = async (event: PointerEvent) => {
   if (!dragState.isDragging || lyricConfig.isLock) return;
   const screenX = event?.screenX ?? 0;
   const screenY = event?.screenY ?? 0;
   let newWinX = Math.round(dragState.startWinX + (screenX - dragState.startX));
   let newWinY = Math.round(dragState.startWinY + (screenY - dragState.startY));
-  // 可选：限制在屏幕边界（支持多屏）
+  // 是否限制在屏幕边界（支持多屏）
   if (lyricConfig.limitBounds) {
     const { minX, minY, maxX, maxY } = await window.electron.ipcRenderer.invoke(
       "get-virtual-screen-bounds",
@@ -382,36 +392,30 @@ const lyricDragMove = async (_position: Position, event: PointerEvent) => {
   );
 };
 
-// 监听桌面歌词拖动
-useDraggable(desktopLyricRef, {
-  onStart: (position, event) => {
-    lyricDragStart(position, event);
-  },
-  onMove: (position, event) => {
-    lyricDragMove(position, event);
-  },
-  onEnd: () => {
-    // 关闭拖拽状态
-    dragState.isDragging = false;
-    requestAnimationFrame(() => {
-      // 恢复拖拽前宽高
-      window.electron.ipcRenderer.send(
-        "update-lyric-size",
-        dragState.winWidth,
-        dragState.winHeight,
-      );
-      // 根据字体大小恢复一次高度
-      const height = fontSizeToHeight(lyricConfig.fontSize);
-      if (height) pushWindowHeight(height);
-      // 恢复最大宽高
-      window.electron.ipcRenderer.send("toggle-fixed-max-size", {
-        width: dragState.winWidth,
-        height: dragState.winHeight,
-        fixed: false,
-      });
+/**
+ * 桌面歌词拖动结束
+ */
+const onDocPointerUp = () => {
+  if (!dragState.isDragging) return;
+  // 关闭拖拽状态
+  dragState.isDragging = false;
+  // 移除全局监听
+  document.removeEventListener("pointermove", onDocPointerMove, { capture: true });
+  document.removeEventListener("pointerup", onDocPointerUp, { capture: true });
+  requestAnimationFrame(() => {
+    // 恢复拖拽前宽高
+    window.electron.ipcRenderer.send("update-lyric-size", dragState.winWidth, dragState.winHeight);
+    // 根据字体大小恢复一次高度
+    const height = fontSizeToHeight(lyricConfig.fontSize);
+    if (height) pushWindowHeight(height);
+    // 恢复最大宽高
+    window.electron.ipcRenderer.send("toggle-fixed-max-size", {
+      width: dragState.winWidth,
+      height: dragState.winHeight,
+      fixed: false,
     });
-  },
-});
+  });
+};
 
 // 监听窗口大小变化
 const { height: winHeight } = useWindowSize();
@@ -547,11 +551,16 @@ onMounted(() => {
   } else {
     pauseSeek();
   }
+  // 拖拽入口
+  document.addEventListener("pointerdown", onDocPointerDown, { capture: true });
 });
 
 onBeforeUnmount(() => {
   // 关闭 RAF
   pauseSeek();
+  // 解绑事件
+  document.removeEventListener("pointerdown", onDocPointerDown, { capture: true });
+  if (dragState.isDragging) onDocPointerUp();
 });
 </script>
 
@@ -570,9 +579,10 @@ onBeforeUnmount(() => {
   border-radius: 12px;
   overflow: hidden;
   transition: background-color 0.3s;
-  cursor: move;
+  cursor: default;
   .header {
     margin-bottom: 12px;
+    cursor: default;
     // 子内容三等分grid
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
@@ -751,6 +761,9 @@ onBeforeUnmount(() => {
         opacity: 1;
       }
     }
+  }
+  .lyric-container {
+    cursor: move;
   }
 }
 </style>

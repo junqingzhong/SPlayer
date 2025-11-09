@@ -34,8 +34,8 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0
       '@neteasecloudmusicapienhanced/api':
-        specifier: ^4.29.15
-        version: 4.29.15
+        specifier: ^4.29.16
+        version: 4.29.16
       '@pixi/app':
         specifier: ^7.4.3
         version: 7.4.3(@pixi/core@7.4.3)(@pixi/display@7.4.3(@pixi/core@7.4.3))
@@ -967,8 +967,8 @@ packages:
   '@material/material-color-utilities@0.3.0':
     resolution: {integrity: sha512-ztmtTd6xwnuh2/xu+Vb01btgV8SQWYCaK56CkRK8gEkWe5TuDyBcYJ0wgkMRn+2VcE9KUmhvkz+N9GHrqw/C0g==}
 
-  '@neteasecloudmusicapienhanced/api@4.29.15':
-    resolution: {integrity: sha512-/dw0ON90NDXJnULEyKzGEvKjjkJyHYb9fJgKa1dxsN5AIN/tXNAu4AV2vMJcPGfA/NV7iRnLDEPS8ocJCbCU2w==}
+  '@neteasecloudmusicapienhanced/api@4.29.16':
+    resolution: {integrity: sha512-ml6cTErjJ/fn+E0wvlNGGoW74rDj3mfogO85xySuTCuX/Mdhuayv+pPtoSm5YDM6j26hHmS8+rV2ma4o16pUiw==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -5331,7 +5331,7 @@ snapshots:
 
   '@material/material-color-utilities@0.3.0': {}
 
-  '@neteasecloudmusicapienhanced/api@4.29.15':
+  '@neteasecloudmusicapienhanced/api@4.29.16':
     dependencies:
       '@unblockneteasemusic/server': 0.28.0
       axios: 1.13.2

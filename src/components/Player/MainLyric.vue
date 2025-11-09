@@ -58,7 +58,10 @@
               ]"
               :style="{
                 filter: settingStore.lyricsBlur
-                  ? `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
+                  ? (playSeek >= item.time && playSeek < item.endTime) ||
+                    statusStore.lyricIndex === index
+                    ? 'blur(0)'
+                    : `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
                   : 'blur(0)',
               }"
               @click="jumpSeek(item.time)"

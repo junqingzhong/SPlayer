@@ -195,6 +195,12 @@ const toGithub = () => {
         margin-bottom: 0;
       }
     }
+    .n-h {
+      display: inline-flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+    }
     .n-collapse-transition {
       margin-bottom: 12px;
       &:last-child {
