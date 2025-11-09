@@ -55,9 +55,26 @@ export const getLyricData = async (id: number) => {
         const ttmlLyric = parseTTMLToAMLL(parsedResult, skipExclude);
         const ttmlYrcLyric = parseTTMLToYrc(parsedResult, skipExclude);
 
-        const updates: Partial<{ yrcAMData: LyricLine[]; yrcData: LyricType[] }> = {};
-        if (ttmlLyric?.length) updates.yrcAMData = ttmlLyric;
-        if (ttmlYrcLyric?.length) updates.yrcData = ttmlYrcLyric;
+        const updates: Partial<{
+          yrcAMData: LyricLine[];
+          yrcData: LyricType[];
+          lrcData: LyricType[];
+          lrcAMData: LyricLine[];
+        }> = {};
+        if (ttmlLyric?.length) {
+          updates.yrcAMData = ttmlLyric;
+          // 若当前无 LRC-AM 数据，使用 TTML-AM 作为回退
+          if (!musicStore.songLyric.lrcAMData?.length) {
+            updates.lrcAMData = ttmlLyric;
+          }
+        }
+        if (ttmlYrcLyric?.length) {
+          updates.yrcData = ttmlYrcLyric;
+          // 若当前无 LRC 数据，使用 TTML 行级数据作为回退
+          if (!musicStore.songLyric.lrcData?.length) {
+            updates.lrcData = ttmlYrcLyric;
+          }
+        }
 
         if (Object.keys(updates).length) {
           musicStore.setSongLyric(updates);
