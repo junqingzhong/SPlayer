@@ -28,9 +28,11 @@ class LyricWindow {
     });
     // 歌词窗口关闭
     this.win?.on("close", () => {
+      this.win = null;
       const mainWin = mainWindow?.getWin();
-      if (!mainWin || mainWin.isDestroyed() || mainWin.webContents.isDestroyed()) return;
-      mainWin?.webContents.send("closeDesktopLyric");
+      if (mainWin) {
+        mainWin?.webContents.send("closeDesktopLyric");
+      }
     });
   }
   /**
@@ -79,7 +81,8 @@ class LyricWindow {
    * @returns BrowserWindow | null
    */
   getWin(): BrowserWindow | null {
-    return this.win;
+    if (this.win && !this.win?.isDestroyed()) return this.win;
+    return null;
   }
 }
 

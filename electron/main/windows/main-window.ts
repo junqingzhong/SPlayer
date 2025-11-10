@@ -81,6 +81,13 @@ class MainWindow {
         this.saveBounds();
       });
     }
+    // 窗口关闭
+    this.win?.on("close", (event) => {
+      event.preventDefault();
+      this.win?.show();
+      this.win?.focus();
+      this.win?.webContents.send("win-will-close");
+    });
   }
   /**
    * 创建窗口
@@ -110,7 +117,10 @@ class MainWindow {
    * @returns BrowserWindow | null
    */
   getWin(): BrowserWindow | null {
-    return this.win;
+    if (this.win && !this.win.isDestroyed()) {
+      return this.win;
+    }
+    return null;
   }
   /**
    * 显示主窗口

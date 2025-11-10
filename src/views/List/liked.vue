@@ -175,7 +175,7 @@ import { playlistDetail, playlistAllSongs } from "@/api/playlist";
 import { formatCoverList, formatSongsList } from "@/utils/format";
 import { coverLoaded, formatNumber, fuzzySearch, renderIcon } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
-import { debounce, isObject } from "lodash-es";
+import { debounce, isObject, uniqBy } from "lodash-es";
 import { useDataStore, useStatusStore } from "@/stores";
 import { openBatchList, openUpdatePlaylist } from "@/utils/modal";
 import { formatTimestamp } from "@/utils/time";
@@ -302,7 +302,8 @@ const getPlaylistData = async (id: number, getList: boolean, refresh: boolean) =
   if (isLogin() === 1 && (playlistDetailData.value?.count as number) < 800) {
     const ids: number[] = detail.privileges.map((song: any) => song.id as number);
     const result = await songDetail(ids);
-    playlistData.value = formatSongsList(result.songs);
+    // 直接批量详情返回时也进行一次按 id 去重
+    playlistData.value = uniqBy(formatSongsList(result.songs), "id");
   } else {
     await getPlaylistAllSongs(id, playlistDetailData.value.count || 0, refresh);
   }
@@ -317,7 +318,8 @@ const loadLikedCache = () => {
     playlistDetailData.value = dataStore.likeSongsList.detail;
   }
   if (dataStore.likeSongsList.data.length) {
-    playlistData.value = dataStore.likeSongsList.data;
+    // 去重缓存中的歌曲，避免重复展示与后续重复拼接
+    playlistData.value = uniqBy(dataStore.likeSongsList.data, "id");
   }
 };
 
@@ -339,11 +341,13 @@ const getPlaylistAllSongs = async (
     const result = await playlistAllSongs(id, limit, offset);
     const songData = formatSongsList(result.songs);
     listData.push(...songData);
-    if (!refresh) playlistData.value = playlistData.value.concat(songData);
+    // 非刷新模式下，增量拼接时进行去重，避免与缓存或上一页数据重复
+    if (!refresh) playlistData.value = uniqBy([...playlistData.value, ...songData], "id");
     // 更新数据
     offset += limit;
   } while (offset < count && isLikedPage.value);
-  if (refresh) playlistData.value = listData;
+  // 刷新模式下，统一以最终聚合数据为准，并进行去重
+  if (refresh) playlistData.value = uniqBy(listData, "id");
   // 关闭加载
   loadingMsgShow(false);
 };

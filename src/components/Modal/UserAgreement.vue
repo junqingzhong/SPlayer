@@ -130,7 +130,7 @@ const isReadOver = useElementVisibility(readOverRef);
 
 // 关闭软件
 const closeApp = () => {
-  window.electron.ipcRenderer.send("win-close");
+  window.electron.ipcRenderer.send("quit-app");
 };
 </script>
 

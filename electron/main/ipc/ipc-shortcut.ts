@@ -7,13 +7,12 @@ import mainWindow from "../windows/main-window";
  * @returns void
  */
 const initShortcutIpc = (): void => {
-  const mainWin = mainWindow.getWin();
-
   // 快捷键是否被注册
   ipcMain.handle("is-shortcut-registered", (_, shortcut: string) => isShortcutRegistered(shortcut));
 
   // 注册快捷键
   ipcMain.handle("register-all-shortcut", (_, allShortcuts: any): string[] | false => {
+    const mainWin = mainWindow.getWin();
     if (!mainWin || !allShortcuts) return false;
     // 卸载所有快捷键
     unregisterShortcuts();

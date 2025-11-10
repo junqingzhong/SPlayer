@@ -7,12 +7,13 @@ import lyricWindow from "../windows/lyric-window";
  */
 const initTrayIpc = (): void => {
   const tray = getMainTray();
-  const lyricWin = lyricWindow.getWin();
 
   // 音乐播放状态更改
   ipcMain.on("play-status-change", (_, playStatus: boolean) => {
+    const lyricWin = lyricWindow.getWin();
     tray?.setPlayState(playStatus ? "play" : "pause");
-    lyricWin?.webContents.send("play-status-change", playStatus);
+    if (!lyricWin) return;
+    lyricWin.webContents.send("play-status-change", playStatus);
   });
 
   // 音乐名称更改

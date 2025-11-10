@@ -8,7 +8,6 @@ import mainWindow from "../windows/main-window";
  */
 const initLyricIpc = (): void => {
   const store = useStore();
-  const mainWin = mainWindow.getWin();
 
   // 歌词窗口
   let lyricWin: BrowserWindow | null = null;
@@ -58,6 +57,7 @@ const initLyricIpc = (): void => {
 
   // 更新歌词窗口配置
   ipcMain.on("update-desktop-lyric-option", (_, option, callback: boolean = false) => {
+    const mainWin = mainWindow.getWin();
     if (!option || !isWinAlive(lyricWin)) return;
     // 增量更新
     const prevOption = store.get("lyric.config");
@@ -69,7 +69,9 @@ const initLyricIpc = (): void => {
     if (callback && isWinAlive(lyricWin)) {
       lyricWin.webContents.send("update-desktop-lyric-option", option);
     }
-    mainWin?.webContents.send("update-desktop-lyric-option", option);
+    if (isWinAlive(mainWin)) {
+      mainWin?.webContents.send("update-desktop-lyric-option", option);
+    }
   });
 
   // 播放状态更改
@@ -155,7 +157,8 @@ const initLyricIpc = (): void => {
 
   // 请求歌词数据
   ipcMain.on("request-desktop-lyric-data", () => {
-    if (!isWinAlive(lyricWin)) return;
+    const mainWin = mainWindow.getWin();
+    if (!isWinAlive(lyricWin) || !isWinAlive(mainWin)) return;
     // 触发窗口更新
     mainWin?.webContents.send("request-desktop-lyric-data");
   });
@@ -171,14 +174,16 @@ const initLyricIpc = (): void => {
 
   // 关闭桌面歌词
   ipcMain.on("closeDesktopLyric", () => {
-    if (!isWinAlive(lyricWin)) return;
+    const mainWin = mainWindow.getWin();
+    if (!isWinAlive(lyricWin) || !isWinAlive(mainWin)) return;
     lyricWin.hide();
     mainWin?.webContents.send("closeDesktopLyric");
   });
 
   // 锁定/解锁桌面歌词
   ipcMain.on("toogleDesktopLyricLock", (_, isLock: boolean, isTemp: boolean = false) => {
-    if (!isWinAlive(lyricWin)) return;
+    const mainWin = mainWindow.getWin();
+    if (!isWinAlive(lyricWin) || !isWinAlive(mainWin)) return;
     // 是否穿透
     if (isLock) {
       lyricWin.setIgnoreMouseEvents(true, { forward: true });

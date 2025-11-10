@@ -11,22 +11,24 @@ import loginWindow from "../windows/login-window";
  * @returns void
  */
 const initWindowsIpc = (): void => {
-  // 相关窗口
-  const mainWin = mainWindow.getWin();
-  const loadWin = loadWindow.getWin();
   // store
   const store = useStore();
 
   // 当前窗口状态
   ipcMain.on("win-state", (event) => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     event.returnValue = mainWin?.isMaximized();
   });
 
   // 加载完成
   ipcMain.on("win-loaded", () => {
+    const loadWin = loadWindow.getWin();
+    const mainWin = mainWindow.getWin();
     if (loadWin && !loadWin.isDestroyed()) loadWin.destroy();
     const isMaximized = store.get("window")?.maximized;
     if (isMaximized) mainWin?.maximize();
+    if (!mainWin) return;
     mainWin?.show();
     mainWin?.focus();
     // 解决窗口不立即显示
@@ -45,34 +47,37 @@ const initWindowsIpc = (): void => {
 
   // 最小化
   ipcMain.on("win-min", (event) => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     event.preventDefault();
     mainWin?.minimize();
   });
 
   // 最大化
   ipcMain.on("win-max", () => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     mainWin?.maximize();
   });
 
   // 还原
   ipcMain.on("win-restore", () => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     mainWin?.restore();
-  });
-
-  // 关闭
-  ipcMain.on("win-close", (event) => {
-    event.preventDefault();
-    mainWin?.close();
-    app.quit();
   });
 
   // 隐藏
   ipcMain.on("win-hide", () => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     mainWin?.hide();
   });
 
   // 显示
   ipcMain.on("win-show", () => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     mainWin?.show();
     mainWin?.focus();
   });
@@ -85,11 +90,15 @@ const initWindowsIpc = (): void => {
 
   // 向主窗口发送事件
   ipcMain.on("send-to-mainWin", (_, eventName, ...args) => {
-    mainWin?.webContents.send(eventName, ...args);
+    const mainWin = mainWindow.getWin();
+    if (!mainWin || mainWin.isDestroyed() || mainWin.webContents.isDestroyed()) return;
+    mainWin.webContents.send(eventName, ...args);
   });
 
   // 显示进度
   ipcMain.on("set-bar", (_event, val: number | "none" | "indeterminate" | "error" | "paused") => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     switch (val) {
       case "none":
         mainWin?.setProgressBar(-1);
@@ -115,6 +124,8 @@ const initWindowsIpc = (): void => {
 
   // 开启控制台
   ipcMain.on("open-dev-tools", () => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     mainWin?.webContents.openDevTools({
       title: "SPlayer DevTools",
       mode: isDev ? "right" : "detach",
@@ -122,10 +133,16 @@ const initWindowsIpc = (): void => {
   });
 
   // 开启登录窗口
-  ipcMain.on("open-login-web", () => loginWindow.create(mainWin!));
+  ipcMain.on("open-login-web", () => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
+    loginWindow.create(mainWin);
+  });
 
   // 开启设置
   ipcMain.on("open-setting", (_, type) => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     mainWin?.show();
     mainWin?.focus();
     mainWin?.webContents.send("openSetting", type);

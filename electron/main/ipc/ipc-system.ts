@@ -1,4 +1,4 @@
-import { ipcMain, net, powerSaveBlocker, session } from "electron";
+import { app, ipcMain, net, powerSaveBlocker, session } from "electron";
 import { ipcLog } from "../logger";
 import { getFonts } from "font-list";
 import { useStore } from "../store";
@@ -10,7 +10,6 @@ import mainWindow from "../windows/main-window";
  */
 const initSystemIpc = (): void => {
   const store = useStore();
-  const mainWin = mainWindow.getWin();
 
   /** 阻止系统息屏 ID */
   let preventId: number | null = null;
@@ -28,6 +27,11 @@ const initSystemIpc = (): void => {
     }
   });
 
+  // 退出应用
+  ipcMain.on("quit-app", () => {
+    app.exit();
+  });
+
   // 获取系统全部字体
   ipcMain.handle("get-all-fonts", async () => {
     try {
@@ -41,13 +45,18 @@ const initSystemIpc = (): void => {
 
   // 取消代理
   ipcMain.on("remove-proxy", () => {
+    const mainWin = mainWindow.getWin();
     store.set("proxy", "");
-    mainWin?.webContents.session.setProxy({ proxyRules: "" });
+    if (mainWin) {
+      mainWin?.webContents.session.setProxy({ proxyRules: "" });
+    }
     ipcLog.info("✅ Remove proxy successfully");
   });
 
   // 配置网络代理
   ipcMain.on("set-proxy", (_, config) => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
     const proxyRules = `${config.protocol}://${config.server}:${config.port}`;
     store.set("proxy", proxyRules);
     mainWin?.webContents.session.setProxy({ proxyRules });

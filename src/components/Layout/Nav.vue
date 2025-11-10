@@ -124,7 +124,7 @@ const hideOrClose = (action: "hide" | "exit") => {
     settingStore.closeAppMethod = action;
   }
   showCloseModal.value = false;
-  window.electron.ipcRenderer.send(action === "hide" ? "win-hide" : "win-close");
+  window.electron.ipcRenderer.send(action === "hide" ? "win-hide" : "quit-app");
 };
 
 // 尝试关闭软件
@@ -202,6 +202,9 @@ onMounted(() => {
     isMax.value = window.electron.ipcRenderer.sendSync("win-state");
     window.electron.ipcRenderer.on("win-state-change", (_event, value: boolean) => {
       isMax.value = value;
+    });
+    window.electron.ipcRenderer.on("win-will-close", () => {
+      tryClose();
     });
   }
 });
