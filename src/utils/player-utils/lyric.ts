@@ -1,5 +1,11 @@
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import { parsedLyricsData, parseTTMLToAMLL, parseTTMLToYrc, resetSongLyric } from "../lyric";
+import {
+  parsedLyricsData,
+  parseLocalLyric,
+  parseTTMLToAMLL,
+  parseTTMLToYrc,
+  resetSongLyric,
+} from "../lyric";
 import { songLyric, songLyricTTML } from "@/api/song";
 import { parseTTML } from "@applemusic-like-lyrics/lyric";
 import { LyricLine } from "@applemusic-like-lyrics/core";
@@ -26,6 +32,7 @@ export const getLyricData = async (id: number) => {
   try {
     // 检测本地歌词覆盖
     const getLyric = getLyricFun(settingStore.localLyricPath, id);
+
     // 并发请求：如果 TTML 先到并且有效，则直接采用 TTML，不再等待或覆盖为 LRC
     const lrcPromise = getLyric("lrc", songLyric);
     const ttmlPromise = settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : null;
@@ -44,6 +51,19 @@ export const getLyricData = async (id: number) => {
           statusStore.usingTTMLLyric = false;
           return;
         }
+        // 本地 TTML 使用 parseLocalLyric，在线 TTML 使用原有解析方式
+        if (ttmlLocal) {
+          parseLocalLyric(ttmlContent, "ttml");
+          statusStore.usingTTMLLyric = true;
+          ttmlAdopted = true;
+          if (!settled) {
+            statusStore.lyricLoading = false;
+            settled = true;
+          }
+          console.log("✅ TTML lyrics adopted (prefer TTML)");
+          return;
+        }
+        // 在线 TTML 解析
         const parsedResult = parseTTML(ttmlContent);
         if (!parsedResult?.lines?.length) {
           statusStore.usingTTMLLyric = false;
@@ -99,7 +119,14 @@ export const getLyricData = async (id: number) => {
         const { lyric: lyricRes, isLocal: lyricLocal } = await lrcPromise;
         // 如果 TTML 已采用，则忽略 LRC
         if (ttmlAdopted) return;
-        parsedLyricsData(lyricRes, lyricLocal && !settingStore.enableExcludeLocalLyrics);
+        // 如果没有歌词内容，直接返回
+        if (!lyricRes) return;
+        // 本地歌词使用 parseLocalLyric，在线歌词使用 parsedLyricsData
+        if (lyricLocal) {
+          parseLocalLyric(lyricRes, "lrc");
+        } else {
+          parsedLyricsData(lyricRes, !settingStore.enableExcludeLocalLyrics);
+        }
         statusStore.usingTTMLLyric = false;
         if (!settled) {
           statusStore.lyricLoading = false;
