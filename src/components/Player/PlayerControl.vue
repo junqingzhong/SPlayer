@@ -77,17 +77,7 @@
           <!-- 进度条 -->
           <div class="slider">
             <span>{{ secondsToTime(statusStore.currentTime) }}</span>
-            <n-slider
-              v-model:value="statusStore.progress"
-              :step="0.01"
-              :min="0"
-              :max="100"
-              :tooltip="false"
-              :keyboard="false"
-              class="player-slider"
-              @dragstart="player.pause(false)"
-              @dragend="sliderDragend"
-            />
+            <PlayerSlider :show-tooltip="false" />
             <span>{{ secondsToTime(statusStore.duration) }}</span>
           </div>
         </div>
@@ -102,7 +92,7 @@
 
 <script setup lang="ts">
 import { useMusicStore, useStatusStore, useDataStore } from "@/stores";
-import { secondsToTime, calculateCurrentTime } from "@/utils/time";
+import { secondsToTime } from "@/utils/time";
 import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
 import { toLikeSong } from "@/utils/auth";
 import player from "@/utils/player";
@@ -110,15 +100,6 @@ import player from "@/utils/player";
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
-
-// 进度条拖拽结束
-const sliderDragend = () => {
-  const seek = calculateCurrentTime(statusStore.progress, statusStore.duration);
-  statusStore.playStatus = true;
-  // 调整进度
-  player.setSeek(seek);
-  player.play();
-};
 </script>
 
 <style lang="scss" scoped>

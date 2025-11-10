@@ -637,6 +637,7 @@ onBeforeUnmount(() => {
   .lyric-container {
     height: 100%;
     padding: 0 8px;
+    cursor: move;
     .lyric-line {
       width: 100%;
       line-height: normal;
@@ -756,14 +757,17 @@ onBeforeUnmount(() => {
   }
   &.locked {
     cursor: default;
+    .song-name,
+    .menu-btn,
+    .lyric-container {
+      pointer-events: none;
+    }
     &:hover {
       .lock-btn {
         opacity: 1;
+        pointer-events: auto;
       }
     }
-  }
-  .lyric-container {
-    cursor: move;
   }
 }
 </style>

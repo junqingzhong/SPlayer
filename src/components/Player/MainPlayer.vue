@@ -8,17 +8,7 @@
     ]"
   >
     <!-- 进度条 -->
-    <n-slider
-      v-model:value="statusStore.progress"
-      :step="0.01"
-      :min="0"
-      :max="100"
-      :tooltip="false"
-      :keyboard="false"
-      class="player-slider"
-      @dragstart="player.pause(false)"
-      @dragend="sliderDragend"
-    />
+    <PlayerSlider />
     <!-- 信息 -->
     <div class="play-data">
       <!-- 封面 -->
@@ -199,7 +189,7 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { secondsToTime, calculateCurrentTime, convertSecondsToTime } from "@/utils/time";
+import { secondsToTime, convertSecondsToTime } from "@/utils/time";
 import { renderIcon, coverLoaded } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
 import {
@@ -266,15 +256,6 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
     },
   ];
 });
-
-// 进度条拖拽结束
-const sliderDragend = () => {
-  const seek = calculateCurrentTime(statusStore.progress, statusStore.duration);
-  statusStore.playStatus = true;
-  // 调整进度
-  player.setSeek(seek);
-  player.play();
-};
 
 // 是否展示歌词
 const isShowLyrics = computed(() => {
