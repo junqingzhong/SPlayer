@@ -200,11 +200,15 @@ const initFileIpc = (): void => {
   ipcMain.handle(
     "read-local-lyric",
     async (_, lyricDir: string, id: number, ext: string): Promise<string> => {
-      const lyricPath = join(lyricDir, `${id}.${ext}`);
+      const pattern = `**/{,*.}${id}.${ext}`;
       try {
-        await access(lyricPath);
-        const lyric = await readFile(lyricPath, "utf-8");
-        if (lyric) return lyric;
+        const files = await FastGlob(pattern, { cwd: lyricDir });
+        if (files.length > 0) {
+          const firstMatch = join(lyricDir, files[0]);
+          await access(firstMatch);
+          const lyric = await readFile(firstMatch, "utf-8");
+          if (lyric) return lyric;
+        }
       } catch {
         /* empty */
       }

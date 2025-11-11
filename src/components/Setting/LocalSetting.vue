@@ -50,10 +50,12 @@
         <n-flex justify="space-between">
           <div class="label">
             <n-text class="name">本地歌词覆盖在线歌词</n-text>
-            <n-text class="tip" :depth="3"
-              >可在这些文件夹内覆盖在线歌曲的歌词，将歌词文件命名为 `歌曲ID.后缀名` 即可，支持 LRC
-              和 TTML 格式</n-text
-            >
+            <n-text class="tip" :depth="3">
+              可在这些文件夹及其子文件夹内覆盖在线歌曲的歌词 <br />
+              将歌词文件命名为 `歌曲ID.后缀名` 或者 `任意前缀.歌曲ID.后缀名` 即可 <br />
+              支持 .lrc 和 .ttml 格式 <br />
+              （提示：可以在前缀加上歌名等信息，也可以利用子文件夹分类管理）
+            </n-text>
           </div>
           <n-button strong secondary @click="changeLocalLyricPath()">
             <template #icon>
