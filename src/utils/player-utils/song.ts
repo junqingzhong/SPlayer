@@ -84,22 +84,24 @@ export const getUnlockSongUrl = async (songData: SongType): Promise<string | nul
     const artist = Array.isArray(songData.artists) ? songData.artists[0].name : songData.artists;
     const keyWord = songData.name + "-" + artist;
     if (!songId || !keyWord) return null;
+
+    const servers: any[] = [
+      "bodian",
+      "netease",
+    ];
+
     // 尝试解锁
-    const results = await Promise.allSettled([
-      unlockSongUrl(songId, keyWord, "bodian"),
-      unlockSongUrl(songId, keyWord, "netease"),
-    ]);
+    const promises = servers.map(server => unlockSongUrl(songId, keyWord, server));
+    const results = await Promise.allSettled(promises);
     // 解析结果
-    const [neteaseRes, kuwoRes] = results;
-    if (
-      neteaseRes.status === "fulfilled" &&
-      neteaseRes.value.code === 200 &&
-      neteaseRes.value.url
-    ) {
-      return neteaseRes.value.url;
-    }
-    if (kuwoRes.status === "fulfilled" && kuwoRes.value.code === 200 && kuwoRes.value.url) {
-      return kuwoRes.value.url;
+    for (const result of results) {
+      if (
+        result.status === "fulfilled" &&
+        result.value.code === 200 &&
+        result.value.url
+      ) {
+        return result.value.url;
+      }
     }
     return null;
   } catch (error) {
