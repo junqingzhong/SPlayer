@@ -423,8 +423,8 @@ export const parseTTMLToAMLL = (
           return null;
         }
 
-        const startTime = words[0].startTime;
-        const endTime = words[words.length - 1].endTime;
+        const startTime = line.startTime || words[0].startTime;
+        const endTime = line.endTime || words[words.length - 1].endTime;
 
         return {
           words,
