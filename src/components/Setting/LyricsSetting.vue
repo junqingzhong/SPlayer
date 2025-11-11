@@ -244,6 +244,24 @@
         </div>
         <n-switch v-model:value="settingStore.lyricsBlur" class="set" :round="false" />
       </n-card>
+    </div>
+    <div class="set-list">
+      <n-h3 prefix="bar">
+        歌词内容
+      </n-h3>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">
+            启用在线 TTML 歌词
+            <n-tag type="warning" size="small" round style="display: inline; vertical-align: middle;">Beta</n-tag>
+          </n-text>
+          <n-text class="tip" :depth="3">
+            是否从 AMLL TTML DB 获取歌词（如有），TTML
+            歌词支持逐字、翻译、音译等功能，将会在下一首歌生效
+          </n-text>
+        </div>
+        <n-switch v-model:value="settingStore.enableTTMLLyric" class="set" :round="false" />
+      </n-card>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">启用歌词排除</n-text>
@@ -307,17 +325,12 @@
             是否使用物理弹簧算法实现歌词动画效果，需要高性能设备
           </n-text>
         </div>
-        <n-switch v-model:value="settingStore.useAMSpring" class="set" :round="false" />
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">启用在线 TTML 歌词</n-text>
-          <n-text class="tip" :depth="3">
-            是否从 AMLL TTML DB 获取歌词（如有），TTML
-            歌词支持逐字、翻译、音译等功能，将会在下一首歌生效
-          </n-text>
-        </div>
-        <n-switch v-model:value="settingStore.enableTTMLLyric" class="set" :round="false" />
+        <n-switch
+          v-model:value="settingStore.useAMSpring"
+          class="set"
+          :round="false"
+          :disabled="!settingStore.useAMLyrics"
+        />
       </n-card>
     </div>
     <div v-if="isElectron" class="set-list">
