@@ -29,7 +29,8 @@ const initSystemIpc = (): void => {
 
   // 退出应用
   ipcMain.on("quit-app", () => {
-    app.exit();
+    app.exit(0);
+    app.quit();
   });
 
   // 获取系统全部字体

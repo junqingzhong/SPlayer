@@ -177,8 +177,8 @@ const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
       label: "退出",
       icon: showIcon("power"),
       click: () => {
-        win.close();
-        // app.exit(0);
+        // win.close();
+        app.exit(0);
         app.quit();
       },
     },
