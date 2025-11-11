@@ -367,7 +367,7 @@ export const changeLocalMusicPath = changeLocalPath(
  */
 export const changeLocalLyricPath = changeLocalPath(
   "localLyricPath",
-  false,
+  true,
   "Error changing local lyric path",
   "更改本地歌词文件夹出错，请重试",
   false,
