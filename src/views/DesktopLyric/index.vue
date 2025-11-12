@@ -1,6 +1,9 @@
 <template>
   <n-config-provider :theme="null">
-    <div ref="desktopLyricRef" :class="['desktop-lyric', { locked: lyricConfig.isLock }]">
+    <div
+      ref="desktopLyricRef"
+      :class="['desktop-lyric', { locked: lyricConfig.isLock, hovered: isHovered }]"
+    >
       <div class="header" align="center" justify="space-between">
         <n-flex :wrap="false" align="center" justify="flex-start" size="small" @pointerdown.stop>
           <div class="menu-btn" title="返回应用" @click.stop="sendToMain('win-show')">
@@ -158,6 +161,28 @@ const lyricConfig = reactive<LyricConfig>({
 
 // 桌面歌词元素
 const desktopLyricRef = ref<HTMLElement>();
+
+// hover 状态控制
+const isHovered = ref<boolean>(false);
+let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+/**
+ * 处理鼠标移动，更新 hover 状态
+ */
+const handleMouseMove = () => {
+  // 设置 hover 状态（锁定和非锁定状态都响应）
+  isHovered.value = true;
+  // 清除之前的定时器
+  if (hoverTimer) {
+    clearTimeout(hoverTimer);
+    hoverTimer = null;
+  }
+  // 设置新的定时器，延迟后移除 hover 状态
+  hoverTimer = setTimeout(() => {
+    isHovered.value = false;
+    hoverTimer = null;
+  }, 1000);
+};
 
 /**
  * 计算安全的结束时间
@@ -559,6 +584,8 @@ onMounted(() => {
   }
   // 拖拽入口
   document.addEventListener("mousedown", onDocMouseDown);
+  // 监听鼠标移动，控制 hover 状态
+  document.addEventListener("mousemove", handleMouseMove);
 });
 
 onBeforeUnmount(() => {
@@ -566,6 +593,12 @@ onBeforeUnmount(() => {
   pauseSeek();
   // 解绑事件
   document.removeEventListener("mousedown", onDocMouseDown);
+  document.removeEventListener("mousemove", handleMouseMove);
+  // 清理定时器
+  if (hoverTimer) {
+    clearTimeout(hoverTimer);
+    hoverTimer = null;
+  }
   if (dragState.isDragging) onDocMouseUp();
 });
 </script>
@@ -626,6 +659,9 @@ onBeforeUnmount(() => {
       }
       &.lock-btn {
         pointer-events: auto;
+        .n-icon {
+          filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
+        }
       }
       &:hover {
         background-color: rgba(255, 255, 255, 0.3);
@@ -752,7 +788,7 @@ onBeforeUnmount(() => {
       }
     }
   }
-  &:hover {
+  &.hovered {
     &:not(.locked) {
       background-color: rgba(0, 0, 0, 0.6);
       .song-name,
@@ -768,7 +804,7 @@ onBeforeUnmount(() => {
     .lyric-container {
       pointer-events: none;
     }
-    &:hover {
+    &.hovered {
       .lock-btn {
         opacity: 1;
         pointer-events: auto;
