@@ -276,10 +276,17 @@ const parseLocalLyricLrc = (lyric: string) => {
   for (let i = 0; i < lrcData.length; i++) {
     // 当前歌词
     const lrcItem = lrcData[i];
-    // 是否具有翻译
+    // 是否具有翻译或音译
+    // 根据已解析歌词中是否有时间相同来判断，因此最先遍历的歌词行会被作为主歌词
     const existingObj = lrcDataParsed.find((v) => v.time === lrcItem.time);
+    // 若具有翻译或音译，则判断主歌词中是否有翻译，若没有则将此句作为翻译，音译同理
+    // 如果出现时间相同的歌词行，第一行会被作为主歌词，第二行翻译，第三行音译，其余舍去
     if (existingObj) {
-      existingObj.tran = lrcItem.content;
+      if (!existingObj.tran) {
+        existingObj.tran = lrcItem.content;
+      } else if (!existingObj.roma) {
+        existingObj.roma = lrcItem.content;
+      }
     } else {
       lrcDataParsed.push(lrcItem);
     }
