@@ -35,7 +35,7 @@ export const getLyricData = async (id: number) => {
 
     // 并发请求：如果 TTML 先到并且有效，则直接采用 TTML，不再等待或覆盖为 LRC
     const lrcPromise = getLyric("lrc", songLyric);
-    // 这里的 getLyric 不传第二次参数（在线获取函数）表明不进行在线获取，仅获取本地
+    // 这里的第二个 getLyric 方法不传入第二个参数（在线获取函数）表明不进行在线获取，仅获取本地
     const ttmlPromise = settingStore.enableTTMLLyric ? getLyric("ttml", songLyricTTML) : getLyric("ttml");
 
     let settled = false; // 是否已采用某一种歌词并结束加载状态
