@@ -203,9 +203,6 @@ onMounted(() => {
     window.electron.ipcRenderer.on("win-state-change", (_event, value: boolean) => {
       isMax.value = value;
     });
-    window.electron.ipcRenderer.on("win-will-close", () => {
-      tryClose();
-    });
   }
 });
 </script>

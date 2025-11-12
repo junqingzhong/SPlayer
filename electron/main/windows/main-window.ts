@@ -44,7 +44,7 @@ class MainWindow {
     });
     // 窗口显示时
     this.win?.on("show", () => {
-      // this.mainWindow?.webContents.send("lyricsScroll");
+      this.win?.webContents.send("lyricsScroll");
     });
     // 窗口获得焦点时
     this.win?.on("focus", () => {
@@ -84,9 +84,7 @@ class MainWindow {
     // 窗口关闭
     this.win?.on("close", (event) => {
       event.preventDefault();
-      this.win?.show();
-      this.win?.focus();
-      this.win?.webContents.send("win-will-close");
+      this.win?.hide();
     });
   }
   /**

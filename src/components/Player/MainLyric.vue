@@ -169,6 +169,7 @@ import { NScrollbar } from "naive-ui";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import player from "@/utils/player";
 import { getLyricLanguage } from "@/utils/lyric";
+import { isElectron } from "@/utils/env";
 import LyricMenu from "./LyricMenu.vue";
 
 const musicStore = useMusicStore();
@@ -291,6 +292,9 @@ onMounted(() => {
   nextTick().then(() => {
     lyricsScroll(statusStore.lyricIndex);
   });
+  if (isElectron) {
+    window.electron.ipcRenderer.on("lyricsScroll", () => lyricsScroll(statusStore.lyricIndex));
+  }
 });
 
 onBeforeUnmount(() => {
