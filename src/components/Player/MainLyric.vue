@@ -276,7 +276,7 @@ const getYrcStyle = (wordData: LyricContentType, lyricIndex: number) => {
 const jumpSeek = (time: number) => {
   if (!time) return;
   lrcMouseStatus.value = false;
-  const offsetSeconds = statusStore.getSongOffset(musicStore.playSong?.id)
+  const offsetSeconds = statusStore.getSongOffset(musicStore.playSong?.id);
   player.setSeek(time - offsetSeconds);
   player.play();
 };
