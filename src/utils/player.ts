@@ -912,6 +912,10 @@ class Player {
       console.warn("⚠️ Player not ready for seek");
       return;
     }
+    if (time < 0 || time > this.player.duration()) {
+      console.warn("⚠️ Invalid seek time", time);
+      time = Math.max(0, Math.min(time, this.player.duration()));
+    }
     this.player.seek(time);
     statusStore.currentTime = time;
   }
