@@ -865,7 +865,7 @@ class Player {
         const shuffled = shuffleArray(currentList);
         await dataStore.setPlayList(shuffled);
         if (currentSongId) {
-          const newIndex = shuffled.findIndex((s: any) => s?.id === currentSongId);
+          const newIndex = shuffled.findIndex((s) => s?.id === currentSongId);
           if (newIndex !== -1) useStatusStore().playIndex = newIndex;
         }
       }
@@ -880,7 +880,7 @@ class Player {
         const currentSongId = musicStore.playSong?.id;
         await dataStore.setPlayList(original);
         if (currentSongId) {
-          const origIndex = original.findIndex((s: any) => s?.id === currentSongId);
+          const origIndex = original.findIndex((s) => s?.id === currentSongId);
           useStatusStore().playIndex = origIndex !== -1 ? origIndex : 0;
         } else {
           useStatusStore().playIndex = 0;
@@ -917,7 +917,7 @@ class Player {
   }
   /**
    * 获取播放进度
-   * @returns 播放进度
+   * @returns 播放进度（单位：秒）
    */
   getSeek(): number {
     // 检查播放器状态
@@ -1329,14 +1329,14 @@ class Player {
       this.message = window.$message.loading("心动模式开启中", { duration: 0 });
       // 获取所需数据
       const playSongData = getPlaySongData();
-      const likeSongsList: any = await dataStore.getUserLikePlaylist();
+      const likeSongsList = await dataStore.getUserLikePlaylist();
       // if (!playSongData || !likeSongsList) {
       //   throw new Error("获取播放数据或喜欢列表失败");
       // }
       const pid =
         musicStore.playPlaylistId && musicStore.playPlaylistId !== 0
           ? musicStore.playPlaylistId
-          : likeSongsList?.detail?.id;
+          : (likeSongsList?.detail?.id ?? 0);
       // 开启心动模式
       const result = await heartRateList(playSongData?.id || 0, pid);
       if (result.code === 200) {
