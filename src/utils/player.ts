@@ -21,6 +21,7 @@ import {
 import { isDev, isElectron } from "./env";
 import { getLyricData } from "./player-utils/lyric";
 import audioContextManager from "@/utils/player-utils/context";
+import lyricManager from "./lyricManager";
 import blob from "./blob";
 
 // 播放器核心
@@ -248,6 +249,8 @@ class Player {
     // 获取歌曲附加信息 - 非电台和本地
     if (type !== "radio" && !path) getLyricData(id);
     else resetSongLyric();
+    // 获取歌词数据
+    lyricManager.handleLyric(id, path);
     // 定时获取状态
     if (!this.playerInterval) this.handlePlayStatus();
     // 新增播放历史

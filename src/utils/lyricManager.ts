@@ -13,10 +13,6 @@ import { isEmpty } from "lodash-es";
 // 然后根据配置的歌词排除内容来处理
 // 然后写入 store
 class LyricManager {
-  // Store
-  private musicStore = useMusicStore();
-  private statusStore = useStatusStore();
-  private settingStore = useSettingStore();
   /**
    * 在线歌词请求序列
    * 每次发起新请求递增
@@ -32,11 +28,13 @@ class LyricManager {
    * 包括清空歌词数据、重置歌词索引、关闭 TTMLL 歌词等
    */
   private resetSongLyric() {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
     // 重置歌词数据
-    this.musicStore.setSongLyric({}, true);
-    this.statusStore.usingTTMLLyric = false;
+    musicStore.setSongLyric({}, true);
+    statusStore.usingTTMLLyric = false;
     // 重置歌词索引
-    this.statusStore.lyricIndex = -1;
+    statusStore.lyricIndex = -1;
   }
   /**
    * 歌词内容对齐
@@ -101,13 +99,16 @@ class LyricManager {
    * @returns 歌词数据
    */
   private async handleOnlineLyric(id: number): Promise<SongLyric> {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    // 请求序列
     const req = this.activeLyricReq;
-    const settingStore = this.settingStore;
     // 请求是否成功
     let adopted = false;
     let result: SongLyric = { lrcData: [], yrcData: [] };
     // 过期判断
-    const isStale = () => this.activeLyricReq !== req || this.musicStore.playSong?.id !== id;
+    const isStale = () => this.activeLyricReq !== req || musicStore.playSong?.id !== id;
     // 处理 TTML 歌词
     const adoptTTML = async () => {
       try {
@@ -161,7 +162,7 @@ class LyricManager {
     };
     // 统一判断与设置 TTML
     await Promise.allSettled([adoptTTML(), adoptLRC()]);
-    this.statusStore.usingTTMLLyric = Boolean(
+    statusStore.usingTTMLLyric = Boolean(
       settingStore.enableTTMLLyric && result.yrcData?.length && !result.lrcData?.length,
     );
     return result;
@@ -173,6 +174,7 @@ class LyricManager {
    */
   private async handleLocalLyric(path: string): Promise<SongLyric> {
     try {
+      const statusStore = useStatusStore();
       const { lyric, format }: { lyric?: string; format?: "lrc" | "ttml" } =
         await window.electron.ipcRenderer.invoke("get-music-lyric", path);
       if (!lyric) return { lrcData: [], yrcData: [] };
@@ -180,13 +182,13 @@ class LyricManager {
       if (format === "ttml") {
         const ttml = parseTTML(lyric);
         const lines = ttml?.lines || [];
-        this.statusStore.usingTTMLLyric = true;
+        statusStore.usingTTMLLyric = true;
         return { lrcData: [], yrcData: lines };
       }
       // 解析本地歌词并对其
       const lrcLines = parseLrc(lyric);
       const aligned = this.alignLocalLyrics({ lrcData: lrcLines, yrcData: [] });
-      this.statusStore.usingTTMLLyric = false;
+      statusStore.usingTTMLLyric = false;
       return aligned;
     } catch {
       return { lrcData: [], yrcData: [] };
@@ -199,16 +201,49 @@ class LyricManager {
    */
   private async checkLocalLyricOverride(id: number): Promise<SongLyric> {
     console.log("检测本地歌词覆盖", id);
-    const { localLyricPath } = this.settingStore;
+    const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    const { localLyricPath } = settingStore;
     if (!isElectron || !localLyricPath.length) return { lrcData: [], yrcData: [] };
     // 从本地遍历
-    const { lrc, ttml } = await window.electron.ipcRenderer.invoke(
-      "read-local-lyric",
-      localLyricPath,
-      id,
-    );
-    this.statusStore.usingTTMLLyric = Boolean(ttml);
-    return { lrcData: parseLrc(lrc || ""), yrcData: parseTTML(ttml || "").lines || [] };
+    try {
+      const lyricDirs = Array.isArray(localLyricPath) ? localLyricPath.map((p) => String(p)) : [];
+      // 读取本地歌词
+      const { lrc, ttml } = await window.electron.ipcRenderer.invoke(
+        "read-local-lyric",
+        lyricDirs,
+        id,
+      );
+      statusStore.usingTTMLLyric = Boolean(ttml);
+      let lrcLines: LyricLine[] = [];
+      let ttmlLines: LyricLine[] = [];
+      // 安全解析 LRC
+      try {
+        const lrcContent = typeof lrc === "string" ? lrc : "";
+        if (lrcContent) {
+          lrcLines = parseLrc(lrcContent);
+        }
+      } catch (err) {
+        console.error("parseLrc 本地解析失败:", err);
+        lrcLines = [];
+      }
+      // 安全解析 TTML
+      try {
+        const ttmlContent = typeof ttml === "string" ? ttml : "";
+        if (ttmlContent) {
+          ttmlLines = parseTTML(ttmlContent).lines || [];
+        }
+      } catch (err) {
+        console.error("parseTTML 本地解析失败:", err);
+        statusStore.usingTTMLLyric = false;
+        ttmlLines = [];
+      }
+      return { lrcData: lrcLines, yrcData: ttmlLines };
+    } catch (error) {
+      console.error("读取本地歌词失败:", error);
+      statusStore.usingTTMLLyric = false;
+      return { lrcData: [], yrcData: [] };
+    }
   }
   /**
    * 处理歌词排除
@@ -216,7 +251,8 @@ class LyricManager {
    * @returns 处理后的歌词数据
    */
   private handleLyricExclude(lyricData: SongLyric): SongLyric {
-    const { enableExcludeLyrics, excludeKeywords, excludeRegexes } = this.settingStore;
+    const settingStore = useSettingStore();
+    const { enableExcludeLyrics, excludeKeywords, excludeRegexes } = settingStore;
     // 未开启排除
     if (!enableExcludeLyrics) return lyricData;
     // 处理正则表达式
@@ -254,17 +290,21 @@ class LyricManager {
    * @param path 本地歌词路径（可选）
    */
   public async handleLyric(id: number, path?: string) {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
     try {
       // 歌词加载状态
-      this.statusStore.lyricLoading = true;
+      statusStore.lyricLoading = true;
       // 重置歌词
       this.resetSongLyric();
       // 标记当前歌词请求（避免旧请求覆盖新请求）
       this.activeLyricReq = ++this.lyricReqSeq;
       // 检查歌词覆盖
       let lyricData = await this.checkLocalLyricOverride(id);
+      console.log("本地歌词覆盖", lyricData);
+
       // 开始获取歌词
-      if (isEmpty(lyricData.lrcData) || isEmpty(lyricData.yrcData)) {
+      if (!isEmpty(lyricData.lrcData) || !isEmpty(lyricData.yrcData)) {
         // 进行本地歌词对齐
         lyricData = this.alignLocalLyrics(lyricData);
       } else if (path) {
@@ -278,8 +318,8 @@ class LyricManager {
     } catch (error) {
     } finally {
       // 歌词加载状态
-      if (this.musicStore.playSong?.id === undefined || this.activeLyricReq === this.lyricReqSeq) {
-        this.statusStore.lyricLoading = false;
+      if (musicStore.playSong?.id === undefined || this.activeLyricReq === this.lyricReqSeq) {
+        statusStore.lyricLoading = false;
       }
     }
   }
