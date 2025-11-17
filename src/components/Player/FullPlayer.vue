@@ -31,7 +31,7 @@
           'player-content',
           {
             pure: statusStore.pureLyricMode && musicStore.isHasLrc,
-            'no-lrc': !musicStore.isHasLrc,
+            'no-lrc': !musicStore.isHasLrc || (!musicStore.isHasLrc && !statusStore.lyricLoading),
           },
         ]"
         @mousemove="playerMove"
@@ -114,7 +114,8 @@ const instantLyrics = computed(() => {
   const content = isYrc
     ? musicStore.songLyric.yrcData[statusStore.lyricIndex]
     : musicStore.songLyric.lrcData[statusStore.lyricIndex];
-  return { content: content?.content, tran: settingStore.showTran && content?.tran };
+  const contentStr = content?.words?.map((v) => v.word).join("") || "";
+  return { content: contentStr, tran: settingStore.showTran && content?.translatedLyric };
 });
 
 // 隐藏播放元素

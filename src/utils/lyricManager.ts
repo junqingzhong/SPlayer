@@ -1,7 +1,13 @@
 import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
 import { songLyric, songLyricTTML } from "@/api/song";
 import { type SongLyric } from "@/types/lyric";
-import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
+import {
+  type LyricLine,
+  LyricWord,
+  parseLrc,
+  parseTTML,
+  parseYrc,
+} from "@applemusic-like-lyrics/lyric";
 import { isElectron } from "./env";
 import { isEmpty } from "lodash-es";
 
@@ -104,8 +110,7 @@ class LyricManager {
     const settingStore = useSettingStore();
     // 请求序列
     const req = this.activeLyricReq;
-    // 请求是否成功
-    let adopted = false;
+    // 最终结果
     let result: SongLyric = { lrcData: [], yrcData: [] };
     // 过期判断
     const isStale = () => this.activeLyricReq !== req || musicStore.playSong?.id !== id;
@@ -119,8 +124,7 @@ class LyricManager {
         const parsed = parseTTML(ttmlContent);
         const lines = parsed?.lines || [];
         if (!lines.length) return;
-        result = { lrcData: [], yrcData: lines };
-        adopted = true;
+        result.yrcData = lines;
       } catch {
         /* empty */
       }
@@ -153,9 +157,11 @@ class LyricManager {
           if (data?.yromalrc?.lyric)
             yrcLines = this.alignLyrics(yrcLines, parseLrc(data.yromalrc.lyric), "romanLyric");
         }
-        if (adopted) return;
-        result = { lrcData: lrcLines, yrcData: yrcLines };
-        adopted = true;
+        if (lrcLines.length) result.lrcData = lrcLines;
+        // 如果没有 TTML，则采用 网易云 YRC
+        if (!result.yrcData.length && yrcLines.length) {
+          result.yrcData = yrcLines;
+        }
       } catch {
         /* empty */
       }
@@ -183,7 +189,19 @@ class LyricManager {
         const ttml = parseTTML(lyric);
         const lines = ttml?.lines || [];
         statusStore.usingTTMLLyric = true;
-        return { lrcData: [], yrcData: lines };
+        // 构成普通歌词
+        const lrcLines: LyricLine[] = lines.map((line) => ({
+          ...line,
+          words: [
+            {
+              word: line.words?.map((w) => w.word)?.join("") || "",
+              startTime: line.startTime || 0,
+              endTime: line.endTime || 0,
+              romanWord: line.words?.map((w) => w.romanWord)?.join("") || "",
+            },
+          ] as LyricWord[],
+        }));
+        return { lrcData: lrcLines, yrcData: lines };
       }
       // 解析本地歌词并对其
       const lrcLines = parseLrc(lyric);
@@ -200,7 +218,6 @@ class LyricManager {
    * @returns 歌词数据
    */
   private async checkLocalLyricOverride(id: number): Promise<SongLyric> {
-    console.log("检测本地歌词覆盖", id);
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     const { localLyricPath } = settingStore;
@@ -222,6 +239,7 @@ class LyricManager {
         const lrcContent = typeof lrc === "string" ? lrc : "";
         if (lrcContent) {
           lrcLines = parseLrc(lrcContent);
+          console.log("检测到本地歌词覆盖", lrcLines);
         }
       } catch (err) {
         console.error("parseLrc 本地解析失败:", err);
@@ -232,6 +250,7 @@ class LyricManager {
         const ttmlContent = typeof ttml === "string" ? ttml : "";
         if (ttmlContent) {
           ttmlLines = parseTTML(ttmlContent).lines || [];
+          console.log("检测到本地TTML歌词覆盖", ttmlLines);
         }
       } catch (err) {
         console.error("parseTTML 本地解析失败:", err);
@@ -295,14 +314,10 @@ class LyricManager {
     try {
       // 歌词加载状态
       statusStore.lyricLoading = true;
-      // 重置歌词
-      this.resetSongLyric();
       // 标记当前歌词请求（避免旧请求覆盖新请求）
       this.activeLyricReq = ++this.lyricReqSeq;
       // 检查歌词覆盖
       let lyricData = await this.checkLocalLyricOverride(id);
-      console.log("本地歌词覆盖", lyricData);
-
       // 开始获取歌词
       if (!isEmpty(lyricData.lrcData) || !isEmpty(lyricData.yrcData)) {
         // 进行本地歌词对齐
@@ -314,8 +329,13 @@ class LyricManager {
       }
       // 排除内容
       lyricData = this.handleLyricExclude(lyricData);
+      // 设置歌词
+      musicStore.setSongLyric(lyricData, true);
       console.log("最终歌词数据", lyricData);
     } catch (error) {
+      console.error("❌ 处理歌词失败:", error);
+      // 重置歌词
+      this.resetSongLyric();
     } finally {
       // 歌词加载状态
       if (musicStore.playSong?.id === undefined || this.activeLyricReq === this.lyricReqSeq) {

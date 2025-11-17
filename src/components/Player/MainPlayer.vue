@@ -275,9 +275,10 @@ const instantLyrics = computed(() => {
   const content = isYrc
     ? musicStore.songLyric.yrcData[statusStore.lyricIndex]
     : musicStore.songLyric.lrcData[statusStore.lyricIndex];
-  return content?.tran && settingStore.showTran
-    ? `${content?.content}（ ${content?.tran} ）`
-    : content?.content;
+  const contentStr = content?.words?.map((v) => v.word).join("") || "";
+  return content?.translatedLyric && settingStore.showTran
+    ? `${contentStr}（ ${content?.translatedLyric} ）`
+    : contentStr || "";
 });
 </script>
 

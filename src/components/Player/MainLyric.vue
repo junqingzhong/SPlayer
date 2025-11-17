@@ -21,7 +21,7 @@
   >
     <Transition name="fade" mode="out-in">
       <div
-        :key="musicStore.songLyric.lrcData?.[0]?.content"
+        :key="musicStore.songLyric.lrcData?.[0]?.words?.[0]?.word"
         class="lyric-content"
         @after-enter="lyricsScroll(statusStore.lyricIndex)"
         @after-leave="lyricsScroll(statusStore.lyricIndex)"
@@ -34,7 +34,7 @@
               <!-- 倒计时 -->
               <CountDown
                 :start="0"
-                :duration="musicStore.songLyric.yrcData[0].time || 0"
+                :duration="(musicStore.songLyric.yrcData[0].startTime || 0) / 1000"
                 :seek="playSeek"
                 :playing="statusStore.playStatus"
               />
@@ -50,7 +50,7 @@
                   // on: statusStore.lyricIndex === index,
                   // 当播放时间大于等于当前歌词的开始时间
                   on:
-                    (playSeek >= item.time && playSeek < item.endTime) ||
+                    (playSeek >= item.startTime / 1000 && playSeek < item.endTime / 1000) ||
                     statusStore.lyricIndex === index,
                   'is-bg': item.isBG,
                   'is-duet': item.isDuet,
@@ -58,60 +58,65 @@
               ]"
               :style="{
                 filter: settingStore.lyricsBlur
-                  ? (playSeek >= item.time && playSeek < item.endTime) ||
+                  ? (playSeek >= item.startTime / 1000 && playSeek < item.endTime / 1000) ||
                     statusStore.lyricIndex === index
                     ? 'blur(0)'
                     : `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
                   : 'blur(0)',
               }"
-              @click="jumpSeek(item.time)"
+              @click="jumpSeek(item.startTime)"
             >
               <!-- 歌词 -->
               <div class="content">
                 <div
-                  v-for="(text, textIndex) in item.contents"
+                  v-for="(text, textIndex) in item.words"
                   :key="textIndex"
                   :class="{
                     'content-text': true,
                     'content-long':
                       settingStore.showYrcLongEffect &&
-                      text.duration >= 1.5 &&
-                      playSeek <= text.endTime,
-                    'end-with-space': text.endsWithSpace,
+                      (text.endTime - item.startTime) / 1000 >= 1.5 &&
+                      playSeek <= text.endTime / 1000,
+                    'end-with-space': text.word.endsWith(' ') || text.startTime === 0,
                   }"
                 >
-                  <span class="word" :lang="getLyricLanguage(text.content)">
-                    {{ text.content }}
+                  <span class="word" :lang="getLyricLanguage(text.word)">
+                    {{ text.word }}
                   </span>
                   <span
                     class="filler"
                     :style="getYrcStyle(text, index)"
-                    :lang="getLyricLanguage(text.content)"
+                    :lang="getLyricLanguage(text.word)"
                   >
-                    {{ text.content }}
+                    {{ text.word }}
                   </span>
                 </div>
               </div>
               <!-- 翻译 -->
-              <span v-if="item.tran && settingStore.showTran" class="tran" lang="en">
-                {{ item.tran }}
+              <span v-if="item.translatedLyric && settingStore.showTran" class="tran" lang="en">
+                {{ item.translatedLyric }}
               </span>
               <!-- 音译 -->
-              <span v-if="item.roma && settingStore.showRoma" class="roma" lang="en">
-                {{ item.roma }}
+              <span v-if="item.romanLyric && settingStore.showRoma" class="roma" lang="en">
+                {{ item.romanLyric }}
               </span>
               <!-- 间奏倒计时 -->
               <div
                 v-if="
                   settingStore.countDownShow &&
-                  item.time > 0 &&
-                  musicStore.songLyric.yrcData[index + 1]?.time - item.endTime >= 10
+                  item.startTime > 0 &&
+                  ((musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime) /
+                    1000 >=
+                    10
                 "
                 class="count-down-content"
               >
                 <CountDown
-                  :start="item.endTime"
-                  :duration="musicStore.songLyric.yrcData[index + 1]?.time - item.endTime || 0"
+                  :start="item.endTime / 1000"
+                  :duration="
+                    ((musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime) /
+                    1000
+                  "
                   :seek="playSeek"
                   :playing="statusStore.playStatus"
                 />
@@ -125,7 +130,7 @@
               <!-- 倒计时 -->
               <CountDown
                 :start="0"
-                :duration="musicStore.songLyric.lrcData[0].time || 0"
+                :duration="(musicStore.songLyric.lrcData[0].startTime || 0) / 1000"
                 :seek="playSeek"
                 :playing="statusStore.playStatus"
               />
@@ -140,17 +145,19 @@
                   ? `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
                   : 'blur(0)',
               }"
-              @click="jumpSeek(item.time)"
+              @click="jumpSeek(item.startTime)"
             >
               <!-- 歌词 -->
-              <span class="content" :lang="getLyricLanguage(item.content)">{{ item.content }}</span>
+              <span class="content" :lang="getLyricLanguage(item.words?.[0]?.word)">
+                {{ item.words?.[0]?.word }}
+              </span>
               <!-- 翻译 -->
-              <span v-if="item.tran && settingStore.showTran" class="tran" lang="en">
-                {{ item.tran }}
+              <span v-if="item.translatedLyric && settingStore.showTran" class="tran" lang="en">
+                {{ item.translatedLyric }}
               </span>
               <!-- 音译 -->
-              <span v-if="item.roma && settingStore.showRoma" class="roma" lang="en">
-                {{ item.roma }}
+              <span v-if="item.romanLyric && settingStore.showRoma" class="roma" lang="en">
+                {{ item.romanLyric }}
               </span>
             </div>
             <div class="placeholder" />
@@ -164,7 +171,8 @@
 </template>
 
 <script setup lang="ts">
-import type { LyricContentType } from "@/types/main";
+// import type { LyricContentType } from "@/types/main";
+import { LyricWord } from "@applemusic-like-lyrics/lyric";
 import { NScrollbar } from "naive-ui";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import player from "@/utils/player";
@@ -222,7 +230,7 @@ const INACTIVE_NO_ANIMATION_STYLE = { opacity: 0 } as const;
  * @param lyricIndex 歌词索引
  * @returns 逐字歌词动画样式
  */
-const getYrcStyle = (wordData: LyricContentType, lyricIndex: number) => {
+const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
   // 获取当前歌词行数据
   const currentLine = musicStore.songLyric.yrcData[lyricIndex];
   // 缓存 playSeek 值，避免多次访问响应式变量
@@ -230,14 +238,14 @@ const getYrcStyle = (wordData: LyricContentType, lyricIndex: number) => {
 
   // 判断当前行是否处于激活状态
   const isLineActive =
-    (currentSeek >= currentLine.time && currentSeek < currentLine.endTime) ||
+    (currentSeek >= currentLine.startTime / 1000 && currentSeek < currentLine.endTime / 1000) ||
     statusStore.lyricIndex === lyricIndex;
 
   // 如果当前歌词行不是激活状态，返回固定样式，避免不必要的计算
   if (!isLineActive) {
     if (settingStore.showYrcAnimation) {
       // 判断单词是否已经唱过：已唱过保持填充状态(0%)，未唱到保持未填充状态(100%)
-      const hasPlayed = currentSeek >= wordData.time + wordData.duration;
+      const hasPlayed = currentSeek >= wordData.endTime / 1000;
       return {
         WebkitMaskPositionX: hasPlayed ? "0%" : "100%",
       };
@@ -249,24 +257,30 @@ const getYrcStyle = (wordData: LyricContentType, lyricIndex: number) => {
   // 激活状态的样式计算
   if (settingStore.showYrcAnimation) {
     // 如果播放状态不是加载中，且当前单词的时间加上持续时间减去播放进度大于 0
-    if (statusStore.playLoading === false && wordData.time + wordData.duration - currentSeek > 0) {
+    if (statusStore.playLoading === false && wordData.endTime / 1000 - currentSeek > 0) {
       return {
         transitionDuration: `0s, 0s, 0.35s`,
         transitionDelay: `0ms`,
         WebkitMaskPositionX: `${
-          100 - Math.max(((currentSeek - wordData.time) / wordData.duration) * 100, 0)
+          100 -
+          Math.max(
+            ((currentSeek - wordData.startTime / 1000) /
+              ((wordData.endTime - wordData.startTime) / 1000)) *
+              100,
+            0,
+          )
         }%`,
       };
     }
     // 预计算时间差，避免重复计算
-    const timeDiff = wordData.time - currentSeek;
+    const timeDiff = wordData.startTime - currentSeek * 1000;
     return {
-      transitionDuration: `${wordData.duration}ms, ${wordData.duration * 0.8}ms, 0.35s`,
-      transitionDelay: `${timeDiff}ms, ${timeDiff + wordData.duration * 0.5}ms, 0ms`,
+      transitionDuration: `${wordData.endTime - wordData.startTime}ms, ${(wordData.endTime - wordData.startTime) * 0.8}ms, 0.35s`,
+      transitionDelay: `${timeDiff}ms, ${timeDiff + (wordData.endTime - wordData.startTime) * 0.5}ms, 0ms`,
     };
   } else {
     // 无动画模式：根据单词时间判断透明度
-    return statusStore.playLoading === false && wordData.time >= currentSeek
+    return statusStore.playLoading === false && wordData.startTime / 1000 >= currentSeek
       ? { opacity: 0 }
       : { opacity: 1 };
   }
@@ -277,7 +291,7 @@ const jumpSeek = (time: number) => {
   if (!time) return;
   lrcMouseStatus.value = false;
   const offsetSeconds = statusStore.getSongOffset(musicStore.playSong?.id);
-  player.setSeek(time - offsetSeconds);
+  player.setSeek(time / 1000 - offsetSeconds);
   player.play();
 };
 
@@ -411,7 +425,7 @@ onBeforeUnmount(() => {
             opacity 0.3s,
             filter 0.3s,
             margin 0.3s,
-            padding 0.3s !important;
+            padding 0.3s;
         }
         &.end-with-space {
           margin-right: 12px;

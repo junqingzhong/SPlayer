@@ -3,7 +3,8 @@ import type { MessageReactive } from "naive-ui";
 import { Howl, Howler } from "howler";
 import { cloneDeep } from "lodash-es";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { resetSongLyric, parseLocalLyric, calculateLyricIndex } from "./lyric";
+// import { resetSongLyric, parseLocalLyric, calculateLyricIndex } from "./lyric";
+import { calculateLyricIndex } from "./lyric";
 import { calculateProgress } from "./time";
 import { shuffleArray, runIdle } from "./helper";
 import { heartRateList } from "@/api/playlist";
@@ -19,7 +20,7 @@ import {
   getUnlockSongUrl,
 } from "./player-utils/song";
 import { isDev, isElectron } from "./env";
-import { getLyricData } from "./player-utils/lyric";
+// import { getLyricData } from "./player-utils/lyric";
 import audioContextManager from "@/utils/player-utils/context";
 import lyricManager from "./lyricManager";
 import blob from "./blob";
@@ -246,9 +247,9 @@ class Player {
     if (!settingStore.showSpectrums) this.toggleOutputDevice();
     // 自动播放
     if (autoPlay) await this.play();
-    // 获取歌曲附加信息 - 非电台和本地
-    if (type !== "radio" && !path) getLyricData(id);
-    else resetSongLyric();
+    // // 获取歌曲附加信息 - 非电台和本地
+    // if (type !== "radio" && !path) getLyricData(id);
+    // else resetSongLyric();
     // 获取歌词数据
     lyricManager.handleLyric(id, path);
     // 定时获取状态
@@ -549,8 +550,8 @@ class Player {
       // 获取主色
       runIdle(() => getCoverColor(musicStore.playSong.cover));
       // 获取歌词数据
-      const { lyric, format } = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
-      parseLocalLyric(lyric, format);
+      // const { lyric, format } = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
+      // parseLocalLyric(lyric, format);
       // 更新媒体会话
       this.updateMediaSession();
     } catch (error) {
