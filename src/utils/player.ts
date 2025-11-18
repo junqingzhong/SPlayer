@@ -507,6 +507,7 @@ class Player {
     }
     // 超过次数：切到下一首或清空
     this.retryInfo.count = 0;
+    this.switching = false;
     if (dataStore.playList.length > 1) {
       window.$message.error("当前歌曲播放失败，已跳至下一首");
       await this.nextOrPrev("next");
