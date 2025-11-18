@@ -30,8 +30,8 @@
         :class="[
           'player-content',
           {
+            'no-lrc': noLrc,
             pure: statusStore.pureLyricMode && musicStore.isHasLrc,
-            'no-lrc': !musicStore.isHasLrc || (!musicStore.isHasLrc && !statusStore.lyricLoading),
           },
         ]"
         @mousemove="playerMove"
@@ -95,6 +95,15 @@ const settingStore = useSettingStore();
 const isShowComment = computed<boolean>(
   () => !musicStore.playSong.path && statusStore.showPlayerComment,
 );
+
+/** 没有歌词 */
+const noLrc = computed<boolean>(() => {
+  const noNormalLrc = !musicStore.isHasLrc;
+  const noYrcAvailable = !musicStore.isHasYrc || !settingStore.showYrc;
+  const notLoading = !statusStore.lyricLoading;
+
+  return noNormalLrc && noYrcAvailable && notLoading;
+});
 
 // 主内容 key
 const playerContentKey = computed(() => `${statusStore.pureLyricMode}`);

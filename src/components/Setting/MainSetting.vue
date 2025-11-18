@@ -1,10 +1,10 @@
 <template>
   <div class="setting">
     <div class="set-left">
-      <div class="title">
+      <n-flex class="title" :size="0" vertical>
         <n-h1>设置</n-h1>
         <n-text :depth="3">个性化与全局设置</n-text>
-      </div>
+      </n-flex>
       <!-- 设置菜单 -->
       <n-menu
         v-model:value="activeKey"
