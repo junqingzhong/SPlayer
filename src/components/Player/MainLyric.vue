@@ -34,7 +34,7 @@
               <!-- 倒计时 -->
               <CountDown
                 :start="0"
-                :duration="(musicStore.songLyric.yrcData[0].startTime || 0) / 1000"
+                :duration="musicStore.songLyric.yrcData[0].startTime || 0"
                 :seek="playSeek"
                 :playing="statusStore.playStatus"
               />
@@ -50,7 +50,7 @@
                   // on: statusStore.lyricIndex === index,
                   // 当播放时间大于等于当前歌词的开始时间
                   on:
-                    (playSeek >= item.startTime / 1000 && playSeek < item.endTime / 1000) ||
+                    (playSeek >= item.startTime && playSeek < item.endTime) ||
                     statusStore.lyricIndex === index,
                   'is-bg': item.isBG,
                   'is-duet': item.isDuet,
@@ -58,7 +58,7 @@
               ]"
               :style="{
                 filter: settingStore.lyricsBlur
-                  ? (playSeek >= item.startTime / 1000 && playSeek < item.endTime / 1000) ||
+                  ? (playSeek >= item.startTime && playSeek < item.endTime) ||
                     statusStore.lyricIndex === index
                     ? 'blur(0)'
                     : `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
@@ -75,8 +75,8 @@
                     'content-text': true,
                     'content-long':
                       settingStore.showYrcLongEffect &&
-                      (text.endTime - item.startTime) / 1000 >= 1.5 &&
-                      playSeek <= text.endTime / 1000,
+                      text.endTime - item.startTime >= 1500 &&
+                      playSeek <= text.endTime,
                     'end-with-space': text.word.endsWith(' ') || text.startTime === 0,
                   }"
                 >
@@ -105,17 +105,14 @@
                 v-if="
                   settingStore.countDownShow &&
                   item.startTime > 0 &&
-                  ((musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime) /
-                    1000 >=
-                    10
+                  (musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime >= 10000
                 "
                 class="count-down-content"
               >
                 <CountDown
-                  :start="item.endTime / 1000"
+                  :start="item.endTime"
                   :duration="
-                    ((musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime) /
-                    1000
+                    (musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime
                   "
                   :seek="playSeek"
                   :playing="statusStore.playStatus"
@@ -130,7 +127,7 @@
               <!-- 倒计时 -->
               <CountDown
                 :start="0"
-                :duration="(musicStore.songLyric.lrcData[0].startTime || 0) / 1000"
+                :duration="musicStore.songLyric.lrcData[0].startTime || 0"
                 :seek="playSeek"
                 :playing="statusStore.playStatus"
               />
@@ -171,12 +168,11 @@
 </template>
 
 <script setup lang="ts">
-// import type { LyricContentType } from "@/types/main";
 import { LyricWord } from "@applemusic-like-lyrics/lyric";
 import { NScrollbar } from "naive-ui";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import player from "@/utils/player";
-import { getLyricLanguage } from "@/utils/lyric";
+import { getLyricLanguage } from "@/utils/format";
 import { isElectron } from "@/utils/env";
 import LyricMenu from "./LyricMenu.vue";
 
@@ -238,14 +234,14 @@ const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
 
   // 判断当前行是否处于激活状态
   const isLineActive =
-    (currentSeek >= currentLine.startTime / 1000 && currentSeek < currentLine.endTime / 1000) ||
+    (currentSeek >= currentLine.startTime && currentSeek < currentLine.endTime) ||
     statusStore.lyricIndex === lyricIndex;
 
   // 如果当前歌词行不是激活状态，返回固定样式，避免不必要的计算
   if (!isLineActive) {
     if (settingStore.showYrcAnimation) {
       // 判断单词是否已经唱过：已唱过保持填充状态(0%)，未唱到保持未填充状态(100%)
-      const hasPlayed = currentSeek >= wordData.endTime / 1000;
+      const hasPlayed = currentSeek >= wordData.endTime;
       return {
         WebkitMaskPositionX: hasPlayed ? "0%" : "100%",
       };
@@ -257,30 +253,28 @@ const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
   // 激活状态的样式计算
   if (settingStore.showYrcAnimation) {
     // 如果播放状态不是加载中，且当前单词的时间加上持续时间减去播放进度大于 0
-    if (statusStore.playLoading === false && wordData.endTime / 1000 - currentSeek > 0) {
+    if (statusStore.playLoading === false && wordData.endTime - currentSeek > 0) {
       return {
         transitionDuration: `0s, 0s, 0.35s`,
         transitionDelay: `0ms`,
         WebkitMaskPositionX: `${
           100 -
           Math.max(
-            ((currentSeek - wordData.startTime / 1000) /
-              ((wordData.endTime - wordData.startTime) / 1000)) *
-              100,
+            ((currentSeek - wordData.startTime) / (wordData.endTime - wordData.startTime)) * 100,
             0,
           )
         }%`,
       };
     }
     // 预计算时间差，避免重复计算
-    const timeDiff = wordData.startTime - currentSeek * 1000;
+    const timeDiff = wordData.startTime - currentSeek;
     return {
       transitionDuration: `${wordData.endTime - wordData.startTime}ms, ${(wordData.endTime - wordData.startTime) * 0.8}ms, 0.35s`,
       transitionDelay: `${timeDiff}ms, ${timeDiff + (wordData.endTime - wordData.startTime) * 0.5}ms, 0ms`,
     };
   } else {
     // 无动画模式：根据单词时间判断透明度
-    return statusStore.playLoading === false && wordData.startTime / 1000 >= currentSeek
+    return statusStore.playLoading === false && wordData.startTime >= currentSeek
       ? { opacity: 0 }
       : { opacity: 1 };
   }
@@ -290,8 +284,8 @@ const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
 const jumpSeek = (time: number) => {
   if (!time) return;
   lrcMouseStatus.value = false;
-  const offsetSeconds = statusStore.getSongOffset(musicStore.playSong?.id);
-  player.setSeek(time / 1000 - offsetSeconds);
+  const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
+  player.setSeek(time - offsetMs);
   player.play();
 };
 

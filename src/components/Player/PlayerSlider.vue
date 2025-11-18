@@ -18,8 +18,8 @@
 
 <script setup lang="ts">
 import { useStatusStore } from "@/stores";
+import { msToTime } from "@/utils/time";
 import player from "@/utils/player";
-import { secondsToTime } from "@/utils/time";
 
 withDefaults(defineProps<{ showTooltip?: boolean }>(), { showTooltip: true });
 
@@ -66,7 +66,7 @@ const endDrag = () => {
 
 // 格式化提示
 const formatTooltip = (value: number) => {
-  return `${secondsToTime(value)} / ${secondsToTime(statusStore.duration)}`;
+  return `${msToTime(value)} / ${msToTime(statusStore.duration)}`;
 };
 </script>
 

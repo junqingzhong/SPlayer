@@ -335,21 +335,18 @@ const renderLyricLines = computed<RenderLine[]>(() => {
 const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
   const currentLine = lyricData.yrcData?.[lyricIndex];
   if (!currentLine) return { WebkitMaskPositionX: "100%" };
-  const seekSec = playSeekMs.value / 1000;
-  const startSec = (currentLine.startTime || 0) / 1000;
-  const endSec = (currentLine.endTime || 0) / 1000;
+  const seekSec = playSeekMs.value;
+  const startSec = currentLine.startTime || 0;
+  const endSec = currentLine.endTime || 0;
   const isLineActive =
     (seekSec >= startSec && seekSec < endSec) || lyricData.lyricIndex === lyricIndex;
 
   if (!isLineActive) {
-    const hasPlayed = seekSec >= (wordData.endTime || 0) / 1000;
+    const hasPlayed = seekSec >= (wordData.endTime || 0);
     return { WebkitMaskPositionX: hasPlayed ? "0%" : "100%" };
   }
-  const durationSec = Math.max(((wordData.endTime || 0) - (wordData.startTime || 0)) / 1000, 0.001);
-  const progress = Math.max(
-    Math.min((seekSec - (wordData.startTime || 0) / 1000) / durationSec, 1),
-    0,
-  );
+  const durationSec = Math.max((wordData.endTime || 0) - (wordData.startTime || 0), 0.001);
+  const progress = Math.max(Math.min((seekSec - (wordData.startTime || 0)) / durationSec, 1), 0);
   return {
     transitionDuration: `0s, 0s, 0.35s`,
     transitionDelay: `0ms`,
@@ -382,11 +379,11 @@ const getScrollStyle = (line: RenderLine) => {
   const overflow = Math.max(0, content.scrollWidth - container.clientWidth);
   if (overflow <= 0) return { transform: "translateX(0px)" };
   // 计算进度：毫秒锚点插值（`playSeekMs`），并以当前行的 `time` 与有效 `endTime` 计算区间
-  const seekSec = playSeekMs.value / 1000;
-  const start = Number(line.line.startTime ?? 0) / 1000;
+  const seekSec = playSeekMs.value;
+  const start = Number(line.line.startTime ?? 0);
   // 仅在滚动计算中提前 1 秒
   const END_MARGIN_SEC = 1;
-  const endRaw = Number(line.line.endTime) / 1000;
+  const endRaw = Number(line.line.endTime);
   // 若 endTime 仍为 0 或不大于 start，视为无时长：不滚动
   const hasSafeEnd = Number.isFinite(endRaw) && endRaw > 0 && endRaw > start;
   if (!hasSafeEnd) return { transform: "translateX(0px)" };
@@ -608,7 +605,7 @@ onMounted(() => {
     // 更新锚点：以传入的 currentTime + songOffset 建立毫秒级基准，并重置帧时间
     if (typeof lyricData.currentTime === "number") {
       const offset = Number(lyricData.songOffset ?? 0);
-      baseMs = Math.floor((lyricData.currentTime + offset) * 1000);
+      baseMs = Math.floor(lyricData.currentTime + offset);
       anchorTick = performance.now();
     }
     // 按播放状态节能：暂停时暂停 RAF，播放时恢复 RAF

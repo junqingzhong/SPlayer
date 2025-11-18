@@ -3,8 +3,6 @@ import type { MessageReactive } from "naive-ui";
 import { Howl, Howler } from "howler";
 import { cloneDeep } from "lodash-es";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-// import { resetSongLyric, parseLocalLyric, calculateLyricIndex } from "./lyric";
-import { calculateLyricIndex } from "./lyric";
 import { calculateProgress } from "./time";
 import { shuffleArray, runIdle } from "./helper";
 import { heartRateList } from "@/api/playlist";
@@ -108,11 +106,11 @@ class Player {
       }
       if (!this.player.playing()) return;
       const currentTime = this.getSeek();
-      const duration = this.player.duration();
+      const duration = Math.floor(this.player.duration() * 1000);
       // 计算进度条距离
       const progress = calculateProgress(currentTime, duration);
       // 计算歌词索引（支持 LRC 与逐字 YRC，对唱重叠处理）
-      const lyricIndex = calculateLyricIndex(currentTime);
+      const lyricIndex = lyricManager.calculateLyricIndex(currentTime);
       // 更新状态
       statusStore.$patch({ currentTime, duration, progress, lyricIndex });
       // 客户端事件
@@ -300,9 +298,9 @@ class Player {
       }
       // 恢复进度（仅在明确指定且大于0时才恢复，避免切换歌曲时意外恢复进度）
       if (seek && seek > 0) {
-        const duration = this.player.duration();
+        const duration = Math.floor(this.player.duration() * 1000);
         // 确保恢复的进度有效且距离歌曲结束大于2秒
-        if (duration && seek < duration - 2) {
+        if (duration && seek < duration - 2000) {
           this.setSeek(seek);
         }
       }
@@ -907,7 +905,7 @@ class Player {
   }
   /**
    * 设置播放进度
-   * @param time 播放进度
+   * @param time 播放进度（单位：毫秒）
    */
   setSeek(time: number) {
     const statusStore = useStatusStore();
@@ -916,17 +914,17 @@ class Player {
       console.warn("⚠️ Player not ready for seek");
       return;
     }
-    this.player.seek(time);
+    this.player.seek(time / 1000);
     statusStore.currentTime = time;
   }
   /**
    * 获取播放进度
-   * @returns 播放进度（单位：秒）
+   * @returns 播放进度（单位：毫秒）
    */
   getSeek(): number {
     // 检查播放器状态
     if (!this.player || this.player.state() !== "loaded") return 0;
-    return this.player.seek();
+    return Math.floor(this.player.seek() * 1000);
   }
   /**
    * 设置播放速率

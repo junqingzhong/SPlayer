@@ -36,8 +36,7 @@
 import { LyricPlayer } from "@applemusic-like-lyrics/vue";
 import { LyricLine } from "@applemusic-like-lyrics/core";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import { msToS } from "@/utils/time";
-import { getLyricLanguage } from "@/utils/lyric";
+import { getLyricLanguage } from "@/utils/format";
 import player from "@/utils/player";
 import LyricMenu from "./LyricMenu.vue";
 
@@ -48,16 +47,13 @@ const settingStore = useSettingStore();
 const lyricPlayerRef = ref<any | null>(null);
 
 // 实时播放进度
-const playSeek = ref<number>(
-  Math.floor((player.getSeek() + statusStore.getSongOffset(musicStore.playSong?.id)) * 1000),
-);
+const playSeek = ref<number>(player.getSeek() + statusStore.getSongOffset(musicStore.playSong?.id));
 
 // 实时更新播放进度
 const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
   const songId = musicStore.playSong?.id;
-  const offsetSeconds = statusStore.getSongOffset(songId);
-  const seekInSeconds = player.getSeek() + offsetSeconds;
-  playSeek.value = Math.floor(seekInSeconds * 1000);
+  const offsetTime = statusStore.getSongOffset(songId);
+  playSeek.value = player.getSeek() + offsetTime;
 });
 
 // 歌词主色
@@ -84,9 +80,9 @@ const amLyricsData = computed<LyricLine[]>(() => {
 // 进度跳转
 const jumpSeek = (line: any) => {
   if (!line?.line?.lyricLine?.startTime) return;
-  const time = msToS(line.line.lyricLine.startTime);
-  const offsetSeconds = statusStore.getSongOffset(musicStore.playSong?.id);
-  player.setSeek(time - offsetSeconds);
+  const time = line.line.lyricLine.startTime;
+  const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
+  player.setSeek(time - offsetMs);
   player.play();
 };
 

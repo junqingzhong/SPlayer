@@ -111,7 +111,7 @@ class LyricManager {
     // 请求序列
     const req = this.activeLyricReq;
     // 最终结果
-    let result: SongLyric = { lrcData: [], yrcData: [] };
+    const result: SongLyric = { lrcData: [], yrcData: [] };
     // 过期判断
     const isStale = () => this.activeLyricReq !== req || musicStore.playSong?.id !== id;
     // 处理 TTML 歌词
@@ -342,6 +342,57 @@ class LyricManager {
         statusStore.lyricLoading = false;
       }
     }
+  }
+  /**
+   * 计算歌词索引
+   * - 普通歌词(LRC)：沿用当前按开始时间定位的算法
+   * - 逐字歌词(YRC)：当播放时间位于某句 [time, endTime) 区间内时，索引为该句；
+   *   若下一句开始时间落在上一句区间（对唱重叠），仍保持上一句索引，直到上一句结束。
+   */
+  public calculateLyricIndex(currentTime: number): number {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    // 应用实时偏移（按歌曲 id 记忆） + 0.3s（解决对唱时歌词延迟问题）
+    const songId = musicStore.playSong?.id;
+    const offset = statusStore.getSongOffset(songId);
+    const playSeek = currentTime + offset + 300;
+    // 选择歌词类型
+    const useYrc = !!(settingStore.showYrc && musicStore.songLyric.yrcData.length);
+    const lyrics = useYrc ? musicStore.songLyric.yrcData : musicStore.songLyric.lrcData;
+    // 无歌词时
+    if (!lyrics || !lyrics.length) return -1;
+    // 获取开始时间和结束时间
+    const getStart = (v: LyricLine) => v.startTime || 0;
+    const getEnd = (v: LyricLine) => v.endTime ?? Infinity;
+    // 普通歌词：保持原有计算方式
+    if (!useYrc) {
+      const idx = lyrics.findIndex((v) => getStart(v) >= playSeek);
+      return idx === -1 ? lyrics.length - 1 : idx - 1;
+    }
+    // TTML / YRC（支持对唱重叠）
+    // 在第一句之前
+    if (playSeek < getStart(lyrics[0])) return -1;
+    // 计算在播放进度下处于激活区间的句子集合 activeIndices（[time, endTime)）
+    const activeIndices: number[] = [];
+    for (let i = 0; i < lyrics.length; i++) {
+      const start = getStart(lyrics[i]);
+      const end = getEnd(lyrics[i]);
+      if (playSeek >= start && playSeek < end) {
+        activeIndices.push(i);
+      }
+    }
+    // 不在任何区间 → 找最近的上一句
+    if (activeIndices.length === 0) {
+      const next = lyrics.findIndex((v) => getStart(v) > playSeek);
+      return next === -1 ? lyrics.length - 1 : next - 1;
+    }
+    // 1 句激活 → 直接返回
+    if (activeIndices.length === 1) return activeIndices[0];
+    // 多句激活（对唱）
+    const keepCount = activeIndices.length >= 3 ? 3 : 2;
+    const concurrent = activeIndices.slice(-keepCount);
+    return concurrent[0]; // 保持上一句（重叠时不跳）
   }
 }
 

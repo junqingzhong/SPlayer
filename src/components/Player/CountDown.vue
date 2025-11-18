@@ -36,8 +36,8 @@ const props = defineProps<{
 // 是否显示
 const isShow = computed(() => {
   if (!settingStore.countDownShow) return false;
-  // 计算实时时间 - 0.5是否小于开始 + 持续时间，小于则显示，否则不显示
-  return props.seek + 0.5 < props.start + props.duration;
+  // 计算实时时间 - 0.5s 是否小于开始 + 持续时间，小于则显示，否则不显示
+  return props.seek + 500 < props.start + props.duration;
 });
 
 // 计算每个点的透明度
