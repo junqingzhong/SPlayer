@@ -106,7 +106,7 @@ class Player {
       }
       if (!this.player.playing()) return;
       const currentTime = this.getSeek();
-      const duration = Math.floor(this.player.duration() * 1000);
+      const duration = this.getDuration();
       // 计算进度条距离
       const progress = calculateProgress(currentTime, duration);
       // 计算歌词索引（支持 LRC 与逐字 YRC，对唱重叠处理）
@@ -298,7 +298,7 @@ class Player {
       }
       // 恢复进度（仅在明确指定且大于0时才恢复，避免切换歌曲时意外恢复进度）
       if (seek && seek > 0) {
-        const duration = Math.floor(this.player.duration() * 1000);
+        const duration = this.getDuration();
         // 确保恢复的进度有效且距离歌曲结束大于2秒
         if (duration && seek < duration - 2000) {
           this.setSeek(seek);
@@ -914,9 +914,9 @@ class Player {
       console.warn("⚠️ Player not ready for seek");
       return;
     }
-    if (time < 0 || time > this.player.duration()) {
+    if (time < 0 || time > this.getDuration()) {
       console.warn("⚠️ Invalid seek time", time);
-      time = Math.max(0, Math.min(time, this.player.duration()));
+      time = Math.max(0, Math.min(time, this.getDuration()));
     }
     this.player.seek(time / 1000);
     statusStore.currentTime = time;
@@ -929,6 +929,13 @@ class Player {
     // 检查播放器状态
     if (!this.player || this.player.state() !== "loaded") return 0;
     return Math.floor(this.player.seek() * 1000);
+  }
+  /**
+   * 获取播放时长
+   * @returns 播放时长（单位：毫秒）
+   */
+  getDuration(): number {
+    return Math.floor(this.player.duration() * 1000);
   }
   /**
    * 设置播放速率
