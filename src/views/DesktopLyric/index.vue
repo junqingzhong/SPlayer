@@ -63,7 +63,7 @@
             'lyric-line',
             {
               active: line.active,
-              'is-yrc': Boolean(lyricData?.yrcData?.length && line.line?.contents?.length),
+              'is-yrc': Boolean(lyricData?.yrcData?.length && line.line?.words?.length > 1),
             },
           ]"
           :style="{
@@ -73,7 +73,7 @@
         >
           <!-- 逐字歌词渲染 -->
           <template
-            v-if="lyricConfig.showYrc && lyricData?.yrcData?.length && line.line?.contents?.length"
+            v-if="lyricConfig.showYrc && lyricData?.yrcData?.length && line.line?.words?.length > 1"
           >
             <span
               class="scroll-content"
@@ -82,21 +82,21 @@
             >
               <span class="content">
                 <span
-                  v-for="(text, textIndex) in line.line.contents"
+                  v-for="(text, textIndex) in line.line.words"
                   :key="textIndex"
                   :class="{
                     'content-text': true,
-                    'end-with-space': text.endsWithSpace,
+                    'end-with-space': text.word.endsWith(' ') || text.startTime === 0,
                   }"
                 >
                   <span class="word" :style="{ color: lyricConfig.unplayedColor }">
-                    {{ text.content }}
+                    {{ text.word }}
                   </span>
                   <span
                     class="filler"
                     :style="[{ color: lyricConfig.playedColor }, getYrcStyle(text, line.index)]"
                   >
-                    {{ text.content }}
+                    {{ text.word }}
                   </span>
                 </span>
               </span>
@@ -109,7 +109,7 @@
               :style="getScrollStyle(line)"
               :ref="(el) => line.active && (currentContentRef = el as HTMLElement)"
             >
-              {{ line.line?.content }}
+              {{ line.line?.words?.[0]?.word || "" }}
             </span>
           </template>
         </span>
@@ -122,7 +122,7 @@
 
 <script setup lang="ts">
 import { useRafFn } from "@vueuse/core";
-import { LyricContentType, LyricType } from "@/types/main";
+import { LyricLine, LyricWord } from "@applemusic-like-lyrics/lyric";
 import { LyricConfig, LyricData, RenderLine } from "@/types/desktop-lyric";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
@@ -192,13 +192,13 @@ const handleMouseMove = () => {
  * @param idx 当前行索引
  * @returns 安全的结束时间（秒）
  */
-const getSafeEndTime = (lyrics: LyricType[], idx: number) => {
+const getSafeEndTime = (lyrics: LyricLine[], idx: number) => {
   const cur = lyrics?.[idx];
   const next = lyrics?.[idx + 1];
   const curEnd = Number(cur?.endTime);
-  const curStart = Number(cur?.time);
+  const curStart = Number(cur?.startTime);
   if (Number.isFinite(curEnd) && curEnd > curStart) return curEnd;
-  const nextStart = Number(next?.time);
+  const nextStart = Number(next?.startTime);
   if (Number.isFinite(nextStart) && nextStart > curStart) return nextStart;
   // 无有效结束参照：返回 0（表示无时长，不滚动）
   return 0;
@@ -213,19 +213,35 @@ const renderLyricLines = computed<RenderLine[]>(() => {
   if (!lyrics?.length) {
     return [
       {
-        line: { time: 0, endTime: 0, content: "纯音乐，请欣赏", contents: [] },
+        line: {
+          startTime: 0,
+          endTime: 0,
+          words: [{ word: "纯音乐，请欣赏", startTime: 0, endTime: 0, romanWord: "" }],
+          translatedLyric: "",
+          romanLyric: "",
+          isBG: false,
+          isDuet: false,
+        },
         index: -1,
         key: "placeholder",
         active: true,
       },
     ];
   }
-  let idx = lyricData?.lyricIndex ?? -1;
-  // 显示歌名
+  const idx = lyricData?.lyricIndex ?? -1;
   if (idx < 0) {
+    const text = lyricData.playName ?? "未知歌曲";
     return [
       {
-        line: { time: 0, endTime: 0, content: lyricData.playName ?? "未知歌曲", contents: [] },
+        line: {
+          startTime: 0,
+          endTime: 0,
+          words: [{ word: text, startTime: 0, endTime: 0, romanWord: "" }],
+          translatedLyric: "",
+          romanLyric: "",
+          isBG: false,
+          isDuet: false,
+        },
         index: -1,
         key: "placeholder",
         active: true,
@@ -236,39 +252,79 @@ const renderLyricLines = computed<RenderLine[]>(() => {
   const next = lyrics[idx + 1];
   if (!current) return [];
   const safeEnd = getSafeEndTime(lyrics, idx);
-  // 有翻译：保留第二行显示翻译，第一行显示原文（逐字由 contents 驱动）
-  if (lyricConfig.showTran && current.tran && current.tran.trim().length > 0) {
+  if (
+    lyricConfig.showTran &&
+    current.translatedLyric &&
+    current.translatedLyric.trim().length > 0
+  ) {
     const lines: RenderLine[] = [
       { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
       {
-        line: { time: current.time, endTime: safeEnd, content: current.tran, contents: [] },
+        line: {
+          startTime: current.startTime,
+          endTime: safeEnd,
+          words: [
+            {
+              word: current.translatedLyric,
+              startTime: current.startTime,
+              endTime: safeEnd,
+              romanWord: "",
+            },
+          ],
+          translatedLyric: "",
+          romanLyric: "",
+          isBG: false,
+          isDuet: false,
+        },
         index: idx,
         key: `${idx}:tran`,
         active: false,
       },
     ];
-    return lines.filter((l) => l.line?.content && l.line.content.trim().length > 0);
+    return lines.filter((l) => {
+      const s = (l.line?.words || [])
+        .map((w) => w.word)
+        .join("")
+        .trim();
+      return s.length > 0;
+    });
   }
-  // 单行：仅当前句原文，高亮
   if (!lyricConfig.isDoubleLine) {
     return [
       { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
-    ].filter((l) => l.line?.content && l.line.content.trim().length > 0);
+    ].filter((l) => {
+      const s = (l.line?.words || [])
+        .map((w) => w.word)
+        .join("")
+        .trim();
+      return s.length > 0;
+    });
   }
-  // 双行交替：只高亮当前句所在行
   const isEven = idx % 2 === 0;
   if (isEven) {
     const lines: RenderLine[] = [
       { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
       ...(next ? [{ line: next, index: idx + 1, key: `${idx + 1}:next`, active: false }] : []),
     ];
-    return lines.filter((l) => l.line?.content && l.line.content.trim().length > 0);
+    return lines.filter((l) => {
+      const s = (l.line?.words || [])
+        .map((w) => w.word)
+        .join("")
+        .trim();
+      return s.length > 0;
+    });
   }
   const lines: RenderLine[] = [
     ...(next ? [{ line: next, index: idx + 1, key: `${idx + 1}:next`, active: false }] : []),
     { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
   ];
-  return lines.filter((l) => l.line?.content && l.line.content.trim().length > 0);
+  return lines.filter((l) => {
+    const s = (l.line?.words || [])
+      .map((w) => w.word)
+      .join("")
+      .trim();
+    return s.length > 0;
+  });
 });
 
 /**
@@ -276,21 +332,21 @@ const renderLyricLines = computed<RenderLine[]>(() => {
  * @param wordData 逐字歌词数据
  * @param lyricIndex 歌词索引
  */
-const getYrcStyle = (wordData: LyricContentType, lyricIndex: number) => {
+const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
   const currentLine = lyricData.yrcData?.[lyricIndex];
   if (!currentLine) return { WebkitMaskPositionX: "100%" };
-  const seek = playSeekMs.value / 1000; // 转为秒
+  const seekSec = playSeekMs.value;
+  const startSec = currentLine.startTime || 0;
+  const endSec = currentLine.endTime || 0;
   const isLineActive =
-    (seek >= currentLine.time && seek < currentLine.endTime) || lyricData.lyricIndex === lyricIndex;
+    (seekSec >= startSec && seekSec < endSec) || lyricData.lyricIndex === lyricIndex;
 
   if (!isLineActive) {
-    // 已唱过保持填充状态(0%)，未唱到保持未填充状态(100%)
-    const hasPlayed = seek >= wordData.time + wordData.duration;
+    const hasPlayed = seekSec >= (wordData.endTime || 0);
     return { WebkitMaskPositionX: hasPlayed ? "0%" : "100%" };
   }
-  // 激活状态：根据进度实时填充
-  const duration = wordData.duration || 0.001; // 避免除零
-  const progress = Math.max(Math.min((seek - wordData.time) / duration, 1), 0);
+  const durationSec = Math.max((wordData.endTime || 0) - (wordData.startTime || 0), 0.001);
+  const progress = Math.max(Math.min((seekSec - (wordData.startTime || 0)) / durationSec, 1), 0);
   return {
     transitionDuration: `0s, 0s, 0.35s`,
     transitionDelay: `0ms`,
@@ -323,8 +379,8 @@ const getScrollStyle = (line: RenderLine) => {
   const overflow = Math.max(0, content.scrollWidth - container.clientWidth);
   if (overflow <= 0) return { transform: "translateX(0px)" };
   // 计算进度：毫秒锚点插值（`playSeekMs`），并以当前行的 `time` 与有效 `endTime` 计算区间
-  const seekSec = playSeekMs.value / 1000;
-  const start = Number(line.line.time ?? 0);
+  const seekSec = playSeekMs.value;
+  const start = Number(line.line.startTime ?? 0);
   // 仅在滚动计算中提前 1 秒
   const END_MARGIN_SEC = 1;
   const endRaw = Number(line.line.endTime);
@@ -549,7 +605,7 @@ onMounted(() => {
     // 更新锚点：以传入的 currentTime + songOffset 建立毫秒级基准，并重置帧时间
     if (typeof lyricData.currentTime === "number") {
       const offset = Number(lyricData.songOffset ?? 0);
-      baseMs = Math.floor((lyricData.currentTime + offset) * 1000);
+      baseMs = Math.floor(lyricData.currentTime + offset);
       anchorTick = performance.now();
     }
     // 按播放状态节能：暂停时暂停 RAF，播放时恢复 RAF

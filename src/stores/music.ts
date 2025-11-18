@@ -1,18 +1,13 @@
 import { defineStore } from "pinia";
-import type { LyricLine } from "@applemusic-like-lyrics/core";
-import type { SongType, LyricType } from "@/types/main";
+import type { SongType } from "@/types/main";
 import { isElectron } from "@/utils/env";
 import { cloneDeep } from "lodash-es";
+import { SongLyric } from "@/types/lyric";
 
 interface MusicState {
   playSong: SongType;
   playPlaylistId: number;
-  songLyric: {
-    lrcData: LyricType[];
-    yrcData: LyricType[];
-    lrcAMData: LyricLine[];
-    yrcAMData: LyricLine[];
-  };
+  songLyric: SongLyric;
   personalFM: {
     playIndex: number;
     list: SongType[];
@@ -46,8 +41,6 @@ export const useMusicStore = defineStore("music", {
     songLyric: {
       lrcData: [], // 普通歌词
       yrcData: [], // 逐字歌词
-      lrcAMData: [], // 普通歌词-AM
-      yrcAMData: [], // 逐字歌词-AM
     },
     // 私人FM数据
     personalFM: {
@@ -88,32 +81,23 @@ export const useMusicStore = defineStore("music", {
     // 恢复默认音乐数据
     resetMusicData() {
       this.playSong = { ...defaultMusicData };
-      this.songLyric = {
-        lrcData: [],
-        yrcData: [],
-        lrcAMData: [],
-        yrcAMData: [],
-      };
+      this.songLyric = { lrcData: [], yrcData: [] };
     },
     /**
      * 设置/更新歌曲歌词数据
      * @param updates 部分或完整歌词数据
      * @param replace 是否覆盖（true：用提供的数据覆盖并为缺省字段置空；false：合并更新）
      */
-    setSongLyric(updates: Partial<MusicState["songLyric"]>, replace: boolean = false) {
+    setSongLyric(updates: Partial<SongLyric>, replace: boolean = false) {
       if (replace) {
         this.songLyric = {
           lrcData: updates.lrcData ?? [],
           yrcData: updates.yrcData ?? [],
-          lrcAMData: updates.lrcAMData ?? [],
-          yrcAMData: updates.yrcAMData ?? [],
         };
       } else {
         this.songLyric = {
           lrcData: updates.lrcData ?? this.songLyric.lrcData,
           yrcData: updates.yrcData ?? this.songLyric.yrcData,
-          lrcAMData: updates.lrcAMData ?? this.songLyric.lrcAMData,
-          yrcAMData: updates.yrcAMData ?? this.songLyric.yrcAMData,
         };
       }
       // 更新歌词窗口数据

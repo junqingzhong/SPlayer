@@ -161,8 +161,8 @@
             vertical
           >
             <div class="time">
-              <n-text depth="2">{{ secondsToTime(statusStore.currentTime) }}</n-text>
-              <n-text depth="2">{{ secondsToTime(statusStore.duration) }}</n-text>
+              <n-text depth="2">{{ msToTime(statusStore.currentTime) }}</n-text>
+              <n-text depth="2">{{ msToTime(statusStore.duration) }}</n-text>
             </div>
             <!-- 定时关闭 -->
             <n-tag
@@ -189,7 +189,7 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { secondsToTime, convertSecondsToTime } from "@/utils/time";
+import { msToTime, convertSecondsToTime } from "@/utils/time";
 import { renderIcon, coverLoaded } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
 import {
@@ -275,9 +275,10 @@ const instantLyrics = computed(() => {
   const content = isYrc
     ? musicStore.songLyric.yrcData[statusStore.lyricIndex]
     : musicStore.songLyric.lrcData[statusStore.lyricIndex];
-  return content?.tran && settingStore.showTran
-    ? `${content?.content}（ ${content?.tran} ）`
-    : content?.content;
+  const contentStr = content?.words?.map((v) => v.word).join("") || "";
+  return content?.translatedLyric && settingStore.showTran
+    ? `${contentStr}（ ${content?.translatedLyric} ）`
+    : contentStr || "";
 });
 </script>
 

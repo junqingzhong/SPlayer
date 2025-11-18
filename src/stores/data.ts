@@ -247,7 +247,7 @@ export const useDataStore = defineStore("data", {
     async getUserLikePlaylist() {
       if (!isLogin() || !this.userData.userId) return;
       const result = await musicDB.getItem("likeSongsList");
-      return result;
+      return result as { detail: CoverType; data: SongType[] } | null;
     },
     // 更改云盘歌单
     async setCloudPlayList(data: SongType[]) {
