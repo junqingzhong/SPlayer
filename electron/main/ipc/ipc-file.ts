@@ -204,9 +204,11 @@ const initFileIpc = (): void => {
 
       try {
         // 定义需要查找的模式
+        // 此处的 `{,*.}` 表示这里可以取 `` (empty) 也可以取 `*.`
+        // 将歌词文件命名为 `歌曲ID.后缀名` 或者 `任意前缀.歌曲ID.后缀名` 均可
         const patterns = {
-          ttml: `**/${id}.ttml`,
-          lrc: `**/${id}.lrc`,
+          ttml: `**/{,*.}${id}.ttml`,
+          lrc: `**/{,*.}${id}.lrc`,
         };
 
         // 遍历每一个目录
