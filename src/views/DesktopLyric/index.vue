@@ -89,12 +89,16 @@
                     'end-with-space': text.word.endsWith(' ') || text.startTime === 0,
                   }"
                 >
-                  <span class="word" :style="{ color: lyricConfig.unplayedColor }">
-                    {{ text.word }}
-                  </span>
                   <span
-                    class="filler"
-                    :style="[{ color: lyricConfig.playedColor }, getYrcStyle(text, line.index)]"
+                    class="word"
+                    :style="[
+                      {
+                        backgroundImage: `linear-gradient(to right, ${lyricConfig.playedColor} 50%, ${lyricConfig.unplayedColor} 50%)`,
+                        textShadow: 'none',
+                        filter: `drop-shadow(0 0 1px ${lyricConfig.shadowColor}) drop-shadow(0 0 2px ${lyricConfig.shadowColor})`,
+                      },
+                      getYrcStyle(text, line.index),
+                    ]"
                   >
                     {{ text.word }}
                   </span>
@@ -121,7 +125,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRafFn } from "@vueuse/core";
+import { useRafFn, useTimeoutFn, useThrottleFn } from "@vueuse/core";
 import { LyricLine, LyricWord } from "@applemusic-like-lyrics/lyric";
 import { LyricConfig, LyricData, RenderLine } from "@/types/desktop-lyric";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
@@ -164,7 +168,14 @@ const desktopLyricRef = ref<HTMLElement>();
 
 // hover 状态控制
 const isHovered = ref<boolean>(false);
-let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+const { start: startHoverTimer } = useTimeoutFn(
+  () => {
+    isHovered.value = false;
+  },
+  1000,
+  { immediate: false },
+);
 
 /**
  * 处理鼠标移动，更新 hover 状态
@@ -172,16 +183,7 @@ let hoverTimer: ReturnType<typeof setTimeout> | null = null;
 const handleMouseMove = () => {
   // 设置 hover 状态（锁定和非锁定状态都响应）
   isHovered.value = true;
-  // 清除之前的定时器
-  if (hoverTimer) {
-    clearTimeout(hoverTimer);
-    hoverTimer = null;
-  }
-  // 设置新的定时器，延迟后移除 hover 状态
-  hoverTimer = setTimeout(() => {
-    isHovered.value = false;
-    hoverTimer = null;
-  }, 1000);
+  startHoverTimer();
 };
 
 /**
@@ -334,7 +336,7 @@ const renderLyricLines = computed<RenderLine[]>(() => {
  */
 const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
   const currentLine = lyricData.yrcData?.[lyricIndex];
-  if (!currentLine) return { WebkitMaskPositionX: "100%" };
+  if (!currentLine) return { backgroundPositionX: "100%" };
   const seekSec = playSeekMs.value;
   const startSec = currentLine.startTime || 0;
   const endSec = currentLine.endTime || 0;
@@ -343,14 +345,12 @@ const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
 
   if (!isLineActive) {
     const hasPlayed = seekSec >= (wordData.endTime || 0);
-    return { WebkitMaskPositionX: hasPlayed ? "0%" : "100%" };
+    return { backgroundPositionX: hasPlayed ? "0%" : "100%" };
   }
   const durationSec = Math.max((wordData.endTime || 0) - (wordData.startTime || 0), 0.001);
   const progress = Math.max(Math.min((seekSec - (wordData.startTime || 0)) / durationSec, 1), 0);
   return {
-    transitionDuration: `0s, 0s, 0.35s`,
-    transitionDelay: `0ms`,
-    WebkitMaskPositionX: `${100 - progress * 100}%`,
+    backgroundPositionX: `${100 - progress * 100}%`,
   };
 };
 
@@ -409,6 +409,11 @@ const dragState = reactive({
   startWinY: 0,
   winWidth: 0,
   winHeight: 0,
+  // 缓存屏幕边界
+  minX: -99999,
+  minY: -99999,
+  maxX: 99999,
+  maxY: 99999,
 });
 
 /**
@@ -436,6 +441,14 @@ const startDrag = async (event: MouseEvent) => {
   const { width, height } = await window.api.store.get("lyric");
   const safeWidth = Number(width) > 0 ? Number(width) : 800;
   const safeHeight = Number(height) > 0 ? Number(height) : 136;
+  // 如果开启了限制边界，在拖拽开始时预先获取一次屏幕范围
+  if (lyricConfig.limitBounds) {
+    const bounds = await window.electron.ipcRenderer.invoke("get-virtual-screen-bounds");
+    dragState.minX = bounds.minX ?? -99999;
+    dragState.minY = bounds.minY ?? -99999;
+    dragState.maxX = bounds.maxX ?? 99999;
+    dragState.maxY = bounds.maxY ?? 99999;
+  }
   window.electron.ipcRenderer.send("toggle-fixed-max-size", {
     width: safeWidth,
     height: safeHeight,
@@ -456,19 +469,20 @@ const startDrag = async (event: MouseEvent) => {
  * 桌面歌词拖动移动
  * @param event 鼠标事件
  */
-const onDocMouseMove = async (event: MouseEvent) => {
+const onDocMouseMove = useThrottleFn((event: MouseEvent) => {
   if (!dragState.isDragging || lyricConfig.isLock) return;
   const screenX = event?.screenX ?? 0;
   const screenY = event?.screenY ?? 0;
   let newWinX = Math.round(dragState.startWinX + (screenX - dragState.startX));
   let newWinY = Math.round(dragState.startWinY + (screenY - dragState.startY));
-  // 是否限制在屏幕边界（支持多屏）
+  // 是否限制在屏幕边界（支持多屏）- 使用缓存的边界数据同步计算
   if (lyricConfig.limitBounds) {
-    const { minX, minY, maxX, maxY } = await window.electron.ipcRenderer.invoke(
-      "get-virtual-screen-bounds",
+    newWinX = Math.round(
+      Math.max(dragState.minX, Math.min(dragState.maxX - dragState.winWidth, newWinX)),
     );
-    newWinX = Math.round(Math.max(minX as number, Math.min(maxX - dragState.winWidth, newWinX)));
-    newWinY = Math.round(Math.max(minY as number, Math.min(maxY - dragState.winHeight, newWinY)));
+    newWinY = Math.round(
+      Math.max(dragState.minY, Math.min(dragState.maxY - dragState.winHeight, newWinY)),
+    );
   }
   window.electron.ipcRenderer.send(
     "move-window",
@@ -477,7 +491,7 @@ const onDocMouseMove = async (event: MouseEvent) => {
     dragState.winWidth,
     dragState.winHeight,
   );
-};
+}, 16);
 
 /**
  * 桌面歌词拖动结束
@@ -650,11 +664,6 @@ onBeforeUnmount(() => {
   // 解绑事件
   document.removeEventListener("mousedown", onDocMouseDown);
   document.removeEventListener("mousemove", handleMouseMove);
-  // 清理定时器
-  if (hoverTimer) {
-    clearTimeout(hoverTimer);
-    hoverTimer = null;
-  }
   if (dragState.isDragging) onDocMouseUp();
 });
 </script>
@@ -739,6 +748,7 @@ onBeforeUnmount(() => {
     .lyric-line {
       width: 100%;
       line-height: normal;
+      padding: 4px 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -761,49 +771,19 @@ onBeforeUnmount(() => {
           position: relative;
           display: inline-block;
           .word {
-            opacity: 1;
             display: inline-block;
-          }
-          .filler {
-            opacity: 0;
-            position: absolute;
-            left: 0;
-            top: 0;
-            will-change: -webkit-mask-position-x, transform, opacity;
-            mask-image: linear-gradient(
-              to right,
-              rgb(0, 0, 0) 45.4545454545%,
-              rgba(0, 0, 0, 0) 54.5454545455%
-            );
-            mask-size: 220% 100%;
-            mask-repeat: no-repeat;
-            -webkit-mask-image: linear-gradient(
-              to right,
-              rgb(0, 0, 0) 45.4545454545%,
-              rgba(0, 0, 0, 0) 54.5454545455%
-            );
-            -webkit-mask-size: 220% 100%;
-            -webkit-mask-repeat: no-repeat;
-            transition:
-              opacity 0.3s,
-              filter 0.3s,
-              margin 0.3s,
-              padding 0.3s !important;
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            background-size: 200% 100%;
+            background-repeat: no-repeat;
+            background-position-x: 100%;
+            will-change: background-position-x;
           }
           &.end-with-space {
             margin-right: 5vh;
             &:last-child {
               margin-right: 0;
-            }
-          }
-        }
-        &.active {
-          .content-text {
-            .filler {
-              opacity: 1;
-              -webkit-mask-position-x: 0%;
-              transition-property: -webkit-mask-position-x, transform, opacity;
-              transition-timing-function: linear, ease, ease;
             }
           }
         }
