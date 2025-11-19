@@ -205,7 +205,7 @@ const lyricsScroll = (index: number) => {
     const container = lrcItemDom.parentElement;
     if (!container) return;
     // 调整滚动的距离
-    const scrollDistance = lrcItemDom.offsetTop - container.offsetTop - 80;
+    const scrollDistance = lrcItemDom.offsetTop - container.offsetTop - 100;
     // 开始滚动
     if (settingStore.lyricsScrollPosition === "center") {
       lrcItemDom?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -399,8 +399,8 @@ onBeforeUnmount(() => {
           top: 0;
           transform: none;
           will-change: -webkit-mask-position-x, transform, opacity;
-          // padding: 2px 8px;
-          // margin: -2px -8px;
+          padding: 0.3em 0;
+          margin: -0.3em 0;
           mask-image: linear-gradient(
             to right,
             rgb(0, 0, 0) 45.4545454545%,

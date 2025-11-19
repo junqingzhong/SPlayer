@@ -234,10 +234,13 @@ const listData = computed<SongType[]>(() => {
 const listKey = computed(() => {
   // 每日推荐
   if (props.isDailyRecommend) {
-    return musicStore.dailySongsData.timestamp || 0;
+    return `daily-${musicStore.dailySongsData.timestamp || 0}`;
   }
-  // 其他列表长度（检测增删操作）
-  return listData.value?.length || 0;
+  // 使用 playListId 作为主要 key
+  if (props.playListId) {
+    return `playlist-${props.playListId}`;
+  }
+  return `type-${props.type}`;
 });
 
 // 列表是否具有播放歌曲
@@ -261,7 +264,9 @@ const sortMenuOptions = computed<DropdownOption[]>(() =>
 // 列表滚动
 const onScroll = (e: Event) => {
   emit("scroll", e);
-  scrollTop.value = (e.target as HTMLElement).scrollTop;
+  const top = (e.target as HTMLElement).scrollTop;
+  scrollTop.value = top;
+  offset.value = top;
 };
 
 // 列表触底
