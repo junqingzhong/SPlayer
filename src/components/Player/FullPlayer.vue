@@ -37,14 +37,7 @@
         @mousemove="playerMove"
       >
         <Transition name="zoom">
-          <div
-            v-if="
-              !(statusStore.pureLyricMode && musicStore.isHasLrc) ||
-              musicStore.playSong.type === 'radio'
-            "
-            :key="musicStore.playSong.id"
-            class="content-left"
-          >
+          <div v-if="!pureLyricMode" :key="musicStore.playSong.id" class="content-left">
             <!-- 封面 -->
             <PlayerCover />
             <!-- 数据 -->
@@ -58,6 +51,7 @@
             v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
             :center="statusStore.pureLyricMode"
             :theme="statusStore.mainColor"
+            :light="pureLyricMode"
           />
           <!-- 歌词 -->
           <MainAMLyric v-if="settingStore.useAMLyrics" />
@@ -100,10 +94,15 @@ const isShowComment = computed<boolean>(
 const noLrc = computed<boolean>(() => {
   const noNormalLrc = !musicStore.isHasLrc;
   const noYrcAvailable = !musicStore.isHasYrc || !settingStore.showYrc;
-  const notLoading = !statusStore.lyricLoading;
+  // const notLoading = !statusStore.lyricLoading;
 
-  return noNormalLrc && noYrcAvailable && notLoading;
+  return noNormalLrc && noYrcAvailable;
 });
+
+/** 是否处于纯净模式 */
+const pureLyricMode = computed<boolean>(
+  () => (statusStore.pureLyricMode && musicStore.isHasLrc) || musicStore.playSong.type === "radio",
+);
 
 // 主内容 key
 const playerContentKey = computed(() => `${statusStore.pureLyricMode}`);

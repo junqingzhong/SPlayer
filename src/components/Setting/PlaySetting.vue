@@ -157,6 +157,13 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">展示播放状态信息</n-text>
+          <n-text class="tip" :depth="3">展示当前歌曲及歌词的状态信息</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.showPlayMeta" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">播放列表歌曲数量</n-text>
         </div>
         <n-switch v-model:value="settingStore.showPlaylistCount" class="set" :round="false" />

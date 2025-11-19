@@ -169,6 +169,8 @@ export interface SettingState {
   excludeRegexes: string[];
   /** 显示默认本地路径 */
   showDefaultLocalPath: boolean;
+  /** 展示当前歌曲歌词状态信息 */
+  showPlayMeta: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -247,6 +249,7 @@ export const useSettingStore = defineStore("setting", {
     proxyPort: 80,
     useRealIP: false,
     realIP: "",
+    showPlayMeta: false,
   }),
   getters: {
     /**
