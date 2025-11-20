@@ -50,18 +50,13 @@
           </n-h2>
           <n-collapse-transition :show="!listScrolling" class="collapse">
             <!-- 简介 -->
-            <n-ellipsis
+            <n-text
               v-if="playlistDetailData.description"
-              :line-clamp="1"
-              :tooltip="{
-                trigger: 'click',
-                placement: 'bottom',
-              }"
+              class="description text-hidden"
+              @click.stop="openDescModal(playlistDetailData.description)"
             >
-              <span style="white-space: pre;">
-                  {{ playlistDetailData.description }}
-              </span>
-            </n-ellipsis>
+              {{ playlistDetailData.description }}
+            </n-text>
             <!-- 信息 -->
             <n-flex class="meta">
               <div class="item">
@@ -229,7 +224,7 @@ import { renderToolbar } from "@/utils/meta";
 import { isLogin, toLikePlaylist, updateUserLikePlaylist } from "@/utils/auth";
 import { debounce } from "lodash-es";
 import { useDataStore, useStatusStore } from "@/stores";
-import { openBatchList, openUpdatePlaylist } from "@/utils/modal";
+import { openBatchList, openDescModal, openUpdatePlaylist } from "@/utils/modal";
 import { formatTimestamp } from "@/utils/time";
 import player from "@/utils/player";
 
@@ -633,7 +628,7 @@ onMounted(() => getPlaylistDetail(playlistId.value));
         border-radius: 8px;
         height: 32px;
       }
-      :deep(.n-ellipsis) {
+      .description {
         margin-bottom: 8px;
         cursor: pointer;
       }

@@ -34,17 +34,13 @@
           </n-h2>
           <n-collapse-transition :show="!listScrolling" class="collapse">
             <!-- 简介 -->
-            <n-ellipsis
+            <n-text
               v-if="albumDetailData.description"
-              :line-clamp="1"
-              :tooltip="{
-                trigger: 'click',
-                placement: 'bottom',
-                width: 'trigger',
-              }"
+              class="description text-hidden"
+              @click="openDescModal(albumDetailData.description, '专辑简介')"
             >
               {{ albumDetailData.description }}
-            </n-ellipsis>
+            </n-text>
             <!-- 信息 -->
             <n-flex class="meta">
               <div class="item">
@@ -184,7 +180,7 @@ import { renderToolbar } from "@/utils/meta";
 import { useDataStore, useStatusStore } from "@/stores";
 import { debounce } from "lodash-es";
 import { formatTimestamp } from "@/utils/time";
-import { openJumpArtist } from "@/utils/modal";
+import { openDescModal, openJumpArtist } from "@/utils/modal";
 import player from "@/utils/player";
 import { toLikeAlbum } from "@/utils/auth";
 
@@ -379,7 +375,7 @@ onMounted(() => {
         border-radius: 8px;
         height: 32px;
       }
-      :deep(.n-ellipsis) {
+      .description {
         margin-bottom: 8px;
         cursor: pointer;
       }
