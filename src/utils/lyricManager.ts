@@ -115,8 +115,8 @@ class LyricManager {
         if (!lines.length) return;
         result.yrcData = lines;
         ttmlAdopted = true;
-      } catch {
-        /* empty */
+      } catch (err) {
+        throw err;
       }
     };
     // 处理 LRC 歌词
@@ -152,8 +152,11 @@ class LyricManager {
         if (!result.yrcData.length && yrcLines.length) {
           result.yrcData = yrcLines;
         }
-      } catch {
-        /* empty */
+        // 先返回一次，避免 TTML 请求过慢
+        const lyricData = this.handleLyricExclude(result);
+        this.setFinalLyric(lyricData, req);
+      } catch (err) {
+        throw err;
       }
     };
     // 设置 TTML
@@ -285,12 +288,41 @@ class LyricManager {
     };
   }
   /**
+   * 设置最终歌词
+   * @param lyricData 歌词数据
+   * @param req 当前歌词请求
+   */
+  private setFinalLyric(lyricData: SongLyric, req: number) {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+    // 若非本次
+    if (this.activeLyricReq !== req) return;
+    // 如果只有逐字歌词
+    if (lyricData.lrcData.length === 0 && lyricData.yrcData.length > 0) {
+      // 构成普通歌词
+      lyricData.lrcData = lyricData.yrcData.map((line) => ({
+        ...line,
+        words: [
+          {
+            word: line.words?.map((w) => w.word)?.join("") || "",
+            startTime: line.startTime || 0,
+            endTime: line.endTime || 0,
+            romanWord: line.words?.map((w) => w.romanWord)?.join("") || "",
+          },
+        ],
+      }));
+    }
+    // 设置歌词
+    musicStore.setSongLyric(lyricData, true);
+    // 结束加载状态
+    statusStore.lyricLoading = false;
+  }
+  /**
    * 处理歌词
    * @param id 歌曲 ID
    * @param path 本地歌词路径（可选）
    */
   public async handleLyric(id: number, path?: string) {
-    const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     // 标记当前歌词请求（避免旧请求覆盖新请求）
@@ -326,36 +358,12 @@ class LyricManager {
         // 排除内容
         lyricData = this.handleLyricExclude(lyricData);
       }
-      // 仅当请求未过期时才更新
-      if (this.activeLyricReq === req) {
-        // 如果只有逐字歌词
-        if (lyricData.lrcData.length === 0 && lyricData.yrcData.length > 0) {
-          // 构成普通歌词
-          lyricData.lrcData = lyricData.yrcData.map((line) => ({
-            ...line,
-            words: [
-              {
-                word: line.words?.map((w) => w.word)?.join("") || "",
-                startTime: line.startTime || 0,
-                endTime: line.endTime || 0,
-                romanWord: line.words?.map((w) => w.romanWord)?.join("") || "",
-              },
-            ],
-          }));
-        }
-        // 设置歌词
-        musicStore.setSongLyric(lyricData, true);
-        console.log("最终歌词数据", lyricData);
-      }
+      console.log("最终歌词数据", lyricData);
+      this.setFinalLyric(lyricData, req);
     } catch (error) {
       console.error("❌ 处理歌词失败:", error);
       // 重置歌词
       this.resetSongLyric();
-    } finally {
-      // 只有当这个请求是最新的时候，才关闭加载状态
-      if (req === this.activeLyricReq) {
-        statusStore.lyricLoading = false;
-      }
     }
   }
   /**
