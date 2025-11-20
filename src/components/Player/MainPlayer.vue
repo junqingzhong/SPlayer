@@ -494,6 +494,7 @@ const instantLyrics = computed(() => {
     }
   }
   .play-menu {
+    margin-left: auto;
     max-width: 640px;
     .time-container {
       margin-right: 8px;
