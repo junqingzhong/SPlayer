@@ -8,6 +8,8 @@ export interface LyricData {
   playStatus?: boolean;
   /** 当前播放进度 */
   currentTime?: number;
+  /** 是否正在加载歌词 */
+  lyricLoading?: boolean;
   /** 当前播放歌曲 id（用于偏移校准） */
   songId?: number;
   /** 当前歌曲的时间偏移（秒，正负均可） */

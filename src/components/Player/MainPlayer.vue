@@ -262,6 +262,7 @@ const isShowLyrics = computed(() => {
   const isHasLrc = musicStore.isHasLrc;
   return (
     isHasLrc &&
+    !statusStore.lyricLoading &&
     settingStore.barLyricShow &&
     musicStore.playSong.type !== "radio" &&
     statusStore.playStatus &&

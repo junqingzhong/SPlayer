@@ -299,6 +299,12 @@ class LyricManager {
     try {
       // 歌词加载状态
       statusStore.lyricLoading = true;
+      // 通知桌面歌词
+      if (isElectron) {
+        window.electron.ipcRenderer.send("update-desktop-lyric-data", {
+          lyricLoading: true,
+        });
+      }
       // 检查歌词覆盖
       let lyricData = await this.checkLocalLyricOverride(id);
       // 开始获取歌词

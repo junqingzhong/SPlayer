@@ -135,6 +135,7 @@ const lyricData = reactive<LyricData>({
   playName: "未知歌曲",
   playStatus: false,
   currentTime: 0,
+  lyricLoading: false,
   songId: 0,
   songOffset: 0,
   lrcData: [],
@@ -212,43 +213,33 @@ const getSafeEndTime = (lyrics: LyricLine[], idx: number) => {
  */
 const renderLyricLines = computed<RenderLine[]>(() => {
   const lyrics = lyricData?.yrcData?.length ? lyricData.yrcData : lyricData.lrcData;
-  if (!lyrics?.length) {
-    return [
-      {
-        line: {
-          startTime: 0,
-          endTime: 0,
-          words: [{ word: "纯音乐，请欣赏", startTime: 0, endTime: 0, romanWord: "" }],
-          translatedLyric: "",
-          romanLyric: "",
-          isBG: false,
-          isDuet: false,
-        },
-        index: -1,
-        key: "placeholder",
-        active: true,
+  // 提示词占位
+  const placeholder = (word: string): RenderLine[] => [
+    {
+      line: {
+        startTime: 0,
+        endTime: 0,
+        words: [{ word, startTime: 0, endTime: 0, romanWord: "" }],
+        translatedLyric: "",
+        romanLyric: "",
+        isBG: false,
+        isDuet: false,
       },
-    ];
-  }
+      index: -1,
+      key: "placeholder",
+      active: true,
+    },
+  ];
+  // 加载中
+  if (lyricData.lyricLoading) return placeholder("歌词加载中...");
+  // 纯音乐
+  if (!lyrics?.length) return placeholder("纯音乐，请欣赏");
+  // 获取当前歌词索引
   const idx = lyricData?.lyricIndex ?? -1;
+  // 索引小于 0，显示歌曲名称
   if (idx < 0) {
     const text = lyricData.playName ?? "未知歌曲";
-    return [
-      {
-        line: {
-          startTime: 0,
-          endTime: 0,
-          words: [{ word: text, startTime: 0, endTime: 0, romanWord: "" }],
-          translatedLyric: "",
-          romanLyric: "",
-          isBG: false,
-          isDuet: false,
-        },
-        index: -1,
-        key: "placeholder",
-        active: true,
-      },
-    ];
+    return placeholder(text);
   }
   const current = lyrics[idx];
   const next = lyrics[idx + 1];

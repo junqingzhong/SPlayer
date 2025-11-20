@@ -106,6 +106,7 @@ export const useMusicStore = defineStore("music", {
           "play-lyric-change",
           cloneDeep({
             songId: this.playSong?.id,
+            lyricLoading: false,
             lrcData: this.songLyric.lrcData ?? [],
             yrcData: this.songLyric.yrcData ?? [],
           }),
