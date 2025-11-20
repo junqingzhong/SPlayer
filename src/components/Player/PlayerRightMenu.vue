@@ -47,7 +47,7 @@
       v-if="!statusStore.personalFmMode"
       :value="dataStore.playList?.length ?? 0"
       :show="settingStore.showPlaylistCount"
-      :max="999"
+      :max="9999"
       :style="{
         marginRight: settingStore.showPlaylistCount ? '12px' : null,
       }"
