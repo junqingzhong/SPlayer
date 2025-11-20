@@ -120,7 +120,7 @@
             <SvgIcon :size="20" name="Folder" />
           </template>
           <template #suffix>
-            <n-button quaternary @click="changeLocalLyricPath(index)">
+            <n-button quaternary @click="changeLocalMusicPath(index)">
               <template #icon>
                 <SvgIcon :size="20" name="Delete" />
               </template>
@@ -131,7 +131,7 @@
       </n-list>
       <template #footer>
         <n-flex justify="center">
-          <n-button class="add-path" strong secondary @click="changeLocalLyricPath()">
+          <n-button class="add-path" strong secondary @click="changeLocalMusicPath()">
             <template #icon>
               <SvgIcon name="FolderPlus" />
             </template>
@@ -149,7 +149,7 @@ import type { DropdownOption, MessageReactive } from "naive-ui";
 import { useLocalStore, useSettingStore } from "@/stores";
 import { formatSongsList } from "@/utils/format";
 import { uniqBy, flattenDeep, debounce } from "lodash-es";
-import { changeLocalLyricPath, fuzzySearch, renderIcon } from "@/utils/helper";
+import { changeLocalMusicPath, fuzzySearch, renderIcon } from "@/utils/helper";
 import { openBatchList } from "@/utils/modal";
 import player from "@/utils/player";
 
