@@ -56,10 +56,11 @@
               :tooltip="{
                 trigger: 'click',
                 placement: 'bottom',
-                width: 'trigger',
               }"
             >
-              {{ playlistDetailData.description }}
+              <span style="white-space: pre;">
+                  {{ playlistDetailData.description }}
+              </span>
             </n-ellipsis>
             <!-- 信息 -->
             <n-flex class="meta">
