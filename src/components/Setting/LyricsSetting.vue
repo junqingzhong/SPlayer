@@ -251,9 +251,7 @@
         <div class="label">
           <n-text class="name">
             启用在线 TTML 歌词
-            <n-tag type="warning" size="small" round style="display: inline; vertical-align: middle"
-              >Beta</n-tag
-            >
+            <n-tag type="warning" size="small" round> Beta </n-tag>
           </n-text>
           <n-text class="tip" :depth="3">
             是否从 AMLL TTML DB 获取歌词（如有），TTML

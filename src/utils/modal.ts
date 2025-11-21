@@ -20,6 +20,7 @@ import ExcludeLyrics from "@/components/Modal/ExcludeLyrics.vue";
 import ChangeRate from "@/components/Modal/ChangeRate.vue";
 import AutoClose from "@/components/Modal/AutoClose.vue";
 import Equalizer from "@/components/Modal/Equalizer.vue";
+import SongUnlockManager from "@/components/Modal/SongUnlockManager.vue";
 import { NScrollbar } from "naive-ui";
 
 // 用户协议
@@ -316,6 +317,20 @@ export const openDescModal = (content: string, title: string = "歌单简介") =
             h("div", { style: { whiteSpace: "pre-wrap" } }, { default: () => content }),
         },
       );
+    },
+  });
+};
+
+/** 打开音源管理弹窗 */
+export const openSongUnlockManager = () => {
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "音源管理",
+    content: () => {
+      return h(SongUnlockManager);
     },
   });
 };

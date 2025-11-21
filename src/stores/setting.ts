@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { keywords, regexes } from "@/assets/data/exclude";
+import { SongUnlockServer } from "@/utils/songManager";
 
 export interface SettingState {
   /** 明暗模式 */
@@ -99,6 +100,8 @@ export interface SettingState {
   songVolumeFadeTime: number;
   /** 是否使用解灰 */
   useSongUnlock: boolean;
+  /** 歌曲解锁音源 */
+  songUnlockServer: { key: SongUnlockServer; enabled: boolean }[];
   /** 显示倒计时 */
   countDownShow: boolean;
   /** 显示歌词条 */
@@ -201,6 +204,11 @@ export const useSettingStore = defineStore("setting", {
     songVolumeFade: true,
     songVolumeFadeTime: 300,
     useSongUnlock: true,
+    songUnlockServer: [
+      { key: SongUnlockServer.BODIAN, enabled: true },
+      { key: SongUnlockServer.GEQUBAO, enabled: true },
+      { key: SongUnlockServer.NETEASE, enabled: true },
+    ],
     countDownShow: true,
     barLyricShow: true,
     playerType: "cover",

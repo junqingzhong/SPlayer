@@ -34,7 +34,7 @@
 
 <script setup lang="ts">
 import { LyricPlayer } from "@applemusic-like-lyrics/vue";
-import { LyricLine } from "@applemusic-like-lyrics/core";
+import { type LyricLine } from "@applemusic-like-lyrics/lyric";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayer } from "@/utils/player";

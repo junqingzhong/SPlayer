@@ -1,5 +1,6 @@
 import { isElectron } from "@/utils/env";
 import { songLevelData } from "@/utils/meta";
+import { SongUnlockServer } from "@/utils/songManager";
 import request from "@/utils/request";
 
 // 获取歌曲详情
@@ -47,16 +48,12 @@ export const songUrl = (
 };
 
 // 获取解锁歌曲 URL
-export const unlockSongUrl = (
-  id: number,
-  keyword: string,
-  server: "netease" | "kuwo" | "bodian",
-) => {
-  const params = server === "netease" ? { id } : { keyword };
+export const unlockSongUrl = (id: number, keyword: string, server: SongUnlockServer) => {
+  const params = server === SongUnlockServer.NETEASE ? { id } : { keyword };
   return request({
     baseURL: "/api/unblock",
     url: `/${server}`,
-    params,
+    params: { ...params, noCookie: true },
   });
 };
 

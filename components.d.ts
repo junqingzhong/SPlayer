@@ -146,6 +146,7 @@ declare module 'vue' {
     SongList: typeof import('./src/components/List/SongList.vue')['default']
     SongListCard: typeof import('./src/components/Card/SongListCard.vue')['default']
     SongListMenu: typeof import('./src/components/Menu/SongListMenu.vue')['default']
+    SongUnlockManager: typeof import('./src/components/Modal/SongUnlockManager.vue')['default']
     SvgIcon: typeof import('./src/components/Global/SvgIcon.vue')['default']
     TextContainer: typeof import('./src/components/Global/TextContainer.vue')['default']
     UpdateApp: typeof import('./src/components/Modal/UpdateApp.vue')['default']

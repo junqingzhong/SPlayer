@@ -68,13 +68,6 @@
       </n-card>
       <n-card v-if="isElectron" class="set-item">
         <div class="label">
-          <n-text class="name">音乐解锁</n-text>
-          <n-text class="tip" :depth="3">在无法正常播放时进行替换，可能会与原曲不符</n-text>
-        </div>
-        <n-switch v-model:value="settingStore.useSongUnlock" class="set" :round="false" />
-      </n-card>
-      <n-card v-if="isElectron" class="set-item">
-        <div class="label">
           <n-text class="name">音频输出设备</n-text>
           <n-text class="tip" :depth="3">新增或移除音频设备后请重新打开设置</n-text>
         </div>
@@ -85,6 +78,35 @@
           :render-option="renderOption"
           @update:value="playDeviceChange"
         />
+      </n-card>
+    </div>
+    <div v-if="isElectron" class="set-list">
+      <n-h3 prefix="bar">
+        音乐解锁
+        <n-tag type="warning" size="small" round>Beta</n-tag>
+      </n-h3>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">音乐解锁</n-text>
+          <n-text class="tip" :depth="3"> 在无法正常播放时进行替换，可能会与原曲不符 </n-text>
+        </div>
+        <n-switch v-model:value="settingStore.useSongUnlock" class="set" :round="false" />
+      </n-card>
+      <!-- 音源配置 -->
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">音源配置</n-text>
+          <n-text class="tip" :depth="3"> 配置歌曲解锁的音源顺序或是否启用 </n-text>
+        </div>
+        <n-button
+          :disabled="!settingStore.useSongUnlock"
+          type="primary"
+          strong
+          secondary
+          @click="openSongUnlockManager"
+        >
+          配置
+        </n-button>
       </n-card>
     </div>
     <div class="set-list">
@@ -228,6 +250,7 @@ import { renderOption } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
 import { uniqBy } from "lodash";
 import { usePlayer } from "@/utils/player";
+import { openSongUnlockManager } from "@/utils/modal";
 
 const player = usePlayer();
 const settingStore = useSettingStore();

@@ -84,23 +84,34 @@ export const getUnlockSongUrl = async (songData: SongType): Promise<string | nul
     const artist = Array.isArray(songData.artists) ? songData.artists[0].name : songData.artists;
     const keyWord = songData.name + "-" + artist;
     if (!songId || !keyWord) return null;
-
-    const servers: any[] = [
-      "bodian",
-      "netease",
-    ];
-
-    // 尝试解锁
-    const promises = servers.map(server => unlockSongUrl(songId, keyWord, server));
-    const results = await Promise.allSettled(promises);
-    // 解析结果
-    for (const result of results) {
-      if (
-        result.status === "fulfilled" &&
-        result.value.code === 200 &&
-        result.value.url
-      ) {
-        return result.value.url;
+    // 获取音源列表
+    const settingStore = useSettingStore();
+    const servers = settingStore.songUnlockServer
+      .filter((server) => server.enabled)
+      .map((server) => server.key);
+    if (servers.length === 0) return null;
+    // 并发请求
+    const promises = servers.map((server) =>
+      unlockSongUrl(songId, keyWord, server)
+        .then((result) => ({
+          server,
+          result,
+          success: result.code === 200 && !!result.url,
+        }))
+        .catch((err) => {
+          console.error(`Unlock failed with server ${server}:`, err);
+          return { server, result: null, success: false };
+        }),
+    );
+    // 按优先级顺序处理结果
+    for (const p of promises) {
+      try {
+        const item = await p;
+        if (item.success && item.result) {
+          return item.result.url;
+        }
+      } catch {
+        continue;
       }
     }
     return null;
