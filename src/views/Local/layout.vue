@@ -151,9 +151,10 @@ import { formatSongsList } from "@/utils/format";
 import { uniqBy, flattenDeep, debounce } from "lodash-es";
 import { changeLocalMusicPath, fuzzySearch, renderIcon } from "@/utils/helper";
 import { openBatchList } from "@/utils/modal";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
 const router = useRouter();
+const player = usePlayer();
 const localStore = useLocalStore();
 const settingStore = useSettingStore();
 

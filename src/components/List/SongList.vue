@@ -129,8 +129,8 @@ import { VirtList } from "vue-virt-list";
 import { entries, isEmpty } from "lodash-es";
 import { sortOptions } from "@/utils/meta";
 import { renderIcon } from "@/utils/helper";
+import { usePlayer } from "@/utils/player";
 import SongListMenu from "@/components/Menu/SongListMenu.vue";
-import player from "@/utils/player";
 
 const props = withDefaults(
   defineProps<{
@@ -177,6 +177,7 @@ const emit = defineEmits<{
   removeSong: [id: number[]];
 }>();
 
+const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 

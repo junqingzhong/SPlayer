@@ -97,8 +97,9 @@ import { userCloud } from "@/api/cloud";
 import { formatSongsList } from "@/utils/format";
 import { fuzzySearch, renderIcon } from "@/utils/helper";
 import { openBatchList } from "@/utils/modal";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
+const player = usePlayer();
 const router = useRouter();
 const dataStore = useDataStore();
 

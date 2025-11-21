@@ -146,10 +146,11 @@ const loadMoreComment = () => {
 watch(
   () => songId.value,
   () => {
-    if (!isShowComment.value) {
-      commentData.value = [];
-      return;
-    }
+    commentData.value = [];
+    commentHotData.value = [];
+    commentPage.value = 1;
+    commentHasMore.value = true;
+    if (!isShowComment.value) return;
     getHotCommentData();
     getAllComment();
   },

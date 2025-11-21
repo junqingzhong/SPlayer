@@ -79,8 +79,9 @@
 import { useMusicStore, useStatusStore } from "@/stores";
 import { coverLoaded } from "@/utils/helper";
 import { debounce, isObject } from "lodash-es";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
+const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 

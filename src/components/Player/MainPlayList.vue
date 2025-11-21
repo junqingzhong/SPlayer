@@ -117,8 +117,9 @@
 <script setup lang="ts">
 import { useStatusStore, useDataStore } from "@/stores";
 import type { VirtualListInst } from "naive-ui";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
+const player = usePlayer();
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
 

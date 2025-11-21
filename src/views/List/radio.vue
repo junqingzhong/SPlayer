@@ -179,12 +179,13 @@ import { renderToolbar } from "@/utils/meta";
 import { debounce } from "lodash-es";
 import { useDataStore, useStatusStore } from "@/stores";
 import { radioAllProgram, radioDetail } from "@/api/radio";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 import { formatTimestamp } from "@/utils/time";
 import { toSubRadio } from "@/utils/auth";
 import { openDescModal } from "@/utils/modal";
 
 const router = useRouter();
+const player = usePlayer();
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
 

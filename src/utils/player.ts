@@ -24,15 +24,13 @@ import audioContextManager from "@/utils/player-utils/context";
 import lyricManager from "./lyricManager";
 import blob from "./blob";
 
+/* *允许播放格式 */
+const allowPlayFormat = ["mp3", "flac", "webm", "ogg", "wav"];
+
 /**
  * 播放器核心
  * Howler.js 音频库
  */
-let _player: Player | null = null;
-
-/* *允许播放格式 */
-const allowPlayFormat = ["mp3", "flac", "webm", "ogg", "wav"];
-
 class Player {
   /** 播放器 */
   private player: Howl;
@@ -681,7 +679,7 @@ class Player {
 
     // 播放器未加载完成或不存在
     if (!this.player || this.player.state() !== "loaded") {
-      if (changeStatus) statusStore.playStatus = false;
+      window.$message.warning("播放器未加载完成，请稍后重试");
       return;
     }
     // 立即设置播放状态
@@ -1428,7 +1426,9 @@ class Player {
   }
 }
 
-export default new Player();
+// export default new Player();
+
+let _player: Player | null = null;
 
 /**
  * 获取播放器实例

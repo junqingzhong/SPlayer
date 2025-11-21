@@ -71,7 +71,7 @@
                 <SvgIcon name="Update" :depth="3" />
                 <n-text>{{ formatTimestamp(playlistDetailData.updateTime) }}</n-text>
               </div>
-              <div v-else-if="playlistDetailData.createTime" class="item">
+              <div v-if="playlistDetailData.createTime" class="item">
                 <SvgIcon name="Time" :depth="3" />
                 <n-text>{{ formatTimestamp(playlistDetailData.createTime) }}</n-text>
               </div>
@@ -226,9 +226,10 @@ import { debounce } from "lodash-es";
 import { useDataStore, useStatusStore } from "@/stores";
 import { openBatchList, openDescModal, openUpdatePlaylist } from "@/utils/modal";
 import { formatTimestamp } from "@/utils/time";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
 const router = useRouter();
+const player = usePlayer();
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
 

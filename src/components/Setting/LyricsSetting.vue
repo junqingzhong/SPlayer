@@ -246,14 +246,14 @@
       </n-card>
     </div>
     <div class="set-list">
-      <n-h3 prefix="bar">
-        歌词内容
-      </n-h3>
+      <n-h3 prefix="bar"> 歌词内容 </n-h3>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">
             启用在线 TTML 歌词
-            <n-tag type="warning" size="small" round style="display: inline; vertical-align: middle;">Beta</n-tag>
+            <n-tag type="warning" size="small" round style="display: inline; vertical-align: middle"
+              >Beta</n-tag
+            >
           </n-text>
           <n-text class="tip" :depth="3">
             是否从 AMLL TTML DB 获取歌词（如有），TTML
@@ -545,10 +545,11 @@ import { cloneDeep, isEqual } from "lodash-es";
 import { isElectron } from "@/utils/env";
 import { openLyricExclude } from "@/utils/modal";
 import { LyricConfig } from "@/types/desktop-lyric";
-import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 import { SelectOption } from "naive-ui";
+import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
+const player = usePlayer();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 

@@ -34,9 +34,10 @@ import { openCreatePlaylist } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
 const router = useRouter();
+const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();

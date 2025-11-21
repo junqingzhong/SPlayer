@@ -19,10 +19,11 @@
 <script setup lang="ts">
 import { useStatusStore } from "@/stores";
 import { msToTime } from "@/utils/time";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
 withDefaults(defineProps<{ showTooltip?: boolean }>(), { showTooltip: true });
 
+const player = usePlayer();
 const statusStore = useStatusStore();
 
 // 拖动时的临时值

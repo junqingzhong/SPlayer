@@ -66,8 +66,9 @@
 <script setup lang="ts">
 import { useStatusStore } from "@/stores";
 import { convertSecondsToTime } from "@/utils/time";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
+const player = usePlayer();
 const statusStore = useStatusStore();
 
 // 自定义时长

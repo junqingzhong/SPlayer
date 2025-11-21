@@ -3,13 +3,14 @@ import { useEventListener } from "@vueuse/core";
 import { openUserAgreement } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import { isElectron } from "./env";
+import { usePlayer } from "@/utils/player";
 import packageJson from "@/../package.json";
-import player from "@/utils/player";
 import log from "./log";
 
 // 应用初始化时需要执行的操作
 const init = async () => {
   // init pinia-data
+  const player = usePlayer();
   const dataStore = useDataStore();
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
@@ -58,6 +59,7 @@ const initEventListener = () => {
 
 // 键盘事件
 const keyDownEvent = debounce((event: KeyboardEvent) => {
+  const player = usePlayer();
   const shortcutStore = useShortcutStore();
   const target = event.target as HTMLElement;
   // 排除元素

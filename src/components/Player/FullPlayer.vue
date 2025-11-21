@@ -79,8 +79,9 @@
 import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { throttle } from "lodash-es";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
+const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();

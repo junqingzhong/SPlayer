@@ -31,11 +31,12 @@ import { deleteSongs, isLogin } from "@/utils/auth";
 import { songUrl } from "@/api/song";
 import { dailyRecommendDislike } from "@/api/rec";
 import { formatSongsList } from "@/utils/format";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
 const emit = defineEmits<{ removeSong: [index: number[]] }>();
 
 const router = useRouter();
+const player = usePlayer();
 const dataStore = useDataStore();
 const localStore = useLocalStore();
 const statusStore = useStatusStore();

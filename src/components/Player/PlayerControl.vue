@@ -95,8 +95,9 @@ import { useMusicStore, useStatusStore, useDataStore } from "@/stores";
 import { msToTime } from "@/utils/time";
 import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
 import { toLikeSong } from "@/utils/auth";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
+const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();

@@ -158,7 +158,7 @@ import { openJumpArtist } from "@/utils/modal";
 import { toLikeSong } from "@/utils/auth";
 import { isObject } from "lodash-es";
 import { formatTimestamp, msToTime } from "@/utils/time";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 import blob from "@/utils/blob";
 import { isElectron } from "@/utils/env";
 
@@ -174,6 +174,7 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
+const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();

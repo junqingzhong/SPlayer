@@ -199,9 +199,10 @@ import {
   openJumpArtist,
   openPlaylistAdd,
 } from "@/utils/modal";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
 const router = useRouter();
+const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();

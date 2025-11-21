@@ -2,7 +2,7 @@ import { isElectron } from "./env";
 import { openSetting, openUpdateApp } from "./modal";
 import { useMusicStore, useDataStore, useStatusStore } from "@/stores";
 import { toLikeSong } from "./auth";
-import player from "./player";
+import { usePlayer } from "./player";
 import { cloneDeep } from "lodash-es";
 import { getPlayerInfo } from "./player-utils/song";
 import { SettingType } from "@/types/main";
@@ -17,6 +17,7 @@ const closeUpdateStatus = () => {
 const initIpc = () => {
   try {
     if (!isElectron) return;
+    const player = usePlayer();
     // 播放
     window.electron.ipcRenderer.on("play", () => player.play());
     // 暂停

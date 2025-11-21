@@ -227,8 +227,9 @@ import { isLogin } from "@/utils/auth";
 import { renderOption } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
 import { uniqBy } from "lodash";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
+const player = usePlayer();
 const settingStore = useSettingStore();
 
 // 输出设备数据
