@@ -30,6 +30,10 @@
 
 - 欢迎各位大佬 `Star` 😍
 
+## 💬 交流群
+
+![交流群](/screenshots/welcome.png)
+
 ## 👀 Demo
 
 - [SPlayer](https://music.imsyy.top/)

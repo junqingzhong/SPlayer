@@ -105,59 +105,51 @@ class LyricManager {
     const isStale = () => this.activeLyricReq !== req || musicStore.playSong?.id !== id;
     // 处理 TTML 歌词
     const adoptTTML = async () => {
-      try {
-        if (!settingStore.enableTTMLLyric) return;
-        const ttmlContent = await songLyricTTML(id);
-        if (isStale()) return;
-        if (!ttmlContent || typeof ttmlContent !== "string") return;
-        const parsed = parseTTML(ttmlContent);
-        const lines = parsed?.lines || [];
-        if (!lines.length) return;
-        result.yrcData = lines;
-        ttmlAdopted = true;
-      } catch (err) {
-        throw err;
-      }
+      if (!settingStore.enableTTMLLyric) return;
+      const ttmlContent = await songLyricTTML(id);
+      if (isStale()) return;
+      if (!ttmlContent || typeof ttmlContent !== "string") return;
+      const parsed = parseTTML(ttmlContent);
+      const lines = parsed?.lines || [];
+      if (!lines.length) return;
+      result.yrcData = lines;
+      ttmlAdopted = true;
     };
     // 处理 LRC 歌词
     const adoptLRC = async () => {
-      try {
-        const data = await songLyric(id);
-        if (isStale()) return;
-        if (!data || data.code !== 200) return;
-        let lrcLines: LyricLine[] = [];
-        let yrcLines: LyricLine[] = [];
-        // 普通歌词
-        if (data?.lrc?.lyric) {
-          lrcLines = parseLrc(data.lrc.lyric) || [];
-          // 普通歌词翻译
-          if (data?.tlyric?.lyric)
-            lrcLines = this.alignLyrics(lrcLines, parseLrc(data.tlyric.lyric), "translatedLyric");
-          // 普通歌词音译
-          if (data?.romalrc?.lyric)
-            lrcLines = this.alignLyrics(lrcLines, parseLrc(data.romalrc.lyric), "romanLyric");
-        }
-        // 逐字歌词
-        if (data?.yrc?.lyric) {
-          yrcLines = parseYrc(data.yrc.lyric) || [];
-          // 逐字歌词翻译
-          if (data?.ytlrc?.lyric)
-            yrcLines = this.alignLyrics(yrcLines, parseLrc(data.ytlrc.lyric), "translatedLyric");
-          // 逐字歌词音译
-          if (data?.yromalrc?.lyric)
-            yrcLines = this.alignLyrics(yrcLines, parseLrc(data.yromalrc.lyric), "romanLyric");
-        }
-        if (lrcLines.length) result.lrcData = lrcLines;
-        // 如果没有 TTML，则采用 网易云 YRC
-        if (!result.yrcData.length && yrcLines.length) {
-          result.yrcData = yrcLines;
-        }
-        // 先返回一次，避免 TTML 请求过慢
-        const lyricData = this.handleLyricExclude(result);
-        this.setFinalLyric(lyricData, req);
-      } catch (err) {
-        throw err;
+      const data = await songLyric(id);
+      if (isStale()) return;
+      if (!data || data.code !== 200) return;
+      let lrcLines: LyricLine[] = [];
+      let yrcLines: LyricLine[] = [];
+      // 普通歌词
+      if (data?.lrc?.lyric) {
+        lrcLines = parseLrc(data.lrc.lyric) || [];
+        // 普通歌词翻译
+        if (data?.tlyric?.lyric)
+          lrcLines = this.alignLyrics(lrcLines, parseLrc(data.tlyric.lyric), "translatedLyric");
+        // 普通歌词音译
+        if (data?.romalrc?.lyric)
+          lrcLines = this.alignLyrics(lrcLines, parseLrc(data.romalrc.lyric), "romanLyric");
       }
+      // 逐字歌词
+      if (data?.yrc?.lyric) {
+        yrcLines = parseYrc(data.yrc.lyric) || [];
+        // 逐字歌词翻译
+        if (data?.ytlrc?.lyric)
+          yrcLines = this.alignLyrics(yrcLines, parseLrc(data.ytlrc.lyric), "translatedLyric");
+        // 逐字歌词音译
+        if (data?.yromalrc?.lyric)
+          yrcLines = this.alignLyrics(yrcLines, parseLrc(data.yromalrc.lyric), "romanLyric");
+      }
+      if (lrcLines.length) result.lrcData = lrcLines;
+      // 如果没有 TTML，则采用 网易云 YRC
+      if (!result.yrcData.length && yrcLines.length) {
+        result.yrcData = yrcLines;
+      }
+      // 先返回一次，避免 TTML 请求过慢
+      const lyricData = this.handleLyricExclude(result);
+      this.setFinalLyric(lyricData, req);
     };
     // 设置 TTML
     await Promise.allSettled([adoptTTML(), adoptLRC()]);
