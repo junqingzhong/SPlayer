@@ -152,7 +152,7 @@ const config: Configuration = {
     // 维护者信息
     maintainer: "imsyy.top",
     // 应用程序类别
-    category: "Audio;Music",
+    category: "Audio;Music;AudioVideo;",
   },
   // AppImage 特定配置
   appImage: {
