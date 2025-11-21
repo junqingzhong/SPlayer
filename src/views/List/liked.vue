@@ -54,7 +54,7 @@
                 <SvgIcon name="Update" :depth="3" />
                 <n-text>{{ formatTimestamp(playlistDetailData.updateTime) }}</n-text>
               </div>
-              <div v-else-if="playlistDetailData.createTime" class="item">
+              <div v-if="playlistDetailData.createTime" class="item">
                 <SvgIcon name="Time" :depth="3" />
                 <n-text>{{ formatTimestamp(playlistDetailData.createTime) }}</n-text>
               </div>
