@@ -1,6 +1,7 @@
-import type { SongType, CoverType, ArtistType, CommentType, MetaData, CatType } from "@/types/main";
+import { SongType, CoverType, ArtistType, CommentType, MetaData, CatType } from "@/types/main";
 import { msToTime } from "./time";
 import { flatMap, isArray, uniqBy } from "lodash-es";
+import { handleSongQuality } from "./helper";
 
 type CoverDataType = {
   cover: string;
@@ -67,7 +68,9 @@ export const formatSongsList = (data: any[]): SongType[] => {
       size: Number(item.size || 0),
       path: item.path,
       pc: !!item.pc,
-      quality: item?.quality,
+      quality: item?.path
+        ? handleSongQuality(item.quality, "local")
+        : handleSongQuality(item, "online"),
       playCount: Number(item.playCount || item.listenerCount || 0),
       createTime: Number(item.createTime || item.publishTime) || undefined,
       updateTime: Number(item.lastProgramCreateTime || item.scheduledPublishTime) || undefined,

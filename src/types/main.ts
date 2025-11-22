@@ -20,6 +20,20 @@ export type CoverSize = {
   xl: string;
 };
 
+/** 音质 */
+export enum QualityType {
+  /** Hi-Res */
+  HiRes = "Hi-Res", // hr
+  /** 无损 */
+  SQ = "SQ", // sq / flac
+  /** 高质量 */
+  HQ = "HQ", // h: 320kbps
+  /** 中质量 */
+  MQ = "MQ", // m: 192kbps
+  /** 低质量 */
+  LQ = "LQ", // l: 128kbps
+}
+
 export type UserType = {
   id: number;
   name: string;
@@ -48,7 +62,7 @@ export type SongType = {
   path?: string;
   pc?: boolean;
   size?: number;
-  quality?: "Hi-Res" | "HQ" | "SQ";
+  quality?: QualityType;
   createTime?: number;
   updateTime?: number;
   playCount?: number;
@@ -68,7 +82,6 @@ export type CoverType = {
   count?: number;
   tags?: string[];
   userId?: number | null;
-  count?: number;
   privacy?: number;
   playCount?: number;
   liked?: boolean;
@@ -76,7 +89,6 @@ export type CoverType = {
   commentCount?: number;
   shareCount?: number;
   subCount?: number;
-  playCount?: number;
   createTime?: number;
   updateTime?: number;
   loading?: boolean;
@@ -241,14 +253,14 @@ export type UpdateLogType = {
 };
 
 // 文件信息
-interface FileInfoType {
+export interface FileInfoType {
   url: string;
   sha512: string;
   size: number;
 }
 
 // 更新信息
-interface UpdateInfoType {
+export interface UpdateInfoType {
   tag: string;
   version: string;
   files: FileInfoType[];

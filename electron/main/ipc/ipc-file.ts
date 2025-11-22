@@ -5,8 +5,8 @@ import { parseFile } from "music-metadata";
 import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
 import { File, Picture, Id3v2Settings } from "node-taglib-sharp";
 import { ipcLog } from "../logger";
-import FastGlob from "fast-glob";
 import { download } from "electron-dl";
+import FastGlob from "fast-glob";
 
 /**
  * 文件相关 IPC
@@ -35,15 +35,6 @@ const initFileIpc = (): void => {
         const { common, format } = await parseFile(filePath);
         // 获取文件大小
         const { size } = await stat(filePath);
-        // 判断音质等级
-        let quality: string;
-        if ((format.sampleRate || 0) >= 96000 || (format.bitsPerSample || 0) > 16) {
-          quality = "Hi-Res";
-        } else if ((format.sampleRate || 0) >= 44100) {
-          quality = "HQ";
-        } else {
-          quality = "SQ";
-        }
         return {
           id: getFileID(filePath),
           name: common.title || basename(filePath),
@@ -53,7 +44,7 @@ const initFileIpc = (): void => {
           duration: (format?.duration ?? 0) * 1000,
           size: (size / (1024 * 1024)).toFixed(2),
           path: filePath,
-          quality,
+          quality: format.bitrate ?? 0,
         };
       });
       const metadataArray = await Promise.all(metadataPromises);

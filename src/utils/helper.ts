@@ -1,4 +1,4 @@
-import type { SongType, UpdateLogType } from "@/types/main";
+import { QualityType, SongType, UpdateLogType } from "@/types/main";
 import { NTooltip, SelectOption } from "naive-ui";
 import { h, VNode } from "vue";
 import { useClipboard } from "@vueuse/core";
@@ -418,4 +418,45 @@ export const runIdle = (task: () => void) => {
       }
     }, 0);
   }
+};
+
+/**
+ * 处理歌曲音质
+ * @param song 歌曲数据
+ * @param type 歌曲类型
+ * @returns 歌曲音质
+ */
+export const handleSongQuality = (
+  song: AnyObject | number,
+  type: "local" | "online" = "local",
+): QualityType | undefined => {
+  if (type === "local" && typeof song === "number") {
+    if (song >= 960000) return QualityType.HiRes;
+    if (song >= 441000) return QualityType.SQ;
+    if (song >= 320000) return QualityType.HQ;
+    if (song >= 160000) return QualityType.MQ;
+    return QualityType.LQ;
+  }
+  // 含有 level 特殊处理
+  if( typeof song === "object" && "level" in song){
+    if(song.level === "hires") return QualityType.HiRes;
+    if(song.level === "lossless") return QualityType.SQ;
+    if(song.level === "exhigh") return QualityType.HQ;
+    if(song.level === "higher") return QualityType.MQ;
+    if(song.level === "standard") return QualityType.LQ;
+    return undefined;
+  }
+  const order = [
+    { key: "hr", type: QualityType.HiRes },
+    { key: "sq", type: QualityType.SQ },
+    { key: "h", type: QualityType.HQ },
+    { key: "m", type: QualityType.MQ },
+    { key: "l", type: QualityType.LQ },
+  ];
+  for (const itemKey of order) {
+    if (song[itemKey.key] && Number(song[itemKey.key].br) > 0) {
+      return itemKey.type;
+    }
+  }
+  return undefined;
 };

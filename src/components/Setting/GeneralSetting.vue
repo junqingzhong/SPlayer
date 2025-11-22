@@ -97,6 +97,27 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">显示歌曲音质</n-text>
+          <n-text class="tip" :depth="3">是否列表中显示歌曲音质</n-text>
+        </div>
+        <n-switch class="set" v-model:value="settingStore.showSongQuality" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">显示特权标签</n-text>
+          <n-text class="tip" :depth="3">是否显示如 VIP、EP 等特权标签</n-text>
+        </div>
+        <n-switch class="set" v-model:value="settingStore.showSongPrivilegeTag" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">显示原唱翻唱标签</n-text>
+          <n-text class="tip" :depth="3">是否显示歌曲原唱翻唱标签</n-text>
+        </div>
+        <n-switch class="set" v-model:value="settingStore.showSongOriginalTag" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">开启页面缓存</n-text>
           <n-text class="tip" :depth="3">是否开启部分页面的缓存，这将会增加内存占用</n-text>
         </div>

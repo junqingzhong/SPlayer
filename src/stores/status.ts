@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import type { SortType } from "@/types/main";
+import  { QualityType,type SortType } from "@/types/main";
 import type { PlayModeType, RGB, ColorScheme } from "@/types/main";
 
 interface StatusState {
@@ -48,6 +48,8 @@ interface StatusState {
   pureLyricMode: boolean;
   /** 是否使用 TTML 歌词 */
   usingTTMLLyric: boolean;
+  /** 当前歌曲音质 */
+  songQuality: QualityType | undefined;
   /** 当前播放索引 */
   playIndex: number;
   /** 歌词播放索引 */
@@ -115,6 +117,7 @@ export const useStatusStore = defineStore("status", {
     songCoverTheme: {},
     pureLyricMode: false,
     usingTTMLLyric: false,
+    songQuality: undefined,
     spectrumsData: [],
     playIndex: -1,
     lyricIndex: -1,
