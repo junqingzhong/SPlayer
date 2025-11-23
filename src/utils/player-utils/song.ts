@@ -5,6 +5,13 @@ import { isElectron } from "../env";
 import { getCoverColorData } from "../color";
 import { handleSongQuality } from "../helper";
 
+export type NextPrefetchSong = {
+  id: number;
+  url: string | null;
+  ublock: boolean;
+  quality?: QualityType | undefined;
+} | null;
+
 /**
  * 获取当前播放歌曲
  * @returns 当前播放歌曲
@@ -149,12 +156,7 @@ export const getCoverColor = async (coverUrl: string) => {
  * 预载下一首歌曲播放地址
  * @returns 预载数据
  */
-export const getNextSongUrl = async (): Promise<{
-  id: number;
-  url: string | null;
-  ublock: boolean;
-  quality?: QualityType | undefined;
-} | null> => {
+export const getNextSongUrl = async (): Promise<NextPrefetchSong> => {
   try {
     const dataStore = useDataStore();
     const statusStore = useStatusStore();

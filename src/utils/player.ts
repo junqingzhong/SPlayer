@@ -18,6 +18,7 @@ import {
   getPlaySongData,
   getUnlockSongUrl,
   getNextSongUrl,
+  NextPrefetchSong,
 } from "./player-utils/song";
 import { isDev, isElectron } from "./env";
 // import { getLyricData } from "./player-utils/lyric";
@@ -82,7 +83,7 @@ class Player {
   /** 其他数据 */
   private message: MessageReactive | null = null;
   /** 预载下一首歌曲播放地址缓存（仅存 URL，不创建 Howl） */
-  private nextPrefetch: { id: number; url: string | null; ublock: boolean } | null = null;
+  private nextPrefetch: NextPrefetchSong = null;
   /** 当前曲目重试信息（按歌曲维度计数） */
   private retryInfo: { songId: number; count: number } = { songId: 0, count: 0 };
   constructor() {
@@ -528,7 +529,7 @@ class Player {
           if (cached && cached.id === songId && cached.url) {
             playerUrl = cached.url;
             statusStore.playUblock = cached.ublock;
-            statusStore.songQuality = undefined;
+            statusStore.songQuality = cached.quality;
           } else {
             const canUnlock = isElectron && type !== "radio" && settingStore.useSongUnlock;
             const { url: officialUrl, isTrial, quality } = await getOnlineUrl(songId);
