@@ -2,17 +2,30 @@ import { app, BrowserWindow } from "electron";
 import { electronApp } from "@electron-toolkit/utils";
 import { release, type } from "os";
 import { isMac } from "./utils/config";
+import { initSingleLock } from "./utils/single-lock";
 import { unregisterShortcuts } from "./shortcut";
 import { initTray, MainTray } from "./tray";
 import { processLog } from "./logger";
+import { existsSync, mkdirSync } from "fs";
+import { join } from "path";
 import initAppServer from "../server";
-import { initSingleLock } from "./utils/single-lock";
 import loadWindow from "./windows/load-window";
 import mainWindow from "./windows/main-window";
 import initIpc from "./ipc";
 
 // 屏蔽报错
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
+
+// 便携模式下设置用户数据路径
+if (process.env.PORTABLE_EXECUTABLE_DIR) {
+  processLog.info(
+    "🔍 Portable mode detected, setting userData path to:",
+    join(process.env.PORTABLE_EXECUTABLE_DIR, "UserData"),
+  );
+  const userDataPath = join(process.env.PORTABLE_EXECUTABLE_DIR, "UserData");
+  if (!existsSync(userDataPath)) mkdirSync(userDataPath, { recursive: true });
+  app.setPath("userData", userDataPath);
+}
 
 // 主进程
 class MainProcess {
