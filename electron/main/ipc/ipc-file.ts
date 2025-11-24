@@ -6,16 +6,20 @@ import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper
 import { File, Picture, Id3v2Settings } from "node-taglib-sharp";
 import { ipcLog } from "../logger";
 import { download } from "electron-dl";
-import FastGlob from "fast-glob";
 import { Options as GlobOptions } from "fast-glob/out/settings";
+import FastGlob from "fast-glob";
 
 /**
  * 文件相关 IPC
  */
 const initFileIpc = (): void => {
+  /**
+   * 获取全局搜索配置
+   * @param cwd 当前工作目录
+   */
   const globOpt = (cwd?: string): GlobOptions => ({
     cwd,
-    caseSensitiveMatch: false
+    caseSensitiveMatch: false,
   });
 
   // 默认文件夹
@@ -133,23 +137,25 @@ const initFileIpc = (): void => {
     }> => {
       try {
         const filePath = resolve(path).replace(/\\/g, "/");
-        const { common } = await parseFile(filePath);
 
         // 尝试获取同名的歌词文件
         const filePathWithoutExt = filePath.replace(/\.[^.]+$/, "");
         for (const ext of ["ttml", "lrc"] as const) {
           const lyricPath = `${filePathWithoutExt}.${ext}`;
-          ipcLog.info("lyricPath", lyricPath);
-          try {
-            await access(lyricPath);
-            const lyric = await readFile(lyricPath, "utf-8");
-            if (lyric && lyric != "") return { lyric, format: ext };
-          } catch {
-            /* empty */
+          const matches = await FastGlob(lyricPath, globOpt());
+          ipcLog.info("lyric matches", matches);
+          if (matches.length > 0) {
+            try {
+              const lyric = await readFile(matches[0], "utf-8");
+              if (lyric && lyric !== "") return { lyric, format: ext };
+            } catch {
+              /* empty */
+            }
           }
         }
 
         // 尝试获取元数据
+        const { common } = await parseFile(filePath);
         const lyric = common?.lyrics?.[0]?.syncText;
         if (lyric && lyric.length > 0) {
           return { lyric: metaDataLyricsArrayToLrc(lyric), format: "lrc" };
