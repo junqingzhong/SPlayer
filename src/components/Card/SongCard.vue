@@ -44,7 +44,6 @@
             <!-- 音质 -->
             <n-tag
               v-if="song?.quality && settingStore.showSongQuality"
-              :bordered="false"
               :type="qualityColor"
               class="quality"
               round

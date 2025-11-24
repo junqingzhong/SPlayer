@@ -433,7 +433,7 @@
           />
         </n-flex>
       </n-card>
-      <n-card class="set-item">
+      <!-- <n-card class="set-item">
         <div class="label">
           <n-text class="name">显示逐字歌词</n-text>
           <n-text class="tip" :depth="3">是否显示桌面歌词逐字效果</n-text>
@@ -444,7 +444,7 @@
           class="set"
           @update:value="saveDesktopLyricConfig"
         />
-      </n-card>
+      </n-card> -->
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">显示翻译</n-text>

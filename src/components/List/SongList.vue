@@ -123,7 +123,7 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
-import type { SongType, SortType } from "@/types/main";
+import { SongType, SortType } from "@/types/main";
 import { useMusicStore, useStatusStore } from "@/stores";
 import { VirtList } from "vue-virt-list";
 import { entries, isEmpty } from "lodash-es";

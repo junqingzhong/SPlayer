@@ -72,9 +72,7 @@
           :ref="(el) => line.active && (currentLineRef = el as HTMLElement)"
         >
           <!-- 逐字歌词渲染 -->
-          <template
-            v-if="lyricConfig.showYrc && lyricData?.yrcData?.length && line.line?.words?.length > 1"
-          >
+          <template v-if="lyricData?.yrcData?.length && line.line?.words?.length > 1">
             <span
               class="scroll-content"
               :style="getScrollStyle(line)"
@@ -132,7 +130,7 @@ import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
 // 桌面歌词数据
 const lyricData = reactive<LyricData>({
-  playName: "未知歌曲",
+  playName: "",
   playStatus: false,
   currentTime: 0,
   lyricLoading: false,
@@ -230,6 +228,10 @@ const renderLyricLines = computed<RenderLine[]>(() => {
       active: true,
     },
   ];
+  // 无歌曲名且无歌词
+  if (!lyricData.playName && !lyrics?.length) {
+    return placeholder("SPlayer Desktop Lyric");
+  }
   // 加载中
   if (lyricData.lyricLoading) return placeholder("歌词加载中...");
   // 纯音乐

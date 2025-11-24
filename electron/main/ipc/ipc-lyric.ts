@@ -82,7 +82,7 @@ const initLyricIpc = (): void => {
 
   // 音乐名称更改
   ipcMain.on("play-song-change", (_, title) => {
-    if (!title || !isWinAlive(lyricWin)) return;
+    if (!isWinAlive(lyricWin)) return;
     lyricWin.webContents.send("update-desktop-lyric-data", { playName: title });
   });
 

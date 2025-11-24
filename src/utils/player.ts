@@ -73,7 +73,6 @@ class Player {
     250,
     { immediate: false },
   );
-
   /** 自动关闭定时器 */
   private autoCloseInterval: ReturnType<typeof setInterval> | undefined;
   /** 频谱数据 */
@@ -125,10 +124,8 @@ class Player {
     const settingStore = useSettingStore();
     // 播放信息
     const { id, path, type } = musicStore.playSong;
-
     // 统一重置底层播放器
     this.resetPlayerCore();
-
     // 创建播放器
     this.player = new Howl({
       src,
@@ -146,12 +143,8 @@ class Player {
     if (!settingStore.showSpectrums) this.toggleOutputDevice();
     // 自动播放
     if (autoPlay) await this.play();
-    // // 获取歌曲附加信息 - 非电台和本地
-    // if (type !== "radio" && !path) getLyricData(id);
-    // else resetSongLyric();
     // 获取歌词数据
     lyricManager.handleLyric(id, path);
-
     // 新增播放历史
     if (type !== "radio") dataStore.setHistory(musicStore.playSong);
     // 获取歌曲封面主色
@@ -255,7 +248,6 @@ class Player {
       this.playerInterval.pause();
       // statusStore.playStatus = false;
       console.log("⏹️ song end:", playSongData);
-
       // 检查是否需要在歌曲结束时执行自动关闭
       const statusStore = useStatusStore();
       if (
@@ -267,7 +259,6 @@ class Player {
         this.executeAutoClose();
         return;
       }
-
       this.nextOrPrev("next", true, true);
     });
     // 错误
@@ -461,8 +452,9 @@ class Player {
    * 重置状态
    */
   resetStatus() {
-    const statusStore = useStatusStore();
     const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
     // 重置状态
     statusStore.$patch({
       currentTime: 0,
@@ -472,10 +464,11 @@ class Player {
       playStatus: false,
       playLoading: false,
     });
-    musicStore.$patch({
-      playPlaylistId: 0,
-      playSong: {},
-    });
+    musicStore.playPlaylistId = 0;
+    musicStore.resetMusicData();
+    if (settingStore.showTaskbarProgress) {
+      window.electron.ipcRenderer.send("set-bar", "none");
+    }
   }
   /**
    * 初始化播放器
@@ -515,7 +508,7 @@ class Player {
         }
       }
       // 在线歌曲
-      else if (id && dataStore.playList.length) {
+      else if (id && (dataStore.playList.length || statusStore.personalFmMode)) {
         // 播放地址
         let playerUrl: string | null = null;
 
@@ -662,13 +655,16 @@ class Player {
       const { playList } = dataStore;
       const { playSong } = musicStore;
       const { playSongMode, playHeartbeatMode } = statusStore;
-      // 列表长度
-      const playListLength = playList.length;
-      // 播放列表是否为空
-      if (playListLength === 0) throw new Error("Play list is empty");
       // 若为私人FM
       if (statusStore.personalFmMode) {
         await this.initPersonalFM(true);
+        return;
+      }
+      // 列表长度
+      const playListLength = playList.length;
+      // 播放列表是否为空
+      if (playListLength === 0) {
+        window.$message.error("播放列表为空，请添加歌曲");
         return;
       }
       // 只有一首歌的特殊处理
@@ -1048,7 +1044,6 @@ class Player {
    */
   async cleanPlayList() {
     const dataStore = useDataStore();
-    const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     // 停止播放
     Howler.unload();
@@ -1061,9 +1056,9 @@ class Player {
       personalFmMode: false,
       playIndex: -1,
     });
-    musicStore.resetMusicData();
-    dataStore.setPlayList([]);
-    window.$message.success("已清空播放列表");
+    // 清空播放列表及缓存
+    await dataStore.setPlayList([]);
+    await dataStore.clearOriginalPlayList();
   }
   /**
    * 切换输出设备

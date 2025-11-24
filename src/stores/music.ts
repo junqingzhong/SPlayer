@@ -78,10 +78,13 @@ export const useMusicStore = defineStore("music", {
     },
   },
   actions: {
-    // 恢复默认音乐数据
+    /** 重置音乐数据 */
     resetMusicData() {
       this.playSong = { ...defaultMusicData };
-      this.songLyric = { lrcData: [], yrcData: [] };
+      this.setSongLyric({ lrcData: [], yrcData: [] }, true);
+      if (isElectron) {
+        window.electron.ipcRenderer.send("play-song-change", undefined);
+      }
     },
     /**
      * 设置/更新歌曲歌词数据

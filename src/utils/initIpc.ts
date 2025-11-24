@@ -55,7 +55,7 @@ const initIpc = () => {
           "update-desktop-lyric-data",
           cloneDeep({
             playStatus: statusStore.playStatus,
-            playName: getPlayerInfo() ?? "未知歌曲",
+            playName: getPlayerInfo(),
             currentTime: statusStore.currentTime,
             songId: musicStore.playSong?.id,
             songOffset: statusStore.getSongOffset(musicStore.playSong?.id),

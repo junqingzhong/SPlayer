@@ -1,6 +1,7 @@
 import { ipcMain } from "electron";
 import { getMainTray } from "../tray";
 import lyricWindow from "../windows/lyric-window";
+import { appName } from "../utils/config";
 
 /**
  * 托盘 IPC
@@ -18,7 +19,7 @@ const initTrayIpc = (): void => {
 
   // 音乐名称更改
   ipcMain.on("play-song-change", (_, title) => {
-    if (!title) return;
+    if (!title) title = appName;
     // 更改标题
     tray?.setTitle(title);
     tray?.setPlayName(title);
