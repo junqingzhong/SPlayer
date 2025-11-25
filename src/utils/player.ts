@@ -1269,8 +1269,6 @@ class Player {
         } else {
           await getPersonalFmData();
         }
-        // 清理并播放
-        this.resetStatus();
         await this.initPlayer();
       }
     } catch (error) {

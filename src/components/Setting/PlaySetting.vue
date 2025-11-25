@@ -141,7 +141,6 @@
           :options="[
             {
               label: '流体效果',
-              disabled: true,
               value: 'animation',
             },
             {

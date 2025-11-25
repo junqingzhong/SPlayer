@@ -18,6 +18,14 @@
         class="bg-img"
         alt="cover"
       />
+      <!-- 流体效果 -->
+      <FluidBackground
+        v-else-if="settingStore.playerBackgroundType === 'animation'"
+        :key="musicStore.songCover"
+        :src="musicStore.songCover"
+        :speed="0.8"
+        :brightness="0.1"
+      />
     </Transition>
   </div>
 </template>
@@ -66,6 +74,11 @@ const settingStore = useSettingStore();
       width: 100%;
       height: 100%;
       background-color: rgb(var(--main-color));
+    }
+  }
+  &.animation {
+    &::after {
+      display: none;
     }
   }
 }
