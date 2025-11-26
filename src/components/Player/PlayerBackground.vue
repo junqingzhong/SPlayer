@@ -24,6 +24,7 @@
         :album="musicStore.songCover"
         :fps="settingStore.playerBackgroundFps ?? 60"
         :flowSpeed="settingStore.playerBackgroundFlowSpeed ?? 4"
+        :hasLyric="musicStore.isHasLrc"
       />
     </Transition>
   </div>

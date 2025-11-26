@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import  { QualityType,type SortType } from "@/types/main";
+import { QualityType, type SortType } from "@/types/main";
 import type { PlayModeType, RGB, ColorScheme } from "@/types/main";
 
 interface StatusState {
@@ -13,8 +13,6 @@ interface StatusState {
   showPlayBar: boolean;
   /** 全屏播放器 */
   showFullPlayer: boolean;
-  /** 全屏播放器激活状态 */
-  fullPlayerActive: boolean;
   /** 播放器功能显示 */
   playerMetaShow: boolean;
   /** 播放列表状态 */
@@ -42,8 +40,6 @@ interface StatusState {
     /** 封面主题颜色（暗色） */
     dark?: ColorScheme;
   };
-  /** 音乐频谱数据 */
-  spectrumsData: number[];
   /** 纯净歌词模式 */
   pureLyricMode: boolean;
   /** 是否使用 TTML 歌词 */
@@ -108,7 +104,6 @@ export const useStatusStore = defineStore("status", {
     playUblock: false,
     playListShow: false,
     showFullPlayer: false,
-    fullPlayerActive: false,
     playerMetaShow: true,
     currentTime: 0,
     duration: 0,
@@ -118,7 +113,6 @@ export const useStatusStore = defineStore("status", {
     pureLyricMode: false,
     usingTTMLLyric: false,
     songQuality: undefined,
-    spectrumsData: [],
     playIndex: -1,
     lyricIndex: -1,
     lyricLoading: false,

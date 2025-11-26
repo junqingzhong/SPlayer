@@ -19,149 +19,151 @@
     @mouseenter="lrcMouseStatus = settingStore.lrcMousePause ? true : false"
     @mouseleave="lrcAllLeave"
   >
-    <Transition name="fade" mode="out-in">
-      <div
-        :key="musicStore.songLyric.lrcData?.[0]?.words?.[0]?.word"
-        class="lyric-content"
-        @after-enter="lyricsScroll(statusStore.lyricIndex)"
-        @after-leave="lyricsScroll(statusStore.lyricIndex)"
-      >
+    <div
+      class="lyric-content"
+      @after-enter="lyricsScroll(statusStore.lyricIndex)"
+      @after-leave="lyricsScroll(statusStore.lyricIndex)"
+    >
+      <Transition name="fade" mode="out-in">
         <div v-if="statusStore.lyricLoading" class="lyric-loading">歌词正在加载中...</div>
-        <n-scrollbar v-else ref="lyricScroll" class="lyric-scroll" tabindex="-1">
-          <!-- 逐字歌词 -->
-          <template v-if="settingStore.showYrc && musicStore.isHasYrc">
-            <div id="lrc-placeholder" class="placeholder">
-              <!-- 倒计时 -->
-              <CountDown
-                :start="0"
-                :duration="musicStore.songLyric.yrcData[0].startTime || 0"
-                :seek="playSeek"
-                :playing="statusStore.playStatus"
-              />
-            </div>
-            <div
-              v-for="(item, index) in musicStore.songLyric.yrcData"
-              :key="index"
-              :id="`lrc-${index}`"
-              :class="[
-                'lrc-line',
-                'is-yrc',
-                {
-                  // on: statusStore.lyricIndex === index,
-                  // 当播放时间大于等于当前歌词的开始时间
-                  on:
-                    (playSeek >= item.startTime && playSeek < item.endTime) ||
-                    statusStore.lyricIndex === index,
-                  'is-bg': item.isBG,
-                  'is-duet': item.isDuet,
-                },
-              ]"
-              :style="{
-                filter: settingStore.lyricsBlur
-                  ? (playSeek >= item.startTime && playSeek < item.endTime) ||
-                    statusStore.lyricIndex === index
-                    ? 'blur(0)'
-                    : `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
-                  : 'blur(0)',
-              }"
-              @click="jumpSeek(item.startTime)"
-            >
-              <!-- 歌词 -->
-              <div class="content">
-                <div
-                  v-for="(text, textIndex) in item.words"
-                  :key="textIndex"
-                  :class="{
-                    'content-text': true,
-                    'content-long':
-                      settingStore.showYrcLongEffect &&
-                      text.endTime - text.startTime >= 1500 &&
-                      playSeek <= text.endTime,
-                    'end-with-space': text.word.endsWith(' ') || text.startTime === 0,
-                  }"
-                >
-                  <span class="word" :lang="getLyricLanguage(text.word)">
-                    {{ text.word }}
-                  </span>
-                  <span
-                    class="filler"
-                    :style="getYrcStyle(text, index)"
-                    :lang="getLyricLanguage(text.word)"
-                  >
-                    {{ text.word }}
-                  </span>
-                </div>
-              </div>
-              <!-- 翻译 -->
-              <span v-if="item.translatedLyric && settingStore.showTran" class="tran" lang="en">
-                {{ item.translatedLyric }}
-              </span>
-              <!-- 音译 -->
-              <span v-if="item.romanLyric && settingStore.showRoma" class="roma" lang="en">
-                {{ item.romanLyric }}
-              </span>
-              <!-- 间奏倒计时 -->
-              <div
-                v-if="
-                  settingStore.countDownShow &&
-                  item.startTime > 0 &&
-                  (musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime >= 10000
-                "
-                class="count-down-content"
-              >
+        <div v-else class="lyric-scroll-container" tabindex="-1">
+          <n-scrollbar ref="lyricScroll" class="lyric-scroll">
+            <!-- 逐字歌词 -->
+            <template v-if="settingStore.showYrc && musicStore.isHasYrc">
+              <div id="lrc-placeholder" class="placeholder">
+                <!-- 倒计时 -->
                 <CountDown
-                  :start="item.endTime"
-                  :duration="
-                    (musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime
-                  "
+                  :start="0"
+                  :duration="musicStore.songLyric.yrcData[0].startTime || 0"
                   :seek="playSeek"
                   :playing="statusStore.playStatus"
                 />
               </div>
-            </div>
-            <div class="placeholder" />
-          </template>
-          <!-- 普通歌词 -->
-          <template v-else-if="musicStore.isHasLrc">
-            <div id="lrc-placeholder" class="placeholder">
-              <!-- 倒计时 -->
-              <CountDown
-                :start="0"
-                :duration="musicStore.songLyric.lrcData[0].startTime || 0"
-                :seek="playSeek"
-                :playing="statusStore.playStatus"
-              />
-            </div>
-            <div
-              v-for="(item, index) in musicStore.songLyric.lrcData"
-              :key="index"
-              :id="`lrc-${index}`"
-              :class="['lrc-line', 'is-lrc', { on: statusStore.lyricIndex === index }]"
-              :style="{
-                filter: settingStore.lyricsBlur
-                  ? `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
-                  : 'blur(0)',
-              }"
-              @click="jumpSeek(item.startTime)"
-            >
-              <!-- 歌词 -->
-              <span class="content" :lang="getLyricLanguage(item.words?.[0]?.word)">
-                {{ item.words?.[0]?.word }}
-              </span>
-              <!-- 翻译 -->
-              <span v-if="item.translatedLyric && settingStore.showTran" class="tran" lang="en">
-                {{ item.translatedLyric }}
-              </span>
-              <!-- 音译 -->
-              <span v-if="item.romanLyric && settingStore.showRoma" class="roma" lang="en">
-                {{ item.romanLyric }}
-              </span>
-            </div>
-            <div class="placeholder" />
-          </template>
-        </n-scrollbar>
-      </div>
-    </Transition>
+              <div
+                v-for="(item, index) in musicStore.songLyric.yrcData"
+                :key="index"
+                :id="`lrc-${index}`"
+                :class="[
+                  'lrc-line',
+                  'is-yrc',
+                  {
+                    // on: statusStore.lyricIndex === index,
+                    // 当播放时间大于等于当前歌词的开始时间
+                    on:
+                      (playSeek >= item.startTime && playSeek < item.endTime) ||
+                      statusStore.lyricIndex === index,
+                    'is-bg': item.isBG,
+                    'is-duet': item.isDuet,
+                  },
+                ]"
+                :style="{
+                  filter: settingStore.lyricsBlur
+                    ? (playSeek >= item.startTime && playSeek < item.endTime) ||
+                      statusStore.lyricIndex === index
+                      ? 'blur(0)'
+                      : `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
+                    : 'blur(0)',
+                }"
+                @click="jumpSeek(item.startTime)"
+              >
+                <!-- 歌词 -->
+                <div class="content">
+                  <div
+                    v-for="(text, textIndex) in item.words"
+                    :key="textIndex"
+                    :class="{
+                      'content-text': true,
+                      'content-long':
+                        settingStore.showYrcLongEffect &&
+                        text.endTime - text.startTime >= 1500 &&
+                        playSeek <= text.endTime,
+                      'end-with-space': text.word.endsWith(' ') || text.startTime === 0,
+                    }"
+                  >
+                    <span class="word" :lang="getLyricLanguage(text.word)">
+                      {{ text.word }}
+                    </span>
+                    <span
+                      class="filler"
+                      :style="getYrcStyle(text, index)"
+                      :lang="getLyricLanguage(text.word)"
+                    >
+                      {{ text.word }}
+                    </span>
+                  </div>
+                </div>
+                <!-- 翻译 -->
+                <span v-if="item.translatedLyric && settingStore.showTran" class="tran" lang="en">
+                  {{ item.translatedLyric }}
+                </span>
+                <!-- 音译 -->
+                <span v-if="item.romanLyric && settingStore.showRoma" class="roma" lang="en">
+                  {{ item.romanLyric }}
+                </span>
+                <!-- 间奏倒计时 -->
+                <div
+                  v-if="
+                    settingStore.countDownShow &&
+                    item.startTime > 0 &&
+                    (musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime >=
+                      10000
+                  "
+                  class="count-down-content"
+                >
+                  <CountDown
+                    :start="item.endTime"
+                    :duration="
+                      (musicStore.songLyric.yrcData[index + 1]?.startTime || 0) - item.endTime
+                    "
+                    :seek="playSeek"
+                    :playing="statusStore.playStatus"
+                  />
+                </div>
+              </div>
+              <div class="placeholder" />
+            </template>
+            <!-- 普通歌词 -->
+            <template v-else-if="musicStore.isHasLrc">
+              <div id="lrc-placeholder" class="placeholder">
+                <!-- 倒计时 -->
+                <CountDown
+                  :start="0"
+                  :duration="musicStore.songLyric.lrcData[0].startTime || 0"
+                  :seek="playSeek"
+                  :playing="statusStore.playStatus"
+                />
+              </div>
+              <div
+                v-for="(item, index) in musicStore.songLyric.lrcData"
+                :key="index"
+                :id="`lrc-${index}`"
+                :class="['lrc-line', 'is-lrc', { on: statusStore.lyricIndex === index }]"
+                :style="{
+                  filter: settingStore.lyricsBlur
+                    ? `blur(${Math.min(Math.abs(statusStore.lyricIndex - index) * 1.8, 10)}px)`
+                    : 'blur(0)',
+                }"
+                @click="jumpSeek(item.startTime)"
+              >
+                <!-- 歌词 -->
+                <span class="content" :lang="getLyricLanguage(item.words?.[0]?.word)">
+                  {{ item.words?.[0]?.word }}
+                </span>
+                <!-- 翻译 -->
+                <span v-if="item.translatedLyric && settingStore.showTran" class="tran" lang="en">
+                  {{ item.translatedLyric }}
+                </span>
+                <!-- 音译 -->
+                <span v-if="item.romanLyric && settingStore.showRoma" class="roma" lang="en">
+                  {{ item.romanLyric }}
+                </span>
+              </div>
+              <div class="placeholder" />
+            </template>
+          </n-scrollbar>
+        </div>
+      </Transition>
+    </div>
     <!-- 歌词菜单组件 -->
     <LyricMenu />
   </div>
@@ -357,7 +359,10 @@ onBeforeUnmount(() => {
   .lyric-content {
     width: 100%;
     height: 100%;
-    box-sizing: border-box; /* 新增：确保宽度计算正确 */
+    .lyric-scroll-container {
+      width: 100%;
+      height: 100%;
+    }
   }
   .lrc-line {
     position: relative;

@@ -1,87 +1,89 @@
 <template>
-  <div
-    v-show="statusStore.showFullPlayer"
-    :style="{
-      '--main-color': statusStore.mainColor,
-      cursor: statusStore.playerMetaShow || isShowComment ? 'auto' : 'none',
-    }"
-    :class="['full-player', { 'show-comment': isShowComment }]"
-    @mouseleave="playerLeave"
-  >
-    <!-- 背景 -->
-    <PlayerBackground />
-    <!-- 独立歌词 -->
-    <Transition name="fade" mode="out-in">
+  <Teleport to="body">
+    <Transition name="up" mode="out-in">
       <div
-        v-if="isShowComment && !statusStore.pureLyricMode"
-        :key="instantLyrics.content"
-        class="lrc-instant"
+        v-if="statusStore.showFullPlayer"
+        :style="{
+          '--main-color': statusStore.mainColor,
+          cursor: statusStore.playerMetaShow || isShowComment ? 'auto' : 'none',
+        }"
+        :class="['full-player', { 'show-comment': isShowComment }]"
+        @mouseleave="playerLeave"
       >
-        <span class="lrc">{{ instantLyrics.content }}</span>
-        <span v-if="instantLyrics.tran" class="lrc-tran">{{ instantLyrics.tran }}</span>
-      </div>
-    </Transition>
-    <!-- 菜单 -->
-    <PlayerMenu @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
-    <!-- 主内容 -->
-    <Transition name="zoom" mode="out-in">
-      <div
-        :key="playerContentKey"
-        :class="[
-          'player-content',
-          {
-            'no-lrc': noLrc,
-            pure: statusStore.pureLyricMode && musicStore.isHasLrc,
-          },
-        ]"
-        @mousemove="playerMove"
-      >
-        <Transition name="zoom">
-          <div v-if="!pureLyricMode" :key="musicStore.playSong.id" class="content-left">
-            <!-- 封面 -->
-            <PlayerCover />
-            <!-- 数据 -->
-            <PlayerData :center="playerDataCenter" :theme="statusStore.mainColor" />
+        <!-- 背景 -->
+        <PlayerBackground />
+        <!-- 独立歌词 -->
+        <Transition name="fade" mode="out-in">
+          <div
+            v-if="isShowComment && !statusStore.pureLyricMode"
+            :key="instantLyrics.content"
+            class="lrc-instant"
+          >
+            <span class="lrc">{{ instantLyrics.content }}</span>
+            <span v-if="instantLyrics.tran" class="lrc-tran">{{ instantLyrics.tran }}</span>
           </div>
         </Transition>
-        <!-- 歌词 -->
-        <div class="content-right">
-          <!-- 数据 -->
-          <PlayerData
-            v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
-            :center="statusStore.pureLyricMode"
-            :theme="statusStore.mainColor"
-            :light="pureLyricMode"
-          />
-          <!-- 歌词 -->
-          <MainAMLyric v-if="settingStore.useAMLyrics" />
-          <MainLyric v-else />
-        </div>
+        <!-- 菜单 -->
+        <PlayerMenu @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
+        <!-- 主内容 -->
+        <Transition name="zoom" mode="out-in">
+          <div
+            :key="playerContentKey"
+            :class="[
+              'player-content',
+              {
+                'no-lrc': noLrc,
+                pure: statusStore.pureLyricMode && musicStore.isHasLrc,
+              },
+            ]"
+            @mousemove="playerMove"
+          >
+            <Transition name="zoom">
+              <div v-if="!pureLyricMode" :key="musicStore.playSong.id" class="content-left">
+                <!-- 封面 -->
+                <PlayerCover />
+                <!-- 数据 -->
+                <PlayerData :center="playerDataCenter" :theme="statusStore.mainColor" />
+              </div>
+            </Transition>
+            <!-- 歌词 -->
+            <div class="content-right">
+              <!-- 数据 -->
+              <PlayerData
+                v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
+                :center="statusStore.pureLyricMode"
+                :theme="statusStore.mainColor"
+                :light="pureLyricMode"
+              />
+              <!-- 歌词 -->
+              <MainAMLyric v-if="settingStore.useAMLyrics" />
+              <MainLyric v-else />
+            </div>
+          </div>
+        </Transition>
+        <!-- 评论 -->
+        <Transition name="zoom" mode="out-in">
+          <PlayerComment v-show="isShowComment && !statusStore.pureLyricMode" />
+        </Transition>
+        <!-- 控制中心 -->
+        <PlayerControl @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
+        <!-- 音乐频谱 -->
+        <PlayerSpectrum
+          v-if="settingStore.showSpectrums"
+          :color="statusStore.mainColor ? `rgb(${statusStore.mainColor})` : 'rgb(239 239 239)'"
+          :show="!statusStore.playerMetaShow"
+          :height="60"
+        />
       </div>
     </Transition>
-    <!-- 评论 -->
-    <Transition name="zoom" mode="out-in">
-      <PlayerComment v-show="isShowComment && !statusStore.pureLyricMode" />
-    </Transition>
-    <!-- 控制中心 -->
-    <PlayerControl @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
-    <!-- 音乐频谱 -->
-    <PlayerSpectrum
-      v-if="settingStore.showSpectrums"
-      :color="statusStore.mainColor ? `rgb(${statusStore.mainColor})` : 'rgb(239 239 239)'"
-      :show="!statusStore.playerMetaShow"
-      :height="60"
-    />
-  </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { throttle } from "lodash-es";
-import { usePlayer } from "@/utils/player";
 
-const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
@@ -159,10 +161,6 @@ const playerLeave = () => {
 };
 
 onMounted(() => {
-  console.log("播放器开启");
-  statusStore.fullPlayerActive = true;
-  // 音乐频谱
-  if (settingStore.showSpectrums) player.initSpectrumData();
   // 阻止息屏
   if (isElectron && settingStore.preventSleep) {
     window.electron.ipcRenderer.send("prevent-sleep", true);

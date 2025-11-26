@@ -156,8 +156,6 @@ export interface SettingState {
   useRealIP: boolean;
   /** 真实 IP 地址 */
   realIP: string;
-  /** 全屏播放器缓存 */
-  fullPlayerCache: boolean;
   /** 是否打卡歌曲 */
   scrobbleSong: boolean;
   /** 动态封面 */
@@ -206,7 +204,6 @@ export const useSettingStore = defineStore("setting", {
     showTaskbarProgress: false,
     checkUpdateOnStart: true,
     preventSleep: false,
-    fullPlayerCache: false,
     useKeepAlive: true,
     songLevel: "exhigh",
     playDevice: "default",
