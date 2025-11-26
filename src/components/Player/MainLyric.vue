@@ -75,7 +75,7 @@
                     'content-text': true,
                     'content-long':
                       settingStore.showYrcLongEffect &&
-                      text.endTime - item.startTime >= 1500 &&
+                      text.endTime - text.startTime >= 1500 &&
                       playSeek <= text.endTime,
                     'end-with-space': text.word.endsWith(' ') || text.startTime === 0,
                   }"
@@ -400,8 +400,8 @@ onBeforeUnmount(() => {
           top: 0;
           transform: none;
           will-change: -webkit-mask-position-x, transform, opacity;
-          padding: 0.3em 0;
-          margin: -0.3em 0;
+          // padding: 0.3em 0;
+          // margin: -0.3em 0;
           mask-image: linear-gradient(
             to right,
             rgb(0, 0, 0) 45.4545454545%,
@@ -420,7 +420,7 @@ onBeforeUnmount(() => {
             opacity 0.3s,
             filter 0.3s,
             margin 0.3s,
-            padding 0.3s;
+            padding 0.3s !important;
         }
         &.end-with-space {
           margin-right: 12px;

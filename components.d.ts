@@ -15,6 +15,7 @@ declare module 'vue' {
     ArtistList: typeof import('./src/components/List/ArtistList.vue')['default']
     AutoClose: typeof import('./src/components/Modal/AutoClose.vue')['default']
     Background: typeof import('./src/components/Other/background.vue')['default']
+    BackgroundRender: typeof import('./src/components/Special/BackgroundRender.vue')['default']
     BatchList: typeof import('./src/components/Modal/BatchList.vue')['default']
     ChangeRate: typeof import('./src/components/Modal/ChangeRate.vue')['default']
     CloudMatch: typeof import('./src/components/Modal/CloudMatch.vue')['default']

@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
-import { basename, isAbsolute, join, relative, resolve } from "path";
-import { access, readFile, stat, unlink, writeFile } from "fs/promises";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "path";
+import { access, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
 import { parseFile } from "music-metadata";
 import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
 import { File, Picture, Id3v2Settings } from "node-taglib-sharp";
@@ -130,40 +130,61 @@ const initFileIpc = (): void => {
     "get-music-lyric",
     async (
       _,
-      path: string,
+      musicPath: string, // 参数名改为 musicPath 以示区分
     ): Promise<{
       lyric: string;
       format: "lrc" | "ttml";
     }> => {
       try {
-        const filePath = resolve(path).replace(/\\/g, "/");
-
-        // 尝试获取同名的歌词文件
-        const filePathWithoutExt = filePath.replace(/\.[^.]+$/, "");
-        for (const ext of ["ttml", "lrc"] as const) {
-          const lyricPath = `${filePathWithoutExt}.${ext}`;
-          const matches = await FastGlob(lyricPath, globOpt());
-          ipcLog.info("lyric matches", matches);
-          if (matches.length > 0) {
+        // 获取文件基本信息
+        const absPath = resolve(musicPath);
+        const dir = dirname(absPath);
+        const ext = extname(absPath);
+        const baseName = basename(absPath, ext);
+        // 读取目录下所有文件
+        let files: string[] = [];
+        try {
+          files = await readdir(dir);
+        } catch (error) {
+          ipcLog.error("❌ Failed to read directory:", dir);
+          throw error;
+        }
+        // 遍历优先级
+        for (const format of ["lrc", "ttml"] as const) {
+          // 构造期望目标文件名
+          const targetNameLower = `${baseName}.${format}`.toLowerCase();
+          // 在文件列表中查找是否存在匹配项（忽略大小写）
+          const matchedFileName = files.find((file) => file.toLowerCase() === targetNameLower);
+          if (matchedFileName) {
             try {
-              const lyric = await readFile(matches[0], "utf-8");
-              if (lyric && lyric !== "") return { lyric, format: ext };
+              const lyricPath = join(dir, matchedFileName);
+              const lyric = await readFile(lyricPath, "utf-8");
+              // 若不为空
+              if (lyric && lyric.trim() !== "") {
+                ipcLog.info(`✅ Local lyric found (${format}): ${lyricPath}`);
+                return { lyric, format };
+              }
             } catch {
-              /* empty */
+              // 读取失败则尝试下一种格式
+              continue;
             }
           }
         }
-
-        // 尝试获取元数据
-        const { common } = await parseFile(filePath);
-        const lyric = common?.lyrics?.[0]?.syncText;
-        if (lyric && lyric.length > 0) {
-          return { lyric: metaDataLyricsArrayToLrc(lyric), format: "lrc" };
+        // 如果本地文件没找到，尝试读取内置元数据 (ID3 Tags)
+        const { common } = await parseFile(absPath);
+        const syncedLyric = common?.lyrics?.[0]?.syncText;
+        if (syncedLyric && syncedLyric.length > 0) {
+          return {
+            lyric: metaDataLyricsArrayToLrc(syncedLyric),
+            format: "lrc",
+          };
         } else if (common?.lyrics?.[0]?.text) {
-          return { lyric: common?.lyrics?.[0]?.text, format: "lrc" };
+          return {
+            lyric: common?.lyrics?.[0]?.text,
+            format: "lrc",
+          };
         }
-
-        // 没有歌词
+        // 都没有找到
         return { lyric: "", format: "lrc" };
       } catch (error) {
         ipcLog.error("❌ Error fetching music lyric:", error);

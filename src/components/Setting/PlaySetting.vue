@@ -155,6 +155,36 @@
           class="set"
         />
       </n-card>
+      <n-collapse-transition :show="settingStore.playerBackgroundType === 'animation'">
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">背景动画帧率</n-text>
+            <n-text class="tip" :depth="3">单位 fps，最小 24，最大 240</n-text>
+          </div>
+          <n-input-number
+            v-model:value="settingStore.playerBackgroundFps"
+            :min="24"
+            :max="256"
+            :show-button="false"
+            class="set"
+            placeholder="请输入背景动画帧率"
+          />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">背景动画流动速度</n-text>
+            <n-text class="tip" :depth="3">单位 倍数，最小 0.1，最大 10</n-text>
+          </div>
+          <n-input-number
+            v-model:value="settingStore.playerBackgroundFlowSpeed"
+            :min="0.1"
+            :max="10"
+            :show-button="false"
+            class="set"
+            placeholder="请输入背景动画流动速度"
+          />
+        </n-card>
+      </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">全屏播放器留存</n-text>

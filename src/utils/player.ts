@@ -421,6 +421,7 @@ class Player {
   private async parseLocalMusicInfo(path: string) {
     try {
       const musicStore = useMusicStore();
+      const statusStore = useStatusStore();
       // 获取封面数据
       const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", path);
       if (coverData) {
@@ -440,7 +441,7 @@ class Player {
         path,
       );
       // 更新音质
-      musicStore.playSong.quality = handleSongQuality(infoData.format.bitrate ?? 0);
+      statusStore.songQuality = handleSongQuality(infoData.format.bitrate ?? 0);
       // 获取主色
       runIdle(() => getCoverColor(musicStore.playSong.cover));
     } catch (error) {
