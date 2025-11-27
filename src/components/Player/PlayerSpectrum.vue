@@ -107,6 +107,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  // 停止绘制循环
+  isKeepDrawing.value = false;
   pauseDraw();
 });
 </script>

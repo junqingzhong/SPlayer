@@ -82,7 +82,6 @@
 <script setup lang="ts">
 import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
-import { throttle } from "lodash-es";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
@@ -139,13 +138,13 @@ const {
 }, 3000);
 
 // 鼠标移动
-const playerMove = throttle(
+const playerMove = useThrottleFn(
   () => {
     statusStore.playerMetaShow = true;
     if (!isPending.value) startShow();
   },
   300,
-  { trailing: false },
+  false,
 );
 
 // 停用隐藏
@@ -168,7 +167,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  console.log("离开播放器");
+  stopShow();
   if (isElectron) window.electron.ipcRenderer.send("prevent-sleep", false);
 });
 </script>

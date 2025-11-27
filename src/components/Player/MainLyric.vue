@@ -312,6 +312,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   console.log("离开歌词");
   pauseSeek();
+  if (isElectron) {
+    window.electron.ipcRenderer.removeAllListeners("lyricsScroll");
+  }
 });
 </script>
 

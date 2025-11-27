@@ -35,7 +35,7 @@ jobs:
           actions: "create-comment, close-issue"
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            抱歉，由于该 Issue 被标记为 **${{ github.event.label.name }}**，系统将自动将其关闭
+            抱歉，由于被标记为 **${{ github.event.label.name }}**，该 Issue 将自动关闭
             如果您认为该 Issue 仍然有效，请重新开启或者创建新的 Issue，我们会尽快确认并修复
       # 有问题回复
       - name: Auto Reply
@@ -45,7 +45,7 @@ jobs:
           actions: "create-comment"
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            🤝 您好 @${{ github.event.issue.user.login }}，感谢您的反馈！我们注意到该问题被添加了 **${{ github.event.label.name }}**
+            🤝 您好 @${{ github.event.issue.user.login }}，感谢您的反馈！
             由于缺少复现步骤，我们无法重现问题，因此无法修复
             请确保您已经详细描述了问题的复现步骤，维护团队会尽快查看
       # 已确认 BUG
