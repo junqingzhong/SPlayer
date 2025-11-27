@@ -6,7 +6,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 0 * * *" # 每天零点运行
+    - cron: "0 */6 * * *" # 每 6 小时运行一次
   workflow_dispatch: # 可手动运行
 
 jobs:
@@ -22,6 +22,8 @@ jobs:
           days-before-stale: 30
           # 7 天后关闭
           days-before-close: 7
+          # 处理 200 个 PR 和 Issue
+          operations-per-run: 200
           # 自动评论内容
           stale-issue-message: |
             👀 该 Issue 已经 30 天没有任何更新啦
@@ -34,5 +36,5 @@ jobs:
           stale-pr-label: "过期"
           # 不会被标记为 stale 的 PR 和 Issue
           exempt-draft-pr: true
-          exempt-issue-labels: "重要,高优先级 P0,中优先级 P1,需要帮助"
-          exempt-pr-labels: "重要,高优先级 P0,中优先级 P1,需要帮助"
+          exempt-issue-labels: "BUG,重要,高优先级 P0,中优先级 P1,需要帮助"
+          exempt-pr-labels: "BUG,重要,高优先级 P0,中优先级 P1,需要帮助"

@@ -6,6 +6,19 @@ on:
   push:
     branches:
       - dev
+    paths:
+      - "src/**"
+      - "web/**"
+      - "electron/**"
+      - "public/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "electron-builder.config.ts"
+      - "electron.vite.config.ts"
+      - "tsconfig*.json"
+      - ".env.example"
+      - "Dockerfile"
+      - "docker-compose.yml"
 
 env:
   NODE_VERSION: 22.x
