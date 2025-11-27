@@ -55,7 +55,7 @@ jobs:
         with:
           actions: "remove-labels, create-comment"
           token: ${{ secrets.GITHUB_TOKEN }}
-          labels: "有问题"
+          labels: "有问题, 过期"
           body: |
             🤝 您好 @${{ github.actor }}，感谢您的反馈！我们已经确认该问题，并将在下一个版本中修复
       # 已修复
