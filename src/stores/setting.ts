@@ -122,8 +122,6 @@ export interface SettingState {
   showSpectrums: boolean;
   /** 是否开启 SMTC */
   smtcOpen: boolean;
-  /** 是否输出高清封面 */
-  smtcOutputHighQualityCover: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
   /** 鼠标悬停暂停 */
@@ -226,7 +224,6 @@ export const useSettingStore = defineStore("setting", {
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
-    smtcOutputHighQualityCover: false,
     playSongDemo: false,
     scrobbleSong: false,
     dynamicCover: false,

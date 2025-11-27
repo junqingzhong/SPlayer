@@ -8,7 +8,7 @@ on:
 
 env:
   NODE_VERSION: 22.x
-  PNPM_VERSION: 8
+  PNPM_VERSION: 10
   SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
 
 jobs:
@@ -98,18 +98,18 @@ jobs:
       # 构建 Electron App
       - name: Build Windows x64 & ARM64 App
         if: runner.os == 'Windows'
-        run: pnpm build:win || true
+        run: pnpm build:win -- --x64 --arm64 || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build macOS Universal App
         if: runner.os == 'macOS'
-        run: pnpm build:mac || true
+        run: pnpm build:mac -- --x64 --arm64 || true
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Linux x64 & ARM64 App
         if: runner.os == 'Linux'
-        run: pnpm build:linux || true
+        run: pnpm build:linux -- --x64 --arm64 || true
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

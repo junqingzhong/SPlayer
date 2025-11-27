@@ -1,5 +1,5 @@
 # Dev 分支推送部署预览
-## 部署 Windows x64 和 ARM64 版本
+## 部署 Windows
 name: Build Dev
 
 on:
@@ -52,7 +52,7 @@ jobs:
       # 构建 Electron App (x64)
       - name: Build Electron App for Windows x64
         # 仅 x64
-        run: pnpm run build:win -- --arch=x64
+        run: pnpm run build:win -- --x64
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # 清理不必要的构建产物（保留 .exe 和 .blockmap 文件）

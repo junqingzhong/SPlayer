@@ -248,18 +248,6 @@
         </div>
         <n-switch v-model:value="settingStore.smtcOpen" class="set" :round="false" />
       </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">输出高清封面</n-text>
-          <n-text class="tip" :depth="3">开启 SMTC 时是否输出高清封面</n-text>
-        </div>
-        <n-switch
-          v-model:value="settingStore.smtcOutputHighQualityCover"
-          class="set"
-          :round="false"
-          :disabled="!settingStore.smtcOpen || true"
-        />
-      </n-card>
     </div>
   </div>
 </template>

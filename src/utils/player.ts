@@ -1,11 +1,12 @@
-import { SongType, PlayModeType } from "@/types/main";
-import type { MessageReactive } from "naive-ui";
+import { type SongType, type PlayModeType } from "@/types/main";
+import { type IFormat } from "music-metadata";
+import { type MessageReactive } from "naive-ui";
 import { Howl, Howler } from "howler";
 import { cloneDeep } from "lodash-es";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { useIntervalFn } from "@vueuse/core";
-import { calculateProgress } from "./time";
-import { shuffleArray, runIdle, handleSongQuality } from "./helper";
+import { calculateProgress, msToS } from "./time";
+import { shuffleArray, handleSongQuality } from "./helper";
 import { heartRateList } from "@/api/playlist";
 import { formatSongsList } from "./format";
 import { isLogin } from "./auth";
@@ -21,11 +22,9 @@ import {
   NextPrefetchSong,
 } from "./player-utils/song";
 import { isDev, isElectron } from "./env";
-// import { getLyricData } from "./player-utils/lyric";
 import audioContextManager from "@/utils/player-utils/context";
 import lyricManager from "./lyricManager";
 import blob from "./blob";
-import { IFormat } from "music-metadata";
 
 /* *允许播放格式 */
 const allowPlayFormat = ["mp3", "flac", "webm", "ogg", "wav"];
@@ -52,6 +51,8 @@ class Player {
       const lyricIndex = lyricManager.calculateLyricIndex(currentTime);
       // 更新状态
       statusStore.$patch({ currentTime, duration, progress, lyricIndex });
+      // 更新 MediaSession
+      this.updateMediaSessionState(duration, currentTime);
       // 客户端事件
       if (isElectron) {
         // 歌词变化
@@ -148,7 +149,7 @@ class Player {
     // 新增播放历史
     if (type !== "radio") dataStore.setHistory(musicStore.playSong);
     // 获取歌曲封面主色
-    if (!path) runIdle(() => getCoverColor(musicStore.songCover));
+    if (!path) getCoverColor(musicStore.songCover);
     // 更新 MediaSession
     if (!path) this.updateMediaSession();
     // 开发模式
@@ -287,16 +288,14 @@ class Player {
     navigator.mediaSession.setActionHandler("nexttrack", () => this.nextOrPrev("next"));
     // 跳转进度
     navigator.mediaSession.setActionHandler("seekto", (event) => {
-      if (event.seekTime) this.setSeek(event.seekTime);
+      const seekTime = event.seekTime ? Number(event.seekTime) * 1000 : 0;
+      if (seekTime) this.setSeek(seekTime);
     });
   }
-  /**
-   * 更新 MediaSession
-   */
+  /** 更新 MediaSession */
   private updateMediaSession() {
     if (!("mediaSession" in navigator)) return;
     const musicStore = useMusicStore();
-    const settingStore = useSettingStore();
     // 获取播放数据
     const playSongData = getPlaySongData();
     if (!playSongData) return;
@@ -317,44 +316,49 @@ class Player {
           typeof playSongData.album === "object"
           ? playSongData.album.name
           : String(playSongData.album),
-      artwork: settingStore.smtcOutputHighQualityCover
-        ? [
-            {
-              src: musicStore.getSongCover("xl"),
-              sizes: "1920x1920",
-              type: "image/jpeg",
-            },
-          ]
-        : [
-            {
-              src: musicStore.getSongCover("cover"),
-              sizes: "512x512",
-              type: "image/jpeg",
-            },
-            {
-              src: musicStore.getSongCover("s"),
-              sizes: "100x100",
-              type: "image/jpeg",
-            },
-            {
-              src: musicStore.getSongCover("m"),
-              sizes: "300x300",
-              type: "image/jpeg",
-            },
-            {
-              src: musicStore.getSongCover("l"),
-              sizes: "1024x1024",
-              type: "image/jpeg",
-            },
-            {
-              src: musicStore.getSongCover("xl"),
-              sizes: "1920x1920",
-              type: "image/jpeg",
-            },
-          ],
+      artwork: [
+        {
+          src: musicStore.getSongCover("cover"),
+          sizes: "512x512",
+          type: "image/jpeg",
+        },
+        {
+          src: musicStore.getSongCover("s"),
+          sizes: "100x100",
+          type: "image/jpeg",
+        },
+        {
+          src: musicStore.getSongCover("m"),
+          sizes: "300x300",
+          type: "image/jpeg",
+        },
+        {
+          src: musicStore.getSongCover("l"),
+          sizes: "1024x1024",
+          type: "image/jpeg",
+        },
+        {
+          src: musicStore.getSongCover("xl"),
+          sizes: "1920x1920",
+          type: "image/jpeg",
+        },
+      ],
     };
     // 更新数据
     navigator.mediaSession.metadata = new window.MediaMetadata(metaData);
+    // 更新状态
+  }
+  /**
+   * 实时更新 MediaSession
+   * @param duration 歌曲总时长（毫秒）
+   * @param currentTime 当前播放时间（毫秒）
+   */
+  private updateMediaSessionState(duration: number, currentTime: number) {
+    if (!("mediaSession" in navigator)) return;
+    navigator.mediaSession.setPositionState({
+      duration: msToS(duration),
+      position: msToS(currentTime),
+    });
   }
   /**
    * 初始化音频可视化
@@ -468,7 +472,7 @@ class Player {
       // 更新音质
       statusStore.songQuality = handleSongQuality(infoData.format.bitrate ?? 0);
       // 获取主色
-      runIdle(() => getCoverColor(musicStore.playSong.cover));
+      getCoverColor(musicStore.playSong.cover);
     } catch (error) {
       window.$message.error("获取本地歌曲元信息失败");
       console.error("Failed to parse local music info:", error);
