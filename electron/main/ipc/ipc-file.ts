@@ -378,10 +378,10 @@ const initFileIpc = (): void => {
         lyric?: string;
         songData?: any;
       } = {
-        fileName: "未知文件名",
-        fileType: "mp3",
-        path: app.getPath("downloads"),
-      },
+          fileName: "未知文件名",
+          fileType: "mp3",
+          path: app.getPath("downloads"),
+        },
     ): Promise<boolean> => {
       try {
         // 获取窗口
