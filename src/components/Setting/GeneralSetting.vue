@@ -97,6 +97,20 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">侧边栏隐藏</n-text>
+          <n-text class="tip" :depth="3">配置需要在侧边栏隐藏的菜单项</n-text>
+        </div>
+        <n-button
+          type="primary"
+          strong
+          secondary
+          @click="openSidebarHideManager"
+        >
+          配置
+        </n-button>
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">显示歌曲音质</n-text>
           <n-text class="tip" :depth="3">是否列表中显示歌曲音质</n-text>
         </div>
@@ -310,6 +324,7 @@ import { isDev, isElectron } from "@/utils/env";
 import { getCoverColor } from "@/utils/player-utils/song";
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";
+import { openSidebarHideManager } from "@/utils/modal";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();

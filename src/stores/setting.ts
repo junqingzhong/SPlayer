@@ -7,17 +7,17 @@ export interface SettingState {
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
   themeColorType:
-    | "default"
-    | "orange"
-    | "blue"
-    | "pink"
-    | "brown"
-    | "indigo"
-    | "green"
-    | "purple"
-    | "yellow"
-    | "teal"
-    | "custom";
+  | "default"
+  | "orange"
+  | "blue"
+  | "pink"
+  | "brown"
+  | "indigo"
+  | "green"
+  | "purple"
+  | "yellow"
+  | "teal"
+  | "custom";
   /** 主题自定义颜色 */
   themeCustomColor: string;
   /** 全局着色 */
@@ -82,14 +82,14 @@ export interface SettingState {
   proxyPort: number;
   /** 歌曲音质 */
   songLevel:
-    | "standard"
-    | "higher"
-    | "exhigh"
-    | "lossless"
-    | "hires"
-    | "jyeffect"
-    | "sky"
-    | "jymaster";
+  | "standard"
+  | "higher"
+  | "exhigh"
+  | "lossless"
+  | "hires"
+  | "jyeffect"
+  | "sky"
+  | "jymaster";
   /** 播放设备 */
   playDevice: "default" | string;
   /** 自动播放 */
@@ -138,6 +138,8 @@ export interface SettingState {
   enableTTMLLyric: boolean;
   /** 菜单显示封面 */
   menuShowCover: boolean;
+  /** 菜单展开项 */
+  menuExpandedKeys: string[];
   /** 是否禁止休眠 */
   preventSleep: boolean;
   /** 本地文件路径 */
@@ -180,6 +182,26 @@ export interface SettingState {
   showSongPrivilegeTag: boolean;
   /** 显示原唱翻唱标签 */
   showSongOriginalTag: boolean;
+  /** 隐藏发现音乐 */
+  hideDiscover: boolean;
+  /** 隐藏私人漫游 */
+  hidePersonalFM: boolean;
+  /** 隐藏播客电台 */
+  hideRadioHot: boolean;
+  /** 隐藏我的收藏 */
+  hideLike: boolean;
+  /** 隐藏我的云盘 */
+  hideCloud: boolean;
+  /** 隐藏本地歌曲 */
+  hideLocal: boolean;
+  /** 隐藏最近播放 */
+  hideHistory: boolean;
+  /** 隐藏创建的歌单 */
+  hideUserPlaylists: boolean;
+  /** 隐藏收藏的歌单 */
+  hideLikedPlaylists: boolean;
+  /** 隐藏心动模式 */
+  hideHeartbeatMode: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -195,6 +217,7 @@ export const useSettingStore = defineStore("setting", {
     hideVipTag: false,
     showSearchHistory: true,
     menuShowCover: true,
+    menuExpandedKeys: [],
     routeAnimation: "slide",
     useOnlineService: true,
     showCloseAppTip: true,
@@ -267,6 +290,16 @@ export const useSettingStore = defineStore("setting", {
     showSongQuality: true,
     showSongPrivilegeTag: true,
     showSongOriginalTag: true,
+    hideDiscover: false,
+    hidePersonalFM: false,
+    hideRadioHot: false,
+    hideLike: false,
+    hideCloud: false,
+    hideLocal: false,
+    hideHistory: false,
+    hideUserPlaylists: false,
+    hideLikedPlaylists: false,
+    hideHeartbeatMode: false,
   }),
   getters: {
     /**
@@ -294,12 +327,11 @@ export const useSettingStore = defineStore("setting", {
       }
       window.$message.info(
         `已切换至
-        ${
-          this.themeMode === "auto"
-            ? "跟随系统"
-            : this.themeMode === "light"
-              ? "浅色模式"
-              : "深色模式"
+        ${this.themeMode === "auto"
+          ? "跟随系统"
+          : this.themeMode === "light"
+            ? "浅色模式"
+            : "深色模式"
         }`,
         {
           showIcon: false,

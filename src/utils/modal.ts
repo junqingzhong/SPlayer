@@ -1,4 +1,4 @@
-import { h } from "vue";
+import { h, defineAsyncComponent } from "vue";
 import type { CoverType, UpdateInfoType, SettingType, SongType } from "@/types/main";
 import { isLogin } from "./auth";
 import { isArray, isFunction } from "lodash-es";
@@ -14,13 +14,14 @@ import CloudMatch from "@/components/Modal/CloudMatch.vue";
 import CreatePlaylist from "@/components/Modal/CreatePlaylist.vue";
 import UpdatePlaylist from "@/components/Modal/UpdatePlaylist.vue";
 import DownloadSong from "@/components/Modal/DownloadSong.vue";
-import MainSetting from "@/components/Setting/MainSetting.vue";
+const MainSetting = defineAsyncComponent(() => import("@/components/Setting/MainSetting.vue"));
 import UpdateApp from "@/components/Modal/UpdateApp.vue";
 import ExcludeLyrics from "@/components/Modal/ExcludeLyrics.vue";
 import ChangeRate from "@/components/Modal/ChangeRate.vue";
 import AutoClose from "@/components/Modal/AutoClose.vue";
 import Equalizer from "@/components/Modal/Equalizer.vue";
 import SongUnlockManager from "@/components/Modal/SongUnlockManager.vue";
+import SidebarHideManager from "@/components/Modal/SidebarHideManager.vue";
 import { NScrollbar } from "naive-ui";
 
 // 用户协议
@@ -331,6 +332,20 @@ export const openSongUnlockManager = () => {
     title: "音源管理",
     content: () => {
       return h(SongUnlockManager);
+    },
+  });
+};
+
+/** 打开侧边栏隐藏管理弹窗 */
+export const openSidebarHideManager = () => {
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "侧边栏隐藏管理",
+    content: () => {
+      return h(SidebarHideManager);
     },
   });
 };
