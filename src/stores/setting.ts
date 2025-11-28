@@ -204,6 +204,10 @@ export interface SettingState {
   hideHeartbeatMode: boolean;
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
+  /** 应用启动次数 */
+  appLaunchCount: number;
+  /** 隐藏 Star 弹窗 */
+  hideStarPopup: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -303,6 +307,8 @@ export const useSettingStore = defineStore("setting", {
     hideLikedPlaylists: false,
     hideHeartbeatMode: false,
     enableSearchKeyword: true,
+    appLaunchCount: 0,
+    hideStarPopup: false,
   }),
   getters: {
     /**

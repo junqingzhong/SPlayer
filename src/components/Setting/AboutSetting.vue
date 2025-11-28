@@ -37,6 +37,25 @@
       </n-collapse-transition>
     </div>
     <div class="set-list">
+      <n-h3 prefix="bar"> 特别鸣谢 </n-h3>
+      <n-flex class="link">
+        <n-card
+          v-for="(item, index) in contributors"
+          :key="index"
+          class="link-item"
+          hoverable
+          @click="openLink(item.url)"
+        >
+          <n-flex vertical :gap="4">
+            <n-text class="name" strong> {{ item.name }} </n-text>
+            <n-text class="tip" :depth="3" style="font-size: 12px">
+              {{ item.description }}
+            </n-text>
+          </n-flex>
+        </n-card>
+      </n-flex>
+    </div>
+    <div class="set-list">
       <n-h3 prefix="bar"> 社区与资讯 </n-h3>
       <n-flex class="link">
         <n-card
@@ -86,6 +105,15 @@ import packageJson from "@/../package.json";
 import { isElectron } from "@/utils/env";
 
 const statusStore = useStatusStore();
+
+// 特别鸣谢
+const contributors = [
+  {
+    name: "imsyy",
+    url: "https://github.com/imsyy",
+    description: "SPlayer 作者",
+  },
+];
 
 // 社区数据
 const communityData = [
