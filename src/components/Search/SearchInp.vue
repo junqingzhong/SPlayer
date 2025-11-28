@@ -86,6 +86,10 @@ const setSearchHistory = (keyword: string) => {
 
 // 更换搜索框关键词
 const updatePlaceholder = async () => {
+  if (!settingStore.enableSearchKeyword) {
+    searchPlaceholder.value = "搜索音乐 / 视频";
+    return;
+  }
   try {
     const result = await searchDefault();
     searchPlaceholder.value = result.data.showKeyword;
@@ -162,7 +166,7 @@ const toSearch = async (key: any, type: string = "keyword") => {
 
 onMounted(() => {
   // 每分钟更新
-  if (settingStore.useOnlineService) {
+  if (settingStore.useOnlineService && settingStore.enableSearchKeyword) {
     useIntervalFn(updatePlaceholder, 60 * 1000, { immediate: true });
   }
 });

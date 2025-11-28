@@ -1,4 +1,4 @@
-import { h, defineAsyncComponent } from "vue";
+import { h } from "vue";
 import type { CoverType, UpdateInfoType, SettingType, SongType } from "@/types/main";
 import { isLogin } from "./auth";
 import { isArray, isFunction } from "lodash-es";
@@ -14,7 +14,7 @@ import CloudMatch from "@/components/Modal/CloudMatch.vue";
 import CreatePlaylist from "@/components/Modal/CreatePlaylist.vue";
 import UpdatePlaylist from "@/components/Modal/UpdatePlaylist.vue";
 import DownloadSong from "@/components/Modal/DownloadSong.vue";
-const MainSetting = defineAsyncComponent(() => import("@/components/Setting/MainSetting.vue"));
+import MainSetting from "@/components/Setting/MainSetting.vue";
 import UpdateApp from "@/components/Modal/UpdateApp.vue";
 import ExcludeLyrics from "@/components/Modal/ExcludeLyrics.vue";
 import ChangeRate from "@/components/Modal/ChangeRate.vue";

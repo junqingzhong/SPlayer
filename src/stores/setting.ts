@@ -202,6 +202,8 @@ export interface SettingState {
   hideLikedPlaylists: boolean;
   /** 隐藏心动模式 */
   hideHeartbeatMode: boolean;
+  /** 启用搜索关键词获取 */
+  enableSearchKeyword: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -300,6 +302,7 @@ export const useSettingStore = defineStore("setting", {
     hideUserPlaylists: false,
     hideLikedPlaylists: false,
     hideHeartbeatMode: false,
+    enableSearchKeyword: true,
   }),
   getters: {
     /**

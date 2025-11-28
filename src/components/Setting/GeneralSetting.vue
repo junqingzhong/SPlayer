@@ -90,6 +90,13 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">搜索关键词建议</n-text>
+          <n-text class="tip" :depth="3">是否启用搜索关键词建议</n-text>
+        </div>
+        <n-switch class="set" v-model:value="settingStore.enableSearchKeyword" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">侧边栏显示封面</n-text>
           <n-text class="tip" :depth="3">是否显示歌单的封面，如果有</n-text>
         </div>
