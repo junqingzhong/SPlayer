@@ -15,6 +15,8 @@ if (process.contextIsolated) {
         has: (key: string) => ipcRenderer.invoke("store-has", key),
         delete: (key: string) => ipcRenderer.invoke("store-delete", key),
         reset: (keys?: string[]) => ipcRenderer.invoke("store-reset", keys),
+        export: (data: any) => ipcRenderer.invoke("store-export", data),
+        import: () => ipcRenderer.invoke("store-import"),
       },
     });
   } catch (error) {

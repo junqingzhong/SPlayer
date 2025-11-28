@@ -1,4 +1,5 @@
-import { ipcMain } from "electron";
+import { ipcMain, dialog, app } from "electron";
+import { writeFile, readFile } from "fs/promises";
 import { useStore } from "../store";
 import type { StoreType } from "../store";
 
@@ -39,6 +40,72 @@ const initStoreIpc = (): void => {
       store.reset();
     }
     return true;
+  });
+  // 导出配置
+  ipcMain.handle("store-export", async (_event, rendererData: any) => {
+    console.log("[IPC] store-export called");
+    try {
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}-${String(now.getMinutes()).padStart(2, "0")}-${String(now.getSeconds()).padStart(2, "0")}`;
+      const filename = `SPlayer_Settings_${timestamp}.json`;
+
+      const { filePath } = await dialog.showSaveDialog({
+        title: "导出设置",
+        defaultPath: filename,
+        filters: [{ name: "JSON", extensions: ["json"] }],
+      });
+
+      if (filePath) {
+        console.log("[IPC] Exporting to:", filePath);
+        const fullData = {
+          version: app.getVersion(),
+          timestamp: now.getTime(),
+          electron: store.store,
+          renderer: rendererData,
+        };
+        const data = JSON.stringify(fullData, null, 2);
+        await writeFile(filePath, data, "utf-8");
+        return true;
+      }
+      console.log("[IPC] Export cancelled");
+      return false;
+    } catch (error) {
+      console.error("❌ Export settings failed:", error);
+      return false;
+    }
+  });
+
+  // 导入配置
+  ipcMain.handle("store-import", async () => {
+    console.log("[IPC] store-import called");
+    try {
+      const { filePaths } = await dialog.showOpenDialog({
+        title: "导入设置",
+        filters: [{ name: "JSON", extensions: ["json"] }],
+        properties: ["openFile"],
+      });
+
+      if (filePaths && filePaths.length > 0) {
+        console.log("[IPC] Importing from:", filePaths[0]);
+        const data = await readFile(filePaths[0], "utf-8");
+        const settings = JSON.parse(data);
+
+        // 恢复 Electron Store 配置
+        if (settings.electron) {
+          store.store = settings.electron;
+        } else if (!settings.renderer) {
+          // 兼容旧版导出（如果是纯 electron store 数据）
+          store.store = settings;
+        }
+
+        return settings;
+      }
+      console.log("[IPC] Import cancelled");
+      return false;
+    } catch (error) {
+      console.error("❌ Import settings failed:", error);
+      return false;
+    }
   });
 };
 
