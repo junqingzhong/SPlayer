@@ -13,7 +13,7 @@
         :playing="statusStore.playStatus"
         :enableSpring="settingStore.useAMSpring"
         :enableScale="settingStore.useAMSpring"
-        :alignPosition="settingStore.lyricsScrollPosition === 'center' ? 0.5 : 0.2"
+        :alignPosition="settingStore.lyricsScrollPosition === 'center' || isMobile ? 0.5 : 0.2"
         :enableBlur="settingStore.lyricsBlur"
         :style="{
           '--amll-lyric-view-color': mainColor,
@@ -38,6 +38,7 @@ import { type LyricLine } from "@applemusic-like-lyrics/lyric";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayer } from "@/utils/player";
+import { isMobile } from "@/utils/env";
 import LyricMenu from "./LyricMenu.vue";
 
 const player = usePlayer();
@@ -148,6 +149,11 @@ onBeforeUnmount(() => {
     padding-left: 10px;
     padding-right: 80px;
     // margin-left: -2rem;
+    @media (max-width: 768px) {
+      padding-left: 20px;
+      padding-right: 20px;
+      --amll-lyric-player-font-size: calc(var(--amll-lyric-player-font-size) - 4px);
+    }
   }
 
   &.pure {
@@ -156,6 +162,9 @@ onBeforeUnmount(() => {
     :deep(.am-lyric) {
       margin: 0;
       padding: 0 80px;
+      @media (max-width: 768px) {
+        padding: 0 20px;
+      }
 
       div {
         transform-origin: center;

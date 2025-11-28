@@ -24,7 +24,7 @@
           v-if="!hiddenCover"
           :key="song.cover"
           :src="song.path ? song.cover : song.coverSize?.s || song.cover"
-          class="cover"
+          :class="['cover', { mobile: isMobile }]"
           @update:show="localCover"
         />
         <!-- 信息 -->
@@ -43,7 +43,7 @@
             </n-ellipsis>
             <!-- 音质 -->
             <n-tag
-              v-if="song?.quality && settingStore.showSongQuality"
+              v-if="song?.quality && settingStore.showSongQuality && !isMobile"
               :type="qualityColor"
               class="quality"
               round
@@ -51,7 +51,7 @@
               {{ song.quality }}
             </n-tag>
             <!-- 原唱翻唱 -->
-            <template>
+            <template v-if="!isMobile">
               <n-tag v-if="song.originCoverType === 1" :bordered="false" type="primary" round>
                 原
               </n-tag>
@@ -60,7 +60,7 @@
               </n-tag>
             </template>
             <!-- 特权 -->
-            <template v-if="settingStore.showSongPrivilegeTag">
+            <template v-if="settingStore.showSongPrivilegeTag && !isMobile">
               <n-tag v-if="song.free === 1" :bordered="false" type="error" round> VIP </n-tag>
               <n-tag v-if="song.free === 4" :bordered="false" type="error" round> EP </n-tag>
               <!-- 云盘 -->
@@ -163,7 +163,7 @@ import { toLikeSong } from "@/utils/auth";
 import { isObject } from "lodash-es";
 import { formatTimestamp, msToTime } from "@/utils/time";
 import { usePlayer } from "@/utils/player";
-import { isElectron } from "@/utils/env";
+import { isElectron, isMobile } from "@/utils/env";
 import blob from "@/utils/blob";
 
 const props = defineProps<{
@@ -303,6 +303,13 @@ const localCover = async (show: boolean) => {
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      &.mobile {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        margin-right: 8px;
+        border-radius: 6px;
+      }
     }
     .info {
       display: flex;
