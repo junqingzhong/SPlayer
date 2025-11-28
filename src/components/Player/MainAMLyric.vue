@@ -153,6 +153,8 @@ onBeforeUnmount(() => {
       padding-left: 20px;
       padding-right: 20px;
       --amll-lyric-player-font-size: calc(var(--amll-lyric-player-font-size) - 4px);
+      pointer-events: auto;
+      cursor: pointer;
     }
   }
 

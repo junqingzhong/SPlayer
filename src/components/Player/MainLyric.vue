@@ -380,7 +380,6 @@ onBeforeUnmount(() => {
     transform: scale(0.86);
     transform-origin: left center;
     @media (max-width: 768px) {
-      text-align: left;
       align-items: flex-start;
       font-size: calc(var(--lrc-size) - 4px);
     }
@@ -506,6 +505,9 @@ onBeforeUnmount(() => {
         .roma {
           text-align: right;
           justify-content: flex-end;
+          @media (max-width: 768px) {
+            justify-content: flex-start;
+          }
         }
       }
     }
