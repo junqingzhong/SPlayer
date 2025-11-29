@@ -64,6 +64,7 @@
             {
               active: line.active,
               'is-yrc': Boolean(lyricData?.yrcData?.length && line.line?.words?.length > 1),
+              'has-background-mask': lyricConfig.textBackgroundMask,
             },
           ]"
           :style="{
@@ -745,6 +746,15 @@ onBeforeUnmount(() => {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      position: relative;
+      &.has-background-mask {
+        .scroll-content {
+          background-color: rgba(0, 0, 0, 0.5);
+          border-radius: 6px;
+          padding: 2px 8px;
+          display: inline-block;
+        }
+      }
       .scroll-content {
         display: inline-block;
         white-space: nowrap;

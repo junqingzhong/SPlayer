@@ -47,6 +47,8 @@ export interface LyricConfig {
   position: "left" | "center" | "right" | "both";
   /** 是否限制在屏幕边界内拖动 */
   limitBounds: boolean;
+  /** 文本背景遮罩 */
+  textBackgroundMask: boolean;
 }
 
 /**

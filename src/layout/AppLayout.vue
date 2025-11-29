@@ -91,6 +91,12 @@ const contentRef = ref<HTMLElement | null>(null);
 // 主内容高度
 const { height: contentHeight } = useElementSize(contentRef);
 
+// 离开前提醒
+window.addEventListener("beforeunload", (event) => {
+  event.preventDefault();
+  event.returnValue = "";
+});
+
 watchEffect(() => {
   statusStore.mainContentHeight = contentHeight.value;
 });

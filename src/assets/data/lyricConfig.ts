@@ -13,6 +13,7 @@ const config: LyricConfig = {
   isDoubleLine: true,
   position: "both",
   limitBounds: false,
+  textBackgroundMask: false,
 };
 
 export default config;

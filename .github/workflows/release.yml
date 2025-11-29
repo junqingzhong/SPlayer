@@ -98,18 +98,18 @@ jobs:
       # 构建 Electron App
       - name: Build Windows x64 & ARM64 App
         if: runner.os == 'Windows'
-        run: pnpm build:win -- --x64 --arm64 || true
+        run: pnpm build:win || true
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build macOS Universal App
         if: runner.os == 'macOS'
-        run: pnpm build:mac -- --x64 --arm64 || true
+        run: pnpm build:mac || true
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build Linux x64 & ARM64 App
         if: runner.os == 'Linux'
-        run: pnpm build:linux -- --x64 --arm64 || true
+        run: pnpm build:linux || true
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

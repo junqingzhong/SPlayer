@@ -528,6 +528,18 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">文本背景遮罩</n-text>
+          <n-text class="tip" :depth="3">防止在某些界面看不清文本</n-text>
+        </div>
+        <n-switch
+          v-model:value="desktopLyricConfig.textBackgroundMask"
+          :round="false"
+          class="set"
+          @update:value="saveDesktopLyricConfig"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">恢复默认配置</n-text>
           <n-text class="tip" :depth="3">恢复默认桌面歌词配置</n-text>
         </div>
