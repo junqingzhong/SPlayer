@@ -91,10 +91,9 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useSettingStore } from "@/stores";
-import { openLink, renderIcon } from "@/utils/helper";
+import { renderIcon } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
-import packageJson from "@/../package.json";
 
 const router = useRouter();
 const settingStore = useSettingStore();
@@ -159,29 +158,6 @@ const setOptions = computed<DropdownOption[]>(() => [
     key: "divider-1",
     type: "divider",
   },
-  // {
-  //   // 交流群
-  //   key: "qq",
-  //   label: "加入交流群",
-  //   props: {
-  //     onClick: () =>
-  //       openLink(
-  //         "https://qm.qq.com/cgi-bin/qm/qr?k=2-cVSf1bE0AvAehCib00qFEFdUvPaJ_k&jump_from=webapi&authKey=1NEhib9+GsmsXVo2rCc0IbRaVHeeRXJJ0gbsyKDcIwDdAzYySOubkFCvkV32+7Cw",
-  //       ),
-  //   },
-  //   icon: renderIcon("QQ"),
-  // },
-  // {
-  //   // 交流群
-  //   key: "github",
-  //   label: "开源仓库",
-  //   props: { onClick: () => openLink(packageJson.github) },
-  //   icon: renderIcon("Github"),
-  // },
-  // {
-  //   key: "divider-2",
-  //   type: "divider",
-  // },
   {
     // 重启
     key: "restart",
