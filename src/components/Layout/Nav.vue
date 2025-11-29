@@ -2,27 +2,16 @@
   <n-layout-header class="nav">
     <!-- 页面导航 -->
     <n-flex class="page-control">
-      <!-- 桌面端：后退/前进 -->
-      <template v-if="!isMobile">
-        <n-button :focusable="false" tertiary circle @click="router.go(-1)">
-          <template #icon>
-            <SvgIcon name="NavigateBefore" :size="26" />
-          </template>
-        </n-button>
-        <n-button :focusable="false" tertiary circle @click="router.go(1)">
-          <template #icon>
-            <SvgIcon name="NavigateNext" :size="26" />
-          </template>
-        </n-button>
-      </template>
-      <!-- 移动端：菜单/设置 -->
-      <template v-else>
-        <n-button :focusable="false" tertiary circle @click="statusStore.showMobileSidebar = true">
-          <template #icon>
-            <SvgIcon name="Menu" :size="22" />
-          </template>
-        </n-button>
-      </template>
+      <n-button :focusable="false" tertiary circle @click="router.go(-1)">
+        <template #icon>
+          <SvgIcon name="NavigateBefore" :size="26" />
+        </template>
+      </n-button>
+      <n-button :focusable="false" tertiary circle @click="router.go(1)">
+        <template #icon>
+          <SvgIcon name="NavigateNext" :size="26" />
+        </template>
+      </n-button>
     </n-flex>
     <!-- 主内容 -->
     <n-flex class="nav-main">
@@ -101,14 +90,14 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
-import { useSettingStore, useStatusStore } from "@/stores";
-import { renderIcon } from "@/utils/helper";
+import { useSettingStore } from "@/stores";
+import { openLink, renderIcon } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
-import { isDev, isElectron, isMobile } from "@/utils/env";
+import { isDev, isElectron } from "@/utils/env";
+import packageJson from "@/../package.json";
 
 const router = useRouter();
 const settingStore = useSettingStore();
-const statusStore = useStatusStore();
 
 const showCloseModal = ref(false);
 // 是否记住
