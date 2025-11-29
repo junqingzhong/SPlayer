@@ -37,10 +37,12 @@ const config: Configuration = {
       // 安装版
       {
         target: "nsis",
+        arch: ["x64", "arm64"],
       },
       // 打包版
       {
         target: "portable",
+        arch: ["x64", "arm64"],
       },
     ],
   },
@@ -97,10 +99,12 @@ const config: Configuration = {
       // DMG 安装版
       {
         target: "dmg",
+        arch: ["x64", "arm64"],
       },
       // 压缩包安装版
       {
         target: "zip",
+        arch: ["x64", "arm64"],
       },
     ],
   },
@@ -117,18 +121,22 @@ const config: Configuration = {
       // Pacman 包管理器
       {
         target: "pacman",
+        arch: ["x64", "arm64"],
       },
       // AppImage 格式
       {
         target: "AppImage",
+        arch: ["x64", "arm64"],
       },
       // Debian 包管理器
       {
         target: "deb",
+        arch: ["x64", "arm64"],
       },
       // RPM 包管理器
       {
         target: "rpm",
+        arch: ["x64", "arm64"],
       },
       // Snap 包管理器（仅支持 x64 架构）
       {
@@ -138,6 +146,7 @@ const config: Configuration = {
       // 压缩包格式
       {
         target: "tar.gz",
+        arch: ["x64", "arm64"],
       },
     ],
     // 维护者信息
