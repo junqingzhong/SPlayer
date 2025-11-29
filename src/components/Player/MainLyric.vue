@@ -506,9 +506,6 @@ onBeforeUnmount(() => {
         .roma {
           text-align: right;
           justify-content: flex-end;
-          @media (max-width: 768px) {
-            justify-content: flex-start;
-          }
         }
       }
     }
