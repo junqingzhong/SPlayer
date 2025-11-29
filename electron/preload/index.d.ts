@@ -11,6 +11,8 @@ declare global {
         has(key: keyof StoreType): Promise<boolean>;
         delete(key: keyof StoreType): Promise<boolean>;
         reset(keys?: (keyof StoreType)[]): Promise<boolean>;
+        export(data: any): Promise<boolean>;
+        import(): Promise<boolean>;
       };
     };
   }

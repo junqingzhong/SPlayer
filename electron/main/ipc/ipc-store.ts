@@ -1,7 +1,8 @@
-import { ipcMain, dialog, app } from "electron";
+import { ipcMain, dialog } from "electron";
 import { writeFile, readFile } from "fs/promises";
 import { useStore } from "../store";
 import type { StoreType } from "../store";
+import { appName, appVersion } from "../utils/config";
 
 /**
  * 初始化 store IPC 主进程
@@ -41,13 +42,13 @@ const initStoreIpc = (): void => {
     }
     return true;
   });
+
   // 导出配置
   ipcMain.handle("store-export", async (_event, rendererData: any) => {
     console.log("[IPC] store-export called");
     try {
       const now = new Date();
-      const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}-${String(now.getMinutes()).padStart(2, "0")}-${String(now.getSeconds()).padStart(2, "0")}`;
-      const filename = `SPlayer_Settings_${timestamp}.json`;
+      const filename = `${appName}_Settings_v${appVersion}_${now.getTime()}.json`;
 
       const { filePath } = await dialog.showSaveDialog({
         title: "导出设置",
@@ -58,7 +59,7 @@ const initStoreIpc = (): void => {
       if (filePath) {
         console.log("[IPC] Exporting to:", filePath);
         const fullData = {
-          version: app.getVersion(),
+          version: appVersion,
           timestamp: now.getTime(),
           electron: store.store,
           renderer: rendererData,

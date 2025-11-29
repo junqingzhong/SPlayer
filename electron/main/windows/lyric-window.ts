@@ -1,7 +1,7 @@
 import { BrowserWindow } from "electron";
 import { createWindow } from "./index";
 import { useStore } from "../store";
-import { lyricWinUrl } from "../utils/config";
+import { appName, lyricWinUrl } from "../utils/config";
 import mainWindow from "./main-window";
 
 class LyricWindow {
@@ -20,7 +20,7 @@ class LyricWindow {
     // 页面加载完成后设置标题
     // 这里的标题设置是为了 Linux 能够为桌面歌词单独设置窗口规则
     this.win.webContents.on("did-finish-load", () => {
-      this.win?.setTitle("SPlayer - 桌面歌词");
+      this.win?.setTitle(`${appName} - 桌面歌词`);
     });
     // 歌词窗口缩放
     this.win?.on("resized", () => {

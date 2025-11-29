@@ -308,7 +308,7 @@ export const useSettingStore = defineStore("setting", {
     hideHeartbeatMode: false,
     enableSearchKeyword: true,
     appLaunchCount: 0,
-    hideStarPopup: false,
+    hideStarPopup: true,
   }),
   getters: {
     /**
