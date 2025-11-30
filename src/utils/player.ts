@@ -451,6 +451,16 @@ class Player {
     try {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
+      // 清理旧的 blob URL（如果存在）
+      const oldCover = musicStore.playSong.cover;
+      const oldPath = musicStore.playSong.path;
+      if (oldCover && oldCover.startsWith("blob:") && oldPath && oldPath !== path) {
+        try {
+          blob.revokeBlobURL(oldPath);
+        } catch (e) {
+          // 忽略错误
+        }
+      }
       // 获取封面数据
       const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", path);
       if (coverData) {

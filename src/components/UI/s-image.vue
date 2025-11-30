@@ -1,26 +1,24 @@
 <!-- 图片组件 -->
 <template>
-  <Transition name="fade" mode="out-in">
-    <div ref="imgContainer" :key="src" class="s-image">
-      <!-- 加载图片 -->
-      <Transition name="fade">
-        <img v-if="!isLoaded" :src="defaultSrc" class="loading" alt="loading" />
-      </Transition>
-      <!-- 真实图片 -->
-      <img
-        v-if="imgSrc"
-        ref="imgRef"
-        :src="imgSrc"
-        :key="imgSrc"
-        :alt="alt || 'image'"
-        :class="['cover', { loaded: isLoaded }]"
-        :decoding="decodeAsync ? 'async' : 'auto'"
-        :loading="nativeLazy ? 'lazy' : 'eager'"
-        @load="imageLoaded"
-        @error="imageError"
-      />
-    </div>
-  </Transition>
+  <div ref="imgContainer" :key="src" class="s-image">
+    <!-- 加载图片 -->
+    <Transition name="fade">
+      <img v-if="!isLoaded" :src="defaultSrc" class="loading" alt="loading" />
+    </Transition>
+    <!-- 真实图片 -->
+    <img
+      v-if="imgSrc"
+      ref="imgRef"
+      :src="imgSrc"
+      :key="imgSrc"
+      :alt="alt || 'image'"
+      :class="['cover', { loaded: isLoaded }]"
+      :decoding="decodeAsync ? 'async' : 'auto'"
+      :loading="nativeLazy ? 'lazy' : 'eager'"
+      @load="imageLoaded"
+      @error="imageError"
+    />
+  </div>
 </template>
 
 <script setup lang="ts">

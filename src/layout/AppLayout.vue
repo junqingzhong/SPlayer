@@ -79,6 +79,7 @@
 
 <script setup lang="ts">
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
+import blob from "@/utils/blob";
 import init from "@/utils/init";
 
 const musicStore = useMusicStore();
@@ -94,6 +95,8 @@ const { height: contentHeight } = useElementSize(contentRef);
 // 离开前提醒
 window.addEventListener("beforeunload", (event) => {
   event.preventDefault();
+  // 释放所有 blob URL
+  blob.revokeAllBlobURLs();
   event.returnValue = "";
 });
 
