@@ -130,8 +130,8 @@ const playListData = computed(() => {
 });
 
 // 滚动至指定元素
-const scrollToItem = (index: number, behavior: "smooth" | "auto" = "smooth") => {
-  playListRef.value?.scrollTo({ index, behavior });
+const scrollToItem = (index: number) => {
+  playListRef.value?.scrollTo({ index });
 };
 
 // 清空播放列表

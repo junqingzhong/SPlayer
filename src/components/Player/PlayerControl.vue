@@ -171,7 +171,6 @@ const statusStore = useStatusStore();
         border-radius: 50%;
         will-change: transform;
         transition:
-          backdrop-filter 0.3s,
           background-color 0.3s,
           transform 0.3s;
         cursor: pointer;
@@ -180,7 +179,6 @@ const statusStore = useStatusStore();
         }
         &:hover {
           transform: scale(1.1);
-          backdrop-filter: blur(10px);
           background-color: rgba(var(--main-color), 0.14);
         }
         &:active {

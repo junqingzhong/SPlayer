@@ -283,11 +283,19 @@ const menuUpdate = (key: string, item: MenuOption) => {
 
 // 选中菜单项
 const checkMenuItem = () => {
-  // 当前路由名称
-  const routerName =
+   // 当前路由名称
+   let routerName =
     (router.currentRoute.value.matched?.[0]?.name as string) ||
     (router.currentRoute.value?.name as string);
   if (!routerName) return;
+  // 处理本地歌曲子路由
+  if (routerName.startsWith("local-")) {
+    routerName = "local";
+  }
+  // 处理收藏子路由
+  if (routerName.startsWith("like-") && routerName !== "like-songs") {
+    routerName = "like";
+  }
   // 显示菜单
   menuRef.value?.showOption(routerName);
   // 高亮菜单

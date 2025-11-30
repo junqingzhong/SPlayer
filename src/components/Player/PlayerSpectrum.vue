@@ -100,14 +100,14 @@ const roundRect = (
 // 开始绘制频谱
 const { pause: pauseDraw, resume: resumeDraw } = useRafFn(() => {
   drawSpectrum();
-});
+}, { immediate: false });
 
 onMounted(() => {
+  isKeepDrawing.value = false;
   resumeDraw();
 });
 
 onBeforeUnmount(() => {
-  // 停止绘制循环
   isKeepDrawing.value = false;
   pauseDraw();
 });

@@ -56,8 +56,8 @@
                 :light="pureLyricMode"
               />
               <!-- 歌词 -->
-              <MainAMLyric v-if="settingStore.useAMLyrics" />
-              <MainLyric v-else />
+              <MainAMLyric v-if="settingStore.useAMLyrics" :key="`am-lyric-${musicStore.playSong.id}`" />
+              <MainLyric v-else :key="`lyric-${musicStore.playSong.id}`" />
             </div>
           </div>
         </Transition>
@@ -107,7 +107,7 @@ const pureLyricMode = computed<boolean>(
 );
 
 // 主内容 key
-const playerContentKey = computed(() => `${statusStore.pureLyricMode}`);
+const playerContentKey = computed(() => `${musicStore.playSong.id}-${statusStore.pureLyricMode}`);
 
 // 数据是否居中
 const playerDataCenter = computed<boolean>(
