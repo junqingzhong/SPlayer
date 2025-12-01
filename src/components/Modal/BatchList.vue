@@ -419,6 +419,19 @@ const executeBatchDownload = async (songs: SongType[]) => {
 
   const loadingMsg = window.$message.loading(`正在准备批量下载... 0/${total}`, { duration: 0 });
 
+  // 监听下载进度
+  const onProgress = (_event: any, progress: { percent: number; transferredBytes: number; totalBytes: number }) => {
+    const { percent, transferredBytes, totalBytes } = progress;
+    const percentStr = (percent * 100).toFixed(0) + "%";
+    const transferredStr = (transferredBytes / 1024 / 1024).toFixed(2) + "MB";
+    const totalStr = (totalBytes / 1024 / 1024).toFixed(2) + "MB";
+    loadingMsg.content = `正在批量下载... ${processed + 1}/${total} (成功 ${successCount}) - ${percentStr} ${transferredStr}/${totalStr}`;
+  };
+
+  if (isElectron) {
+    window.electron.ipcRenderer.on("download-progress", onProgress);
+  }
+
   try {
     for (const song of songs) {
       try {
@@ -465,7 +478,11 @@ const executeBatchDownload = async (songs: SongType[]) => {
   } catch (error) {
     console.error("Batch download error:", error);
     window.$message.error("批量下载过程中出现错误");
+    window.$message.error("批量下载过程中出现错误");
   } finally {
+    if (isElectron) {
+      window.electron.ipcRenderer.removeListener("download-progress", onProgress);
+    }
     loadingMsg.destroy();
   }
 };
