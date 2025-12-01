@@ -62,16 +62,15 @@
 
 <script setup lang="ts">
 import type { SongLevelType, SongLevelDataType, SongType } from "@/types/main";
-import { songDetail, songQuality, songDownloadUrl, songLyric } from "@/api/song";
+import { songDetail, songQuality } from "@/api/song";
 import { useSettingStore } from "@/stores";
 import { songLevelData, getLevelsUpTo } from "@/utils/meta";
 import { formatSongsList } from "@/utils/format";
-import { cloneDeep, reduce } from "lodash-es";
+import { reduce } from "lodash-es";
 import { formatFileSize } from "@/utils/helper";
-import { getPlayerInfo } from "@/utils/player-utils/song";
 import { openSetting } from "@/utils/modal";
-import { saveAs } from "file-saver";
 import { isElectron } from "@/utils/env";
+import { downloadSong } from "@/utils/download";
 
 const props = defineProps<{ id: number }>();
 const emit = defineEmits<{ close: [] }>();
@@ -139,65 +138,27 @@ const download = async () => {
   if (!songData.value) return;
   loading.value = true;
   if (settingStore.downloadPath) downloadPath.value = settingStore.downloadPath;
+  
   try {
-    // 获取下载链接
-    const result = await songDownloadUrl(props.id, songLevelChoosed.value);
-    if (result.code !== 200 || !result?.data?.url) {
-      window.$message.error(result.message || "获取下载链接失败，请重试");
-      return;
-    }
-    // 校验下载路径
-    if (downloadPath.value === "" && isElectron) {
-      window.$notification.warning({
-        title: "缺少配置",
-        description: "请前往设置页配置默认下载目录",
-        duration: 5000,
-      });
-      return;
-    }
-    // 下载相关数据
-    const { url, type = "mp3" } = result.data;
-    const songName = getPlayerInfo(songData.value) || "未知曲目";
-    // 区分设备下载
-    if (isElectron) {
-      await electronDownload(url, songName, type.toLowerCase());
+    const result = await downloadSong({
+      song: songData.value,
+      quality: songLevelChoosed.value,
+      settingStore,
+      downloadPath: downloadPath.value,
+    });
+
+    if (result.success) {
+      emit("close");
+      window.$message.success("歌曲下载成功");
     } else {
-      saveAs(result.data.url, `${songName}.${result.data?.type || "mp3"}`);
+      window.$message.error(result.message || "下载歌曲出现错误，请重试");
     }
-    emit("close");
-    window.$message.success("歌曲下载成功");
   } catch (error) {
     console.error("Error downloading song:", error);
     window.$message.error("下载歌曲出现错误，请重试");
   } finally {
     loading.value = false;
   }
-};
-
-// 客户端下载
-const electronDownload = async (url: string, songName: string, fileType: string) => {
-  const { downloadMeta, downloadCover, downloadLyric, saveMetaFile } = settingStore;
-  // 获取歌词
-  let lyric = "";
-  if (downloadLyric) {
-    const lyricResult = await songLyric(props.id);
-    lyric = lyricResult?.lrc?.lyric || "";
-  }
-  // 下载歌曲
-  const config = {
-    fileName: songName.replace(/[/:*?"<>|]/g, "&"),
-    fileType,
-    path: downloadPath.value,
-    downloadMeta,
-    downloadCover,
-    downloadLyric,
-    saveMetaFile,
-    songData: cloneDeep(songData.value),
-    lyric,
-  };
-  // 开始下载
-  const isSuccess = await window.electron.ipcRenderer.invoke("download-file", url, config);
-  if (!isSuccess) throw new Error("下载歌曲出现错误，请重试");
 };
 
 onMounted(() => getSongDetail());

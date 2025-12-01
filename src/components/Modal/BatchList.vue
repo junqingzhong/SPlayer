@@ -1,15 +1,51 @@
 <template>
   <div class="batch-list">
     <n-data-table
+      v-model:checked-row-keys="checkedRowKeys"
       :columns="columnsData"
       :data="tableData"
+      :row-key="(row) => row.key"
       max-height="60vh"
       virtual-scroll
       @update:checked-row-keys="tableCheck"
     />
     <n-flex class="batch-footer" justify="space-between" align="center">
-      <n-text :depth="3" class="count">已选择 {{ checkCount }} 首</n-text>
+      <n-flex align="center">
+        <n-text :depth="3" class="count">已选择 {{ checkCount }} 首</n-text>
+        <n-divider vertical />
+        <n-input-number 
+          v-model:value="startRange" 
+          placeholder="开始" 
+          :min="1" 
+          :max="props.data.length"
+          style="width: 80px" 
+          size="small"
+        />
+        <n-text>-</n-text>
+        <n-input-number 
+          v-model:value="endRange" 
+          placeholder="结束" 
+          :min="1" 
+          :max="props.data.length"
+          style="width: 80px" 
+          size="small"
+        />
+        <n-button size="small" secondary @click="handleRangeSelect">选择</n-button>
+      </n-flex>
       <n-flex class="menu">
+        <!-- 批量下载 -->
+        <n-button
+          :disabled="!checkCount"
+          type="primary"
+          strong
+          secondary
+          @click="handleBatchDownloadClick"
+        >
+          <template #icon>
+            <SvgIcon name="Download" />
+          </template>
+          批量下载
+        </n-button>
         <!-- 批量删除 -->
         <n-button
           v-if="playListId"
@@ -58,19 +94,90 @@
         </n-button>
       </n-flex>
     </n-flex>
+    
+    <!-- 音质选择弹窗 -->
+    <n-modal
+      v-model:show="showQualityModal"
+      preset="dialog"
+      title="批量下载"
+      :closable="false"
+      :mask-closable="false"
+      style="width: 500px"
+    >
+      <n-alert type="warning" title="请知悉" closable style="margin-top: 20px">
+        本软件仅支持从官方途径合法合规的下载歌曲，并用于学习研究用途。本功能将严格按照相应账户的权限来提供基础的下载功能
+      </n-alert>
+      <n-collapse :default-expanded-names="['level', 'path']" arrow-placement="right" style="margin-top: 20px">
+        <n-collapse-item title="音质选择" name="level">
+          <n-radio-group v-model:value="selectedQuality" name="quality">
+            <n-flex>
+              <n-radio v-for="(item, index) in qualityOptions" :key="index" :value="item.value">
+                <n-flex>
+                  <n-text class="name">{{ item.label }}</n-text>
+                </n-flex>
+              </n-radio>
+            </n-flex>
+          </n-radio-group>
+          <n-text depth="3" style="font-size: 12px; margin-top: 10px; display: block">
+            注意：如果歌曲没有对应的音质，将自动下载最高可用音质。
+          </n-text>
+        </n-collapse-item>
+        <n-collapse-item v-if="isElectron" title="下载路径" name="path">
+          <n-input-group>
+            <n-input :value="downloadPath || '未配置下载目录'" disabled>
+              <template #prefix>
+                <SvgIcon name="Folder" />
+              </template>
+            </n-input>
+            <n-button type="primary" strong secondary @click="changeDownloadPath">
+              <template #icon>
+                <SvgIcon name="Folder" />
+              </template>
+            </n-button>
+            <n-button type="primary" strong secondary @click="openSetting('local')">
+              <template #icon>
+                <SvgIcon name="Settings" />
+              </template>
+              更多设置
+            </n-button>
+          </n-input-group>
+        </n-collapse-item>
+      </n-collapse>
+      
+      <template #action>
+        <n-flex justify="end">
+          <n-button @click="showQualityModal = false">取消</n-button>
+          <n-button type="primary" @click="startBatchDownload">确认下载</n-button>
+        </n-flex>
+      </template>
+    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
-import type { SongType } from "@/types/main";
-import { isArray, isObject } from "lodash-es";
-import { openPlaylistAdd } from "@/utils/modal";
+import type { SongType, SongLevelType } from "@/types/main";
+import { isArray, isObject, pick } from "lodash-es";
+import { openPlaylistAdd, openSetting } from "@/utils/modal";
 import { deleteSongs } from "@/utils/auth";
-import { NInput } from "naive-ui";
-import { useLocalStore } from "@/stores";
+import { 
+  NInput, 
+  NInputNumber, 
+  NRadioGroup, 
+  NRadio, 
+  NCollapse, 
+  NCollapseItem, 
+  NInputGroup,
+  NButton,
+  NAlert
+} from "naive-ui";
+import { useLocalStore, useSettingStore } from "@/stores";
+import { isElectron } from "@/utils/env";
+import { songLevelData, getSongLevelsData } from "@/utils/meta";
+import { downloadSong } from "@/utils/download";
 
 const localStore = useLocalStore();
+const settingStore = useSettingStore();
 
 interface DataType {
   key?: number;
@@ -91,6 +198,28 @@ const props = defineProps<{
 // 选中数据
 const checkCount = ref<number>(0);
 const checkSongData = ref<SongType[]>([]);
+const checkedRowKeys = ref<DataTableRowKey[]>([]);
+
+// 范围选择
+const startRange = ref<number | null>(null);
+const endRange = ref<number | null>(null);
+
+// 下载相关
+const showQualityModal = ref(false);
+const selectedQuality = ref<SongLevelType>("h");
+const downloadPath = ref<string>(settingStore.downloadPath);
+
+// 音质选项
+const qualityOptions = computed(() => {
+  // 批量下载时，默认显示所有常用音质选项
+  // 这里模拟一个包含所有常用音质的 level 对象
+  const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
+  return getSongLevelsData(levels).map(item => ({
+    label: item.name,
+    value: item.value,
+    level: item.level
+  }));
+});
 
 // 表头数据
 const columnsData = computed<DataTableColumns<DataType>>(() => [
@@ -145,12 +274,47 @@ const tableData = computed<DataType[]>(() =>
 );
 
 // 表格勾选
-const tableCheck = (keys: DataTableRowKey[], rows: DataType[]) => {
+const tableCheck = (keys: DataTableRowKey[]) => {
+  checkedRowKeys.value = keys;
   // 更改选中数量
   checkCount.value = keys.length;
   // 更改选中歌曲
-  checkSongData.value = rows.map((row) => row.origin).filter((song) => song) as SongType[];
+  const selectedRows = tableData.value.filter(row => row.key && keys.includes(row.key));
+  checkSongData.value = selectedRows.map((row) => row.origin).filter((song) => song) as SongType[];
 };
+
+// 范围选择处理
+const handleRangeSelect = () => {
+  if (startRange.value === null || endRange.value === null) {
+    window.$message.warning("请输入起始和结束序号");
+    return;
+  }
+  
+  const start = Math.max(1, Math.min(startRange.value, props.data.length));
+  const end = Math.max(1, Math.min(endRange.value, props.data.length));
+  
+  if (start > end) {
+    window.$message.warning("起始序号不能大于结束序号");
+    return;
+  }
+
+  const newSelectedKeys: DataTableRowKey[] = [];
+  const newSelectedRows: DataType[] = [];
+
+  tableData.value.forEach((row) => {
+    if (row.key && row.key >= start && row.key <= end) {
+      if (row.id) {
+         newSelectedKeys.push(row.key);
+         newSelectedRows.push(row);
+      }
+    }
+  });
+  
+  checkedRowKeys.value = newSelectedKeys;
+  checkCount.value = newSelectedKeys.length;
+  checkSongData.value = newSelectedRows.map((row) => row.origin).filter((song) => song) as SongType[];
+};
+
 
 // 删除本地歌曲
 const handleDeleteLocalSongs = () => {
@@ -213,6 +377,86 @@ const handleDeleteLocalSongs = () => {
       return true;
     },
   });
+};
+
+// 批量下载处理
+const handleBatchDownloadClick = () => {
+  if (settingStore.downloadPath) downloadPath.value = settingStore.downloadPath;
+  showQualityModal.value = true;
+};
+
+// 更改下载路径
+const changeDownloadPath = async () => {
+  const path = await window.electron.ipcRenderer.invoke("choose-path");
+  if (path) downloadPath.value = path;
+};
+
+const startBatchDownload = () => {
+  showQualityModal.value = false;
+  executeBatchDownload(checkSongData.value);
+};
+
+const executeBatchDownload = async (songs: SongType[]) => {
+  if (!songs.length) return;
+
+  const total = songs.length;
+  let processed = 0;
+  let successCount = 0;
+  let failCount = 0;
+  const failedSongs: SongType[] = [];
+
+  const loadingMsg = window.$message.loading(`正在准备批量下载... 0/${total}`, { duration: 0 });
+
+  try {
+    for (const song of songs) {
+      try {
+        const result = await downloadSong({
+          song,
+          quality: selectedQuality.value,
+          settingStore,
+          downloadPath: downloadPath.value,
+        });
+
+        if (result.success) {
+          successCount++;
+          if (!isElectron) {
+            // Browser download delay
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } else {
+          console.error(`Failed to download song ${song.name}: ${result.message}`);
+          failCount++;
+          failedSongs.push(song);
+        }
+      } catch (err) {
+        console.error(`Error downloading song ${song.name}:`, err);
+        failCount++;
+        failedSongs.push(song);
+      } finally {
+        processed++;
+        loadingMsg.content = `正在批量下载... ${processed}/${total} (成功 ${successCount})`;
+      }
+    }
+    
+    if (failCount > 0) {
+      window.$dialog.warning({
+        title: "下载完成，但有部分失败",
+        content: `${successCount} 首下载成功，${failCount} 首下载失败。是否重试失败的歌曲？`,
+        positiveText: "重试失败歌曲",
+        negativeText: "取消",
+        onPositiveClick: () => {
+          executeBatchDownload(failedSongs);
+        }
+      });
+    } else {
+      window.$message.success(`批量下载完成，共 ${successCount} 首`);
+    }
+  } catch (error) {
+    console.error("Batch download error:", error);
+    window.$message.error("批量下载过程中出现错误");
+  } finally {
+    loadingMsg.destroy();
+  }
 };
 </script>
 

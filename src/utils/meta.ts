@@ -1,6 +1,6 @@
 import type { SongLevelType } from "@/types/main";
 import type { ImageRenderToolbarProps } from "naive-ui";
-import { compact, findKey, keys, pick, takeWhile } from "lodash-es";
+import { compact, findKey, keys, pick, takeWhile, reduce } from "lodash-es";
 
 // 音质数据
 export const songLevelData = {
@@ -59,6 +59,43 @@ export function getLevelsUpTo(level: string): Partial<typeof songLevelData> {
   // 过滤空值
   return pick(songLevelData, compact(resultKeys));
 }
+
+/**
+ * 获取音质列表
+ * @param level 音质等级数据
+ * @param quality 歌曲音质详情
+ * @returns 格式化后的音质列表
+ */
+export const getSongLevelsData = (
+  level: Partial<typeof songLevelData>,
+  quality?: Record<string, any>,
+): {
+  name: string;
+  level: string;
+  value: SongLevelType;
+  br?: number;
+  size?: number;
+}[] => {
+  if (!level) return [];
+  return reduce(
+    level,
+    (result, value, key) => {
+      // 如果没有 quality 数据，则默认显示所有 level
+      // 如果有 quality 数据，则只显示 quality 中存在的 level
+      if (value && (!quality || quality[key])) {
+        result.push({
+          name: value.name,
+          level: value.level,
+          value: key as SongLevelType,
+          br: quality?.[key]?.br,
+          size: quality?.[key]?.size,
+        });
+      }
+      return result;
+    },
+    [] as any[],
+  );
+};
 
 // 排序选项
 export const sortOptions = {
