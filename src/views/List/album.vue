@@ -244,7 +244,6 @@ const moreOptions = computed<DropdownOption[]>(() => [
     },
     icon: renderIcon("Link"),
   },
-
 ]);
 
 // 获取专辑基础信息
