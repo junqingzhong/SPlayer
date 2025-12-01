@@ -415,9 +415,17 @@ const executeBatchDownload = async (songs: SongType[]) => {
   let processed = 0;
   let successCount = 0;
   let failCount = 0;
+  let currentSongName = "";
   const failedSongs: SongType[] = [];
 
-  const loadingMsg = window.$message.loading(`正在准备批量下载... 0/${total}`, { duration: 0 });
+
+
+  const notification = window.$notification.create({
+    title: "批量下载中",
+    content: `正在准备批量下载... 0/${total}`,
+    duration: 0,
+    closable: false,
+  });
 
   // 监听下载进度
   const onProgress = (_event: any, progress: { percent: number; transferredBytes: number; totalBytes: number }) => {
@@ -425,7 +433,12 @@ const executeBatchDownload = async (songs: SongType[]) => {
     const percentStr = (percent * 100).toFixed(0) + "%";
     const transferredStr = (transferredBytes / 1024 / 1024).toFixed(2) + "MB";
     const totalStr = (totalBytes / 1024 / 1024).toFixed(2) + "MB";
-    loadingMsg.content = `正在批量下载... ${processed + 1}/${total} (成功 ${successCount}) - ${percentStr} ${transferredStr}/${totalStr}`;
+    notification.content = () =>
+      h("div", [
+        h("div", `正在下载 ${currentSongName}`),
+        h("div", `总进度 ${processed + 1}/${total} (成功 ${successCount})`),
+        h("div", `${percentStr} ${transferredStr}/${totalStr}`),
+      ]);
   };
 
   if (isElectron) {
@@ -434,6 +447,7 @@ const executeBatchDownload = async (songs: SongType[]) => {
 
   try {
     for (const song of songs) {
+      currentSongName = song.name;
       try {
         const result = await downloadSong({
           song,
@@ -458,11 +472,12 @@ const executeBatchDownload = async (songs: SongType[]) => {
         failedSongs.push(song);
       } finally {
         processed++;
-        loadingMsg.content = `正在批量下载... ${processed}/${total} (成功 ${successCount})`;
+        notification.content = `正在批量下载... ${processed}/${total} (成功 ${successCount})`;
       }
     }
 
     if (failCount > 0) {
+      notification.destroy();
       window.$dialog.warning({
         title: "下载完成，但有部分失败",
         content: `${successCount} 首下载成功，${failCount} 首下载失败。是否重试失败的歌曲？`,
@@ -473,17 +488,21 @@ const executeBatchDownload = async (songs: SongType[]) => {
         },
       });
     } else {
-      window.$message.success(`批量下载完成，共 ${successCount} 首`);
+      notification.title = "批量下载完成";
+      notification.content = `共 ${successCount} 首`;
+      notification.duration = 3000;
+      notification.closable = true;
+      // window.$message.success(`批量下载完成，共 ${successCount} 首`);
     }
   } catch (error) {
     console.error("Batch download error:", error);
-    window.$message.error("批量下载过程中出现错误");
+    notification.destroy();
     window.$message.error("批量下载过程中出现错误");
   } finally {
     if (isElectron) {
       window.electron.ipcRenderer.removeListener("download-progress", onProgress);
     }
-    loadingMsg.destroy();
+    // loadingMsg.destroy();
   }
 };
 </script>
