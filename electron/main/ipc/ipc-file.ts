@@ -411,6 +411,9 @@ const initFileIpc = (): void => {
         const songDownload = await download(win, url, {
           directory: downloadPath,
           filename: `${fileName}.${fileType}`,
+          onProgress: (progress) => {
+            win.webContents.send("download-progress", progress);
+          },
         });
         if (!downloadMeta || !songData?.cover) return true;
         // 下载封面
