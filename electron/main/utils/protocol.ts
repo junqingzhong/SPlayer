@@ -2,7 +2,6 @@ import { app } from "electron";
 import { processLog } from "../logger";
 
 export const registerCustomProtocol = () => {
-  // TODO 在设置中选择是否注册
   app.setAsDefaultProtocolClient("orpheus");
   processLog.info("🔗 Registered custom protocol");
 };

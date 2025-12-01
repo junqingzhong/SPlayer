@@ -49,7 +49,7 @@ class MainProcess {
       // 设置应用程序名称
       electronApp.setAppUserModelId("com.imsyy.splayer");
       // 注册自定义协议
-      registerCustomProtocol()
+      registerCustomProtocol();
       // 启动主服务进程
       await initAppServer();
       // 启动窗口
