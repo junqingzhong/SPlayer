@@ -222,17 +222,7 @@ const songListHeight = computed(() => {
 
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
-  {
-    label: "打开源页面",
-    key: "open",
-    props: {
-      onClick: () => {
-        window.open(`https://music.163.com/#/album?id=${albumId.value}`);
-      },
-    },
-    icon: renderIcon("Link"),
-  },
-  {
+    {
     label: "链接分享",
     key: "copy",
     props: {
@@ -245,6 +235,17 @@ const moreOptions = computed<DropdownOption[]>(() => [
     },
     icon: renderIcon("Copy"),
   },
+  {
+    label: "打开源页面",
+    key: "open",
+    props: {
+      onClick: () => {
+        window.open(`https://music.163.com/#/album?id=${albumId.value}`);
+      },
+    },
+    icon: renderIcon("Link"),
+  },
+
 ]);
 
 // 获取专辑基础信息

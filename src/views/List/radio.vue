@@ -239,7 +239,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     },
     icon: renderIcon("Refresh"),
   },
-    {
+  {
     label: "链接分享",
     key: "copy",
     props: {
