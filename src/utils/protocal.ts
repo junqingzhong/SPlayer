@@ -1,13 +1,17 @@
+import { songDetail } from "@/api/song";
+import { formatSongsList } from "@/utils/format";
+import { usePlayer } from "@/utils/player";
+
 class OrpheusData {
-  constructor(type: string, id: string, cmd: string) {
+  constructor(type: string, id: number, cmd: string) {
     this.type = type;
     this.id = id;
     this.cmd = cmd;
   }
 
-  type: string = "";
-  id: string = "";
-  cmd: string = "";
+  type: string;
+  id: number;
+  cmd: string;
 }
 
 export const handleProtocolUrl = (url: string) => {
@@ -22,12 +26,19 @@ export const handleProtocolUrl = (url: string) => {
 
 
 
-export const handleOpenOrpheus = (url: string) => {
+export const handleOpenOrpheus = async (url: string) => {
   const data = parseOrpheus(url);
   if (!data) return;
   console.log("🚀 Open Orpheus:", data);
 
-  // TODO 处理
+  if (data.cmd === "play" && data.type === "song") {
+    const player = usePlayer();
+    const result = await songDetail(data.id);
+    const song = formatSongsList(result.songs)[0];
+    player.addNextSong(song, true);
+  } else {
+    console.log("❌ Unsupported Command or Type:", data);
+  }
 };
 
 const parseOrpheus = (url: string): OrpheusData | undefined => {
