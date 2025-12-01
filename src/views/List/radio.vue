@@ -239,6 +239,19 @@ const moreOptions = computed<DropdownOption[]>(() => [
     },
     icon: renderIcon("Refresh"),
   },
+    {
+    label: "链接分享",
+    key: "copy",
+    props: {
+      onClick: () => {
+        const link = `https://music.163.com/#/djradio?id=${radioId.value}`;
+        navigator.clipboard.writeText(link).then(() => {
+          window.$message.success("已复制分享链接");
+        });
+      },
+    },
+    icon: renderIcon("Copy"),
+  },
   {
     label: "打开源页面",
     key: "open",
