@@ -11,7 +11,7 @@ import initAppServer from "../server";
 import loadWindow from "./windows/load-window";
 import mainWindow from "./windows/main-window";
 import initIpc from "./ipc";
-import { openCustomProtocol, registerCustomProtocol } from "./utils/protocol";
+import { trySendCustomProtocol, registerCustomProtocol } from "./utils/protocol";
 
 // 屏蔽报错
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -80,8 +80,8 @@ class MainProcess {
 
     // 自定义协议
     app.on("open-url", (_, url) => {
-      processLog.log("Received custom protocol URL:", url);
-      openCustomProtocol(url)
+      processLog.log("🔗 Received custom protocol URL:", url);
+      trySendCustomProtocol(url)
     });
 
     // 将要退出

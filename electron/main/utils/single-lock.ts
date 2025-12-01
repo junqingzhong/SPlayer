@@ -21,7 +21,7 @@ export const initSingleLock = (): boolean => {
       if (!processProtocolFromCommand(commandLine)) {
         systemLog.warn("❌ 第二个实例将要启动");
       } else {
-        systemLog.info("🚀 第二个实例将要启动，因打开了 Custom Protocol");
+        systemLog.info("🚀 第二个实例将要启动，通过 Custom Protocol");
       }
       mainWindow.getWin()?.show();
     });
