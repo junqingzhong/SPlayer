@@ -12,25 +12,31 @@
     <n-flex class="batch-footer" justify="space-between" align="center">
       <n-flex align="center">
         <n-text :depth="3" class="count">已选择 {{ checkCount }} 首</n-text>
-        <n-divider vertical />
-        <n-input-number 
-          v-model:value="startRange" 
-          placeholder="开始" 
-          :min="1" 
-          :max="props.data.length"
-          class="range-input"
-          size="small"
-        />
-        <n-text>-</n-text>
-        <n-input-number 
-          v-model:value="endRange" 
-          placeholder="结束" 
-          :min="1" 
-          :max="props.data.length"
-          class="range-input"
-          size="small"
-        />
-        <n-button size="small" secondary @click="handleRangeSelect">选择</n-button>
+        <n-popover trigger="click" placement="right">
+          <template #trigger>
+            <n-button tertiary> 高级筛选 </n-button>
+          </template>
+          <n-flex :wrap="false" align="center">
+            <n-input-number
+              v-model:value="startRange"
+              class="range-input"
+              placeholder="开始"
+              :min="1"
+              :max="props.data.length"
+              size="small"
+            />
+            <n-text>-</n-text>
+            <n-input-number
+              v-model:value="endRange"
+              class="range-input"
+              placeholder="结束"
+              :min="1"
+              :max="props.data.length"
+              size="small"
+            />
+            <n-button size="small" secondary @click="handleRangeSelect"> 选择 </n-button>
+          </n-flex>
+        </n-popover>
       </n-flex>
       <n-flex class="menu">
         <!-- 批量下载 -->
@@ -94,11 +100,11 @@
         </n-button>
       </n-flex>
     </n-flex>
-    
+
     <!-- 音质选择弹窗 -->
     <n-modal
       v-model:show="showQualityModal"
-      preset="dialog"
+      preset="card"
       title="批量下载"
       :closable="false"
       :mask-closable="false"
@@ -107,7 +113,11 @@
       <n-alert type="warning" title="请知悉" closable style="margin-top: 20px">
         本软件仅支持从官方途径合法合规的下载歌曲，并用于学习研究用途。本功能将严格按照相应账户的权限来提供基础的下载功能
       </n-alert>
-      <n-collapse :default-expanded-names="['level', 'path']" arrow-placement="right" style="margin-top: 20px">
+      <n-collapse
+        :default-expanded-names="['level', 'path']"
+        arrow-placement="right"
+        style="margin-top: 20px"
+      >
         <n-collapse-item title="音质选择" name="level">
           <n-radio-group v-model:value="selectedQuality" name="quality">
             <n-flex>
@@ -119,7 +129,7 @@
             </n-flex>
           </n-radio-group>
           <n-text depth="3" style="font-size: 12px; margin-top: 10px; display: block">
-            注意：如果歌曲没有对应的音质，将自动下载最高可用音质。
+            注意：如果歌曲没有对应的音质，将自动下载最高可用音质
           </n-text>
         </n-collapse-item>
         <n-collapse-item v-if="isElectron" title="下载路径" name="path">
@@ -143,7 +153,7 @@
           </n-input-group>
         </n-collapse-item>
       </n-collapse>
-      
+
       <template #action>
         <n-flex justify="end">
           <n-button @click="showQualityModal = false">取消</n-button>
@@ -160,16 +170,16 @@ import type { SongType, SongLevelType } from "@/types/main";
 import { isArray, isObject, pick } from "lodash-es";
 import { openPlaylistAdd, openSetting } from "@/utils/modal";
 import { deleteSongs } from "@/utils/auth";
-import { 
-  NInput, 
-  NInputNumber, 
-  NRadioGroup, 
-  NRadio, 
-  NCollapse, 
-  NCollapseItem, 
+import {
+  NInput,
+  NInputNumber,
+  NRadioGroup,
+  NRadio,
+  NCollapse,
+  NCollapseItem,
   NInputGroup,
   NButton,
-  NAlert
+  NAlert,
 } from "naive-ui";
 import { useLocalStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
@@ -214,10 +224,10 @@ const qualityOptions = computed(() => {
   // 批量下载时，默认显示所有常用音质选项
   // 这里模拟一个包含所有常用音质的 level 对象
   const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-  return getSongLevelsData(levels).map(item => ({
+  return getSongLevelsData(levels).map((item) => ({
     label: item.name,
     value: item.value,
-    level: item.level
+    level: item.level,
   }));
 });
 
@@ -279,7 +289,7 @@ const tableCheck = (keys: DataTableRowKey[]) => {
   // 更改选中数量
   checkCount.value = keys.length;
   // 更改选中歌曲
-  const selectedRows = tableData.value.filter(row => row.key && keys.includes(row.key));
+  const selectedRows = tableData.value.filter((row) => row.key && keys.includes(row.key));
   checkSongData.value = selectedRows.map((row) => row.origin).filter((song) => song) as SongType[];
 };
 
@@ -290,22 +300,21 @@ const handleRangeSelect = () => {
     window.$message.warning("请输入起始和结束序号");
     return;
   }
-  
+
   const start = Math.max(1, Math.min(startRange.value, props.data.length));
   const end = Math.max(1, Math.min(endRange.value, props.data.length));
-  
+
   if (start > end) {
     window.$message.warning("起始序号不能大于结束序号");
     return;
   }
 
-  const selectedRows = tableData.value.slice(start - 1, end).filter(row => row.id);
-  
-  checkedRowKeys.value = selectedRows.map(row => row.key as DataTableRowKey);
+  const selectedRows = tableData.value.slice(start - 1, end).filter((row) => row.id);
+
+  checkedRowKeys.value = selectedRows.map((row) => row.key as DataTableRowKey);
   checkCount.value = selectedRows.length;
   checkSongData.value = selectedRows.map((row) => row.origin).filter((song) => song) as SongType[];
 };
-
 
 // 删除本地歌曲
 const handleDeleteLocalSongs = () => {
@@ -314,8 +323,16 @@ const handleDeleteLocalSongs = () => {
     title: "删除歌曲",
     content: () =>
       h("div", { style: { marginTop: "20px" } }, [
-        h("div", { style: { marginBottom: "12px" } }, "确定删除选中的歌曲吗？该操作将永久删除文件且无法撤销！"),
-        h("div", { style: { marginBottom: "12px", fontSize: "12px", opacity: 0.8 } }, "请输入：确认删除"),
+        h(
+          "div",
+          { style: { marginBottom: "12px" } },
+          "确定删除选中的歌曲吗？该操作将永久删除文件且无法撤销！",
+        ),
+        h(
+          "div",
+          { style: { marginBottom: "12px", fontSize: "12px", opacity: 0.8 } },
+          "请输入：确认删除",
+        ),
         h(NInput, {
           value: confirmText.value,
           placeholder: "确认删除",
@@ -331,7 +348,7 @@ const handleDeleteLocalSongs = () => {
         window.$message.error("输入内容不正确");
         return false;
       }
-      
+
       const loading = window.$message.loading("正在删除...", { duration: 0 });
       try {
         const deletePromises = checkSongData.value.map(async (song) => {
@@ -343,16 +360,20 @@ const handleDeleteLocalSongs = () => {
         });
 
         const results = await Promise.all(deletePromises);
-        const successIds = results.filter(r => r.success).map(r => r.id);
+        const successIds = results.filter((r) => r.success).map((r) => r.id);
         const failCount = results.length - successIds.length;
 
         // 更新本地数据
         if (successIds.length > 0) {
           // 从 localStore 中移除
-          const newLocalSongs = localStore.localSongs.filter(song => !successIds.includes(song.id));
+          const newLocalSongs = localStore.localSongs.filter(
+            (song) => !successIds.includes(song.id),
+          );
           localStore.updateLocalSong(newLocalSongs);
-          
-          window.$message.success(`成功删除 ${successIds.length} 首歌曲` + (failCount > 0 ? `，${failCount} 首失败` : ""));
+
+          window.$message.success(
+            `成功删除 ${successIds.length} 首歌曲` + (failCount > 0 ? `，${failCount} 首失败` : ""),
+          );
           // 刷新列表
           const localEventBus = useEventBus("local");
           localEventBus.emit();
@@ -404,7 +425,6 @@ const executeBatchDownload = async (songs: SongType[]) => {
         const result = await downloadSong({
           song,
           quality: selectedQuality.value,
-          settingStore,
           downloadPath: downloadPath.value,
         });
 
@@ -412,7 +432,7 @@ const executeBatchDownload = async (songs: SongType[]) => {
           successCount++;
           if (!isElectron) {
             // Browser download delay
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
           }
         } else {
           console.error(`Failed to download song ${song.name}: ${result.message}`);
@@ -428,7 +448,7 @@ const executeBatchDownload = async (songs: SongType[]) => {
         loadingMsg.content = `正在批量下载... ${processed}/${total} (成功 ${successCount})`;
       }
     }
-    
+
     if (failCount > 0) {
       window.$dialog.warning({
         title: "下载完成，但有部分失败",
@@ -437,7 +457,7 @@ const executeBatchDownload = async (songs: SongType[]) => {
         negativeText: "取消",
         onPositiveClick: () => {
           executeBatchDownload(failedSongs);
-        }
+        },
       });
     } else {
       window.$message.success(`批量下载完成，共 ${successCount} 首`);
@@ -454,8 +474,8 @@ const executeBatchDownload = async (songs: SongType[]) => {
 <style lang="scss" scoped>
 .batch-footer {
   margin-top: 20px;
-  .range-input {
-    width: 80px;
-  }
+}
+.range-input {
+  width: 100px;
 }
 </style>
