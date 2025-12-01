@@ -169,7 +169,7 @@ import type { DropdownOption, MessageReactive } from "naive-ui";
 import { songDetail } from "@/api/song";
 import { playlistDetail, playlistAllSongs } from "@/api/playlist";
 import { formatCoverList, formatSongsList } from "@/utils/format";
-import { coverLoaded, formatNumber, fuzzySearch, renderIcon } from "@/utils/helper";
+import { coverLoaded, formatNumber, fuzzySearch, renderIcon, copyData } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
 import { debounce, isObject, uniqBy } from "lodash-es";
 import { useDataStore, useStatusStore } from "@/stores";
@@ -241,17 +241,16 @@ const moreOptions = computed<DropdownOption[]>(() => [
     icon: renderIcon("Batch"),
   },
   {
-    label: "链接分享",
+    label: "复制分享链接",
     key: "copy",
     props: {
-      onClick: () => {
-        const link = `https://music.163.com/#/playlist?id=${playlistId.value}`;
-        navigator.clipboard.writeText(link).then(() => {
-          window.$message.success("已复制分享链接");
-        });
-      },
+      onClick: () =>
+        copyData(
+          `https://music.163.com/#/playlist?id=${playlistId.value}`,
+          "已复制分享链接到剪切板",
+        ),
     },
-    icon: renderIcon("Copy"),
+    icon: renderIcon("Share"),
   },
   {
     label: "打开源页面",

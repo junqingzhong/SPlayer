@@ -174,7 +174,7 @@
 import type { CoverType, SongType } from "@/types/main";
 import type { DropdownOption, MessageReactive } from "naive-ui";
 import { formatCoverList, formatSongsList } from "@/utils/format";
-import { coverLoaded, fuzzySearch, renderIcon } from "@/utils/helper";
+import { coverLoaded, fuzzySearch, renderIcon, copyData } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
 import { debounce } from "lodash-es";
 import { useDataStore, useStatusStore } from "@/stores";
@@ -240,17 +240,16 @@ const moreOptions = computed<DropdownOption[]>(() => [
     icon: renderIcon("Refresh"),
   },
   {
-    label: "链接分享",
+    label: "复制分享链接",
     key: "copy",
     props: {
-      onClick: () => {
-        const link = `https://music.163.com/#/djradio?id=${radioId.value}`;
-        navigator.clipboard.writeText(link).then(() => {
-          window.$message.success("已复制分享链接");
-        });
-      },
+      onClick: () =>
+        copyData(
+          `https://music.163.com/#/djradio?id=${radioId.value}`,
+          "已复制分享链接到剪切板",
+        ),
     },
-    icon: renderIcon("Copy"),
+    icon: renderIcon("Share"),
   },
   {
     label: "打开源页面",

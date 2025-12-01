@@ -175,7 +175,7 @@ import type { DropdownOption } from "naive-ui";
 import { songDetail } from "@/api/song";
 import { albumDetail } from "@/api/album";
 import { formatCoverList, formatSongsList } from "@/utils/format";
-import { coverLoaded, fuzzySearch, renderIcon } from "@/utils/helper";
+import { coverLoaded, fuzzySearch, renderIcon, copyData } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
 import { useDataStore, useStatusStore } from "@/stores";
 import { debounce } from "lodash-es";
@@ -222,18 +222,17 @@ const songListHeight = computed(() => {
 
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
-    {
-    label: "链接分享",
+  {
+    label: "复制分享链接",
     key: "copy",
     props: {
-      onClick: () => {
-        const link = `https://music.163.com/#/album?id=${albumId.value}`;
-        navigator.clipboard.writeText(link).then(() => {
-          window.$message.success("已复制分享链接");
-        });
-      },
+      onClick: () =>
+        copyData(
+          `https://music.163.com/#/album?id=${albumId.value}`,
+          "已复制分享链接到剪切板",
+        ),
     },
-    icon: renderIcon("Copy"),
+    icon: renderIcon("Share"),
   },
   {
     label: "打开源页面",
