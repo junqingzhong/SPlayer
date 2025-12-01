@@ -116,9 +116,12 @@ class AudioManager {
   /**
    * 加载并播放音频
    * @param url 音频地址
-   * @param options 播放选项 (fadeIn: 是否渐入, fadeDuration: 渐入时长)
+   * @param options 播放选项 (fadeIn: 是否渐入, fadeDuration: 渐入时长, autoPlay: 是否自动播放)
    */
-  public async play(url?: string, options: { fadeIn?: boolean; fadeDuration?: number } = {}) {
+  public async play(
+    url?: string,
+    options: { fadeIn?: boolean; fadeDuration?: number; autoPlay?: boolean } = {},
+  ) {
     if (!this.isInitialized) this.init();
 
     // 如果上下文被挂起，则恢复
@@ -131,8 +134,11 @@ class AudioManager {
       this.audioElement.load();
     }
 
+    // 自动播放控制
+    const shouldPlay = options.autoPlay ?? true;
+
     // 处理渐入
-    if (options.fadeIn && this.gainNode && this.audioCtx) {
+    if (shouldPlay && options.fadeIn && this.gainNode && this.audioCtx) {
       this.gainNode.gain.cancelScheduledValues(this.audioCtx.currentTime);
       this.gainNode.gain.setValueAtTime(0, this.audioCtx.currentTime);
       this.gainNode.gain.linearRampToValueAtTime(
@@ -144,11 +150,13 @@ class AudioManager {
       this.gainNode.gain.setValueAtTime(this.volume, this.audioCtx.currentTime);
     }
 
-    try {
-      await this.audioElement?.play();
-    } catch (error) {
-      console.error("AudioManager: 播放失败", error);
-      throw error;
+    if (shouldPlay) {
+      try {
+        await this.audioElement?.play();
+      } catch (error) {
+        console.error("AudioManager: 播放失败", error);
+        throw error;
+      }
     }
   }
 

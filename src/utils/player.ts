@@ -174,13 +174,10 @@ class Player {
     if (!settingStore.showSpectrums) this.toggleOutputDevice();
     // 加载并播放
     try {
-      await audioManager.play(src, { fadeIn: false });
+      await audioManager.play(src, { fadeIn: false, autoPlay });
       // 恢复进度
       if (seek && seek > 0) {
         audioManager.seek(seek / 1000);
-      }
-      if (!autoPlay) {
-        audioManager.pause();
       }
     } catch (e) {
       console.error("Player create failed", e);
