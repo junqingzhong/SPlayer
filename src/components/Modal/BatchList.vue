@@ -18,7 +18,7 @@
           placeholder="开始" 
           :min="1" 
           :max="props.data.length"
-          style="width: 80px" 
+          class="range-input"
           size="small"
         />
         <n-text>-</n-text>
@@ -27,7 +27,7 @@
           placeholder="结束" 
           :min="1" 
           :max="props.data.length"
-          style="width: 80px" 
+          class="range-input"
           size="small"
         />
         <n-button size="small" secondary @click="handleRangeSelect">选择</n-button>
@@ -284,6 +284,7 @@ const tableCheck = (keys: DataTableRowKey[]) => {
 };
 
 // 范围选择处理
+// 范围选择处理
 const handleRangeSelect = () => {
   if (startRange.value === null || endRange.value === null) {
     window.$message.warning("请输入起始和结束序号");
@@ -298,21 +299,11 @@ const handleRangeSelect = () => {
     return;
   }
 
-  const newSelectedKeys: DataTableRowKey[] = [];
-  const newSelectedRows: DataType[] = [];
-
-  tableData.value.forEach((row) => {
-    if (row.key && row.key >= start && row.key <= end) {
-      if (row.id) {
-         newSelectedKeys.push(row.key);
-         newSelectedRows.push(row);
-      }
-    }
-  });
+  const selectedRows = tableData.value.slice(start - 1, end).filter(row => row.id);
   
-  checkedRowKeys.value = newSelectedKeys;
-  checkCount.value = newSelectedKeys.length;
-  checkSongData.value = newSelectedRows.map((row) => row.origin).filter((song) => song) as SongType[];
+  checkedRowKeys.value = selectedRows.map(row => row.key as DataTableRowKey);
+  checkCount.value = selectedRows.length;
+  checkSongData.value = selectedRows.map((row) => row.origin).filter((song) => song) as SongType[];
 };
 
 
@@ -463,5 +454,8 @@ const executeBatchDownload = async (songs: SongType[]) => {
 <style lang="scss" scoped>
 .batch-footer {
   margin-top: 20px;
+  .range-input {
+    width: 80px;
+  }
 }
 </style>

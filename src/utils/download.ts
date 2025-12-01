@@ -8,7 +8,7 @@ import { cloneDeep } from "lodash-es";
 interface DownloadOptions {
     song: SongType;
     quality: SongLevelType;
-    settingStore: any;
+    settingStore: ReturnType<typeof import("@/stores").useSettingStore>;
     downloadPath?: string;
 }
 

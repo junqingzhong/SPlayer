@@ -79,7 +79,17 @@ export const getSongLevelsData = (
   if (!level) return [];
   return reduce(
     level,
-    (result, value, key) => {
+    (
+      result: {
+        name: string;
+        level: string;
+        value: SongLevelType;
+        br?: number;
+        size?: number;
+      }[],
+      value,
+      key,
+    ) => {
       // 如果没有 quality 数据，则默认显示所有 level
       // 如果有 quality 数据，则只显示 quality 中存在的 level
       if (value && (!quality || quality[key])) {
@@ -93,7 +103,7 @@ export const getSongLevelsData = (
       }
       return result;
     },
-    [] as any[],
+    [],
   );
 };
 
