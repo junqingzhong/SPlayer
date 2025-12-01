@@ -102,7 +102,7 @@ const openDropdown = async (
             onClick: () =>
               copyData(
                 `https://music.163.com/#/${type}?id=${item.id}`,
-                "已复制分享链接到剪切板",
+                "已复制分享链接到剪贴板",
               ),
           },
           icon: renderIcon("Share", { size: 18 }),
