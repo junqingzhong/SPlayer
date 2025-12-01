@@ -82,8 +82,15 @@ const initWindowsIpc = (): void => {
     mainWin?.focus();
   });
 
-  // 重启
+  // 重载
   ipcMain.on("win-reload", () => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
+    mainWin.reload();
+  });
+
+  // 重启
+  ipcMain.on("win-restart", () => {
     app.quit();
     app.relaunch();
   });

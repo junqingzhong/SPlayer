@@ -68,7 +68,7 @@ import { songLevelData, getLevelsUpTo } from "@/utils/meta";
 import { formatSongsList } from "@/utils/format";
 import { cloneDeep, reduce } from "lodash-es";
 import { formatFileSize } from "@/utils/helper";
-import { getPlayerInfo } from "@/utils/player-utils/song";
+import songManager from "@/utils/songManager";
 import { openSetting } from "@/utils/modal";
 import { saveAs } from "file-saver";
 import { isElectron } from "@/utils/env";
@@ -157,7 +157,7 @@ const download = async () => {
     }
     // 下载相关数据
     const { url, type = "mp3" } = result.data;
-    const songName = getPlayerInfo(songData.value) || "未知曲目";
+    const songName = songManager.getPlayerInfo(songData.value) || "未知曲目";
     // 区分设备下载
     if (isElectron) {
       await electronDownload(url, songName, type.toLowerCase());
