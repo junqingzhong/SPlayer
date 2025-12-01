@@ -163,7 +163,7 @@ const setOptions = computed<DropdownOption[]>(() => [
     key: "restart",
     label: "软件热重载",
     show: isElectron,
-    props: { onClick: () => window.location.reload() },
+    props: { onClick: () => window.electron.ipcRenderer.send("win-reload") },
     icon: renderIcon("Restart"),
   },
   {

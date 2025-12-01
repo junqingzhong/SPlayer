@@ -2,9 +2,9 @@ import type { SongType, SongLevelType } from "@/types/main";
 import { songDownloadUrl, songLyric } from "@/api/song";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
-import { getPlayerInfo } from "@/utils/player-utils/song";
 import { useSettingStore } from "@/stores";
 import { cloneDeep } from "lodash-es";
+import songManager from "@/utils/songManager";
 
 interface DownloadOptions {
   song: SongType;
@@ -26,7 +26,7 @@ export const downloadSong = async ({
     }
 
     const { url, type = "mp3" } = result.data;
-    const songName = getPlayerInfo(song) || "未知曲目";
+    const songName = songManager.getPlayerInfo(song) || "未知曲目";
     const finalPath = downloadPath || settingStore.downloadPath;
 
     // 校验下载路径

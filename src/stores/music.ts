@@ -85,11 +85,7 @@ export const useMusicStore = defineStore("music", {
       const oldCover = this.playSong.cover;
       const oldPath = this.playSong.path;
       if (oldCover && oldCover.startsWith("blob:") && oldPath) {
-        try {
-          blob.revokeBlobURL(oldPath);
-        } catch (e) {
-          // 忽略错误
-        }
+        blob.revokeBlobURL(oldPath);
       }
       this.playSong = { ...defaultMusicData };
       this.setSongLyric({ lrcData: [], yrcData: [] }, true);

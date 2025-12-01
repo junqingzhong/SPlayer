@@ -126,7 +126,7 @@
         strong
         secondary
         circle
-        v-debounce="() => player.playOrPause()"
+        @click.stop="player.playOrPause()"
       >
         <template #icon>
           <Transition name="fade" mode="out-in">
