@@ -229,7 +229,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
       onClick: () =>
         copyData(
           `https://music.163.com/#/album?id=${albumId.value}`,
-          "已复制分享链接到剪切板",
+          "已复制分享链接到剪贴板",
         ),
     },
     icon: renderIcon("Share"),
