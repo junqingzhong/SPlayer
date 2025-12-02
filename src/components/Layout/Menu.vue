@@ -132,6 +132,13 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           show: isLogin() === 1 && !settingStore.hideCloud,
           icon: renderIcon("Cloud"),
         },
+        // {
+        //   key: "download",
+        //   link: "download",
+        //   label: "下载管理",
+        //   show: isElectron,
+        //   icon: renderIcon("Download"),
+        // },
         {
           key: "local",
           link: "local",
@@ -283,8 +290,8 @@ const menuUpdate = (key: string, item: MenuOption) => {
 
 // 选中菜单项
 const checkMenuItem = () => {
-   // 当前路由名称
-   let routerName =
+  // 当前路由名称
+  let routerName =
     (router.currentRoute.value.matched?.[0]?.name as string) ||
     (router.currentRoute.value?.name as string);
   if (!routerName) return;
@@ -295,6 +302,10 @@ const checkMenuItem = () => {
   // 处理收藏子路由
   if (routerName.startsWith("like-") && routerName !== "like-songs") {
     routerName = "like";
+  }
+  // 处理下载子路由
+  if (routerName.startsWith("download-")) {
+    routerName = "download";
   }
   // 显示菜单
   menuRef.value?.showOption(routerName);

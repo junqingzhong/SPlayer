@@ -22,9 +22,7 @@ export const handleProtocolUrl = (url: string) => {
     default:
       break;
   }
-}
-
-
+};
 
 export const handleOpenOrpheus = async (url: string) => {
   const data = parseOrpheus(url);
@@ -48,8 +46,31 @@ const parseOrpheus = (url: string): OrpheusData | undefined => {
   // 形如 `{"type":"song","id":"1826361712","cmd":"play"}`
 
   if (!url.startsWith("orpheus://")) return;
-  const path = url.replace("orpheus://", "");
-  const jsonString = atob(path);
+  let path = url.replace("orpheus://", "");
+  // 移除末尾可能存在的斜杠
+  if (path.endsWith("/")) {
+    path = path.slice(0, -1);
+  }
+  // 尝试 URL 解码
+  try {
+    path = decodeURIComponent(path);
+  } catch (e) {
+    console.warn("URL Decode failed, using original path:", e);
+  }
+  // 处理 URL-safe Base64
+  path = path.replace(/-/g, "+").replace(/_/g, "/");
+  // 补全 Base64 填充
+  const padding = path.length % 4;
+  if (padding > 0) {
+    path += "=".repeat(4 - padding);
+  }
+  let jsonString: string;
+  try {
+    jsonString = atob(path);
+  } catch (e) {
+    console.error("❌ Failed to decode base64:", path, e);
+    return;
+  }
   let data: OrpheusData;
   try {
     const json = JSON.parse(jsonString);
@@ -59,4 +80,4 @@ const parseOrpheus = (url: string): OrpheusData | undefined => {
     return;
   }
   return data;
-}
+};

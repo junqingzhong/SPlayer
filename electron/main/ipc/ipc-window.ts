@@ -2,9 +2,13 @@ import { app, ipcMain } from "electron";
 import { useStore } from "../store";
 import { isDev } from "../utils/config";
 import { initThumbar } from "../thumbar";
+import { processProtocolFromCommand } from "../utils/protocol";
 import mainWindow from "../windows/main-window";
 import loadWindow from "../windows/load-window";
 import loginWindow from "../windows/login-window";
+
+// 记录是否已处理启动协议
+let isProtocolProcessed = false;
 
 /**
  * 窗口 IPC 通信
@@ -42,7 +46,14 @@ const initWindowsIpc = (): void => {
       }
     }, 100);
     // 初始化缩略图工具栏
-    if (mainWin) initThumbar(mainWin);
+    if (mainWin) {
+      initThumbar(mainWin);
+      // 检查是否有自定义协议启动（仅执行一次）
+      if (!isProtocolProcessed) {
+        processProtocolFromCommand(process.argv);
+        isProtocolProcessed = true;
+      }
+    }
   });
 
   // 最小化

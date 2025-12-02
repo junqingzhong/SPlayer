@@ -81,7 +81,7 @@ class MainProcess {
     // 自定义协议
     app.on("open-url", (_, url) => {
       processLog.log("🔗 Received custom protocol URL:", url);
-      trySendCustomProtocol(url)
+      trySendCustomProtocol(url);
     });
 
     // 将要退出
