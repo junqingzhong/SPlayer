@@ -97,8 +97,8 @@ watchEffect(() => {
   statusStore.mainContentHeight = contentHeight.value;
 });
 
-onMounted(() => {
-  init();
+onMounted(async () => {
+  await init();
   if (!isElectron) {
     window.addEventListener("beforeunload", (event) => {
       event.preventDefault();
