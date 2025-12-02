@@ -144,6 +144,17 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">模拟播放下载</n-text>
+          <n-text class="tip" :depth="3">使用播放接口进行下载，可能解决部分下载失败问题</n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.usePlaybackForDownload"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">保留元信息文件</n-text>
           <n-text class="tip" :depth="3">是否在下载目录中保留元信息文件</n-text>
         </div>

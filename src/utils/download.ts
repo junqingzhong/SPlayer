@@ -1,10 +1,11 @@
 import type { SongType, SongLevelType } from "@/types/main";
-import { songDownloadUrl, songLyric } from "@/api/song";
+import { songDownloadUrl, songLyric, songUrl } from "@/api/song";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { useSettingStore } from "@/stores";
 import { cloneDeep } from "lodash-es";
 import songManager from "@/utils/songManager";
+import { songLevelData } from "@/utils/meta";
 
 interface DownloadOptions {
   song: SongType;
@@ -21,13 +22,28 @@ export const downloadSong = async ({
 }: DownloadOptions): Promise<{ success: boolean; skipped?: boolean; message?: string }> => {
   try {
     const settingStore = useSettingStore();
+    let url = "";
+    let type = "mp3";
+
     // 获取下载链接
-    const result = await songDownloadUrl(song.id, quality);
-    if (result.code !== 200 || !result?.data?.url) {
-      return { success: false, message: result.message || "获取下载链接失败" };
+    if (settingStore.usePlaybackForDownload) {
+      const levelName = songLevelData[quality].level;
+      // @ts-ignore
+      const result = await songUrl(song.id, levelName);
+      if (result.code !== 200 || !result?.data?.[0]?.url) {
+        return { success: false, message: result.message || "获取播放链接失败" };
+      }
+      url = result.data[0].url;
+      type = (result.data[0].type || result.data[0].encodeType || "mp3").toLowerCase();
+    } else {
+      const result = await songDownloadUrl(song.id, quality);
+      if (result.code !== 200 || !result?.data?.url) {
+        return { success: false, message: result.message || "获取下载链接失败" };
+      }
+      url = result.data.url;
+      type = result.data.type?.toLowerCase() || "mp3";
     }
 
-    const { url, type = "mp3" } = result.data;
     const songName = songManager.getPlayerInfo(song) || "未知曲目";
     const finalPath = downloadPath || settingStore.downloadPath;
 

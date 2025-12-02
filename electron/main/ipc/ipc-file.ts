@@ -3,7 +3,7 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 
 import { access, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
 import { parseFile } from "music-metadata";
 import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
-import { File, Picture, Id3v2Settings } from "node-taglib-sharp";
+import { File, Picture, Id3v2Settings, TagTypes } from "node-taglib-sharp";
 import { ipcLog } from "../logger";
 import { download } from "electron-dl";
 import { Options as GlobOptions } from "fast-glob/out/settings";
@@ -437,12 +437,21 @@ const initFileIpc = (): void => {
           filename: `${fileName}.jpg`,
         });
         // 读取歌曲文件
-        const songFile = File.createFromPath(songDownload.getSavePath());
+        let songFile = File.createFromPath(songDownload.getSavePath());
+        // 清除原有标签，防止脏数据（如模拟播放下载时的乱码歌词）
+        songFile.removeTags(TagTypes.AllTags);
+        songFile.save();
+        songFile.dispose();
+
+        // 重新读取文件以写入新标签
+        songFile = File.createFromPath(songDownload.getSavePath());
         // 生成图片信息
         const songCover = Picture.fromPath(coverDownload.getSavePath());
+
         // 保存修改后的元数据
         Id3v2Settings.forceDefaultVersion = true;
         Id3v2Settings.defaultVersion = 3;
+
         songFile.tag.title = songData?.name || "未知曲目";
         songFile.tag.album = songData?.album?.name || "未知专辑";
         songFile.tag.performers = songData?.artists?.map((ar: any) => ar.name) || ["未知艺术家"];
