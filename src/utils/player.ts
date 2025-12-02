@@ -796,11 +796,20 @@ class Player {
       return;
     }
     // 尝试添加
+    const currentSongId = musicStore.playSong.id;
     const songIndex = await dataStore.setNextPlaySong(song, statusStore.playIndex);
     // 播放歌曲
     if (songIndex < 0) return;
-    if (play) this.togglePlayIndex(songIndex, true);
-    else window.$message.success("已添加至下一首播放");
+    if (play) {
+      this.togglePlayIndex(songIndex, true);
+    } else {
+      // 修正当前播放索引
+      const newCurrentIndex = dataStore.playList.findIndex((s) => s.id === currentSongId);
+      if (newCurrentIndex !== -1 && newCurrentIndex !== statusStore.playIndex) {
+        statusStore.playIndex = newCurrentIndex;
+      }
+      window.$message.success("已添加至下一首播放");
+    }
   }
   /**
    * 切换播放索引
