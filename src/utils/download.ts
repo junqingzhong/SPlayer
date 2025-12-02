@@ -12,6 +12,7 @@ interface DownloadOptions {
   quality: SongLevelType;
   downloadPath?: string;
   skipIfExist?: boolean;
+  mode?: "standard" | "playback";
 }
 
 export const downloadSong = async ({
@@ -19,23 +20,46 @@ export const downloadSong = async ({
   quality,
   downloadPath,
   skipIfExist,
+  mode,
 }: DownloadOptions): Promise<{ success: boolean; skipped?: boolean; message?: string }> => {
   try {
     const settingStore = useSettingStore();
     let url = "";
     let type = "mp3";
 
+    const usePlayback = mode ? mode === "playback" : settingStore.usePlaybackForDownload;
+
     // 获取下载链接
-    if (settingStore.usePlaybackForDownload) {
-      const levelName = songLevelData[quality].level;
-      // @ts-ignore
-      const result = await songUrl(song.id, levelName);
-      if (result.code !== 200 || !result?.data?.[0]?.url) {
-        return { success: false, message: result.message || "获取播放链接失败" };
+    const levelName = songLevelData[quality].level;
+    // songUrl 仅支持以下音质
+    const allowedLevels = [
+      "standard",
+      "higher",
+      "exhigh",
+      "lossless",
+      "hires",
+      "jyeffect",
+      "sky",
+      "jymaster",
+    ];
+
+    // 如果开启了“使用播放链接下载”且音质支持，则尝试获取播放链接
+    if (usePlayback && allowedLevels.includes(levelName)) {
+      try {
+        // @ts-ignore: levelName is checked against allowedLevels at runtime
+        const result = await songUrl(song.id, levelName);
+        if (result.code === 200 && result?.data?.[0]?.url) {
+          url = result.data[0].url;
+          type = (result.data[0].type || result.data[0].encodeType || "mp3").toLowerCase();
+        }
+      } catch (e) {
+        console.error("Error fetching playback url for download:", e);
       }
-      url = result.data[0].url;
-      type = (result.data[0].type || result.data[0].encodeType || "mp3").toLowerCase();
-    } else {
+    }
+
+    // 如果没有获取到 URL (可能是因为没开启设置，或者音质不支持，或者获取失败)，则使用标准下载接口
+    if (!url) {
+
       const result = await songDownloadUrl(song.id, quality);
       if (result.code !== 200 || !result?.data?.url) {
         return { success: false, message: result.message || "获取下载链接失败" };
