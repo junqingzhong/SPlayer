@@ -132,13 +132,13 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           show: isLogin() === 1 && !settingStore.hideCloud,
           icon: renderIcon("Cloud"),
         },
-        // {
-        //   key: "download",
-        //   link: "download",
-        //   label: "下载管理",
-        //   show: isElectron,
-        //   icon: renderIcon("Download"),
-        // },
+        {
+          key: "download",
+          link: "download",
+          label: "下载管理",
+          show: isElectron,
+          icon: renderIcon("Download"),
+        },
         {
           key: "local",
           link: "local",

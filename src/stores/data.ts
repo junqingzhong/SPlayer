@@ -10,8 +10,8 @@ import type {
 import { playlistCatlist } from "@/api/playlist";
 import { cloneDeep, isEmpty } from "lodash-es";
 import { isLogin } from "@/utils/auth";
-import localforage from "localforage";
 import { formatCategoryList } from "@/utils/format";
+import localforage from "localforage";
 
 interface ListState {
   playList: SongType[];
@@ -32,6 +32,25 @@ interface ListState {
     type: Record<number, string>;
     cats: CatType[];
     hqCats: CatType[];
+  };
+  /** 批量下载 */
+  batchDownload: {
+    /** 是否正在下载 */
+    isDownloading: boolean;
+    /** 下载总数 */
+    total: number;
+    /** 已处理数量 */
+    processed: number;
+    /** 成功数量 */
+    success: number;
+    /** 当前下载歌曲 */
+    currentSong: string;
+    /** 当前歌曲下载进度 */
+    percent: number;
+    /** 已传输大小 */
+    transferred: string;
+    /** 总大小 */
+    totalSize: string;
   };
 }
 
@@ -99,6 +118,17 @@ export const useDataStore = defineStore("data", {
       type: {},
       cats: [],
       hqCats: [],
+    },
+    // 批量下载
+    batchDownload: {
+      isDownloading: false,
+      total: 0,
+      processed: 0,
+      success: 0,
+      currentSong: "",
+      percent: 0,
+      transferred: "0MB",
+      totalSize: "0MB",
     },
   }),
   getters: {
