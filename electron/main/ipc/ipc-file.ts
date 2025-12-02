@@ -377,16 +377,17 @@ const initFileIpc = (): void => {
         saveMetaFile?: boolean;
         lyric?: string;
         songData?: any;
+        skipIfExist?: boolean;
       } = {
           fileName: "未知文件名",
           fileType: "mp3",
           path: app.getPath("downloads"),
         },
-    ): Promise<boolean> => {
+    ): Promise<{ status: "success" | "skipped" | "error"; message?: string }> => {
       try {
         // 获取窗口
         const win = BrowserWindow.fromWebContents(event.sender);
-        if (!win) return false;
+        if (!win) return { status: "error", message: "Window not found" };
         // 获取配置
         const {
           fileName,
@@ -398,6 +399,7 @@ const initFileIpc = (): void => {
           downloadLyric,
           saveMetaFile,
           songData,
+          skipIfExist,
         } = options;
         // 规范化路径
         const downloadPath = resolve(path);
@@ -407,6 +409,18 @@ const initFileIpc = (): void => {
         } catch {
           throw new Error("❌ Folder not found");
         }
+
+        // 检查文件是否存在
+        if (skipIfExist) {
+          const filePath = join(downloadPath, `${fileName}.${fileType}`);
+          try {
+            await access(filePath);
+            return { status: "skipped", message: "文件已存在" };
+          } catch {
+            // 文件不存在，继续下载
+          }
+        }
+
         // 下载文件
         const songDownload = await download(win, url, {
           directory: downloadPath,
@@ -415,7 +429,7 @@ const initFileIpc = (): void => {
             win.webContents.send("download-progress", progress);
           },
         });
-        if (!downloadMeta || !songData?.cover) return true;
+        if (!downloadMeta || !songData?.cover) return { status: "success" };
         // 下载封面
         const coverUrl = songData?.coverSize?.l || songData.cover;
         const coverDownload = await download(win, coverUrl, {
@@ -445,10 +459,10 @@ const initFileIpc = (): void => {
         }
         // 是否删除封面
         if (!saveMetaFile || !downloadCover) await unlink(coverDownload.getSavePath());
-        return true;
+        return { status: "success" };
       } catch (error) {
         ipcLog.error("❌ Error downloading file:", error);
-        return false;
+        return { status: "error", message: error instanceof Error ? error.message : "Unknown error" };
       }
     },
   );

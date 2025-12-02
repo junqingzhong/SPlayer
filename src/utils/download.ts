@@ -10,13 +10,15 @@ interface DownloadOptions {
   song: SongType;
   quality: SongLevelType;
   downloadPath?: string;
+  skipIfExist?: boolean;
 }
 
 export const downloadSong = async ({
   song,
   quality,
   downloadPath,
-}: DownloadOptions): Promise<{ success: boolean; message?: string }> => {
+  skipIfExist,
+}: DownloadOptions): Promise<{ success: boolean; skipped?: boolean; message?: string }> => {
   try {
     const settingStore = useSettingStore();
     // 获取下载链接
@@ -52,10 +54,16 @@ export const downloadSong = async ({
         saveMetaFile,
         songData: cloneDeep(song),
         lyric,
+        skipIfExist,
       };
 
-      const isSuccess = await window.electron.ipcRenderer.invoke("download-file", url, config);
-      if (!isSuccess) return { success: false, message: "下载失败" };
+      const result = await window.electron.ipcRenderer.invoke("download-file", url, config);
+      if (result.status === "skipped") {
+        return { success: true, skipped: true, message: result.message };
+      }
+      if (result.status === "error") {
+        return { success: false, message: result.message || "下载失败" };
+      }
     } else {
       saveAs(url, `${songName}.${type}`);
     }
