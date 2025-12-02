@@ -324,22 +324,16 @@ class AudioManager {
    * @param deviceId 设备 ID
    */
   public async setSinkId(deviceId: string) {
+    if (deviceId === "default") return;
     try {
-      // 1. 如果 AudioContext 已初始化，优先在 Context 上设置
-      // 注意：setSinkId 在 AudioContext 上是新特性，需检查是否存在
+      // 优先在 Context 上设置
       if (this.isInitialized && this.audioCtx && typeof this.audioCtx.setSinkId === "function") {
-        console.log("AudioManager: 使用 AudioContext 切换输出设备", deviceId);
         await this.audioCtx.setSinkId(deviceId);
-        return; // 成功后直接返回，不要再触碰 audioElement
+        return;
       }
-
-      // 2. 如果没有初始化 Web Audio，或者 Context 不支持 setSinkId
-      // 则回退到在 HTMLAudioElement 上设置
+      // 回退到在 HTMLAudioElement 上设置
       if (this.audioElement && typeof this.audioElement.setSinkId === "function") {
-        console.log("AudioManager: 使用 HTMLAudioElement 切换输出设备", deviceId);
         await this.audioElement.setSinkId(deviceId);
-      } else {
-        console.warn("AudioManager: 当前浏览器不支持设置输出设备 (setSinkId)");
       }
     } catch (error) {
       console.error("AudioManager: 设置输出设备失败", error);

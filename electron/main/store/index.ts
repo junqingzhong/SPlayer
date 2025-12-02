@@ -24,6 +24,8 @@ export interface StoreType {
     config?: LyricConfig;
   };
   proxy: string;
+  // amll-db-server
+  amllDbServer: string;
 }
 
 /**
@@ -47,6 +49,7 @@ export const useStore = () => {
         config: defaultLyricConfig,
       },
       proxy: "",
+      amllDbServer: "https://amll-ttml-db.stevexmh.net",
     },
   });
 };

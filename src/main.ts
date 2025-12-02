@@ -9,12 +9,14 @@ import router from "@/router";
 import { debounceDirective, throttleDirective, visibleDirective } from "@/utils/instruction";
 // ipc
 import initIpc from "@/utils/initIpc";
+// use-store
+import { useSettingStore } from "@/stores";
+import { sendRegisterProtocol } from "@/utils/protocol";
 // 全局样式
 import "@/style/main.scss";
 import "@/style/animate.scss";
 import "github-markdown-css/github-markdown.css";
-import { useSettingStore } from "@/stores";
-import { sendRegisterProtocol } from "@/utils/protocol";
+import { isElectron } from "./utils/env";
 
 // 初始化 ipc
 initIpc();
@@ -35,5 +37,7 @@ app.directive("visible", visibleDirective);
 app.mount("#app");
 
 // 根据设置判断是否要注册协议
-const settings = useSettingStore();
-sendRegisterProtocol("orpheus", settings.registryProtocol.orpheus);
+if (isElectron) {
+  const settings = useSettingStore();
+  sendRegisterProtocol("orpheus", settings.registryProtocol.orpheus);
+}
