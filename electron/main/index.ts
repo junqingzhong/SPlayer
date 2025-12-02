@@ -11,7 +11,7 @@ import initAppServer from "../server";
 import loadWindow from "./windows/load-window";
 import mainWindow from "./windows/main-window";
 import initIpc from "./ipc";
-import { trySendCustomProtocol, registerCustomProtocol } from "./utils/protocol";
+import { trySendCustomProtocol } from "./utils/protocol";
 
 // 屏蔽报错
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -48,8 +48,6 @@ class MainProcess {
       processLog.info("🚀 Application Process Startup");
       // 设置应用程序名称
       electronApp.setAppUserModelId("com.imsyy.splayer");
-      // 注册自定义协议
-      registerCustomProtocol();
       // 启动主服务进程
       await initAppServer();
       // 启动窗口

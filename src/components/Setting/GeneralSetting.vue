@@ -317,6 +317,15 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">通过 Orpheus 协议唤起本应用</n-text>
+          <n-text class="tip" :depth="3">
+            该协议通常用于官方网页端唤起官方客户端， 启用后可能导致官方客户端无法被唤起
+          </n-text>
+        </div>
+        <n-switch v-model:value="settingStore.registryProtocol.orpheus" class="set" :round="false" @update:value="orpheusChange" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">自动检查更新</n-text>
           <n-text class="tip" :depth="3">在每次开启软件时自动检查更新</n-text>
         </div>
@@ -334,6 +343,7 @@ import songManager from "@/utils/songManager";
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";
 import { openSidebarHideManager, openHomePageSectionManager } from "@/utils/modal";
+import { sendRegisterProtocol } from "@/utils/protocol";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
@@ -439,6 +449,11 @@ const modeChange = (val: boolean) => {
 // 全局着色更改
 const themeGlobalColorChange = (val: boolean) => {
   if (val) songManager.getCoverColor(musicStore.songCover);
+};
+
+// 注册或取消注册协议
+const orpheusChange = async (isRegistry: boolean) => {
+  sendRegisterProtocol("orpheus", isRegistry)
 };
 
 onMounted(() => {

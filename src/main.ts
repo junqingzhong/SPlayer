@@ -13,6 +13,8 @@ import initIpc from "@/utils/initIpc";
 import "@/style/main.scss";
 import "@/style/animate.scss";
 import "github-markdown-css/github-markdown.css";
+import { useSettingStore } from "@/stores";
+import { sendRegisterProtocol } from "@/utils/protocol";
 
 // 初始化 ipc
 initIpc();
@@ -31,3 +33,7 @@ app.directive("throttle", throttleDirective);
 app.directive("visible", visibleDirective);
 // app
 app.mount("#app");
+
+// 根据设置判断是否要注册协议
+const settings = useSettingStore();
+sendRegisterProtocol("orpheus", settings.registryProtocol.orpheus);
