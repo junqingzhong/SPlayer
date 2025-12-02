@@ -137,7 +137,6 @@ const changeDownloadPath = async () => {
 const download = async () => {
   if (!songData.value) return;
   loading.value = true;
-  if (settingStore.downloadPath) downloadPath.value = settingStore.downloadPath;
 
   try {
     const result = await downloadSong({

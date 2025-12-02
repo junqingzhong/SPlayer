@@ -144,6 +144,18 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">模拟播放下载<n-tag type="warning" size="small" round>Beta</n-tag></n-text>
+          <n-text class="tip" :depth="3">使用播放接口进行下载，可能解决部分下载失败问题</n-text>
+        </div>
+        <n-switch
+          :value="settingStore.usePlaybackForDownload"
+          :round="false"
+          class="set"
+          @update:value="handlePlaybackDownloadChange"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">保留元信息文件</n-text>
           <n-text class="tip" :depth="3">是否在下载目录中保留元信息文件</n-text>
         </div>
@@ -168,6 +180,23 @@ const settingStore = useSettingStore();
 const choosePath = async () => {
   const path = await window.electron.ipcRenderer.invoke("choose-path");
   if (path) settingStore.downloadPath = path;
+};
+
+// 模拟播放下载开关
+const handlePlaybackDownloadChange = (value: boolean) => {
+  if (value) {
+    window.$dialog.warning({
+      title: "开启提示",
+      content: "模拟播放下载可能导致部分音质歌词嵌入异常且未经完整测试可能有不稳定情况，确认要打开吗？",
+      positiveText: "确认打开",
+      negativeText: "取消",
+      onPositiveClick: () => {
+        settingStore.usePlaybackForDownload = true;
+      },
+    });
+  } else {
+    settingStore.usePlaybackForDownload = false;
+  }
 };
 </script>
 

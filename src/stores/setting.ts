@@ -72,6 +72,12 @@ export interface SettingState {
   downloadCover: boolean;
   /** 下载歌词 */
   downloadLyric: boolean;
+  /** 下载歌词翻译 */
+  downloadLyricTranslation: boolean;
+  /** 下载歌词音译 */
+  downloadLyricRomaji: boolean;
+  /** 模拟播放下载 */
+  usePlaybackForDownload: boolean;
   /** 保存元信息文件 */
   saveMetaFile: boolean;
   /** 代理协议 */
@@ -293,6 +299,9 @@ export const useSettingStore = defineStore("setting", {
     downloadMeta: true,
     downloadCover: true,
     downloadLyric: true,
+    downloadLyricTranslation: true,
+    downloadLyricRomaji: true,
+    usePlaybackForDownload: false,
     saveMetaFile: false,
     proxyProtocol: "off",
     proxyServe: "127.0.0.1",

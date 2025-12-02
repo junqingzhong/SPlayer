@@ -161,6 +161,52 @@
         </n-flex>
       </template>
     </n-modal>
+
+    <!-- 批量下载进度通知 -->
+    <Teleport to="body">
+      <Transition name="slide-fade">
+        <div
+          v-if="batchDownloadState.isDownloading"
+          class="batch-download-notification"
+          :class="{ 'is-hovered': isNotificationHovered }"
+          @mouseenter="isNotificationHovered = true"
+          @mouseleave="isNotificationHovered = false"
+        >
+          <n-card content-style="padding: 16px;" :bordered="false">
+            <n-flex vertical :size="12">
+              <n-flex justify="space-between" align="center">
+                <n-text strong>批量下载中</n-text>
+                <n-text depth="3" style="font-size: 12px">
+                  {{ batchDownloadState.processed }}/{{ batchDownloadState.total }}
+                </n-text>
+              </n-flex>
+              
+              <n-text style="font-size: 13px" ellipsis>
+                正在下载: {{ batchDownloadState.currentSong }}
+              </n-text>
+              
+              <n-progress
+                type="line"
+                :percentage="batchDownloadState.percent"
+                :show-indicator="false"
+                processing
+                status="success"
+                style="height: 6px"
+              />
+              
+              <n-flex justify="space-between" style="font-size: 12px">
+                <n-text depth="3">
+                  {{ batchDownloadState.transferred }} / {{ batchDownloadState.totalSize }}
+                </n-text>
+                <n-text depth="3">
+                  成功: {{ batchDownloadState.success }}
+                </n-text>
+              </n-flex>
+            </n-flex>
+          </n-card>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -180,6 +226,10 @@ import {
   NInputGroup,
   NButton,
   NAlert,
+  NCard,
+  NProgress,
+  NText,
+  NFlex,
 } from "naive-ui";
 import { useLocalStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
@@ -218,6 +268,19 @@ const endRange = ref<number | null>(null);
 const showQualityModal = ref(false);
 const selectedQuality = ref<SongLevelType>("h");
 const downloadPath = ref<string>(settingStore.downloadPath);
+
+// 批量下载状态
+const batchDownloadState = reactive({
+  isDownloading: false,
+  total: 0,
+  processed: 0,
+  success: 0,
+  currentSong: "",
+  percent: 0,
+  transferred: "0MB",
+  totalSize: "0MB",
+});
+const isNotificationHovered = ref(false);
 
 // 音质选项
 const qualityOptions = computed(() => {
@@ -293,7 +356,6 @@ const tableCheck = (keys: DataTableRowKey[]) => {
   checkSongData.value = selectedRows.map((row) => row.origin).filter((song) => song) as SongType[];
 };
 
-// 范围选择处理
 // 范围选择处理
 const handleRangeSelect = () => {
   if (startRange.value === null || endRange.value === null) {
@@ -411,21 +473,24 @@ const startBatchDownload = () => {
 const executeBatchDownload = async (songs: SongType[]) => {
   if (!songs.length) return;
 
-  const total = songs.length;
-  let processed = 0;
-  let successCount = 0;
+  // 重置状态
+  batchDownloadState.isDownloading = true;
+  batchDownloadState.total = songs.length;
+  batchDownloadState.processed = 0;
+  batchDownloadState.success = 0;
+  batchDownloadState.percent = 0;
+  batchDownloadState.transferred = "0MB";
+  batchDownloadState.totalSize = "0MB";
+
   let failCount = 0;
   const failedSongs: SongType[] = [];
-
-  const loadingMsg = window.$message.loading(`正在准备批量下载... 0/${total}`, { duration: 0 });
 
   // 监听下载进度
   const onProgress = (_event: any, progress: { percent: number; transferredBytes: number; totalBytes: number }) => {
     const { percent, transferredBytes, totalBytes } = progress;
-    const percentStr = (percent * 100).toFixed(0) + "%";
-    const transferredStr = (transferredBytes / 1024 / 1024).toFixed(2) + "MB";
-    const totalStr = (totalBytes / 1024 / 1024).toFixed(2) + "MB";
-    loadingMsg.content = `正在批量下载... ${processed + 1}/${total} (成功 ${successCount}) - ${percentStr} ${transferredStr}/${totalStr}`;
+    batchDownloadState.percent = Number((percent * 100).toFixed(0));
+    batchDownloadState.transferred = (transferredBytes / 1024 / 1024).toFixed(2) + "MB";
+    batchDownloadState.totalSize = (totalBytes / 1024 / 1024).toFixed(2) + "MB";
   };
 
   if (isElectron) {
@@ -434,15 +499,24 @@ const executeBatchDownload = async (songs: SongType[]) => {
 
   try {
     for (const song of songs) {
+      batchDownloadState.currentSong = song.name;
       try {
         const result = await downloadSong({
           song,
           quality: selectedQuality.value,
           downloadPath: downloadPath.value,
+          skipIfExist: true,
         });
 
         if (result.success) {
-          successCount++;
+          batchDownloadState.success++;
+          if (result.skipped) {
+            window.$notification.create({
+              title: "已跳过重复文件",
+              content: `${song.name} 已存在`,
+              duration: 2000,
+            });
+          }
           if (!isElectron) {
             // Browser download delay
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -457,15 +531,24 @@ const executeBatchDownload = async (songs: SongType[]) => {
         failCount++;
         failedSongs.push(song);
       } finally {
-        processed++;
-        loadingMsg.content = `正在批量下载... ${processed}/${total} (成功 ${successCount})`;
+        batchDownloadState.processed++;
+        // Reset progress for next song
+        batchDownloadState.percent = 0;
+        batchDownloadState.transferred = "0MB";
+        batchDownloadState.totalSize = "0MB";
       }
     }
 
     if (failCount > 0) {
       window.$dialog.warning({
         title: "下载完成，但有部分失败",
-        content: `${successCount} 首下载成功，${failCount} 首下载失败。是否重试失败的歌曲？`,
+        content: () => h("div", [
+          h("div", { style: "margin-bottom: 10px" }, `${batchDownloadState.success} 首下载成功，${failCount} 首下载失败。`),
+          h("div", { style: "max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 4px;" }, [
+             h("div", { style: "font-weight: bold; margin-bottom: 4px" }, "失败列表："),
+             ...failedSongs.map(s => h("div", { style: "font-size: 12px" }, `${s.name} - ${isArray(s.artists) ? s.artists[0]?.name : s.artists || '未知歌手'}`))
+          ])
+        ]),
         positiveText: "重试失败歌曲",
         negativeText: "取消",
         onPositiveClick: () => {
@@ -473,17 +556,16 @@ const executeBatchDownload = async (songs: SongType[]) => {
         },
       });
     } else {
-      window.$message.success(`批量下载完成，共 ${successCount} 首`);
+      window.$message.success(`批量下载完成，共 ${batchDownloadState.success} 首`);
     }
   } catch (error) {
     console.error("Batch download error:", error);
-    window.$message.error("批量下载过程中出现错误");
     window.$message.error("批量下载过程中出现错误");
   } finally {
     if (isElectron) {
       window.electron.ipcRenderer.removeListener("download-progress", onProgress);
     }
-    loadingMsg.destroy();
+    batchDownloadState.isDownloading = false;
   }
 };
 </script>
@@ -494,5 +576,36 @@ const executeBatchDownload = async (songs: SongType[]) => {
 }
 .range-input {
   width: 100px;
+}
+
+.batch-download-notification {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  width: 320px;
+  transition: all 0.3s ease;
+  
+  &.is-hovered {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+  }
+  
+  :deep(.n-card) {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateY(20px);
+  opacity: 0;
 }
 </style>
