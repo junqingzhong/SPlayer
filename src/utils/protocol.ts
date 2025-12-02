@@ -14,6 +14,19 @@ class OrpheusData {
   cmd: string;
 }
 
+/**
+ * 发送 注册/取消注册 协议的 Ipc
+ * @param protocol 协议名
+ * @param register true 则注册，false 则取消注册
+ */
+export const sendRegisterProtocol = (protocol: string, register: boolean = true) => {
+  if (register) {
+    window.electron.ipcRenderer.send("register-protocol", protocol);
+  } else {
+    window.electron.ipcRenderer.send("unregister-protocol", protocol);
+  }
+};
+
 export const handleProtocolUrl = (url: string) => {
   switch (true) {
     case url.startsWith("orpheus://"):
