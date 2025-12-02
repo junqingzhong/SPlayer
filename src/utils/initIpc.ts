@@ -6,7 +6,7 @@ import { usePlayer } from "./player";
 import { cloneDeep } from "lodash-es";
 import songManager from "./songManager";
 import { SettingType } from "@/types/main";
-import { handleProtocolUrl } from "@/utils/protocal";
+import { handleProtocolUrl } from "@/utils/protocol";
 
 // 关闭更新状态
 const closeUpdateStatus = () => {
