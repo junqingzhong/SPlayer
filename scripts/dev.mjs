@@ -61,7 +61,16 @@ const startElectronVite = () => {
   // 设置 Node.js 选项
   env.NODE_OPTIONS = "--max-old-space-size=4096";
 
-  const electronVite = spawn("electron-vite", ["dev"], {
+  // 传递给 electron-vite 的参数
+  const runArgs = ["dev"];
+  // 前两个参数分别是 node 和此脚本的路径，丢弃其
+  const args = process.argv.slice(2);
+  // 添加参数
+  if (args.length > 0) {
+    runArgs.push(...args);
+  }
+
+  const electronVite = spawn("electron-vite", runArgs, {
     stdio: "inherit",
     shell: true,
     env,

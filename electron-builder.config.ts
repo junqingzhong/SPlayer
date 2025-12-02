@@ -45,6 +45,13 @@ const config: Configuration = {
         arch: ["x64", "arm64"],
       },
     ],
+    // 注册协议
+    protocols: [
+      {
+        name: "Orpheus Protocol",
+        schemes: ["orpheus"],
+      },
+    ],
   },
   // NSIS 安装器配置
   nsis: {
@@ -90,6 +97,13 @@ const config: Configuration = {
         "Application requests access to the user's Documents folder.",
       NSDownloadsFolderUsageDescription:
         "Application requests access to the user's Downloads folder.",
+      // 注册协议
+      CFBundleURLTypes: [
+        {
+          CFBundleURLName: "Orpheus Protocol",
+          CFBundleURLSchemes: ["orpheus"],
+        },
+      ],
     },
     // 是否启用应用程序的 Notarization（苹果的安全审核）
     notarize: false,
@@ -153,6 +167,13 @@ const config: Configuration = {
     maintainer: "imsyy.top",
     // 应用程序类别
     category: "Audio;Music;AudioVideo;",
+    // 桌面项
+    desktop: {
+      entry: {
+        // 注册协议
+        MimeType: "x-scheme-handler/orpheus;",
+      },
+    },
   },
   // AppImage 特定配置
   appImage: {
