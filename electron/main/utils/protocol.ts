@@ -1,15 +1,5 @@
-import { app } from "electron";
-import { processLog } from "../logger";
 import mainWindow from "../windows/main-window";
-
-/**
- * 注册自定义协议
- * 用于在外部打开应用时传递 URL 参数
- */
-export const registerCustomProtocol = () => {
-  app.setAsDefaultProtocolClient("orpheus");
-  processLog.info("🔗 Registered custom protocol");
-};
+import { processLog } from "../logger";
 
 /**
  * 尝试发送自定义协议 URL 到主窗口
