@@ -101,96 +101,26 @@
       </n-flex>
     </n-flex>
 
-    <!-- 音质选择弹窗 -->
-    <n-modal
-      v-model:show="showQualityModal"
-      preset="card"
-      title="批量下载"
-      :closable="false"
-      :mask-closable="false"
-      style="width: 500px"
-    >
-      <n-alert type="warning" title="请知悉" closable style="margin-top: 20px">
-        本软件仅支持从官方途径合法合规的下载歌曲，并用于学习研究用途。本功能将严格按照相应账户的权限来提供基础的下载功能
-      </n-alert>
-      <n-collapse
-        :default-expanded-names="['level', 'path']"
-        arrow-placement="right"
-        style="margin-top: 20px"
-      >
-        <n-collapse-item title="音质选择" name="level">
-          <n-radio-group v-model:value="selectedQuality" name="quality">
-            <n-flex>
-              <n-radio v-for="(item, index) in qualityOptions" :key="index" :value="item.value">
-                <n-flex>
-                  <n-text class="name">{{ item.label }}</n-text>
-                </n-flex>
-              </n-radio>
-            </n-flex>
-          </n-radio-group>
-          <n-text depth="3" style="font-size: 12px; margin-top: 10px; display: block">
-            注意：如果歌曲没有对应的音质，将自动下载最高可用音质
-          </n-text>
-        </n-collapse-item>
-        <n-collapse-item v-if="isElectron" title="下载路径" name="path">
-          <n-input-group>
-            <n-input :value="downloadPath || '未配置下载目录'" disabled>
-              <template #prefix>
-                <SvgIcon name="Folder" />
-              </template>
-            </n-input>
-            <n-button type="primary" strong secondary @click="changeDownloadPath">
-              <template #icon>
-                <SvgIcon name="Folder" />
-              </template>
-            </n-button>
-            <n-button type="primary" strong secondary @click="openSetting('local')">
-              <template #icon>
-                <SvgIcon name="Settings" />
-              </template>
-              更多设置
-            </n-button>
-          </n-input-group>
-        </n-collapse-item>
-      </n-collapse>
-
-      <template #action>
-        <n-flex justify="end">
-          <n-button @click="showQualityModal = false">取消</n-button>
-          <n-button type="primary" @click="startBatchDownload">确认下载</n-button>
-        </n-flex>
-      </template>
-    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { DataTableColumns, DataTableRowKey } from "naive-ui";
-import type { SongType, SongLevelType } from "@/types/main";
-import { isArray, isObject, pick } from "lodash-es";
-import { openPlaylistAdd, openSetting } from "@/utils/modal";
+import type { SongType } from "@/types/main";
+import { isArray, isObject } from "lodash-es";
+import { openPlaylistAdd } from "@/utils/modal";
 import { deleteSongs } from "@/utils/auth";
 import {
   NInput,
   NInputNumber,
-  NRadioGroup,
-  NRadio,
-  NCollapse,
-  NCollapseItem,
-  NInputGroup,
   NButton,
-  NAlert,
   NText,
   NFlex,
 } from "naive-ui";
-import { useLocalStore, useSettingStore, useDataStore } from "@/stores";
-import { isElectron } from "@/utils/env";
-import { songLevelData, getSongLevelsData } from "@/utils/meta";
-import { downloadSong } from "@/utils/download";
+import { useLocalStore } from "@/stores";
+import { openDownloadSongs } from "@/utils/modal";
 
 const localStore = useLocalStore();
-const settingStore = useSettingStore();
-const dataStore = useDataStore();
 
 interface DataType {
   key?: number;
@@ -217,22 +147,6 @@ const checkedRowKeys = ref<DataTableRowKey[]>([]);
 const startRange = ref<number | null>(null);
 const endRange = ref<number | null>(null);
 
-// 下载相关
-const showQualityModal = ref(false);
-const selectedQuality = ref<SongLevelType>("h");
-const downloadPath = ref<string>(settingStore.downloadPath);
-
-// 音质选项
-const qualityOptions = computed(() => {
-  // 批量下载时，默认显示所有常用音质选项
-  // 这里模拟一个包含所有常用音质的 level 对象
-  const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-  return getSongLevelsData(levels).map((item) => ({
-    label: item.name,
-    value: item.value,
-    level: item.level,
-  }));
-});
 
 // 表头数据
 const columnsData = computed<DataTableColumns<DataType>>(() => [
@@ -395,139 +309,11 @@ const handleDeleteLocalSongs = () => {
 
 // 批量下载处理
 const handleBatchDownloadClick = () => {
-  if (settingStore.downloadPath) downloadPath.value = settingStore.downloadPath;
-  showQualityModal.value = true;
-};
-
-// 更改下载路径
-const changeDownloadPath = async () => {
-  const path = await window.electron.ipcRenderer.invoke("choose-path");
-  if (path) downloadPath.value = path;
-};
-
-const startBatchDownload = () => {
-  showQualityModal.value = false;
-  executeBatchDownload(checkSongData.value);
-};
-
-const executeBatchDownload = async (songs: SongType[]) => {
-  if (!songs.length) return;
-
-  // 重置状态
-  dataStore.batchDownload.isDownloading = true;
-  dataStore.batchDownload.total = songs.length;
-  dataStore.batchDownload.processed = 0;
-  dataStore.batchDownload.success = 0;
-  dataStore.batchDownload.percent = 0;
-  dataStore.batchDownload.transferred = "0MB";
-  dataStore.batchDownload.totalSize = "0MB";
-
-  let failCount = 0;
-  const failedSongs: SongType[] = [];
-
-  // 监听下载进度
-  const onProgress = (
-    _event: any,
-    progress: { percent: number; transferredBytes: number; totalBytes: number },
-  ) => {
-    const { percent, transferredBytes, totalBytes } = progress;
-    dataStore.batchDownload.percent = Number((percent * 100).toFixed(0));
-    dataStore.batchDownload.transferred = (transferredBytes / 1024 / 1024).toFixed(2) + "MB";
-    dataStore.batchDownload.totalSize = (totalBytes / 1024 / 1024).toFixed(2) + "MB";
-  };
-
-  if (isElectron) {
-    window.electron.ipcRenderer.on("download-progress", onProgress);
+  if (checkSongData.value.length === 0) {
+    window.$message.warning("请选择要下载的歌曲");
+    return;
   }
-
-  try {
-    for (const song of songs) {
-      dataStore.batchDownload.currentSong = song.name;
-      try {
-        const result = await downloadSong({
-          song,
-          quality: selectedQuality.value,
-          downloadPath: downloadPath.value,
-          skipIfExist: true,
-        });
-
-        if (result.success) {
-          dataStore.batchDownload.success++;
-          if (result.skipped) {
-            window.$notification.create({
-              title: "已跳过重复文件",
-              content: `${song.name} 已存在`,
-              duration: 2000,
-            });
-          }
-          if (!isElectron) {
-            // Browser download delay
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }
-        } else {
-          console.error(`Failed to download song ${song.name}: ${result.message}`);
-          failCount++;
-          failedSongs.push(song);
-        }
-      } catch (err) {
-        console.error(`Error downloading song ${song.name}:`, err);
-        failCount++;
-        failedSongs.push(song);
-      } finally {
-        dataStore.batchDownload.processed++;
-        // Reset progress for next song
-        dataStore.batchDownload.percent = 0;
-        dataStore.batchDownload.transferred = "0MB";
-        dataStore.batchDownload.totalSize = "0MB";
-      }
-    }
-
-    if (failCount > 0) {
-      window.$dialog.warning({
-        title: "下载完成，但有部分失败",
-        content: () =>
-          h("div", [
-            h(
-              "div",
-              { style: "margin-bottom: 10px" },
-              `${dataStore.batchDownload.success} 首下载成功，${failCount} 首下载失败。`,
-            ),
-            h(
-              "div",
-              {
-                style:
-                  "max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.05); padding: 8px; border-radius: 4px;",
-              },
-              [
-                h("div", { style: "font-weight: bold; margin-bottom: 4px" }, "失败列表："),
-                ...failedSongs.map((s) =>
-                  h(
-                    "div",
-                    { style: "font-size: 12px" },
-                    `${s.name} - ${isArray(s.artists) ? s.artists[0]?.name : s.artists || "未知歌手"}`,
-                  ),
-                ),
-              ],
-            ),
-          ]),
-        positiveText: "重试失败歌曲",
-        negativeText: "取消",
-        onPositiveClick: () => {
-          executeBatchDownload(failedSongs);
-        },
-      });
-    } else {
-      window.$message.success(`批量下载完成，共 ${dataStore.batchDownload.success} 首`);
-    }
-  } catch (error) {
-    console.error("Batch download error:", error);
-    window.$message.error("批量下载过程中出现错误");
-  } finally {
-    if (isElectron) {
-      window.electron.ipcRenderer.removeListener("download-progress", onProgress);
-    }
-    dataStore.batchDownload.isDownloading = false;
-  }
+  openDownloadSongs(checkSongData.value);
 };
 </script>
 

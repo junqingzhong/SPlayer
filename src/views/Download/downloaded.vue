@@ -1,7 +1,7 @@
 <template>
   <div class="download-downloaded">
     <SongList
-      :data="data"
+      :data="dataStore.downloadedSongs"
       :loading="loading"
     />
   </div>
@@ -9,7 +9,10 @@
 
 <script setup lang="ts">
 import type { SongType } from "@/types/main";
+import { useDataStore } from "@/stores";
 import SongList from "@/components/List/SongList.vue";
+
+const dataStore = useDataStore();
 
 defineProps<{
   data: SongType[];

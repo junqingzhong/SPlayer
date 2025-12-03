@@ -13,7 +13,7 @@ import BatchList from "@/components/Modal/BatchList.vue";
 import CloudMatch from "@/components/Modal/CloudMatch.vue";
 import CreatePlaylist from "@/components/Modal/CreatePlaylist.vue";
 import UpdatePlaylist from "@/components/Modal/UpdatePlaylist.vue";
-import DownloadSong from "@/components/Modal/DownloadSong.vue";
+import DownloadModal from "@/components/Modal/DownloadModal.vue";
 import MainSetting from "@/components/Setting/MainSetting.vue";
 import UpdateApp from "@/components/Modal/UpdateApp.vue";
 import ExcludeLyrics from "@/components/Modal/ExcludeLyrics.vue";
@@ -208,7 +208,25 @@ export const openDownloadSong = (song: SongType) => {
     style: { width: "600px" },
     title: "下载歌曲",
     content: () => {
-      return h(DownloadSong, { id: song.id, onClose: () => modal.destroy() });
+      return h(DownloadModal, { songId: song.id, onClose: () => modal.destroy() });
+    },
+  });
+};
+
+// 批量下载歌曲
+export const openDownloadSongs = (songs: SongType[]): void => {
+  if (!songs || songs.length === 0) {
+    window.$message.warning("请选择要下载的歌曲");
+    return;
+  }
+  const modal = window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "600px" },
+    title: "批量下载",
+    content: () => {
+      return h(DownloadModal, { songs, onClose: () => modal.destroy() });
     },
   });
 };

@@ -23,6 +23,8 @@ declare module 'vue' {
     CoverList: typeof import('./src/components/List/CoverList.vue')['default']
     CoverMenu: typeof import('./src/components/Menu/CoverMenu.vue')['default']
     CreatePlaylist: typeof import('./src/components/Modal/CreatePlaylist.vue')['default']
+    DownloadManager: typeof import('./src/components/Global/DownloadManager.vue')['default']
+    DownloadModal: typeof import('./src/components/Modal/DownloadModal.vue')['default']
     DownloadSong: typeof import('./src/components/Modal/DownloadSong.vue')['default']
     Equalizer: typeof import('./src/components/Modal/Equalizer.vue')['default']
     ExcludeLyrics: typeof import('./src/components/Modal/ExcludeLyrics.vue')['default']
