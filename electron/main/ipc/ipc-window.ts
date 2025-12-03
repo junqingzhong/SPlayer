@@ -7,7 +7,9 @@ import mainWindow from "../windows/main-window";
 import loadWindow from "../windows/load-window";
 import loginWindow from "../windows/login-window";
 
-// 记录是否已处理启动协议
+/** 是否已首次启动 */
+let isFirstLaunch = false;
+/** 是否已处理协议 */
 let isProtocolProcessed = false;
 
 /**
@@ -35,16 +37,19 @@ const initWindowsIpc = (): void => {
     if (!mainWin) return;
     mainWin?.show();
     mainWin?.focus();
-    // 解决窗口不立即显示
-    mainWin?.setAlwaysOnTop(true);
-    // 100ms 后取消置顶
-    const timer = setTimeout(() => {
-      if (mainWin && !mainWin.isDestroyed()) {
-        mainWin.setAlwaysOnTop(false);
-        mainWin.focus();
-        clearTimeout(timer);
-      }
-    }, 100);
+    if (!isFirstLaunch) {
+      // 解决窗口不立即显示
+      mainWin?.setAlwaysOnTop(true);
+      // 100ms 后取消置顶
+      const timer = setTimeout(() => {
+        if (mainWin && !mainWin.isDestroyed()) {
+          mainWin.setAlwaysOnTop(false);
+          mainWin.focus();
+          clearTimeout(timer);
+        }
+      }, 100);
+      isFirstLaunch = true;
+    }
     // 初始化缩略图工具栏
     if (mainWin) {
       initThumbar(mainWin);

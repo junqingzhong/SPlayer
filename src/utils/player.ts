@@ -43,16 +43,21 @@ class Player {
     audioManager.on("play", () => {
       const statusStore = useStatusStore();
       const playSongData = songManager.getPlaySongData();
-
+      const { name, artist } = songManager.getPlayerInfoObj() || {};
+      const playTitle = `${name} - ${artist}`;
+      window.document.title = `${playTitle} | SPlayer`;
       statusStore.playStatus = true;
-      window.document.title = songManager.getPlayerInfo() || "SPlayer";
       // 重置重试计数
       const sid = playSongData?.type === "radio" ? playSongData?.dj?.id : playSongData?.id;
       this.retryInfo = { songId: Number(sid || 0), count: 0 };
       // IPC 通知
       if (isElectron) {
         window.electron.ipcRenderer.send("play-status-change", true);
-        window.electron.ipcRenderer.send("play-song-change", songManager.getPlayerInfo());
+        window.electron.ipcRenderer.send("play-song-change", playTitle);
+        window.electron.ipcRenderer.send("update-desktop-lyric-data", {
+          playName: name,
+          artistName: artist,
+        });
       }
       console.log("▶️ song play:", playSongData);
     });
@@ -191,7 +196,11 @@ class Player {
     // 更新 MediaSession
     if (!path) this.updateMediaSession();
     // 预载下一首播放地址
-    this.nextPrefetch = await songManager.getNextSongUrl();
+    if (settingStore.useNextPrefetch) {
+      this.nextPrefetch = await songManager.getNextSongUrl();
+    } else {
+      this.nextPrefetch = null;
+    }
   }
   /**
    * 初始化 MediaSession
@@ -332,6 +341,7 @@ class Player {
    * 重置状态
    */
   public resetStatus() {
+    this.nextPrefetch = null;
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
@@ -395,7 +405,7 @@ class Player {
 
           // 使用预载缓存
           const cached = this.nextPrefetch;
-          if (cached && cached.id === songId && cached.url) {
+          if (settingStore.useNextPrefetch && cached && cached.id === songId && cached.url) {
             playerUrl = cached.url;
             statusStore.playUblock = cached.ublock;
             statusStore.songQuality = cached.quality;
@@ -573,6 +583,7 @@ class Player {
    * 切换播放模式
    */
   public async togglePlayMode(mode: PlayModeType | false) {
+    this.nextPrefetch = null;
     const statusStore = useStatusStore();
     const dataStore = useDataStore();
     const musicStore = useMusicStore();
@@ -737,6 +748,7 @@ class Player {
       play: true,
     },
   ) {
+    this.nextPrefetch = null;
     if (!data || !data.length) return;
     const dataStore = useDataStore();
     const musicStore = useMusicStore();
@@ -976,6 +988,7 @@ class Player {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
       if (!open && statusStore.playHeartbeatMode) {
+        this.nextPrefetch = null;
         statusStore.playHeartbeatMode = false;
         window.$message.success("已退出心动模式");
         return;
@@ -1006,8 +1019,10 @@ class Player {
       if (result.code === 200) {
         this.message?.destroy();
         const heartRatelists = formatSongsList(result.data);
-        await this.updatePlayList(heartRatelists, heartRatelists[0]);
+        this.nextPrefetch = null;
         statusStore.playHeartbeatMode = true;
+        statusStore.playIndex = 0;
+        await this.updatePlayList(heartRatelists, heartRatelists[0]);
       } else {
         this.message?.destroy();
         window.$message.error(result.message || "心动模式开启出错，请重试");
@@ -1025,6 +1040,7 @@ class Player {
    * @param playNext 是否播放下一首
    */
   public async initPersonalFM(playNext: boolean = false) {
+    this.nextPrefetch = null;
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     try {

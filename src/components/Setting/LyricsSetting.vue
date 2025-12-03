@@ -444,7 +444,7 @@
           />
         </n-flex>
       </n-card>
-      <!-- <n-card class="set-item">
+      <n-card class="set-item">
         <div class="label">
           <n-text class="name">显示逐字歌词</n-text>
           <n-text class="tip" :depth="3">是否显示桌面歌词逐字效果</n-text>
@@ -455,7 +455,7 @@
           class="set"
           @update:value="saveDesktopLyricConfig"
         />
-      </n-card> -->
+      </n-card>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">显示翻译</n-text>
@@ -551,6 +551,18 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">始终展示播放信息</n-text>
+          <n-text class="tip" :depth="3">是否始终展示当前歌曲名及歌手</n-text>
+        </div>
+        <n-switch
+          v-model:value="desktopLyricConfig.alwaysShowPlayInfo"
+          :round="false"
+          class="set"
+          @update:value="saveDesktopLyricConfig"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">恢复默认配置</n-text>
           <n-text class="tip" :depth="3">恢复默认桌面歌词配置</n-text>
         </div>
@@ -580,7 +592,7 @@ const settingStore = useSettingStore();
 const allFontsData = ref<SelectOption[]>([]);
 
 // AMLL TTML DB 地址
-const amllDbServer = ref("https://amll-ttml-db.stevexmh.net");
+const amllDbServer = ref("https://amll-ttml-db.stevexmh.net/ncm/%s");
 
 // 桌面歌词配置
 const desktopLyricConfig = reactive<LyricConfig>({ ...defaultDesktopLyricConfig });
@@ -681,12 +693,12 @@ const changeAMLLDBServer = () => {
               { depth: 3, type: "warning" },
               { default: () => "如果你不清楚这里是做什么的，请不要修改" },
             ),
+            h(NText, null, { default: () => "请确保地址正确，并且包含 %s（ 用于替换歌曲 ID ）" }),
             h(NInput, {
               value: amllDbServer.value,
               onUpdateValue: (val) => (amllDbServer.value = val),
               placeholder: "请输入 AMLL TTML DB 地址",
             }),
-            h(NText, { depth: 3 }, { default: () => "请确保地址正确，否则将导致歌词获取失败" }),
           ],
         },
       ),
@@ -694,13 +706,14 @@ const changeAMLLDBServer = () => {
     negativeText: "取消",
     onPositiveClick: async () => {
       const urlValue = amllDbServer.value.trim();
-      if (isValidURL(urlValue)) {
+      // 验证 URL 格式和 %s
+      if (isValidURL(urlValue) && urlValue.includes("%s")) {
         await window.api.store.set("amllDbServer", urlValue);
         settingStore.amllDbServer = urlValue;
         window.$message.success("AMLL TTML DB 地址已更新");
         return true;
       } else {
-        window.$message.error("请输入正确的网址格式");
+        window.$message.error("请输入正确的网址格式，需包含 %s");
         return false;
       }
     },

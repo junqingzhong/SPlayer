@@ -14,6 +14,7 @@ const config: LyricConfig = {
   position: "both",
   limitBounds: false,
   textBackgroundMask: false,
+  alwaysShowPlayInfo: false,
 };
 
 export default config;

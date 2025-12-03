@@ -9,7 +9,7 @@
           <div class="menu-btn" title="返回应用" @click.stop="sendToMain('win-show')">
             <SvgIcon name="Music" />
           </div>
-          <span class="song-name">{{ lyricData.playName }}</span>
+          <span class="song-name">{{ lyricData.playName }} - {{ lyricData.artistName }}</span>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="center" size="small" @pointerdown.stop>
           <div class="menu-btn" title="上一曲" @click.stop="sendToMainWin('playPrev')">
@@ -43,6 +43,16 @@
             <SvgIcon name="Close" />
           </div>
         </n-flex>
+        <!-- 歌曲信息 -->
+        <n-flex
+          v-if="lyricConfig.alwaysShowPlayInfo"
+          :size="0"
+          :class="['play-title', lyricConfig.position]"
+          vertical
+        >
+          <span class="name">{{ lyricData.playName }}</span>
+          <span class="artist">{{ lyricData.artistName }}</span>
+        </n-flex>
       </div>
       <n-flex
         :style="{
@@ -73,7 +83,9 @@
           :ref="(el) => line.active && (currentLineRef = el as HTMLElement)"
         >
           <!-- 逐字歌词渲染 -->
-          <template v-if="lyricData?.yrcData?.length && line.line?.words?.length > 1">
+          <template
+            v-if="lyricConfig.showYrc && lyricData?.yrcData?.length && line.line?.words?.length > 1"
+          >
             <span
               class="scroll-content"
               :style="getScrollStyle(line)"
@@ -132,6 +144,7 @@ import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 // 桌面歌词数据
 const lyricData = reactive<LyricData>({
   playName: "",
+  artistName: "",
   playStatus: false,
   currentTime: 0,
   lyricLoading: false,
@@ -156,6 +169,24 @@ const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
   } else {
     playSeekMs.value = baseMs;
   }
+});
+
+// 实时歌词索引
+const currentLyricIndex = computed(() => {
+  if (lyricConfig.showYrc && lyricData?.yrcData?.length) {
+    return lyricData.lyricIndex ?? -1;
+  }
+  // 自行计算
+  if (!lyricData.lrcData?.length) return -1;
+  let idx = -1;
+  for (let i = 0; i < lyricData.lrcData.length; i++) {
+    const line = lyricData.lrcData[i];
+    if (playSeekMs.value >= Number(line.startTime) && playSeekMs.value <= Number(line.endTime)) {
+      idx = i;
+      break;
+    }
+  }
+  return idx;
 });
 
 // 桌面歌词配置
@@ -207,28 +238,34 @@ const getSafeEndTime = (lyrics: LyricLine[], idx: number) => {
 };
 
 /**
+ * 占位歌词行
+ * @param word 占位词
+ * @returns 占位歌词行数组
+ */
+const placeholder = (word: string): RenderLine[] => [
+  {
+    line: {
+      startTime: 0,
+      endTime: 0,
+      words: [{ word, startTime: 0, endTime: 0, romanWord: "" }],
+      translatedLyric: "",
+      romanLyric: "",
+      isBG: false,
+      isDuet: false,
+    },
+    index: -1,
+    key: "placeholder",
+    active: true,
+  },
+];
+
+/**
  * 渲染的歌词行
  * @returns 渲染的歌词行数组
  */
 const renderLyricLines = computed<RenderLine[]>(() => {
-  const lyrics = lyricData?.yrcData?.length ? lyricData.yrcData : lyricData.lrcData;
-  // 提示词占位
-  const placeholder = (word: string): RenderLine[] => [
-    {
-      line: {
-        startTime: 0,
-        endTime: 0,
-        words: [{ word, startTime: 0, endTime: 0, romanWord: "" }],
-        translatedLyric: "",
-        romanLyric: "",
-        isBG: false,
-        isDuet: false,
-      },
-      index: -1,
-      key: "placeholder",
-      active: true,
-    },
-  ];
+  const lyrics =
+    lyricConfig.showYrc && lyricData?.yrcData?.length ? lyricData.yrcData : lyricData.lrcData;
   // 无歌曲名且无歌词
   if (!lyricData.playName && !lyrics?.length) {
     return placeholder("SPlayer Desktop Lyric");
@@ -238,11 +275,11 @@ const renderLyricLines = computed<RenderLine[]>(() => {
   // 纯音乐
   if (!lyrics?.length) return placeholder("纯音乐，请欣赏");
   // 获取当前歌词索引
-  const idx = lyricData?.lyricIndex ?? -1;
+  const idx = currentLyricIndex.value;
   // 索引小于 0，显示歌曲名称
   if (idx < 0) {
-    const text = lyricData.playName ?? "未知歌曲";
-    return placeholder(text);
+    const playTitle = `${lyricData.playName} - ${lyricData.artistName}`;
+    return placeholder(playTitle);
   }
   const current = lyrics[idx];
   const next = lyrics[idx + 1];
@@ -335,7 +372,7 @@ const getYrcStyle = (wordData: LyricWord, lyricIndex: number) => {
   const startSec = currentLine.startTime || 0;
   const endSec = currentLine.endTime || 0;
   const isLineActive =
-    (seekSec >= startSec && seekSec < endSec) || lyricData.lyricIndex === lyricIndex;
+    (seekSec >= startSec && seekSec < endSec) || currentLyricIndex.value === lyricIndex;
 
   if (!isLineActive) {
     const hasPlayed = seekSec >= (wordData.endTime || 0);
@@ -679,6 +716,7 @@ onBeforeUnmount(() => {
   transition: background-color 0.3s;
   cursor: default;
   .header {
+    position: relative;
     margin-bottom: 12px;
     cursor: default;
     // 子内容三等分grid
@@ -733,6 +771,35 @@ onBeforeUnmount(() => {
     .song-name,
     .menu-btn {
       opacity: 0;
+    }
+    .play-title {
+      position: absolute;
+      padding: 0 12px;
+      width: 100%;
+      text-align: left;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 0;
+      span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+      }
+      .name {
+        line-height: normal;
+      }
+      .artist {
+        font-size: 12px;
+        opacity: 0.6;
+      }
+      &.center,
+      &.both {
+        text-align: center;
+      }
+      &.right {
+        text-align: right;
+      }
     }
   }
   .lyric-container {
@@ -834,6 +901,9 @@ onBeforeUnmount(() => {
       .menu-btn {
         opacity: 1;
       }
+      .play-title {
+        opacity: 0;
+      }
     }
   }
   &.locked {
@@ -847,6 +917,9 @@ onBeforeUnmount(() => {
       .lock-btn {
         opacity: 1;
         pointer-events: auto;
+      }
+      .song-title {
+        opacity: 0;
       }
     }
   }

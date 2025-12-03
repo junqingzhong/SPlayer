@@ -70,10 +70,8 @@ export const initNcmAPI = async (fastify: FastifyInstance) => {
         return reply.status(400).send({ error: "id is required" });
       }
       const store = useStore();
-      const server = store.get("amllDbServer") ?? "https://amll-ttml-db.stevexmh.net";
-      // 净化网址
-      const cleanServer = server.replace(/\/$/, "");
-      const url = `${cleanServer}/ncm/${id}`;
+      const server = store.get("amllDbServer") ?? "https://amll-ttml-db.stevexmh.net/ncm/%s";
+      const url = server.replace("%s", String(id));
       try {
         const response = await fetch(url);
         if (response.status !== 200) {

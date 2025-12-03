@@ -80,12 +80,6 @@ const initLyricIpc = (): void => {
     lyricWin.webContents.send("update-desktop-lyric-data", { playStatus: status });
   });
 
-  // 音乐名称更改
-  ipcMain.on("play-song-change", (_, title) => {
-    if (!isWinAlive(lyricWin)) return;
-    lyricWin.webContents.send("update-desktop-lyric-data", { playName: title });
-  });
-
   // 音乐歌词更改
   ipcMain.on("play-lyric-change", (_, lyricData) => {
     if (!lyricData || !isWinAlive(lyricWin)) return;

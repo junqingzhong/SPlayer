@@ -16,17 +16,18 @@ export const isValidURL = (urlString: string): boolean => {
     return false;
   }
 
-  // 如果用户未输入协议头，则自动添加 http:// 以便 URL 构造函数进行验证
-  const urlWithProtocol =
-    urlValue.startsWith("http://") || urlValue.startsWith("https://")
-      ? urlValue
-      : `http://${urlValue}`;
-
   try {
-    // 使用内置的 URL 构造函数进行稳健的验证
-    new URL(urlWithProtocol);
-    return true;
-  } catch (error) {
-    return false;
+    // 尝试直接解析
+    const url = new URL(urlValue);
+    // 校验协议是否为 http 或 https
+    return ["http:", "https:"].includes(url.protocol);
+  } catch {
+    // 解析失败，尝试添加 http:// 头再解析
+    try {
+      const url = new URL(`http://${urlValue}`);
+      return ["http:", "https:"].includes(url.protocol);
+    } catch {
+      return false;
+    }
   }
 };

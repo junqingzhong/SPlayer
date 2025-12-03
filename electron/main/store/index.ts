@@ -49,7 +49,7 @@ export const useStore = () => {
         config: defaultLyricConfig,
       },
       proxy: "",
-      amllDbServer: "https://amll-ttml-db.stevexmh.net",
+      amllDbServer: "https://amll-ttml-db.stevexmh.net/ncm/%s",
     },
   });
 };

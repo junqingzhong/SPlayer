@@ -42,16 +42,21 @@ class SongManager {
   };
 
   /**
-   * 获取播放信息
+   * 获取播放信息对象
    * @param song 歌曲
    * @param sep 分隔符
-   * @returns 播放信息
+   * @returns 播放信息对象
    */
-  public getPlayerInfo = (song?: SongType, sep: string = "/"): string | null => {
+  public getPlayerInfoObj = (
+    song?: SongType,
+    sep: string = "/",
+  ): { name: string; artist: string; album: string } | null => {
     const playSongData = song || this.getPlaySongData();
     if (!playSongData) return null;
+
     // 标题
-    const title = `${playSongData.name || "未知歌曲"}`;
+    const name = `${playSongData.name || "未知歌曲"}`;
+
     // 歌手
     const artist =
       playSongData.type === "radio"
@@ -59,7 +64,28 @@ class SongManager {
         : Array.isArray(playSongData.artists)
           ? playSongData.artists.map((artists: { name: string }) => artists.name).join(sep)
           : String(playSongData?.artists || "未知歌手");
-    return `${title} - ${artist}`;
+
+    // 专辑
+    const album =
+      playSongData.type === "radio"
+        ? "播客电台"
+        : typeof playSongData.album === "object"
+          ? playSongData.album.name
+          : String(playSongData.album || "未知专辑");
+
+    return { name, artist, album };
+  };
+
+  /**
+   * 获取播放信息
+   * @param song 歌曲
+   * @param sep 分隔符
+   * @returns 播放信息
+   */
+  public getPlayerInfo = (song?: SongType, sep: string = "/"): string | null => {
+    const info = this.getPlayerInfoObj(song, sep);
+    if (!info) return null;
+    return `${info.name} - ${info.artist}`;
   };
 
   /**

@@ -18,6 +18,13 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">下一首歌曲预载</n-text>
+          <n-text class="tip" :depth="3">提前预加载下一首歌曲的播放地址，提升切换速度</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.useNextPrefetch" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">记忆上次播放位置</n-text>
           <n-text class="tip" :depth="3">程序启动时恢复上次播放位置</n-text>
         </div>

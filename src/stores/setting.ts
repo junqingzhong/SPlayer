@@ -100,6 +100,8 @@ export interface SettingState {
   playDevice: "default" | string;
   /** 自动播放 */
   autoPlay: boolean;
+  /** 预载下一首 */
+  useNextPrefetch: boolean;
   /** 渐入渐出 */
   songVolumeFade: boolean;
   /** 渐入渐出时间 */
@@ -254,6 +256,7 @@ export const useSettingStore = defineStore("setting", {
     songLevel: "exhigh",
     playDevice: "default",
     autoPlay: false,
+    useNextPrefetch: true,
     songVolumeFade: true,
     songVolumeFadeTime: 300,
     useSongUnlock: true,
@@ -282,7 +285,7 @@ export const useSettingStore = defineStore("setting", {
     useAMLyrics: false,
     useAMSpring: false,
     enableTTMLLyric: true,
-    amllDbServer: "https://amll-ttml-db.stevexmh.net",
+    amllDbServer: "https://amll-ttml-db.stevexmh.net/ncm/%s",
     showYrc: true,
     showYrcAnimation: true,
     showYrcLongEffect: true,

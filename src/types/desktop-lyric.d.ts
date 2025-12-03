@@ -2,8 +2,10 @@ import { type LyricLine } from "@applemusic-like-lyrics/lyric";
 
 /** 桌面歌词数据 */
 export interface LyricData {
-  /** 播放歌曲名称 */
+  /** 歌曲名称 */
   playName?: string;
+  /** 歌手名称 */
+  artistName?: string;
   /** 播放状态 */
   playStatus?: boolean;
   /** 当前播放进度 */
@@ -49,6 +51,8 @@ export interface LyricConfig {
   limitBounds: boolean;
   /** 文本背景遮罩 */
   textBackgroundMask: boolean;
+  /** 始终展示播放信息 */
+  alwaysShowPlayInfo: boolean;
 }
 
 /**

@@ -52,11 +52,13 @@ const initIpc = () => {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
       if (player) {
+        const { name, artist } = songManager.getPlayerInfoObj() || {};
         window.electron.ipcRenderer.send(
           "update-desktop-lyric-data",
           cloneDeep({
             playStatus: statusStore.playStatus,
-            playName: songManager.getPlayerInfo(),
+            playName: name,
+            artistName: artist,
             currentTime: statusStore.currentTime,
             songId: musicStore.playSong?.id,
             songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
@@ -86,7 +88,7 @@ const initIpc = () => {
     // 协议数据
     window.electron.ipcRenderer.on("protocol-url", (_, url) => {
       console.log("📡 Received protocol url:", url);
-      handleProtocolUrl(url)
+      handleProtocolUrl(url);
     });
   } catch (error) {
     console.log(error);
