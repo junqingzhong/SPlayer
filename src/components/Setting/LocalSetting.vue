@@ -113,6 +113,19 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">默认下载音质</n-text>
+          <n-text class="tip" :depth="3">
+            默认使用的音质，实际可用音质取决于账号权限和歌曲资源
+          </n-text>
+        </div>
+        <n-select
+          v-model:value="settingStore.downloadSongLevel"
+          :options="downloadQualityOptions"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">下载歌曲元信息</n-text>
           <n-text class="tip" :depth="3">为当前下载歌曲附加封面及歌词等元信息</n-text>
         </div>
@@ -144,7 +157,10 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">模拟播放下载<n-tag type="warning" size="small" round>Beta</n-tag></n-text>
+          <n-text class="name">
+            模拟播放下载
+            <n-tag type="warning" size="small" round>Beta</n-tag>
+          </n-text>
           <n-text class="tip" :depth="3">使用播放接口进行下载，可能解决部分下载失败问题</n-text>
         </div>
         <n-switch
@@ -171,10 +187,22 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { useSettingStore } from "@/stores";
 import { changeLocalLyricPath, changeLocalMusicPath } from "@/utils/helper";
+import { songLevelData, getSongLevelsData } from "@/utils/meta";
+import { pick } from "lodash-es";
 
 const settingStore = useSettingStore();
+
+// 默认下载音质选项
+const downloadQualityOptions = computed(() => {
+  const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
+  return getSongLevelsData(levels).map((item) => ({
+    label: item.name,
+    value: item.value,
+  }));
+});
 
 // 选择下载路径
 const choosePath = async () => {
@@ -187,7 +215,8 @@ const handlePlaybackDownloadChange = (value: boolean) => {
   if (value) {
     window.$dialog.warning({
       title: "开启提示",
-      content: "模拟播放下载可能导致部分音质歌词嵌入异常且未经完整测试可能有不稳定情况，确认要打开吗？",
+      content:
+        "模拟播放下载可能导致部分音质歌词嵌入异常且未经完整测试可能有不稳定情况，确认要打开吗？",
       positiveText: "确认打开",
       negativeText: "取消",
       onPositiveClick: () => {

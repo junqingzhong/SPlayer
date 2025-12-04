@@ -379,10 +379,10 @@ const initFileIpc = (): void => {
         songData?: any;
         skipIfExist?: boolean;
       } = {
-          fileName: "未知文件名",
-          fileType: "mp3",
-          path: app.getPath("downloads"),
-        },
+        fileName: "未知文件名",
+        fileType: "mp3",
+        path: app.getPath("downloads"),
+      },
     ): Promise<{ status: "success" | "skipped" | "error"; message?: string }> => {
       try {
         // 获取窗口
@@ -425,8 +425,9 @@ const initFileIpc = (): void => {
         const songDownload = await download(win, url, {
           directory: downloadPath,
           filename: `${fileName}.${fileType}`,
+          showProgressBar: false,
           onProgress: (progress) => {
-            win.webContents.send("download-progress", progress);
+            win.webContents.send("download-progress", { ...progress, id: songData?.id });
           },
         });
         if (!downloadMeta || !songData?.cover) return { status: "success" };
@@ -435,6 +436,7 @@ const initFileIpc = (): void => {
         const coverDownload = await download(win, coverUrl, {
           directory: downloadPath,
           filename: `${fileName}.jpg`,
+          showProgressBar: false,
         });
         // 读取歌曲文件
         let songFile = File.createFromPath(songDownload.getSavePath());
@@ -471,7 +473,10 @@ const initFileIpc = (): void => {
         return { status: "success" };
       } catch (error) {
         ipcLog.error("❌ Error downloading file:", error);
-        return { status: "error", message: error instanceof Error ? error.message : "Unknown error" };
+        return {
+          status: "error",
+          message: error instanceof Error ? error.message : "Unknown error",
+        };
       }
     },
   );

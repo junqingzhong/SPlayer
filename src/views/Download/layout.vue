@@ -12,17 +12,16 @@
           <n-number-animation :from="0" :to="dataStore.downloadingSongs.length" /> 下载中
         </n-text>
         <n-text v-else class="item" depth="3">
-          <SvgIcon name="CheckCircle" :depth="3" />
-          <n-number-animation :from="0" :to="dataStore.downloadedSongs.length" /> 已完成
+          <SvgIcon name="DownloadDone" :depth="3" />
+          <n-number-animation :from="0" :to="listData.length" /> 已完成
         </n-text>
       </n-flex>
     </div>
     <n-flex class="menu" justify="space-between">
       <n-flex class="left" align="flex-end">
         <n-button
-          v-if="currentTab === 'download-downloaded'"
           :focusable="false"
-          :disabled="!currentListData.length"
+          :disabled="!currentListData.length || currentTab !== 'download-downloaded'"
           type="primary"
           strong
           secondary
@@ -35,13 +34,13 @@
           播放全部
         </n-button>
         <n-button
-          v-if="currentTab === 'download-downloaded'"
           :focusable="false"
+          :disabled="currentTab !== 'download-downloaded'"
+          :loading="loading"
           class="more"
           strong
           secondary
           circle
-          :loading="loading"
           @click="getDownloadMusic(true)"
         >
           <template #icon>
@@ -73,11 +72,12 @@
 <script setup lang="ts">
 import { useRouter, useRoute } from "vue-router";
 import { useSettingStore, useDataStore } from "@/stores";
-import { ref, watch, onMounted, computed } from "vue";
+import { ref, watch, onMounted, onActivated, computed } from "vue";
 import type { SongType } from "@/types/main";
 import { formatSongsList } from "@/utils/format";
 import { usePlayer } from "@/utils/player";
 import type { MessageReactive } from "naive-ui";
+import DownloadManager from "@/utils/downloadManager";
 
 const router = useRouter();
 const route = useRoute();
@@ -89,14 +89,14 @@ const loading = ref<boolean>(false);
 const loadingMsg = ref<MessageReactive | null>(null);
 const listData = ref<SongType[]>([]);
 
-const currentTab = ref<string>(route.name as string || "download-downloaded");
+const currentTab = ref<string>((route.name as string) || "download-downloaded");
 
 // 当前标签页的歌曲列表
 const currentListData = computed(() => {
   if (currentTab.value === "download-downloading") {
-    return dataStore.downloadingSongs.map(item => item.song);
+    return dataStore.downloadingSongs.map((item) => item.song);
   }
-  return dataStore.downloadedSongs;
+  return listData.value;
 });
 
 // 当前标签页的歌曲数量
@@ -104,7 +104,7 @@ const currentCount = computed(() => {
   if (currentTab.value === "download-downloading") {
     return dataStore.downloadingSongs.length;
   }
-  return dataStore.downloadedSongs.length;
+  return listData.value.length;
 });
 
 const handleTabChange = (name: string) => {
@@ -116,8 +116,11 @@ watch(
   (newName) => {
     if (newName && (newName as string).startsWith("download-")) {
       currentTab.value = newName as string;
+      if (newName === "download-downloaded") {
+        getDownloadMusic();
+      }
     }
-  }
+  },
 );
 
 const getDownloadMusic = async (showTip: boolean = false) => {
@@ -135,7 +138,7 @@ const getDownloadMusic = async (showTip: boolean = false) => {
     }
 
     loading.value = true;
-    const result = await window.electron.ipcRenderer.invoke("get-music-files", path);
+    const result = await DownloadManager.getDownloadedSongs();
 
     if (result) {
       listData.value = formatSongsList(result);
@@ -155,6 +158,12 @@ const getDownloadMusic = async (showTip: boolean = false) => {
 
 onMounted(() => {
   getDownloadMusic();
+});
+
+onActivated(() => {
+  if (currentTab.value === "download-downloaded") {
+    getDownloadMusic();
+  }
 });
 </script>
 

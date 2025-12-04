@@ -40,6 +40,8 @@ interface ListState {
     song: SongType;
     /** 音质 */
     quality: SongLevelType;
+    /** 状态：下载中 / 失败 */
+    status: "downloading" | "failed";
     /** 下载进度 */
     progress: number;
     /** 已传输大小 */
@@ -47,8 +49,6 @@ interface ListState {
     /** 总大小 */
     totalSize: string;
   }>;
-  /** 已下载的歌曲列表 */
-  downloadedSongs: SongType[];
 }
 
 type UserDataKeys = keyof ListState["userLikeData"];
@@ -118,8 +118,6 @@ export const useDataStore = defineStore("data", {
     },
     // 正在下载的歌曲列表
     downloadingSongs: [],
-    // 已下载的歌曲列表
-    downloadedSongs: [],
   }),
   getters: {
     // 是否为喜欢歌曲
@@ -352,38 +350,27 @@ export const useDataStore = defineStore("data", {
       this.downloadingSongs.push({
         song: cloneDeep(song),
         quality,
+        status: "downloading",
         progress: 0,
         transferred: "0MB",
         totalSize: "0MB",
       });
       // 保存到本地存储
-      musicDB.setItem("downloadingSongs", this.downloadingSongs);
+      musicDB.setItem("downloadingSongs", cloneDeep(this.downloadingSongs));
     },
     // 更新下载进度
-    updateDownloadProgress(songId: number, progress: number, transferred: string, totalSize: string) {
+    updateDownloadProgress(
+      songId: number,
+      progress: number,
+      transferred: string,
+      totalSize: string,
+    ) {
       const item = this.downloadingSongs.find((item) => item.song.id === songId);
       if (item) {
         item.progress = progress;
         item.transferred = transferred;
         item.totalSize = totalSize;
-        // 保存到本地存储
-        musicDB.setItem("downloadingSongs", this.downloadingSongs);
-      }
-    },
-    // 将歌曲移动到已下载
-    moveToDownloaded(songId: number) {
-      const index = this.downloadingSongs.findIndex((item) => item.song.id === songId);
-      if (index !== -1) {
-        const item = this.downloadingSongs[index];
-        // 添加到已下载列表（去重）
-        const exists = this.downloadedSongs.find((s) => s.id === songId);
-        if (!exists) {
-          this.downloadedSongs.push(cloneDeep(item.song));
-          musicDB.setItem("downloadedSongs", this.downloadedSongs);
-        }
-        // 从正在下载中移除
-        this.downloadingSongs.splice(index, 1);
-        musicDB.setItem("downloadingSongs", this.downloadingSongs);
+        // 进度更新过于频繁，不再实时保存到本地存储，仅在添加/删除时保存
       }
     },
     // 移除正在下载的歌曲（下载失败时）
@@ -391,13 +378,28 @@ export const useDataStore = defineStore("data", {
       const index = this.downloadingSongs.findIndex((item) => item.song.id === songId);
       if (index !== -1) {
         this.downloadingSongs.splice(index, 1);
-        musicDB.setItem("downloadingSongs", this.downloadingSongs);
+        musicDB.setItem("downloadingSongs", cloneDeep(this.downloadingSongs));
       }
     },
-    // 清除已下载列表
-    async clearDownloadedSongs() {
-      this.downloadedSongs = [];
-      await musicDB.setItem("downloadedSongs", []);
+    // 标记下载失败（保留在列表中）
+    markDownloadFailed(songId: number) {
+      const item = this.downloadingSongs.find((item) => item.song.id === songId);
+      if (item) {
+        item.status = "failed";
+        item.progress = 0;
+        item.transferred = "0MB";
+        item.totalSize = "0MB";
+      }
+    },
+    // 重置下载任务状态（用于重试）
+    resetDownloadingSong(songId: number) {
+      const item = this.downloadingSongs.find((item) => item.song.id === songId);
+      if (item) {
+        item.status = "downloading";
+        item.progress = 0;
+        item.transferred = "0MB";
+        item.totalSize = "0MB";
+      }
     },
   },
   // 持久化

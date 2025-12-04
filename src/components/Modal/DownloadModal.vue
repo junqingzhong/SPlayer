@@ -6,21 +6,22 @@
     </n-collapse-transition>
     <!-- 内容 -->
     <n-collapse-transition :show="!loading && songs.length > 0">
-      <!-- 歌曲信息卡片（单个下载时显示） -->
-      <SongDataCard v-if="!isBatch && songs[0]" :data="songs[0]" />
-      <n-alert
-        :type="isCloudSong ? 'info' : 'warning'"
-        :title="isCloudSong ? undefined : '请知悉'"
-        closable
+      <n-flex :size="20" vertical>
+        <n-alert title="请知悉" type="info">
+          {{
+            isCloudSong && !isBatch
+              ? "当前为云盘歌曲，下载的文件均为上传时的源文件"
+              : "本软件仅支持从官方途径合法合规的下载歌曲，并用于学习研究用途。本功能将严格按照相应账户的权限来提供基础的下载功能"
+          }}
+        </n-alert>
+        <!-- 歌曲信息卡片（单个下载时显示） -->
+        <SongDataCard v-if="!isBatch && songs[0]" :data="songs[0]" />
+      </n-flex>
+      <n-collapse
+        :default-expanded-names="['level', 'path']"
+        arrow-placement="right"
         style="margin-top: 20px"
       >
-        {{
-          isCloudSong
-            ? "当前为云盘歌曲，下载的文件均为上传时的源文件"
-            : "本软件仅支持从官方途径合法合规的下载歌曲，并用于学习研究用途。本功能将严格按照相应账户的权限来提供基础的下载功能"
-        }}
-      </n-alert>
-      <n-collapse :default-expanded-names="['level', 'path']" arrow-placement="right" style="margin-top: 20px">
         <n-collapse-item title="音质选择" name="level">
           <n-radio-group v-model:value="selectedQuality" name="quality">
             <n-flex>
@@ -43,33 +44,24 @@
                 <SvgIcon name="Folder" />
               </template>
             </n-input>
-            <n-button type="primary" strong secondary @click="changeDownloadPath">
-              <template #icon>
-                <SvgIcon name="Folder" />
-              </template>
-            </n-button>
             <n-button type="primary" strong secondary @click="openSetting('local')">
               <template #icon>
                 <SvgIcon name="Settings" />
               </template>
-              更多设置
+              下载设置
             </n-button>
           </n-input-group>
         </n-collapse-item>
       </n-collapse>
       <template v-if="isBatch">
-        <n-text depth="3" style="font-size: 12px; margin-top: 16px; display: block">
+        <n-text depth="3" style="font-size: 12px; margin-top: 12px; display: block">
           已选择 {{ songs.length }} 首歌曲，将添加到下载队列
         </n-text>
       </template>
       <!-- 按钮 -->
       <n-flex class="menu" justify="end" style="margin-top: 20px">
         <n-button strong secondary @click="cancel"> 取消 </n-button>
-        <n-button
-          type="primary"
-          :disabled="!canDownload"
-          @click="handleConfirm"
-        >
+        <n-button type="primary" :disabled="!canDownload" @click="handleConfirm">
           添加下载
         </n-button>
       </n-flex>
@@ -79,7 +71,7 @@
 
 <script setup lang="ts">
 import type { SongType, SongLevelType } from "@/types/main";
-import { useSettingStore, useDataStore } from "@/stores";
+import { useSettingStore } from "@/stores";
 import { songLevelData, getSongLevelsData } from "@/utils/meta";
 import { formatFileSize } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
@@ -88,6 +80,7 @@ import { songDetail } from "@/api/song";
 import { formatSongsList } from "@/utils/format";
 import SongDataCard from "@/components/Card/SongDataCard.vue";
 import { pick } from "lodash-es";
+import DownloadManager from "@/utils/downloadManager";
 
 const props = defineProps<{
   songs?: SongType[];
@@ -100,7 +93,6 @@ const emit = defineEmits<{
 }>();
 
 const settingStore = useSettingStore();
-const dataStore = useDataStore();
 
 const loading = ref<boolean>(false);
 const songs = ref<SongType[]>(props.songs || []);
@@ -108,7 +100,7 @@ const songs = ref<SongType[]>(props.songs || []);
 const isBatch = computed(() => songs.value.length > 1);
 const isCloudSong = computed(() => songs.value.some((song) => song.pc));
 
-const selectedQuality = ref<SongLevelType>(props.quality || "h");
+const selectedQuality = ref<SongLevelType>(props.quality || settingStore.downloadSongLevel || "h");
 const downloadPath = computed(() => settingStore.downloadPath);
 
 // 是否可以下载（需要配置下载目录）
@@ -119,24 +111,12 @@ const canDownload = computed(() => {
 
 // 音质选项
 const qualityOptions = computed(() => {
-  if (isBatch.value) {
-    // 批量下载时，显示所有常用音质选项
-    const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-    return getSongLevelsData(levels).map((item) => ({
-      label: item.name,
-      value: item.value,
-      size: undefined,
-    }));
-  } else {
-    // 单个下载时，需要根据歌曲权限显示可用音质
-    // 这里简化处理，显示所有音质，实际下载时会根据权限调整
-    const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-    return getSongLevelsData(levels).map((item) => ({
-      label: item.name,
-      value: item.value,
-      size: undefined,
-    }));
-  }
+  const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
+  return getSongLevelsData(levels).map((item) => ({
+    label: item.name,
+    value: item.value,
+    size: undefined,
+  }));
 });
 
 // 获取歌曲详情（单个下载时）
@@ -154,15 +134,6 @@ const getSongDetail = async () => {
   }
 };
 
-// 更改下载路径
-const changeDownloadPath = async () => {
-  if (!isElectron) return;
-  const path = await window.electron.ipcRenderer.invoke("choose-path");
-  if (path) {
-    settingStore.downloadPath = path;
-  }
-};
-
 // 确认下载
 const handleConfirm = () => {
   if (!canDownload.value) {
@@ -177,14 +148,12 @@ const handleConfirm = () => {
 
   // 添加到下载队列
   songs.value.forEach((song) => {
-    dataStore.addDownloadingSong(song, selectedQuality.value);
+    DownloadManager.addDownload(song, selectedQuality.value);
   });
 
   emit("close");
   window.$message.success(
-    isBatch.value
-      ? `已添加 ${songs.value.length} 首歌曲到下载队列`
-      : "已添加到下载队列",
+    isBatch.value ? `已添加 ${songs.value.length} 首歌曲到下载队列` : "已添加到下载队列",
   );
 };
 
@@ -213,4 +182,3 @@ onMounted(() => {
   }
 }
 </style>
-

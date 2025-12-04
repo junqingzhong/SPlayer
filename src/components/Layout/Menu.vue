@@ -25,6 +25,7 @@ import {
   NButton,
   NEllipsis,
   NAvatar,
+  NBadge,
 } from "naive-ui";
 import type { CoverType } from "@/types/main";
 import { useStatusStore, useSettingStore, useDataStore, useMusicStore } from "@/stores";
@@ -134,9 +135,17 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
         },
         {
           key: "download",
-          link: "download",
-          label: "下载管理",
-          show: isElectron,
+          label: () =>
+            h(
+              NBadge,
+              {
+                show: dataStore.downloadingSongs.length > 0,
+                value: dataStore.downloadingSongs.length,
+                offset: [22, 13],
+              },
+              () => "下载管理",
+            ),
+          show: isElectron && !settingStore.hideDownload,
           icon: renderIcon("Download"),
         },
         {
@@ -280,6 +289,13 @@ const menuUpdate = (key: string, item: MenuOption) => {
       case "like-songs":
         router.push({
           name: "like-songs",
+        });
+        break;
+      // 下载管理
+      case "download":
+        router.push({
+          name:
+            dataStore.downloadingSongs.length > 0 ? "download-downloading" : "download-downloaded",
         });
         break;
       default:

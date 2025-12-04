@@ -215,6 +215,7 @@ export const openDownloadSong = (song: SongType) => {
 
 // 批量下载歌曲
 export const openDownloadSongs = (songs: SongType[]): void => {
+  if (!isLogin()) return openUserLogin();
   if (!songs || songs.length === 0) {
     window.$message.warning("请选择要下载的歌曲");
     return;
