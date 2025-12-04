@@ -3,7 +3,7 @@
 
     <n-scrollbar class="lyrics-list">
       <n-checkbox-group v-model:value="selectedLines">
-        <div v-for="(line, index) in displayLyrics" :key="index" class="lyric-item">
+        <div v-for="line in displayLyrics" :key="line.index" class="lyric-item">
           <n-checkbox :value="line.index" class="lyric-checkbox">
             <div class="lyric-content">
               <div v-if="showOriginal && line.text" class="text">{{ line.text }}</div>
@@ -28,8 +28,13 @@
         </n-checkbox-group>
       </div>
       <div class="actions">
-        <n-button size="small" @click="selectAll">全选</n-button>
-        <n-button type="primary" :disabled="selectedLines.length === 0" @click="handleCopy">
+        <n-button class="action-btn" @click="selectAll">全选</n-button>
+        <n-button
+          class="action-btn"
+          type="primary"
+          :disabled="selectedLines.length === 0"
+          @click="handleCopy"
+        >
           复制 ({{ selectedLines.length }})
         </n-button>
       </div>
@@ -58,7 +63,9 @@ const rawLyrics = computed(() => {
 
 const displayLyrics = computed(() => {
   return rawLyrics.value.map((line, index) => {
-    const text = line.words?.map((w) => w.word).join("") || "";
+    // 兼容 lrcData (content) 和 yrcData (words)
+    const text =
+      line.words?.map((w) => w.word).join("") || (line as any).content || (line as any).text || "";
     const translation = line.translatedLyric || "";
     const romaji = line.romanLyric || line.words?.map((w) => w.romanWord).join("") || "";
     return {
@@ -172,6 +179,9 @@ const handleCopy = async () => {
   .actions {
     display: flex;
     gap: 12px;
+    .action-btn {
+      width: 90px;
+    }
   }
 }
 </style>

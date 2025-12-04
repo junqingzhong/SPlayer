@@ -387,7 +387,7 @@ export const openHomePageSectionManager = () => {
 
 /** 打开复制歌词弹窗 */
 export const openCopyLyrics = () => {
-  window.$modal.create({
+  const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
@@ -395,7 +395,7 @@ export const openCopyLyrics = () => {
     title: "复制歌词",
     content: () => {
       return h(CopyLyrics, {
-        onClose: () => window.$modal.destroyAll(),
+        onClose: () => modal.destroy(),
       });
     },
   });
