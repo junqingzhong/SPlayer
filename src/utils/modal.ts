@@ -1,5 +1,6 @@
 import { h } from "vue";
 import type { CoverType, UpdateInfoType, SettingType, SongType } from "@/types/main";
+import { NScrollbar } from "naive-ui";
 import { isLogin } from "./auth";
 import { isArray, isFunction } from "lodash-es";
 import { useDataStore } from "@/stores";
@@ -23,7 +24,6 @@ import Equalizer from "@/components/Modal/Equalizer.vue";
 import SongUnlockManager from "@/components/Modal/SongUnlockManager.vue";
 import SidebarHideManager from "@/components/Modal/SidebarHideManager.vue";
 import HomePageSectionManager from "@/components/Modal/HomePageSectionManager.vue";
-import { NScrollbar } from "naive-ui";
 
 // 用户协议
 export const openUserAgreement = () => {

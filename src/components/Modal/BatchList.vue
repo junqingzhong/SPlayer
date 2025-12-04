@@ -100,7 +100,6 @@
         </n-button>
       </n-flex>
     </n-flex>
-
   </div>
 </template>
 
@@ -110,13 +109,7 @@ import type { SongType } from "@/types/main";
 import { isArray, isObject } from "lodash-es";
 import { openPlaylistAdd } from "@/utils/modal";
 import { deleteSongs } from "@/utils/auth";
-import {
-  NInput,
-  NInputNumber,
-  NButton,
-  NText,
-  NFlex,
-} from "naive-ui";
+import { NInput, NInputNumber, NButton, NText, NFlex } from "naive-ui";
 import { useLocalStore } from "@/stores";
 import { openDownloadSongs } from "@/utils/modal";
 
@@ -146,7 +139,6 @@ const checkedRowKeys = ref<DataTableRowKey[]>([]);
 // 范围选择
 const startRange = ref<number | null>(null);
 const endRange = ref<number | null>(null);
-
 
 // 表头数据
 const columnsData = computed<DataTableColumns<DataType>>(() => [

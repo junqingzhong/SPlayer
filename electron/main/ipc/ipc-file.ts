@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "path";
-import { access, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
+import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
 import { parseFile } from "music-metadata";
 import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
 import { File, Picture, Id3v2Settings, TagTypes } from "node-taglib-sharp";
@@ -403,11 +403,11 @@ const initFileIpc = (): void => {
         } = options;
         // 规范化路径
         const downloadPath = resolve(path);
-        // 检查文件夹是否存在
+        // 检查文件夹是否存在，不存在则自动递归创建
         try {
           await access(downloadPath);
         } catch {
-          throw new Error("❌ Folder not found");
+          await mkdir(downloadPath, { recursive: true });
         }
 
         // 检查文件是否存在

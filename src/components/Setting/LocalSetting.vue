@@ -157,6 +157,32 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">音乐命名格式</n-text>
+          <n-text class="tip" :depth="3">
+            选择下载文件的命名方式，建议包含歌手信息便于区分
+          </n-text>
+        </div>
+        <n-select
+          v-model:value="settingStore.fileNameFormat"
+          :options="fileNameFormatOptions"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">文件智能分类</n-text>
+          <n-text class="tip" :depth="3">
+            自动按歌手或歌手与专辑创建子文件夹进行分类
+          </n-text>
+        </div>
+        <n-select
+          v-model:value="settingStore.folderStrategy"
+          :options="folderStrategyOptions"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">
             模拟播放下载
             <n-tag type="warning" size="small" round>Beta</n-tag>
@@ -203,6 +229,36 @@ const downloadQualityOptions = computed(() => {
     value: item.value,
   }));
 });
+
+const fileNameFormatOptions = [
+  {
+    label: "歌曲名",
+    value: "title",
+  },
+  {
+    label: "歌手 - 歌曲名",
+    value: "artist-title",
+  },
+  {
+    label: "歌曲名 - 歌手",
+    value: "title-artist",
+  },
+];
+
+const folderStrategyOptions = [
+  {
+    label: "不分文件夹",
+    value: "none",
+  },
+  {
+    label: "按歌手分文件夹",
+    value: "artist",
+  },
+  {
+    label: "按 歌手 \\ 专辑 分文件夹",
+    value: "artist-album",
+  },
+];
 
 // 选择下载路径
 const choosePath = async () => {

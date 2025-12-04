@@ -389,6 +389,7 @@ export const useDataStore = defineStore("data", {
         item.progress = 0;
         item.transferred = "0MB";
         item.totalSize = "0MB";
+        musicDB.setItem("downloadingSongs", cloneDeep(this.downloadingSongs));
       }
     },
     // 重置下载任务状态（用于重试）

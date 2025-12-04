@@ -211,8 +211,40 @@ class DownloadManager {
         type = result.data.type?.toLowerCase() || "mp3";
       }
 
-      const songName = songManager.getPlayerInfo(song) || "未知曲目";
+      const infoObj =
+        songManager.getPlayerInfoObj(song) || {
+          name: song.name || "未知歌曲",
+          artist: "未知歌手",
+          album: "未知专辑",
+        };
+
+      const baseTitle = infoObj.name || "未知歌曲";
+      const rawArtist = infoObj.artist || "未知歌手";
+      const rawAlbum = infoObj.album || "未知专辑";
+
+      const safeArtist = rawArtist.replace(/[/:*?"<>|]/g, "&");
+      const safeAlbum = rawAlbum.replace(/[/:*?"<>|]/g, "&");
+
       const finalPath = downloadPath || settingStore.downloadPath;
+
+      // 音乐命名格式与文件夹分类
+      const { fileNameFormat, folderStrategy } = settingStore;
+
+      let displayName = baseTitle;
+      if (fileNameFormat === "artist-title") {
+        displayName = `${safeArtist} - ${baseTitle}`;
+      } else if (fileNameFormat === "title-artist") {
+        displayName = `${baseTitle} - ${safeArtist}`;
+      }
+
+      const safeFileName = displayName.replace(/[/:*?"<>|]/g, "&");
+
+      let targetPath = finalPath;
+      if (folderStrategy === "artist") {
+        targetPath = `${finalPath}\\${safeArtist}`;
+      } else if (folderStrategy === "artist-album") {
+        targetPath = `${finalPath}\\${safeArtist}\\${safeAlbum}`;
+      }
 
       // 校验下载路径
       if (finalPath === "" && isElectron) {
@@ -228,9 +260,9 @@ class DownloadManager {
         }
 
         const config = {
-          fileName: songName.replace(/[/:*?"<>|]/g, "&"),
+          fileName: safeFileName,
           fileType: type.toLowerCase(),
-          path: finalPath,
+          path: targetPath,
           downloadMeta,
           downloadCover,
           downloadLyric,
@@ -248,7 +280,7 @@ class DownloadManager {
           return { success: false, message: result.message || "下载失败" };
         }
       } else {
-        saveAs(url, `${songName}.${type}`);
+        saveAs(url, `${safeFileName}.${type}`);
       }
 
       return { success: true };

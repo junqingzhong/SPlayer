@@ -67,6 +67,10 @@ export interface SettingState {
   lyricsScrollPosition: "start" | "center";
   /** 下载路径 */
   downloadPath: string;
+  /** 音乐命名格式 */
+  fileNameFormat: "title" | "artist-title" | "title-artist";
+  /** 文件智能分类 */
+  folderStrategy: "none" | "artist" | "artist-album";
   /** 下载元信息 */
   downloadMeta: boolean;
   /** 下载封面 */
@@ -311,6 +315,8 @@ export const useSettingStore = defineStore("setting", {
     localSeparators: ["/", "&"],
     showLocalCover: true,
     downloadPath: "",
+    fileNameFormat: "title-artist",
+    folderStrategy: "none",
     downloadMeta: true,
     downloadCover: true,
     downloadLyric: true,
