@@ -229,8 +229,10 @@ export interface UserLikeDataType {
 // sort
 export type SortType = keyof typeof sortOptions;
 
-// songLevel
+/** 歌曲元素音质类型 */
 export type SongLevelType = keyof typeof songLevelData;
+
+/** 歌曲元素音质数据 */
 export type SongLevelDataType = {
   name: string;
   level: string;

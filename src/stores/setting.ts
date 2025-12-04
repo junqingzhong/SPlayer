@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { keywords, regexes } from "@/assets/data/exclude";
 import { SongUnlockServer } from "@/utils/songManager";
+import type { SongLevelType } from "@/types/main";
 
 export interface SettingState {
   /** 明暗模式 */
@@ -66,6 +67,10 @@ export interface SettingState {
   lyricsScrollPosition: "start" | "center";
   /** 下载路径 */
   downloadPath: string;
+  /** 音乐命名格式 */
+  fileNameFormat: "title" | "artist-title" | "title-artist";
+  /** 文件智能分类 */
+  folderStrategy: "none" | "artist" | "artist-album";
   /** 下载元信息 */
   downloadMeta: boolean;
   /** 下载封面 */
@@ -80,6 +85,8 @@ export interface SettingState {
   usePlaybackForDownload: boolean;
   /** 保存元信息文件 */
   saveMetaFile: boolean;
+  /** 默认下载音质（弹窗默认选项） */
+  downloadSongLevel: SongLevelType;
   /** 代理协议 */
   proxyProtocol: "off" | "http" | "https";
   /** 代理地址 */
@@ -202,6 +209,8 @@ export interface SettingState {
   hideLike: boolean;
   /** 隐藏我的云盘 */
   hideCloud: boolean;
+  /** 隐藏下载管理 */
+  hideDownload: boolean;
   /** 隐藏本地歌曲 */
   hideLocal: boolean;
   /** 隐藏最近播放 */
@@ -306,6 +315,8 @@ export const useSettingStore = defineStore("setting", {
     localSeparators: ["/", "&"],
     showLocalCover: true,
     downloadPath: "",
+    fileNameFormat: "title-artist",
+    folderStrategy: "none",
     downloadMeta: true,
     downloadCover: true,
     downloadLyric: true,
@@ -313,6 +324,7 @@ export const useSettingStore = defineStore("setting", {
     downloadLyricRomaji: true,
     usePlaybackForDownload: false,
     saveMetaFile: false,
+    downloadSongLevel: "h",
     proxyProtocol: "off",
     proxyServe: "127.0.0.1",
     proxyPort: 80,
@@ -327,6 +339,7 @@ export const useSettingStore = defineStore("setting", {
     hideRadioHot: false,
     hideLike: false,
     hideCloud: false,
+    hideDownload: false,
     hideLocal: false,
     hideHistory: false,
     hideUserPlaylists: false,

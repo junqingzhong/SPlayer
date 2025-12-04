@@ -56,7 +56,10 @@
                 :light="pureLyricMode"
               />
               <!-- 歌词 -->
-              <MainAMLyric v-if="settingStore.useAMLyrics" :key="`am-lyric-${musicStore.playSong.id}`" />
+              <MainAMLyric
+                v-if="settingStore.useAMLyrics"
+                :key="`am-lyric-${musicStore.playSong.id}`"
+              />
               <MainLyric v-else :key="`lyric-${musicStore.playSong.id}`" />
             </div>
           </div>

@@ -37,6 +37,7 @@ const sidebarItems = [
   { label: "播客电台", key: "hideRadioHot" },
   { label: "我的收藏", key: "hideLike" },
   { label: "我的云盘", key: "hideCloud" },
+  { label: "下载管理", key: "hideDownload" },
   { label: "本地歌曲", key: "hideLocal" },
   { label: "最近播放", key: "hideHistory" },
   { label: "创建的歌单", key: "hideUserPlaylists" },

@@ -1,9 +1,6 @@
 <template>
   <div class="download-downloaded">
-    <SongList
-      :data="data"
-      :loading="loading"
-    />
+    <SongList :data="data" :loading="loading" />
   </div>
 </template>
 

@@ -173,7 +173,10 @@ const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
 
 // 实时歌词索引
 const currentLyricIndex = computed(() => {
-  if (lyricConfig.showYrc && lyricData?.yrcData?.length) {
+  if (
+    (lyricConfig.showYrc && lyricData?.yrcData?.length) ||
+    (!lyricData?.yrcData?.length && lyricData?.lrcData?.length)
+  ) {
     return lyricData.lyricIndex ?? -1;
   }
   // 自行计算
@@ -784,7 +787,7 @@ onBeforeUnmount(() => {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
       }
       .name {
         line-height: normal;

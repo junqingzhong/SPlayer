@@ -236,6 +236,16 @@ audio {
   }
 }
 
+// .n-badge
+.n-badge {
+  .n-badge-sup {
+    background-color: rgba(var(--primary), 0.14);
+    .n-base-slot-machine {
+      color: rgb(var(--primary));
+    }
+  }
+}
+
 // input
 .n-input-number {
   width: 100%;

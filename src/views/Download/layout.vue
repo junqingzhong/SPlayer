@@ -5,7 +5,15 @@
       <n-flex class="status">
         <n-text class="item">
           <SvgIcon name="Music" :depth="3" />
-          <n-number-animation :from="0" :to="listData.length || 0" /> 首歌曲
+          <n-number-animation :from="0" :to="currentCount" /> 首歌曲
+        </n-text>
+        <n-text v-if="currentTab === 'download-downloaded'" class="item" depth="3">
+          <SvgIcon name="Download" :depth="3" />
+          <n-number-animation :from="0" :to="dataStore.downloadingSongs.length" /> 下载中
+        </n-text>
+        <n-text v-else class="item" depth="3">
+          <SvgIcon name="DownloadDone" :depth="3" />
+          <n-number-animation :from="0" :to="listData.length" /> 已完成
         </n-text>
       </n-flex>
     </div>
@@ -13,13 +21,12 @@
       <n-flex class="left" align="flex-end">
         <n-button
           :focusable="false"
-          :disabled="loading && !listData.length"
-          :loading="loading"
+          :disabled="!currentListData.length || currentTab !== 'download-downloaded'"
           type="primary"
           strong
           secondary
           round
-          @click="player.updatePlayList(listData)"
+          @click="player.updatePlayList(currentListData)"
         >
           <template #icon>
             <SvgIcon name="Play" />
@@ -28,6 +35,8 @@
         </n-button>
         <n-button
           :focusable="false"
+          :disabled="currentTab !== 'download-downloaded'"
+          :loading="loading"
           class="more"
           strong
           secondary
@@ -62,23 +71,41 @@
 
 <script setup lang="ts">
 import { useRouter, useRoute } from "vue-router";
-import { useSettingStore } from "@/stores";
-import { ref, watch, onMounted } from "vue";
+import { useSettingStore, useDataStore } from "@/stores";
+import { ref, watch, onMounted, onActivated, computed } from "vue";
 import type { SongType } from "@/types/main";
 import { formatSongsList } from "@/utils/format";
 import { usePlayer } from "@/utils/player";
 import type { MessageReactive } from "naive-ui";
+import DownloadManager from "@/utils/downloadManager";
 
 const router = useRouter();
 const route = useRoute();
 const settingStore = useSettingStore();
+const dataStore = useDataStore();
 const player = usePlayer();
 
 const loading = ref<boolean>(false);
 const loadingMsg = ref<MessageReactive | null>(null);
 const listData = ref<SongType[]>([]);
 
-const currentTab = ref<string>(route.name as string || "download-downloaded");
+const currentTab = ref<string>((route.name as string) || "download-downloaded");
+
+// 当前标签页的歌曲列表
+const currentListData = computed(() => {
+  if (currentTab.value === "download-downloading") {
+    return dataStore.downloadingSongs.map((item) => item.song);
+  }
+  return listData.value;
+});
+
+// 当前标签页的歌曲数量
+const currentCount = computed(() => {
+  if (currentTab.value === "download-downloading") {
+    return dataStore.downloadingSongs.length;
+  }
+  return listData.value.length;
+});
 
 const handleTabChange = (name: string) => {
   router.push({ name });
@@ -89,8 +116,11 @@ watch(
   (newName) => {
     if (newName && (newName as string).startsWith("download-")) {
       currentTab.value = newName as string;
+      if (newName === "download-downloaded") {
+        getDownloadMusic();
+      }
     }
-  }
+  },
 );
 
 const getDownloadMusic = async (showTip: boolean = false) => {
@@ -100,16 +130,16 @@ const getDownloadMusic = async (showTip: boolean = false) => {
       if (showTip) window.$message.warning("未设置下载路径");
       return;
     }
-    
+
     if (showTip) {
       loadingMsg.value = window.$message.loading("正在获取下载歌曲", {
         duration: 0,
       });
     }
-    
+
     loading.value = true;
-    const result = await window.electron.ipcRenderer.invoke("get-music-files", path);
-    
+    const result = await DownloadManager.getDownloadedSongs();
+
     if (result) {
       listData.value = formatSongsList(result);
       if (showTip) window.$message.success(`已发现 ${listData.value.length} 首`);
@@ -128,6 +158,12 @@ const getDownloadMusic = async (showTip: boolean = false) => {
 
 onMounted(() => {
   getDownloadMusic();
+});
+
+onActivated(() => {
+  if (currentTab.value === "download-downloaded") {
+    getDownloadMusic();
+  }
 });
 </script>
 
