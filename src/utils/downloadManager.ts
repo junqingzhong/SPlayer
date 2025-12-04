@@ -17,7 +17,7 @@ class DownloadManager {
   private queue: DownloadTask[] = [];
   private isProcessing: boolean = false;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): DownloadManager {
     if (!DownloadManager.instance) {
@@ -256,7 +256,123 @@ class DownloadManager {
         let lyric = "";
         if (downloadLyric) {
           const lyricResult = await songLyric(song.id);
-          lyric = lyricResult?.lrc?.lyric || "";
+          const lrc = lyricResult?.lrc?.lyric;
+          const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
+          const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
+
+          if (lrc) {
+            // 正则：匹配 [mm:ss.xx] 或 [mm:ss.xxx] 形式的时间标签
+            const timeTagRe = /\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
+
+            // 把时间字符串转成秒（用于模糊匹配），例如 "00:06.52" -> 6.52
+            const timeStrToSeconds = (timeStr: string) => {
+              // timeStr 形如 "00:06.52" 或 "00:06"（不带小数）
+              const m = timeStr.match(/^(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/);
+              if (!m) return 0;
+              const minutes = parseInt(m[1], 10);
+              const seconds = parseInt(m[2], 10);
+              const frac = m[3] ? parseInt((m[3] + "00").slice(0, 3), 10) : 0; // 保证到毫秒位
+              return minutes * 60 + seconds + frac / 1000;
+            };
+
+            // Helper to parse lyrics into a Map
+            const parseToMap = (lyricStr: string) => {
+              const map = new Map<string, string>();
+              if (!lyricStr) return map;
+              const lines = lyricStr.split(/\r?\n/);
+              for (const raw of lines) {
+                let m: RegExpExecArray | null;
+                const timeTags: string[] = [];
+                timeTagRe.lastIndex = 0;
+                while ((m = timeTagRe.exec(raw)) !== null) {
+                  const frac = m[3] ?? "";
+                  const tag = `[${m[1]}:${m[2]}${frac ? "." + frac : ""}]`;
+                  timeTags.push(tag);
+                }
+                const text = raw.replace(timeTagRe, "").trim();
+                for (const tag of timeTags) {
+                  if (text) {
+                    const prev = map.get(tag);
+                    map.set(tag, prev ? prev + "\n" + text : text);
+                  }
+                }
+              }
+              return map;
+            };
+
+            const tMap = parseToMap(tlyric || "");
+            const rMap = parseToMap(romalrc || "");
+
+            const lines: string[] = [];
+
+            // 逐行解析原始 lrc 字符串
+            const lrcLinesRaw = lrc.split(/\r?\n/);
+            for (const raw of lrcLinesRaw) {
+              let m: RegExpExecArray | null;
+              const timeTags: string[] = [];
+              timeTagRe.lastIndex = 0;
+              while ((m = timeTagRe.exec(raw)) !== null) {
+                const frac = m[3] ?? "";
+                const tag = `[${m[1]}:${m[2]}${frac ? "." + frac : ""}]`;
+                timeTags.push(tag);
+              }
+
+              if (timeTags.length === 0) continue;
+
+              const text = raw.replace(timeTagRe, "").trim();
+              if (!text) continue;
+
+              for (const timeTag of timeTags) {
+                lines.push(`${timeTag}${text}`);
+
+                // Helper to find matching text (exact or fuzzy)
+                const findMatch = (map: Map<string, string>, currentTag: string) => {
+                  // Exact match
+                  const exact = map.get(currentTag);
+                  if (exact) return exact;
+
+                  // Fuzzy match
+                  const tSec = timeStrToSeconds(currentTag.slice(1, -1));
+                  let bestTag: string | null = null;
+                  let bestDiff = Infinity;
+                  for (const key of Array.from(map.keys())) {
+                    const kSec = timeStrToSeconds(key.slice(1, -1));
+                    const diff = Math.abs(kSec - tSec);
+                    if (diff < bestDiff) {
+                      bestDiff = diff;
+                      bestTag = key;
+                    }
+                  }
+                  if (bestTag && bestDiff < 0.5) {
+                    return map.get(bestTag);
+                  }
+                  return null;
+                };
+
+                // Append translation
+                if (tlyric) {
+                  const transText = findMatch(tMap, timeTag);
+                  if (transText) {
+                    for (const lt of transText.split("\n")) {
+                      if (lt.trim()) lines.push(`${timeTag}${lt}`);
+                    }
+                  }
+                }
+
+                // Append romaji
+                if (romalrc) {
+                  const romaText = findMatch(rMap, timeTag);
+                  if (romaText) {
+                    for (const lt of romaText.split("\n")) {
+                      if (lt.trim()) lines.push(`${timeTag}${lt}`);
+                    }
+                  }
+                }
+              }
+            }
+
+            lyric = lines.join("\n");
+          }
         }
 
         const config = {
