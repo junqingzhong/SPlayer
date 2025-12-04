@@ -24,6 +24,7 @@ import Equalizer from "@/components/Modal/Equalizer.vue";
 import SongUnlockManager from "@/components/Modal/SongUnlockManager.vue";
 import SidebarHideManager from "@/components/Modal/SidebarHideManager.vue";
 import HomePageSectionManager from "@/components/Modal/HomePageSectionManager.vue";
+import CopyLyrics from "@/components/Modal/CopyLyrics.vue";
 
 // 用户协议
 export const openUserAgreement = () => {
@@ -380,6 +381,22 @@ export const openHomePageSectionManager = () => {
     title: "首页栏目配置",
     content: () => {
       return h(HomePageSectionManager);
+    },
+  });
+};
+
+/** 打开复制歌词弹窗 */
+export const openCopyLyrics = () => {
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "复制歌词",
+    content: () => {
+      return h(CopyLyrics, {
+        onClose: () => window.$modal.destroyAll(),
+      });
     },
   });
 };

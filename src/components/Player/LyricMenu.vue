@@ -13,12 +13,15 @@
     <div class="menu-icon" @click="openSetting('lyrics')">
       <SvgIcon name="Settings" />
     </div>
+    <div class="menu-icon" @click="openCopyLyrics">
+      <SvgIcon name="Copy" />
+    </div>
   </n-flex>
 </template>
 
 <script setup lang="ts">
 import { useMusicStore, useStatusStore } from "@/stores";
-import { openSetting } from "@/utils/modal";
+import { openSetting, openCopyLyrics } from "@/utils/modal";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
