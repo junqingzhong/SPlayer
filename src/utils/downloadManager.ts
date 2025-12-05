@@ -118,13 +118,16 @@ class DownloadManager {
         const total = (totalBytes / 1024 / 1024).toFixed(2) + "MB";
         dataStore.updateDownloadProgress(
           song.id,
-          Number((percent * 100).toFixed(0)),
+          Number((percent * 100).toFixed(1)),
           transferred,
           total,
         );
       };
       removeListener = window.electron.ipcRenderer.on("download-progress", progressHandler);
     }
+
+    // 更新状态为下载中
+    dataStore.updateDownloadStatus(song.id, "downloading");
 
     // 开始下载
     try {
