@@ -73,7 +73,6 @@
               <!-- 操作 -->
               <div class="actions">
                 <n-button
-                  v-if="item.status === 'failed'"
                   type="primary"
                   secondary
                   strong
