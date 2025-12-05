@@ -245,6 +245,9 @@ const searchData = ref<SongType[]>([]);
 const oldPlaylistId = ref<number>(0);
 const playlistId = computed<number>(() => Number(router.currentRoute.value.query.id as string));
 
+// 当前正在请求的歌单 ID，用于防止竞态条件
+const currentRequestId = ref<number>(0);
+
 // 加载提示
 const loading = ref<boolean>(true);
 const loadingMsg = ref<MessageReactive | null>(null);
@@ -341,6 +344,8 @@ const getPlaylistDetail = async (
   options: { getList: boolean; refresh: boolean } = { getList: true, refresh: false },
 ) => {
   if (!id) return;
+  // 设置当前请求的歌单 ID，用于防止竞态条件
+  currentRequestId.value = id;
   // 设置加载状态
   loading.value = true;
   const { getList, refresh } = options;
@@ -375,6 +380,8 @@ const handleOnlinePlaylist = async (id: number, getList: boolean, refresh: boole
 
   // 获取歌单详情
   const detail = await playlistDetail(id);
+  // 检查是否仍然是当前请求的歌单
+  if (currentRequestId.value !== id) return;
   playlistDetailData.value = formatCoverList(detail.playlist)[0];
   const count = playlistDetailData.value?.count || 0;
   // 不需要获取列表或无歌曲
@@ -386,10 +393,14 @@ const handleOnlinePlaylist = async (id: number, getList: boolean, refresh: boole
   if (isLogin() === 1 && count === detail.privileges?.length && count < 800) {
     const ids = detail.privileges.map((song: any) => song.id as number);
     const result = await songDetail(ids);
+    // 检查是否仍然是当前请求的歌单
+    if (currentRequestId.value !== id) return;
     playlistData.value = formatSongsList(result.songs);
   } else {
     await getPlaylistAllSongs(id, count, refresh);
   }
+  // 检查是否仍然是当前请求的歌单
+  if (currentRequestId.value !== id) return;
   loading.value = false;
 };
 
@@ -408,13 +419,28 @@ const getPlaylistAllSongs = async (
   const limit: number = 500;
   const listData: SongType[] = [];
   do {
+    // 检查是否仍然是当前请求的歌单
+    if (currentRequestId.value !== id) {
+      loadingMsgShow(false);
+      return;
+    }
     const result = await playlistAllSongs(id, limit, offset);
+    // 再次检查是否仍然是当前请求的歌单（请求完成后）
+    if (currentRequestId.value !== id) {
+      loadingMsgShow(false);
+      return;
+    }
     const songData = formatSongsList(result.songs);
     listData.push(...songData);
     if (!refresh) playlistData.value = playlistData.value.concat(songData);
     // 更新数据
     offset += limit;
-  } while (offset < count && isPlaylistPage.value);
+  } while (offset < count && isPlaylistPage.value && currentRequestId.value === id);
+  // 最终检查是否仍然是当前请求的歌单
+  if (currentRequestId.value !== id) {
+    loadingMsgShow(false);
+    return;
+  }
   if (refresh) playlistData.value = listData;
   // 关闭加载
   loadingMsgShow(false);
