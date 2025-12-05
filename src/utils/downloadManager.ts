@@ -17,7 +17,7 @@ class DownloadManager {
   private queue: DownloadTask[] = [];
   private isProcessing: boolean = false;
 
-  private constructor() {}
+  private constructor() { }
 
   public static getInstance(): DownloadManager {
     if (!DownloadManager.instance) {
@@ -256,7 +256,14 @@ class DownloadManager {
         let lyric = "";
         if (downloadLyric) {
           const lyricResult = await songLyric(song.id);
-          lyric = lyricResult?.lrc?.lyric || "";
+          const rawLyric = lyricResult?.lrc?.lyric || "";
+          // 排除特定格式的脏数据
+          const excludeRegex =
+            /^\{"t":\d+,"c":\[\{"[^"]+":\"[^"]*\"}(?:,\{"[^"]+":\"[^"]*\"})*]}$/;
+          lyric = rawLyric
+            .split("\n")
+            .filter((line) => !excludeRegex.test(line.trim()))
+            .join("\n");
         }
 
         const config = {
