@@ -48,8 +48,21 @@ const initFileIpc = (): void => {
         return [];
       }
       console.info(`📂 Fetching music files from: ${filePath}`);
+      // 音乐文件扩展名
+      const musicExtensions = [
+        "mp3",
+        "wav",
+        "flac",
+        "aac",
+        "webm",
+        "m4a",
+        "mp4",
+        "ogg",
+        "aiff",
+        "aif",
+      ];
       // 查找指定目录下的所有音乐文件
-      const musicFiles = await FastGlob("**/*.{mp3,wav,flac,aac,webm}", globOpt(filePath));
+      const musicFiles = await FastGlob(`**/*.{${musicExtensions.join(",")}}`, globOpt(filePath));
       // 解析元信息（使用 allSettled 防止单个文件失败影响整体）
       const metadataPromises = musicFiles.map(async (file) => {
         const fullPath = join(dirPath, file);

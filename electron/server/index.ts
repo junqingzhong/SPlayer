@@ -42,6 +42,10 @@ const initAppServer = async () => {
             name: "UnblockAPI",
             url: "/api/unblock",
           },
+          {
+            name: "ControlAPI",
+            url: "/api/control",
+          },
         ],
       });
     });

@@ -49,7 +49,7 @@ class AudioManager {
   /** 音量 (0-1) */
   private volume: number = 1;
   /** 事件监听器集合 */
-  private eventListeners: Map<string, Set<Function>> = new Map();
+  private eventListeners: Map<string, Set<(e: Event) => void>> = new Map();
 
   /** 均衡器频段 (10段) */
   private readonly eqFrequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
@@ -257,7 +257,7 @@ class AudioManager {
    * @param event 事件名称
    * @param callback 回调函数
    */
-  public on(event: AudioEventType, callback: Function) {
+  public on(event: AudioEventType, callback: (e: Event) => void) {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, new Set());
     }
@@ -269,7 +269,7 @@ class AudioManager {
    * @param event 事件名称
    * @param callback 回调函数
    */
-  public off(event: AudioEventType, callback: Function) {
+  public off(event: AudioEventType, callback: (e: Event) => void) {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       listeners.delete(callback);
