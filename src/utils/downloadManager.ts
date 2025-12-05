@@ -327,6 +327,18 @@ class DownloadManager {
     // 继续处理队列
     this.processQueue();
   }
+
+  /**
+   * 重试所有下载任务
+   */
+  public retryAllDownloads() {
+    const dataStore = useDataStore();
+    const songsToRetry = dataStore.downloadingSongs.map((item) => item.song.id);
+
+    songsToRetry.forEach((id) => {
+      this.retryDownload(id);
+    });
+  }
 }
 
 export default DownloadManager.getInstance();

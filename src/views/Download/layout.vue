@@ -35,13 +35,21 @@
         </n-button>
         <n-button
           :focusable="false"
-          :disabled="currentTab !== 'download-downloaded'"
+          :disabled="
+            currentTab === 'download-downloaded'
+              ? false
+              : dataStore.downloadingSongs.length === 0
+          "
           :loading="loading"
           class="more"
           strong
           secondary
           circle
-          @click="getDownloadMusic(true)"
+          @click="
+            currentTab === 'download-downloaded'
+              ? getDownloadMusic(true)
+              : DownloadManager.retryAllDownloads()
+          "
         >
           <template #icon>
             <SvgIcon name="Refresh" />
