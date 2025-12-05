@@ -190,7 +190,7 @@
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { msToTime, convertSecondsToTime } from "@/utils/time";
-import { renderIcon, coverLoaded } from "@/utils/helper";
+import { renderIcon, coverLoaded, copyData } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
 import {
   openAutoClose,
@@ -216,6 +216,55 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
   const isSong = song.type === "song";
   const isLocal = !!song?.path;
   return [
+    {
+      key: "more",
+      label: "更多操作",
+      icon: renderIcon("Menu", { size: 18 }),
+      children: [
+        {
+          key: "code-name",
+          label: `复制${song.type === "song" ? "歌曲" : "节目"}名称`,
+          props: {
+            onClick: () => copyData(song.name),
+          },
+          icon: renderIcon("Copy", { size: 18 }),
+        },
+        {
+          key: "code-id",
+          label: `复制${song.type === "song" ? "歌曲" : "节目"} ID`,
+          show: !isLocal,
+          props: {
+            onClick: () => copyData(song.id),
+          },
+          icon: renderIcon("Copy", { size: 18 }),
+        },
+        {
+          key: "share",
+          label: `分享${song.type === "song" ? "歌曲" : "节目"}链接`,
+          show: !isLocal,
+          props: {
+            onClick: () =>
+              copyData(
+                `https://music.163.com/#/${song.type}?id=${song.id}`,
+                "已复制分享链接到剪切板",
+              ),
+          },
+          icon: renderIcon("Share", { size: 18 }),
+        },
+      ],
+    },
+    {
+      key: "search",
+      label: "同名搜索",
+      props: {
+        onClick: () => router.push({ name: "search", query: { keyword: song.name } }),
+      },
+      icon: renderIcon("Search"),
+    },
+    {
+      key: "line",
+      type: "divider",
+    },
     {
       key: "playlist-add",
       label: "添加到歌单",

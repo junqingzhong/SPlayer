@@ -1,59 +1,52 @@
 <template>
   <div class="copy-lyrics">
-
     <n-scrollbar class="lyrics-list">
       <n-checkbox-group v-model:value="selectedLines">
-        <div v-for="line in displayLyrics" :key="line.index" class="lyric-item">
-          <n-checkbox :value="line.index" class="lyric-checkbox">
-            <div class="lyric-content">
-              <div v-if="showOriginal && line.text" class="text">{{ line.text }}</div>
-              <div v-if="showTranslation && line.translation" class="translation">
-                {{ line.translation }}
-              </div>
-              <div v-if="showRomaji && line.romaji" class="romaji">{{ line.romaji }}</div>
-            </div>
-          </n-checkbox>
-        </div>
+        <n-list hoverable>
+          <n-list-item v-for="line in displayLyrics" :key="line.index">
+            <n-checkbox :value="line.index" class="lyric-checkbox">
+              <n-flex size="small" class="lyric-content" vertical>
+                <n-text v-if="line.text" class="text">{{ line.text }}</n-text>
+                <n-text v-if="showTranslation && line.translation" depth="1" class="translation">
+                  {{ line.translation }}
+                </n-text>
+                <n-text v-if="showRomaji && line.romaji" depth="3" class="romaji">
+                  {{ line.romaji }}
+                </n-text>
+              </n-flex>
+            </n-checkbox>
+          </n-list-item>
+        </n-list>
       </n-checkbox-group>
     </n-scrollbar>
-
-    <div class="footer">
-      <div class="filters">
+    <n-flex align="center" justify="space-between" class="footer">
+      <n-flex align="center">
         <n-checkbox-group v-model:value="selectedFilters">
-          <n-space>
-            <n-checkbox value="original" label="原词" />
+          <n-flex align="center">
             <n-checkbox value="translation" label="翻译" />
             <n-checkbox value="romaji" label="音译" />
-          </n-space>
+          </n-flex>
         </n-checkbox-group>
-      </div>
-      <div class="actions">
-        <n-button class="action-btn" @click="selectAll">全选</n-button>
-        <n-button
-          class="action-btn"
-          type="primary"
-          :disabled="selectedLines.length === 0"
-          @click="handleCopy"
-        >
+      </n-flex>
+      <n-flex align="center">
+        <n-button @click="selectAll">全选</n-button>
+        <n-button type="primary" :disabled="selectedLines.length === 0" @click="handleCopy">
           复制 ({{ selectedLines.length }})
         </n-button>
-      </div>
-    </div>
+      </n-flex>
+    </n-flex>
   </div>
 </template>
 
 <script setup lang="ts">
 import { useMusicStore } from "@/stores";
-import { useClipboard } from "@vueuse/core";
+import { copyData } from "@/utils/helper";
 
-const props = defineProps<{
-  onClose: () => void;
-}>();
+const props = defineProps<{ onClose: () => void }>();
 
 const musicStore = useMusicStore();
-const { copy } = useClipboard();
 
-const selectedFilters = ref<string[]>(["original", "translation", "romaji"]);
+const selectedFilters = ref<string[]>(["translation", "romaji"]);
 const selectedLines = ref<number[]>([]);
 
 const rawLyrics = computed(() => {
@@ -77,7 +70,6 @@ const displayLyrics = computed(() => {
   });
 });
 
-const showOriginal = computed(() => selectedFilters.value.includes("original"));
 const showTranslation = computed(() => selectedFilters.value.includes("translation"));
 const showRomaji = computed(() => selectedFilters.value.includes("romaji"));
 
@@ -89,12 +81,15 @@ const selectAll = () => {
   }
 };
 
+/**
+ * 复制歌词
+ */
 const handleCopy = async () => {
   const linesToCopy = displayLyrics.value
     .filter((l) => selectedLines.value.includes(l.index))
     .map((l) => {
       const parts: string[] = [];
-      if (showOriginal.value && l.text) parts.push(l.text);
+      if (l.text) parts.push(l.text);
       if (showTranslation.value && l.translation) parts.push(l.translation);
       if (showRomaji.value && l.romaji) parts.push(l.romaji);
       return parts.join("\n");
@@ -103,8 +98,7 @@ const handleCopy = async () => {
     .join("\n\n");
 
   if (linesToCopy) {
-    await copy(linesToCopy);
-    window.$message.success("复制成功");
+    await copyData(linesToCopy);
     props.onClose();
   } else {
     window.$message.warning("没有可复制的内容");
@@ -120,68 +114,27 @@ const handleCopy = async () => {
   width: 100%;
 }
 
-
 .lyrics-list {
   flex: 1;
-  padding: 12px 20px;
 
-  .lyric-item {
-    margin-bottom: 12px;
-    padding: 8px;
-    border-radius: 8px;
-    transition: background-color 0.2s;
+  .lyric-checkbox {
+    width: 100%;
+  }
 
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.05);
+  .lyric-content {
+    font-size: 14px;
+    line-height: 1.6;
+    .translation {
+      font-size: 12px;
     }
-
-    .lyric-checkbox {
-      width: 100%;
-      align-items: flex-start;
-
-      :deep(.n-checkbox__label) {
-        flex: 1;
-      }
-    }
-
-    .lyric-content {
-      font-size: 14px;
-      line-height: 1.6;
-
-      .text {
-        font-weight: 500;
-      }
-      .translation {
-        color: var(--n-text-color-3);
-        font-size: 13px;
-      }
-      .romaji {
-        color: var(--n-text-color-3);
-        font-size: 12px;
-        font-style: italic;
-      }
+    .romaji {
+      font-size: 12px;
+      font-style: italic;
     }
   }
 }
 
 .footer {
-  padding: 16px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid var(--n-border-color);
-  
-  .filters {
-    display: flex;
-    align-items: center;
-  }
-
-  .actions {
-    display: flex;
-    gap: 12px;
-    .action-btn {
-      width: 90px;
-    }
-  }
+  margin-top: 20px;
 }
 </style>

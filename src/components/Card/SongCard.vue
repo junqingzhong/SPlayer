@@ -51,7 +51,7 @@
               {{ song.quality }}
             </n-tag>
             <!-- 原唱翻唱 -->
-            <template>
+            <template v-if="settingStore.showSongOriginalTag">
               <n-tag v-if="song.originCoverType === 1" :bordered="false" type="primary" round>
                 原
               </n-tag>

@@ -38,7 +38,7 @@
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> 特别鸣谢 </n-h3>
-      <n-flex class="link">
+      <n-flex :size="12" class="link">
         <n-card
           v-for="(item, index) in contributors"
           :key="index"
@@ -57,7 +57,7 @@
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> 社区与资讯 </n-h3>
-      <n-flex class="link">
+      <n-flex :size="12" class="link">
         <n-card
           v-for="(item, index) in communityData"
           :key="index"
@@ -109,9 +109,30 @@ const statusStore = useStatusStore();
 // 特别鸣谢
 const contributors = [
   {
-    name: "imsyy",
-    url: "https://github.com/imsyy",
-    description: "SPlayer 作者",
+    name: "NeteaseCloudMusicApi",
+    url: "https://github.com/Binaryify/NeteaseCloudMusicApi",
+    description: "网易云音乐 API",
+  },
+  // https://github.com/neteasecloudmusicapienhanced/api-enhanced
+  {
+    name: "NeteaseCloudMusicApiEnhanced",
+    url: "https://github.com/neteasecloudmusicapienhanced/api-enhanced",
+    description: "网易云音乐 API 备份 + 增强",
+  },
+  {
+    name: "YesPlayMusic",
+    url: "https://github.com/qier222/YesPlayMusic",
+    description: "高颜值的第三方网易云播放器",
+  },
+  {
+    name: "UnblockNeteaseMusic",
+    url: "https://github.com/UnblockNeteaseMusic/server",
+    description: "Revive unavailable songs for Netease Cloud Music",
+  },
+  {
+    name: "applemusic-like-lyrics",
+    url: "https://github.com/Steve-xmh/applemusic-like-lyrics",
+    description: "类 Apple Music 歌词显示组件库",
   },
 ];
 
@@ -202,19 +223,17 @@ onMounted(getUpdateData);
     }
   }
 }
-.link {
-  .link-item {
-    max-width: 200px;
-    border-radius: 8px;
-    cursor: pointer;
-    :deep(.n-card__content) {
-      display: flex;
-      align-items: center;
-      padding: 12px;
-    }
-    .n-icon {
-      margin-right: 6px;
-    }
+.link-item {
+  max-width: 200px;
+  border-radius: 8px;
+  cursor: pointer;
+  :deep(.n-card__content) {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+  }
+  .n-icon {
+    margin-right: 6px;
   }
 }
 </style>

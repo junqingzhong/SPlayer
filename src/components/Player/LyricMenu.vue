@@ -1,5 +1,9 @@
 <template>
   <n-flex class="menu" justify="center" vertical>
+    <div class="menu-icon" @click="openCopyLyrics">
+      <SvgIcon name="Copy" />
+    </div>
+    <div class="divider" />
     <div class="menu-icon" @click="changeOffset(-500)">
       <SvgIcon name="Replay5" />
     </div>
@@ -12,9 +16,6 @@
     <div class="divider" />
     <div class="menu-icon" @click="openSetting('lyrics')">
       <SvgIcon name="Settings" />
-    </div>
-    <div class="menu-icon" @click="openCopyLyrics">
-      <SvgIcon name="Copy" />
     </div>
   </n-flex>
 </template>
