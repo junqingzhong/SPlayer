@@ -157,6 +157,30 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">同时下载歌词翻译</n-text>
+          <n-text class="tip" :depth="3">下载歌词时同时包含翻译</n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.downloadLyricTranslation"
+          :disabled="!settingStore.downloadMeta || !settingStore.downloadLyric"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">同时下载歌词音译</n-text>
+          <n-text class="tip" :depth="3">下载歌词时同时包含音译（罗马音）</n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.downloadLyricRomaji"
+          :disabled="!settingStore.downloadMeta || !settingStore.downloadLyric"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">音乐命名格式</n-text>
           <n-text class="tip" :depth="3">
             选择下载文件的命名方式，建议包含歌手信息便于区分
