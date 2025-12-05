@@ -56,9 +56,8 @@ const rawLyrics = computed(() => {
 
 const displayLyrics = computed(() => {
   return rawLyrics.value.map((line, index) => {
-    // 兼容 lrcData (content) 和 yrcData (words)
     const text =
-      line.words?.map((w) => w.word).join("") || (line as any).content || (line as any).text || "";
+      line.words?.map((w) => w.word).join("") || "";
     const translation = line.translatedLyric || "";
     const romaji = line.romanLyric || line.words?.map((w) => w.romanWord).join("") || "";
     return {
