@@ -41,38 +41,31 @@
             </div>
             <!-- 状态 -->
             <div class="status">
-              <n-flex v-if="item.status === 'downloading'" vertical :size="6" style="width: 100%">
+              <n-flex vertical :size="6" style="width: 100%">
                 <n-flex justify="space-between">
-                  <n-text depth="3" style="font-size: 12px">{{ item.progress }}%</n-text>
-                  <n-text depth="3" style="font-size: 12px">
+                  <n-text
+                    :type="item.status === 'failed' ? 'error' : undefined"
+                    :depth="item.status === 'failed' ? undefined : '3'"
+                    style="font-size: 12px"
+                  >
+                    {{
+                      item.status === "downloading"
+                        ? `${item.progress}%`
+                        : item.status === "waiting"
+                          ? "等待下载..."
+                          : "下载失败"
+                    }}
+                  </n-text>
+                  <n-text v-if="item.status === 'downloading'" depth="3" style="font-size: 12px">
                     {{ item.transferred }} / {{ item.totalSize }}
                   </n-text>
                 </n-flex>
-                <div class="custom-progress">
-                  <div class="bar" :style="{ width: item.progress + '%' }" />
-                  <div
-                    class="light"
-                    v-if="item.status === 'downloading'"
-                    :style="{ left: item.progress + '%' }"
-                  />
-                </div>
-              </n-flex>
-              <n-flex v-else-if="item.status === 'waiting'" vertical :size="6" style="width: 100%">
-                <n-text depth="3" style="font-size: 12px">等待下载...</n-text>
                 <n-progress
                   type="line"
-                  :percentage="0"
+                  :percentage="item.status === 'downloading' ? item.progress : 0"
                   :show-indicator="false"
-                  style="height: 4px"
-                />
-              </n-flex>
-              <n-flex v-else vertical :size="6" style="width: 100%">
-                <n-text type="error" style="font-size: 12px">下载失败</n-text>
-                <n-progress
-                  type="line"
-                  :percentage="0"
-                  :show-indicator="false"
-                  status="error"
+                  :status="item.status === 'failed' ? 'error' : undefined"
+                  :class="item.status === 'downloading' ? 'downloading-progress' : ''"
                   style="height: 4px"
                 />
               </n-flex>
@@ -246,6 +239,10 @@ const sortedDownloadingSongs = computed(() => {
           flex: 1;
           padding-right: 20px;
           padding-left: 12px;
+
+          .downloading-progress {
+            --n-fill-color: rgb(var(--primary));
+          }
         }
 
         .actions {
@@ -253,39 +250,6 @@ const sortedDownloadingSongs = computed(() => {
           display: flex;
           justify-content: center;
           min-width: 120px;
-        }
-      }
-      .custom-progress {
-        position: relative;
-        width: 100%;
-        height: 6px;
-        margin-top: 4px;
-        background-color: var(--surface-variant-hex);
-        border-radius: 3px;
-        overflow: hidden;
-
-        .bar {
-          height: 100%;
-          border-radius: 3px;
-          background: rgb(var(--primary));
-          background: linear-gradient(
-            90deg,
-            rgba(var(--primary), 0.7) 0%,
-            rgba(var(--primary), 1) 100%
-          );
-          transition: width 0.3s ease-out;
-        }
-
-        .light {
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          width: 15px;
-          transform: skewX(-20deg) translateX(-50%);
-          background: rgba(255, 255, 255, 0.4);
-          filter: blur(2px);
-          transition: left 0.3s ease-out;
-          pointer-events: none;
         }
       }
     }
