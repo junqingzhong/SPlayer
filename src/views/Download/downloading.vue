@@ -71,12 +71,11 @@
               </n-flex>
             </div>
             <!-- 操作 -->
-            <div class="actions">
+            <n-flex align="center" justify="center" class="actions">
               <n-button
                 type="primary"
                 secondary
                 strong
-                style="margin-right: 12px"
                 @click="DownloadManager.retryDownload(item.song.id)"
               >
                 <template #icon>
@@ -93,7 +92,7 @@
                   <SvgIcon name="Close" />
                 </template>
               </n-button>
-            </div>
+            </n-flex>
           </div>
         </n-scrollbar>
       </div>
@@ -250,6 +249,9 @@ const sortedDownloadingSongs = computed(() => {
           display: flex;
           justify-content: center;
           min-width: 120px;
+          .n-button {
+            border-radius: 8px;
+          }
         }
       }
     }

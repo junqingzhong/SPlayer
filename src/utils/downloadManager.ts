@@ -322,7 +322,9 @@ class DownloadManager {
     if (!task) return;
 
     // 重置任务状态与进度
-    dataStore.resetDownloadingSong(songId);
+    dataStore.updateDownloadStatus(songId, "downloading");
+    // 重置进度信息
+    dataStore.updateDownloadProgress(songId, 0, "0MB", "0MB");
 
     // 重新加入队列
     this.queue.push({ song: task.song, quality: task.quality });
