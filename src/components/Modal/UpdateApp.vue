@@ -43,13 +43,11 @@ const downloadProgress = ref<number>(0);
 // 处理markdown中的链接点击
 const handleMarkdownClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
-  // 检查是否点击的是链接
-  if (target.tagName?.toUpperCase() === "A") {
+  // 从事件目标向上遍历，查找最近的 <a> 标签
+  const anchor = target.closest('a');
+  if (anchor?.href) {
     event.preventDefault();
-    const href = target.getAttribute("href");
-    if (href) {
-      window.open(href, "_blank");
-    }
+    window.open(anchor.href, '_blank');
   }
 };
 
