@@ -10,7 +10,12 @@
       </n-tag>
     </n-flex>
     <n-scrollbar style="max-height: 500px">
-      <div v-if="data?.releaseNotes" class="markdown-body" v-html="data.releaseNotes" />
+      <div
+        v-if="data?.releaseNotes"
+        class="markdown-body"
+        v-html="data.releaseNotes"
+        @click="handleMarkdownClick"
+      />
       <div v-else class="markdown-body">暂无更新日志</div>
     </n-scrollbar>
     <n-flex class="menu" justify="end">
@@ -34,6 +39,19 @@ const emit = defineEmits<{ close: [] }>();
 // 下载更新数据
 const downloadStatus = ref<boolean>(false);
 const downloadProgress = ref<number>(0);
+
+// 处理markdown中的链接点击
+const handleMarkdownClick = (event: MouseEvent) => {
+  const target = event.target as HTMLElement;
+  // 检查是否点击的是链接
+  if (target.tagName?.toUpperCase() === "A") {
+    event.preventDefault();
+    const href = target.getAttribute("href");
+    if (href) {
+      window.open(href, "_blank");
+    }
+  }
+};
 
 // 开始更新
 const startDownload = async () => {
