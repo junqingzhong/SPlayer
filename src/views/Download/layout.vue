@@ -78,9 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter, useRoute } from "vue-router";
 import { useSettingStore, useDataStore } from "@/stores";
-import { ref, watch, onMounted, onActivated, computed } from "vue";
 import type { SongType } from "@/types/main";
 import { formatSongsList } from "@/utils/format";
 import { usePlayer } from "@/utils/player";

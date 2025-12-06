@@ -213,7 +213,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { useSettingStore } from "@/stores";
 import { changeLocalLyricPath, changeLocalMusicPath } from "@/utils/helper";
 import { songLevelData, getSongLevelsData } from "@/utils/meta";
