@@ -19,6 +19,7 @@
 import type { SongType } from "@/types/main";
 import { NAlert, type DropdownOption } from "naive-ui";
 import { useStatusStore, useLocalStore, useDataStore, useMusicStore } from "@/stores";
+import DownloadManager from "@/utils/downloadManager";
 import { renderIcon, copyData } from "@/utils/helper";
 import { deleteCloudSong, importCloudSong } from "@/api/cloud";
 import {
@@ -74,6 +75,8 @@ const openDropdown = (
     const isCurrent = statusStore.playIndex === index;
     // 是否为用户歌单
     const isUserPlaylist = !!playListId && userPlaylistsData.some((pl) => pl.id === playListId);
+    // 是否正在下载或下载失败
+    const isDownloading = dataStore.downloadingSongs.some((item) => item.song.id === song.id);
     // 生成菜单
     nextTick().then(() => {
       dropdownOptions.value = [
@@ -246,9 +249,16 @@ const openDropdown = (
         {
           key: "download",
           label: "下载歌曲",
-          show: !isLocal && type === "song",
+          show: !isLocal && type === "song" && !isDownloading,
           props: { onClick: () => openDownloadSong(song) },
           icon: renderIcon("Download"),
+        },
+        {
+          key: "retry-download",
+          label: "重试下载",
+          show: isDownloading,
+          props: { onClick: () => DownloadManager.retryDownload(song.id) },
+          icon: renderIcon("Refresh"),
         },
       ];
       // 显示菜单

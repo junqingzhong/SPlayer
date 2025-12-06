@@ -35,13 +35,21 @@
         </n-button>
         <n-button
           :focusable="false"
-          :disabled="currentTab !== 'download-downloaded'"
+          :disabled="
+            currentTab === 'download-downloaded'
+              ? false
+              : dataStore.downloadingSongs.length === 0
+          "
           :loading="loading"
           class="more"
           strong
           secondary
           circle
-          @click="getDownloadMusic(true)"
+          @click="
+            currentTab === 'download-downloaded'
+              ? getDownloadMusic(true)
+              : DownloadManager.retryAllDownloads()
+          "
         >
           <template #icon>
             <SvgIcon name="Refresh" />
@@ -70,9 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter, useRoute } from "vue-router";
 import { useSettingStore, useDataStore } from "@/stores";
-import { ref, watch, onMounted, onActivated, computed } from "vue";
 import type { SongType } from "@/types/main";
 import { formatSongsList } from "@/utils/format";
 import { usePlayer } from "@/utils/player";

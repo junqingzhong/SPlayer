@@ -392,10 +392,10 @@ const initFileIpc = (): void => {
         songData?: any;
         skipIfExist?: boolean;
       } = {
-        fileName: "未知文件名",
-        fileType: "mp3",
-        path: app.getPath("downloads"),
-      },
+          fileName: "未知文件名",
+          fileType: "mp3",
+          path: app.getPath("downloads"),
+        },
     ): Promise<{ status: "success" | "skipped" | "error"; message?: string }> => {
       try {
         // 获取窗口
