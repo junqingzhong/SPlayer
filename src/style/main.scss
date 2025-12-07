@@ -265,3 +265,25 @@ audio {
   padding: 20px;
   border-radius: 8px;
 }
+
+// list page common styles
+.album,
+.playlist,
+.liked,
+.radio {
+  display: flex;
+  flex-direction: column;
+  .song-list,
+  .loading,
+  .n-empty {
+    padding-top: 240px;
+    transition:
+      padding 0.3s,
+      opacity 0.3s;
+  }
+  :deep(.list-detail.small) ~ .song-list,
+  :deep(.list-detail.small) ~ .loading,
+  :deep(.list-detail.small) ~ .n-empty {
+    padding-top: 120px;
+  }
+}
