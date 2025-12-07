@@ -21,7 +21,7 @@
       <n-flex class="left" align="flex-end">
         <n-button
           :focusable="false"
-          :disabled="!currentListData.length || currentTab !== 'download-downloaded'"
+          :disabled="currentTab !== 'download-downloaded'"
           type="primary"
           strong
           secondary
@@ -36,9 +36,7 @@
         <n-button
           :focusable="false"
           :disabled="
-            currentTab === 'download-downloaded'
-              ? false
-              : dataStore.downloadingSongs.length === 0
+            currentTab === 'download-downloaded' ? false : dataStore.downloadingSongs.length === 0
           "
           :loading="loading"
           class="more"
@@ -85,8 +83,8 @@ import { usePlayer } from "@/utils/player";
 import type { MessageReactive } from "naive-ui";
 import DownloadManager from "@/utils/downloadManager";
 
-const router = useRouter();
 const route = useRoute();
+const router = useRouter();
 const settingStore = useSettingStore();
 const dataStore = useDataStore();
 const player = usePlayer();
