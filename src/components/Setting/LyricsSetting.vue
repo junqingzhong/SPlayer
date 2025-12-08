@@ -268,7 +268,7 @@
               AMLL TTML DB 地址，请确保地址正确，否则将导致歌词获取失败
             </n-text>
           </div>
-          <n-button type="primary" strong secondary @click="changeAMLLDBServer"> 配置 </n-button>
+          <n-button type="primary" strong secondary @click="openAMLLServer"> 配置 </n-button>
         </n-card>
       </n-collapse-transition>
       <n-card class="set-item">
@@ -573,12 +573,11 @@
 </template>
 
 <script setup lang="ts">
-import { NFlex, NInput, NText } from "naive-ui";
+import { NFlex, NText } from "naive-ui";
 import { useSettingStore, useStatusStore } from "@/stores";
 import { cloneDeep, isEqual } from "lodash-es";
-import { isValidURL } from "@/utils/validate";
 import { isElectron } from "@/utils/env";
-import { openLyricExclude } from "@/utils/modal";
+import { openLyricExclude, openAMLLServer } from "@/utils/modal";
 import { LyricConfig } from "@/types/desktop-lyric";
 import { usePlayer } from "@/utils/player";
 import { SelectOption } from "naive-ui";
@@ -673,49 +672,6 @@ const getAllSystemFonts = async () => {
     value: "system-ui",
     style: {
       fontFamily: "system-ui",
-    },
-  });
-};
-
-// 修改 AMLL DB 服务地址
-const changeAMLLDBServer = () => {
-  window.$modal.create({
-    preset: "dialog",
-    title: "修改 AMLL DB 地址",
-    content: () =>
-      h(
-        NFlex,
-        { vertical: true },
-        {
-          default: () => [
-            h(
-              NText,
-              { depth: 3, type: "warning" },
-              { default: () => "如果你不清楚这里是做什么的，请不要修改" },
-            ),
-            h(NText, null, { default: () => "请确保地址正确，并且包含 %s（ 用于替换歌曲 ID ）" }),
-            h(NInput, {
-              value: amllDbServer.value,
-              onUpdateValue: (val) => (amllDbServer.value = val),
-              placeholder: "请输入 AMLL TTML DB 地址",
-            }),
-          ],
-        },
-      ),
-    positiveText: "确认",
-    negativeText: "取消",
-    onPositiveClick: async () => {
-      const urlValue = amllDbServer.value.trim();
-      // 验证 URL 格式和 %s
-      if (isValidURL(urlValue) && urlValue.includes("%s")) {
-        await window.api.store.set("amllDbServer", urlValue);
-        settingStore.amllDbServer = urlValue;
-        window.$message.success("AMLL TTML DB 地址已更新");
-        return true;
-      } else {
-        window.$message.error("请输入正确的网址格式，需包含 %s");
-        return false;
-      }
     },
   });
 };
