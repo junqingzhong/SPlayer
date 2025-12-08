@@ -1,10 +1,12 @@
 <template>
   <n-flex vertical size="large">
     <n-alert :show-icon="false" type="warning">
-      如果你不清楚这里是做什么的，请不要修改
+      如果你不清楚这里是做什么的，请不要修改，或仅使用推荐服务器
     </n-alert>
 
-    <n-text>请确保地址正确，并且包含 %s（ 用于替换歌曲 ID ）</n-text>
+    <n-text>
+      请确保地址正确，并且包含 <span class="replace-part">%s</span>（ 用于替换歌曲 ID ）
+    </n-text>
 
     <n-input
       v-model:value="serverUrl"
@@ -24,7 +26,7 @@
             <n-flex vertical size="small">
               <n-text>{{ mirror.label }}</n-text>
               <n-text depth="3">{{ mirror.description }}</n-text>
-              <n-text depth="3" class="mirror-url">{{ mirror.value }}</n-text>
+              <n-text depth="3" class="mirror-url" v-html="renderHighlight(mirror.value)" />
             </n-flex>
           </n-card>
         </n-flex>
@@ -54,6 +56,10 @@ const noSideSpace = (value: string) => value.trim() === value;
 
 const isValidServer = (url: string) => isValidURL(url) && url.includes("%s");
 
+const renderHighlight = (text: string): string => {
+  return text.replace("%s", "<span class='replace-part'>%s</span>")
+}
+
 // 点击确认
 const handleConfirm = async () => {
   const url = serverUrl.value;
@@ -75,17 +81,17 @@ watch(serverUrl, (url: string) => {
 </script>
 
 <style scoped lang="scss">
-.n-card {
-  cursor: pointer;
-  transition: border-color 0.3s;
-
-  &:hover {
-    border-color: rgba(var(--primary), 0.58);
-  }
-}
-
 .mirrors-collapse {
   margin-top: 10px;
+
+  .n-card {
+    cursor: pointer;
+    transition: border-color 0.3s;
+
+    &:hover {
+      border-color: rgba(var(--primary), 0.58);
+    }
+  }
 
   .mirror-url {
     font-size: 11px;
@@ -96,6 +102,14 @@ watch(serverUrl, (url: string) => {
     border-radius: 4px;
     font-family: monospace;
     word-break: break-all;
+
+    ::v-deep(.replace-part) {
+      color: var(--n-color-target);
+    }
   }
+}
+
+.replace-part {
+  color: var(--n-color-target);
 }
 </style>
