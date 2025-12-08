@@ -38,7 +38,6 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { NAlert, NText, NInput, NButton, NFlex, NCollapse, NCollapseItem, NCard } from "naive-ui";
 import { isValidURL } from "@/utils/validate";
 import { amllDbServers } from "@/utils/meta";
 import { useSettingStore } from "@/stores";
