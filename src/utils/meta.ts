@@ -135,7 +135,7 @@ export const renderToolbar = ({ nodes }: ImageRenderToolbarProps) => {
 };
 
 // 默认 AMLL TTML DB Server
-export const defaultAMLLDbServer = "https://raw.githubusercontent.com/Steve-xmh/amll-ttml-db/refs/heads/main/ncm-lyrics/%s.ttml";
+export const defaultAMLLDbServer = "https://amlldb.bikonoo.com/ncm-lyrics/%s.ttml";
 
 // AMLL TTML DB Server 列表
 export const amllDbServers = [
@@ -150,7 +150,7 @@ export const amllDbServers = [
     value: "https://amll-ttml-db.stevexmh.net/ncm/%s",
   },
   {
-    label: "AMLL TTML DB 镜像站 (HelloZGY)",
+    label: "AMLL TTML DB 镜像站 (HelloZGY) (默认)",
     description: "社区提供的镜像源，感谢 HelloZGY",
     value: "https://amlldb.bikonoo.com/ncm-lyrics/%s.ttml",
   },
