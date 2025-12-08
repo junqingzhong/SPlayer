@@ -12,8 +12,6 @@
       :more-options="moreOptions"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
-      @search="performSearch"
-      @description-click="handleDescriptionClick"
     >
       <template #action-buttons="{ detailData }">
         <n-button
@@ -66,7 +64,6 @@ import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
 import { toSubRadio } from "@/utils/auth";
-import { openDescModal } from "@/utils/modal";
 import ListDetail from "@/components/List/ListDetail.vue";
 
 const router = useRouter();
@@ -78,6 +75,7 @@ const {
   listData,
   loading,
   getSongListHeight,
+  resetData,
   setDetailData,
   setListData,
   appendListData,
@@ -232,11 +230,6 @@ const playAllSongs = useDebounceFn(() => {
   playAllSongsAction(listData.value, radioId.value);
 }, 300);
 
-// 处理描述点击
-const handleDescriptionClick = (description: string) => {
-  openDescModal(description, "节目简介");
-};
-
 // 加载提示
 const loadingMsgShow = (show: boolean = true) => {
   if (show) {
@@ -267,6 +260,8 @@ onActivated(() => {
   } else {
     // 是否不相同
     const isSame = oldRadioId.value === radioId.value;
+    // 播客不同，先立即清空数据，避免显示上一个播客
+    if (!isSame) resetData(true);
     oldRadioId.value = radioId.value;
     // 刷新播客
     if (!isSame) getRadioDetail(radioId.value);

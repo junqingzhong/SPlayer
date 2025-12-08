@@ -35,17 +35,17 @@
         </div>
         <div class="data">
           <n-h2 class="name text-hidden">
-            <n-ellipsis v-if="config.titleType === 'ellipsis'" :line-clamp="1" :tooltip="{ placement: 'bottom' }">
+            <n-ellipsis
+              v-if="config.titleType === 'ellipsis'"
+              :line-clamp="1"
+              :tooltip="{ placement: 'bottom' }"
+            >
               {{ titleText }}
             </n-ellipsis>
             <template v-else>
               {{ titleText }}
               <!-- 隐私歌单 -->
-              <n-popover
-                v-if="detailData?.privacy === 10"
-                :show-arrow="false"
-                placement="right"
-              >
+              <n-popover v-if="detailData?.privacy === 10" :show-arrow="false" placement="right">
                 <template #trigger>
                   <SvgIcon :depth="3" name="EyeLock" size="22" />
                 </template>
@@ -72,11 +72,7 @@
                   class="artists text-hidden"
                   @click="handleArtistClick(detailData.artists)"
                 >
-                  <n-text
-                    v-for="(ar, arIndex) in detailData.artists"
-                    :key="arIndex"
-                    class="ar"
-                  >
+                  <n-text v-for="(ar, arIndex) in detailData.artists" :key="arIndex" class="ar">
                     {{ ar.name || "未知艺术家" }}
                   </n-text>
                 </div>
@@ -144,7 +140,12 @@
               <!-- 自定义按钮插槽 -->
               <slot name="action-buttons" :detail-data="detailData" />
               <!-- 更多操作 -->
-              <n-dropdown v-if="moreOptions?.length" :options="moreOptions" trigger="click" placement="bottom-start">
+              <n-dropdown
+                v-if="moreOptions?.length"
+                :options="moreOptions"
+                trigger="click"
+                placement="bottom-start"
+              >
                 <n-button :focusable="false" class="more" circle strong secondary>
                   <template #icon>
                     <SvgIcon name="List" />
@@ -188,6 +189,7 @@ import type { DropdownOption } from "naive-ui";
 import { coverLoaded, formatNumber } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
 import { formatTimestamp } from "@/utils/time";
+import { openDescModal, openJumpArtist } from "@/utils/modal";
 
 interface ListDetailConfig {
   // 标题类型
@@ -225,11 +227,9 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   "update:searchValue": [value: string];
   "play-all": [];
-  "search": [value: string];
-  "artist-click": [artists: any];
-  "tag-click": [tag: string];
-  "description-click": [description: string, title?: string];
 }>();
+
+const router = useRouter();
 
 // 标题文本
 const titleText = computed(() => {
@@ -245,24 +245,27 @@ const handlePlayAll = () => {
 // 处理搜索
 const handleSearch = (val: string) => {
   emit("update:searchValue", val);
-  emit("search", val);
 };
 
 // 处理艺术家点击
 const handleArtistClick = (artists: any) => {
-  emit("artist-click", artists);
+  openJumpArtist(artists);
 };
 
 // 处理标签点击
 const handleTagClick = (tag: string) => {
-  emit("tag-click", tag);
+  router.push({
+    name: "discover-playlists",
+    query: { cat: tag },
+  });
 };
 
 // 处理描述点击
 const handleDescriptionClick = () => {
   if (props.detailData?.description) {
-    const title = props.titleText || (props.config.titleType === "ellipsis" ? "专辑简介" : "节目简介");
-    emit("description-click", props.detailData.description, title);
+    const title =
+      props.titleText || (props.config.titleType === "ellipsis" ? "专辑简介" : "节目简介");
+    openDescModal(props.detailData.description, title);
   }
 };
 </script>

@@ -12,9 +12,6 @@
       :more-options="moreOptions"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
-      @search="performSearch"
-      @tag-click="handleTagClick"
-      @description-click="openDescModal"
     >
       <template #action-buttons="{ detailData }">
         <n-button
@@ -83,7 +80,7 @@ import { formatCoverList, formatSongsList } from "@/utils/format";
 import { renderIcon, copyData } from "@/utils/helper";
 import { isLogin, toLikePlaylist, updateUserLikePlaylist } from "@/utils/auth";
 import { useDataStore } from "@/stores";
-import { openBatchList, openDescModal, openUpdatePlaylist } from "@/utils/modal";
+import { openBatchList, openUpdatePlaylist } from "@/utils/modal";
 import { useListDetail } from "@/composables/List/useListDetail";
 import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
@@ -341,14 +338,6 @@ const playAllSongs = useDebounceFn(() => {
   playAllSongsAction(listData.value, playlistId.value);
 }, 300);
 
-// 处理标签点击
-const handleTagClick = (tag: string) => {
-  router.push({
-    name: "discover-playlists",
-    query: { cat: tag },
-  });
-};
-
 // 加载提示
 const loadingMsgShow = (show: boolean = true, count?: number) => {
   if (show) {
@@ -432,6 +421,8 @@ onActivated(() => {
   } else {
     // 是否不相同
     const isSame = oldPlaylistId.value === playlistId.value;
+    // 歌单不同
+    if (!isSame) resetPlaylistData(true);
     oldPlaylistId.value = playlistId.value;
     // 刷新歌单
     getPlaylistDetail(playlistId.value, { getList: true, refresh: isSame });

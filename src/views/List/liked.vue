@@ -13,9 +13,6 @@
       :more-options="moreOptions"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
-      @search="performSearch"
-      @tag-click="handleTagClick"
-      @description-click="openDescModal"
     />
     <Transition name="fade" mode="out-in">
       <SongList
@@ -44,20 +41,20 @@
 
 <script setup lang="ts">
 import type { DropdownOption, MessageReactive } from "naive-ui";
+import { SongType } from "@/types/main";
 import { songDetail } from "@/api/song";
 import { playlistDetail, playlistAllSongs } from "@/api/playlist";
 import { formatCoverList, formatSongsList } from "@/utils/format";
 import { renderIcon, copyData } from "@/utils/helper";
 import { isObject, uniqBy } from "lodash-es";
 import { useDataStore } from "@/stores";
-import { openBatchList, openDescModal, openUpdatePlaylist } from "@/utils/modal";
+import { openBatchList, openUpdatePlaylist } from "@/utils/modal";
 import { isLogin, updateUserLikePlaylist } from "@/utils/auth";
 import { useListDetail } from "@/composables/List/useListDetail";
 import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
 import ListDetail from "@/components/List/ListDetail.vue";
-import { SongType } from "@/types/main";
 
 const router = useRouter();
 const dataStore = useDataStore();
@@ -295,14 +292,6 @@ const playAllSongs = useDebounceFn(() => {
   if (!detailData.value || !listData.value?.length) return;
   playAllSongsAction(listData.value, playlistId.value);
 }, 300);
-
-// 处理标签点击
-const handleTagClick = (tag: string) => {
-  router.push({
-    name: "discover-playlists",
-    query: { cat: tag },
-  });
-};
 
 // 加载提示
 const loadingMsgShow = (show: boolean = true) => {

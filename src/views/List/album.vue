@@ -12,9 +12,6 @@
       :more-options="moreOptions"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
-      @search="performSearch"
-      @artist-click="openJumpArtist"
-      @description-click="openDescModal"
     >
       <template #action-buttons="{ detailData }">
         <n-button
@@ -62,7 +59,6 @@ import { albumDetail } from "@/api/album";
 import { formatCoverList, formatSongsList } from "@/utils/format";
 import { renderIcon, copyData } from "@/utils/helper";
 import { useDataStore } from "@/stores";
-import { openDescModal, openJumpArtist } from "@/utils/modal";
 import { toLikeAlbum } from "@/utils/auth";
 import { useListDetail } from "@/composables/List/useListDetail";
 import { useListSearch } from "@/composables/List/useListSearch";
@@ -187,7 +183,11 @@ onActivated(() => {
   if (!isActivated.value) {
     isActivated.value = true;
   } else {
-    getAlbumDetail(albumId.value, detailData.value?.id === albumId.value);
+    // 是否相同专辑
+    const isSame = detailData.value?.id === albumId.value;
+    // 专辑不同
+    if (!isSame) resetData(true);
+    getAlbumDetail(albumId.value, isSame);
   }
 });
 

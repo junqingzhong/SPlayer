@@ -281,9 +281,11 @@ audio {
       padding 0.3s,
       opacity 0.3s;
   }
-  :deep(.list-detail.small) ~ .song-list,
-  :deep(.list-detail.small) ~ .loading,
-  :deep(.list-detail.small) ~ .n-empty {
-    padding-top: 120px;
+  .list-detail.small {
+    & ~ .song-list,
+    & ~ .loading,
+    & ~ .n-empty {
+      padding-top: 120px;
+    }
   }
 }
