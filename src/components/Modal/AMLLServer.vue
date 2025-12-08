@@ -8,6 +8,8 @@
 
     <n-input
       v-model:value="serverUrl"
+      :status="inputStatus"
+      :allow-input="noSideSpace"
       placeholder="请输入 AMLL TTML DB 地址"
     />
 
@@ -37,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import { isValidURL } from "@/utils/validate";
 import { amllDbServers } from "@/utils/meta";
 import { useSettingStore } from "@/stores";
@@ -46,19 +48,30 @@ const props = defineProps<{ onClose: () => void }>();
 
 const settingStore = useSettingStore();
 const serverUrl = ref(settingStore.amllDbServer);
+const inputStatus: Ref<"success" | "error"> = ref("success")
 
+const noSideSpace = (value: string) => value.trim() === value;
+
+const isValidServer = (url: string) => isValidURL(url) && url.includes("%s");
+
+// 点击确认
 const handleConfirm = async () => {
-  const urlValue = serverUrl.value.trim();
+  const url = serverUrl.value;
   // 验证 URL 格式和 %s
-  if (isValidURL(urlValue) && urlValue.includes("%s")) {
-    await window.api.store.set("amllDbServer", urlValue);
-    settingStore.amllDbServer = urlValue;
+  if (isValidServer(url)) {
+    await window.api.store.set("amllDbServer", url);
+    settingStore.amllDbServer = url;
     window.$message.success("AMLL TTML DB 地址已更新");
     props.onClose();
   } else {
     window.$message.error("请输入正确的网址格式，需包含 %s");
   }
 };
+
+// 输入变动时向输入框反馈
+watch(serverUrl, (url: string) => {
+  inputStatus.value = isValidServer(url) ? "success" : "error";
+})
 </script>
 
 <style scoped lang="scss">
