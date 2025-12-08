@@ -12,6 +12,7 @@
       v-model:value="serverUrl"
       :status="inputStatus"
       :allow-input="noSideSpace"
+      ref="inputElement"
       placeholder="请输入 AMLL TTML DB 地址"
     />
 
@@ -21,7 +22,7 @@
           <n-card
             v-for="server in amllDbServers"
             :key="server.value"
-            @click="serverUrl = server.value"
+            @click="selectServer(server.value)"
           >
             <n-flex vertical size="small">
               <n-text>{{ server.label }}</n-text>
@@ -50,7 +51,7 @@ const props = defineProps<{ onClose: () => void }>();
 
 const settingStore = useSettingStore();
 const serverUrl = ref(settingStore.amllDbServer);
-const inputStatus: Ref<"success" | "error"> = ref("success")
+const inputStatus: Ref<"success" | "error"> = ref("success");
 
 const noSideSpace = (value: string) => value.trim() === value;
 
@@ -58,7 +59,7 @@ const isValidServer = (url: string) => isValidURL(url) && url.includes("%s");
 
 const renderHighlight = (text: string): string => {
   return text.replace("%s", "<span class='replace-part'>%s</span>")
-}
+};
 
 // 点击确认
 const handleConfirm = async () => {
@@ -78,6 +79,28 @@ const handleConfirm = async () => {
 watch(serverUrl, (url: string) => {
   inputStatus.value = isValidServer(url) ? "success" : "error";
 })
+
+const inputElement = ref<HTMLElement | null>(null);
+let flashInputAnimate: Animation | null = null;
+
+const selectServer = (url: string) => {
+  serverUrl.value = url;
+  triggerFlashInput()
+};
+
+const triggerFlashInput = () => {
+  flashInputAnimate?.cancel();
+  if (!inputElement.value) return;
+  const element: HTMLElement = inputElement.value.$el
+
+  flashInputAnimate = element.animate([
+    { backgroundColor: "rgba(var(--primary), 0.5)" },
+    {},
+  ], {
+    duration: 500,
+    easing: 'ease-out',
+  });
+};
 </script>
 
 <style scoped lang="scss">
