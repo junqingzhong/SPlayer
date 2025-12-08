@@ -133,3 +133,6 @@ export const renderToolbar = ({ nodes }: ImageRenderToolbarProps) => {
     nodes.close,
   ];
 };
+
+// 默认 AMLL TTML DB Server
+export const defaultAMLLDbServer = "https://raw.githubusercontent.com/Steve-xmh/amll-ttml-db/refs/heads/main/ncm-lyrics/%s.ttml";

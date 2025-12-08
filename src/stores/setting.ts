@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { keywords, regexes } from "@/assets/data/exclude";
 import { SongUnlockServer } from "@/utils/songManager";
 import type { SongLevelType } from "@/types/main";
+import { defaultAMLLDbServer } from "@/utils/meta";
 
 export interface SettingState {
   /** 明暗模式 */
@@ -294,7 +295,7 @@ export const useSettingStore = defineStore("setting", {
     useAMLyrics: false,
     useAMSpring: false,
     enableTTMLLyric: true,
-    amllDbServer: "https://amll-ttml-db.stevexmh.net/ncm/%s",
+    amllDbServer: defaultAMLLDbServer,
     showYrc: true,
     showYrcAnimation: true,
     showYrcLongEffect: true,
