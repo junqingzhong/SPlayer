@@ -55,10 +55,8 @@ const handleConfirm = async () => {
     settingStore.amllDbServer = urlValue;
     window.$message.success("AMLL TTML DB 地址已更新");
     props.onClose();
-    return true;
   } else {
     window.$message.error("请输入正确的网址格式，需包含 %s");
-    return false;
   }
 };
 </script>

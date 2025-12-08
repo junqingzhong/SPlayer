@@ -134,9 +134,6 @@ export const renderToolbar = ({ nodes }: ImageRenderToolbarProps) => {
   ];
 };
 
-// 默认 AMLL TTML DB Server
-export const defaultAMLLDbServer = "https://amlldb.bikonoo.com/ncm-lyrics/%s.ttml";
-
 // AMLL TTML DB Server 列表
 export const amllDbServers = [
   {
@@ -165,3 +162,6 @@ export const amllDbServers = [
     value: "https://cdn.jsdmirror.cn/gh/Steve-xmh/amll-ttml-db@main/ncm-lyrics/%s.ttml",
   },
 ] as const;
+
+// 默认 AMLL TTML DB Server (HelloZGY)
+export const defaultAMLLDbServer = amllDbServers[2].value;
