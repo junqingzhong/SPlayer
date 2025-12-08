@@ -15,18 +15,18 @@
       placeholder="请输入 AMLL TTML DB 地址"
     />
 
-    <n-collapse class="mirrors-collapse">
-      <n-collapse-item title="推荐服务器" name="mirrors">
+    <n-collapse class="servers-collapse">
+      <n-collapse-item title="推荐服务器" name="servers">
         <n-flex vertical size="medium">
           <n-card
-            v-for="mirror in amllDbServers"
-            :key="mirror.value"
-            @click="serverUrl = mirror.value"
+            v-for="server in amllDbServers"
+            :key="server.value"
+            @click="serverUrl = server.value"
           >
             <n-flex vertical size="small">
-              <n-text>{{ mirror.label }}</n-text>
-              <n-text depth="3">{{ mirror.description }}</n-text>
-              <n-text depth="3" class="mirror-url" v-html="renderHighlight(mirror.value)" />
+              <n-text>{{ server.label }}</n-text>
+              <n-text depth="3">{{ server.description }}</n-text>
+              <n-text depth="3" class="server-url" v-html="renderHighlight(server.value)" />
             </n-flex>
           </n-card>
         </n-flex>
@@ -81,7 +81,7 @@ watch(serverUrl, (url: string) => {
 </script>
 
 <style scoped lang="scss">
-.mirrors-collapse {
+.servers-collapse {
   margin-top: 10px;
 
   .n-card {
@@ -93,7 +93,7 @@ watch(serverUrl, (url: string) => {
     }
   }
 
-  .mirror-url {
+  .server-url {
     font-size: 11px;
     color: var(--n-text-color-3);
     margin-top: 4px;
