@@ -330,14 +330,13 @@ const setUserLikeDataLoop = async <T>(
     } catch (error) {
       console.error(`Error fetching ${key} data at offset ${offset}:`, error);
       break;
-    }
-  }
-  // 保存数据
-  if (key === "artists") {
-    dataStore.setUserLikeData(key, allData as ArtistType[]);
-  } else {
-    dataStore.setUserLikeData(key, allData as CoverType[]);
-  }
+if (key === "artists") {
+  dataStore.setUserLikeData(key, allData as ArtistType[]);
+} else if (key === "playlists" || key === "albums" || key === "mvs" || key === "djs") {
+  dataStore.setUserLikeData(key, allData as CoverType[]);
+} else {
+  console.error(`Unsupported key in setUserLikeDataLoop: ${key}`);
+}
 
   console.log(`✅ Fetched ${allData.length} ${key} for user ${userId}`);
   return allData;
