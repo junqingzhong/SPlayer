@@ -180,18 +180,12 @@ export const updateUserLikeAlbums = async () => {
 
 // 更新用户喜欢电台
 export const updateUserLikeDjs = async () => {
-  const dataStore = useDataStore();
-  if (!isLogin() || !dataStore.userData.userId) return;
-  const result = await userDj();
-  dataStore.setUserLikeData("djs", formatCoverList(result.djRadios));
+  await setUserLikeDataLoop(userDj, formatCoverList, "djs");
 };
 
 // 更新用户喜欢MV
 export const updateUserLikeMvs = async () => {
-  const dataStore = useDataStore();
-  if (!isLogin() || !dataStore.userData.userId) return;
-  const result = await userMv();
-  dataStore.setUserLikeData("mvs", formatCoverList(result.data));
+  await setUserLikeDataLoop(userMv, formatCoverList, "mvs");
 };
 
 // 喜欢歌曲
@@ -294,40 +288,57 @@ export const toSubRadio = toLikeSomething("订阅", "播客", () => radioSub, up
 
 // 循环获取用户喜欢数据
 const setUserLikeDataLoop = async <T>(
-  apiFunction: (limit: number, offset: number) => Promise<{ data: any[]; count: number }>,
+  apiFunction: (limit: number, offset: number) => Promise<any>,
   formatFunction: (data: any[]) => T[],
   key: keyof UserLikeDataType,
 ) => {
   const dataStore = useDataStore();
   const userId = dataStore.userData.userId;
   if (!isLogin() || !userId) return;
-  // 必要数据
-  let offset: number = 0;
+
+  let offset = 0;
   const allData: T[] = [];
-  const limit: number = 100;
-  // 是否可循环
-  let canLoop: boolean = true;
-  // 循环获取
-  while (canLoop) {
-    const { data, count } = await apiFunction(limit, offset);
-    // 数据处理
-    const formattedData = formatFunction(data);
-    // 若为空
-    if (formattedData.length === 0) break;
-    // 合并数据
-    allData.push(...formattedData);
-    // 更新偏移量
-    offset += limit;
-    canLoop = offset < count && formattedData.length > 0;
-  }
-  // 更新数据
-  if (key === "artists") {
-    dataStore.setUserLikeData(key, allData as ArtistType[]);
-  } else if (key === "albums" || key === "mvs" || key === "djs") {
-    dataStore.setUserLikeData(key, allData as CoverType[]);
-  } else {
-    console.error(`Unsupported key: ${key}`);
-  }
+  const limit = 50; // 限制每页50条
+
+  while (true) {
+    try {
+      const result = await apiFunction(limit, offset);
+      // 根据不同 API 提取数据字段
+      let data: any[] = [];
+      if (key === "djs") {
+        data = result.djRadios || [];
+      } else if (key === "playlists") {
+        data = result.playlist || [];
+      } else {
+        data = result.data || [];
+      }
+
+      if (!Array.isArray(data) || data.length === 0) {
+        break; // 没有更多数据
+      }
+
+      // 格式化并合并数据
+      const formattedData = formatFunction(data);
+      allData.push(...formattedData);
+
+      // 数据少于分页大小，说明已是最后一页
+      if (data.length < limit) {
+        break;
+      }
+
+      offset += limit;
+    } catch (error) {
+      console.error(`Error fetching ${key} data at offset ${offset}:`, error);
+      break;
+if (key === "artists") {
+  dataStore.setUserLikeData(key, allData as ArtistType[]);
+} else if (key === "playlists" || key === "albums" || key === "mvs" || key === "djs") {
+  dataStore.setUserLikeData(key, allData as CoverType[]);
+} else {
+  console.error(`Unsupported key in setUserLikeDataLoop: ${key}`);
+}
+
+  console.log(`✅ Fetched ${allData.length} ${key} for user ${userId}`);
   return allData;
 };
 
