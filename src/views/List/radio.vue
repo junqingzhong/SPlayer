@@ -10,8 +10,10 @@
       :config="listConfig"
       :play-button-text="playButtonText"
       :more-options="moreOptions"
+      :show-comment-tab="true"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
+      @tab-change="handleTabChange"
     >
       <template #action-buttons="{ detailData }">
         <n-button
@@ -29,26 +31,33 @@
       </template>
     </ListDetail>
     <Transition name="fade" mode="out-in">
-      <SongList
-        v-if="!searchValue || searchData?.length"
-        :data="displayData"
-        :loading="loading"
-        :height="songListHeight"
-        :radioId="radioId"
-        :doubleClickAction="searchData?.length ? 'add' : 'all'"
-        type="radio"
-        @scroll="handleListScroll"
-      />
-      <n-empty
-        v-else
-        :description="`搜不到关于 ${searchValue} 的任何歌曲呀`"
-        style="margin-top: 60px"
-        size="large"
-      >
-        <template #icon>
-          <SvgIcon name="SearchOff" />
-        </template>
-      </n-empty>
+      <!-- 歌曲列表 -->
+      <template v-if="currentTab === 'songs'">
+        <SongList
+          v-if="!searchValue || searchData?.length"
+          :data="displayData"
+          :loading="loading"
+          :height="songListHeight"
+          :radioId="radioId"
+          :doubleClickAction="searchData?.length ? 'add' : 'all'"
+          type="radio"
+          @scroll="handleListScroll"
+        />
+        <n-empty
+          v-else
+          :description="`搜不到关于 ${searchValue} 的任何歌曲呀`"
+          style="margin-top: 60px"
+          size="large"
+        >
+          <template #icon>
+            <SvgIcon name="SearchOff" />
+          </template>
+        </n-empty>
+      </template>
+      <!-- 评论 -->
+      <template v-else>
+        <ListComment :id="radioId" :type="7" :height="songListHeight" />
+      </template>
     </Transition>
   </div>
 </template>
@@ -64,12 +73,11 @@ import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
 import { toSubRadio } from "@/utils/auth";
-import ListDetail from "@/components/List/ListDetail.vue";
+import ListComment from "@/components/List/ListComment.vue";
 
 const router = useRouter();
 const dataStore = useDataStore();
 
-// 使用 composables
 const {
   detailData,
   listData,
@@ -98,6 +106,9 @@ const loadingMsg = ref<MessageReactive | null>(null);
 
 // 列表高度
 const songListHeight = computed(() => getSongListHeight(listScrolling.value));
+
+// 当前 tab
+const currentTab = ref<"songs" | "comments">("songs");
 
 // 是否处于收藏播客
 const isLikeRadio = computed(() => {
@@ -222,6 +233,11 @@ const getRadioAllProgram = async (id: number, count: number) => {
 const handleSearchUpdate = (val: string) => {
   searchValue.value = val;
   performSearch(val);
+};
+
+// 处理 tab 切换
+const handleTabChange = (value: "songs" | "comments") => {
+  currentTab.value = value;
 };
 
 // 播放全部歌曲

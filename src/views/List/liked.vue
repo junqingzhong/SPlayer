@@ -54,7 +54,6 @@ import { useListDetail } from "@/composables/List/useListDetail";
 import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
-import ListDetail from "@/components/List/ListDetail.vue";
 
 const router = useRouter();
 const dataStore = useDataStore();
@@ -62,7 +61,6 @@ const dataStore = useDataStore();
 // 是否激活
 const isActivated = ref<boolean>(false);
 
-// 使用 composables
 const { detailData, listData, loading, getSongListHeight, setDetailData, setListData, setLoading } =
   useListDetail();
 const { searchValue, searchData, displayData, clearSearch, performSearch } =

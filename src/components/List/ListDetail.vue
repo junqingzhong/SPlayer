@@ -169,6 +169,17 @@
                   <SvgIcon name="Search" />
                 </template>
               </n-input>
+              <!-- 查看评论 -->
+              <n-tabs
+                v-if="showCommentTab"
+                v-model:value="currentTab"
+                class="tabs"
+                type="segment"
+                @update:value="handleTabChange"
+              >
+                <n-tab name="songs"> 歌曲 </n-tab>
+                <n-tab name="comments"> 评论 </n-tab>
+              </n-tabs>
             </n-flex>
           </n-flex>
         </div>
@@ -211,6 +222,7 @@ interface Props {
   listScrolling: boolean;
   searchValue: string;
   showSearch?: boolean;
+  showCommentTab?: boolean;
   config: ListDetailConfig;
   titleText?: string;
   playButtonText?: string;
@@ -219,6 +231,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   showSearch: true,
+  showCommentTab: false,
   titleText: "",
   playButtonText: "播放",
   moreOptions: () => [],
@@ -227,9 +240,13 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   "update:searchValue": [value: string];
   "play-all": [];
+  "tab-change": [value: "songs" | "comments"];
 }>();
 
 const router = useRouter();
+
+// 当前 tab
+const currentTab = ref<"songs" | "comments">("songs");
 
 // 标题文本
 const titleText = computed(() => {
@@ -244,6 +261,7 @@ const handlePlayAll = () => {
 
 // 处理搜索
 const handleSearch = (val: string) => {
+  if ((!val || !val.trim()) && !props.searchValue) return;
   emit("update:searchValue", val);
 };
 
@@ -267,6 +285,12 @@ const handleDescriptionClick = () => {
       props.titleText || (props.config.titleType === "ellipsis" ? "专辑简介" : "节目简介");
     openDescModal(props.detailData.description, title);
   }
+};
+
+// 处理 tab 切换
+const handleTabChange = (value: "songs" | "comments") => {
+  currentTab.value = value;
+  emit("tab-change", value);
 };
 </script>
 
@@ -456,6 +480,13 @@ const handleDescriptionClick = () => {
             width: 200px;
           }
         }
+        .tabs {
+          width: 200px;
+          --n-tab-border-radius: 25px !important;
+          :deep(.n-tabs-rail) {
+            outline: 1px solid var(--n-tab-color-segment);
+          }
+        }
       }
     }
   }
@@ -475,11 +506,14 @@ const handleDescriptionClick = () => {
         }
         .menu {
           :deep(.n-button),
-          .search {
+          .search,
+          .tabs {
             height: 32px;
             --n-font-size: 13px;
             --n-padding: 0 14px;
             --n-icon-size: 16px;
+            --n-tab-font-size: 13px;
+            --n-tab-padding: 2px 0;
           }
         }
       }

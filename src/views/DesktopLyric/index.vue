@@ -1,18 +1,15 @@
 <template>
   <n-config-provider :theme="null">
-    <div
-      ref="desktopLyricRef"
-      :class="['desktop-lyric', { locked: lyricConfig.isLock, hovered: isHovered }]"
-    >
+    <div :class="['desktop-lyric', { locked: lyricConfig.isLock, hovered: isHovered }]">
       <div class="header" align="center" justify="space-between">
         <n-flex :wrap="false" align="center" justify="flex-start" size="small" @pointerdown.stop>
-          <div class="menu-btn" title="返回应用" @click.stop="sendToMain('win-show')">
+          <div class="menu-btn" @click.stop="sendToMain('win-show')">
             <SvgIcon name="Music" />
           </div>
           <span class="song-name">{{ lyricData.playName }} - {{ lyricData.artistName }}</span>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="center" size="small" @pointerdown.stop>
-          <div class="menu-btn" title="上一曲" @click.stop="sendToMainWin('playPrev')">
+          <div class="menu-btn" @click.stop="sendToMainWin('playPrev')">
             <SvgIcon name="SkipPrev" />
           </div>
           <div
@@ -22,24 +19,23 @@
           >
             <SvgIcon :name="lyricData.playStatus ? 'Pause' : 'Play'" />
           </div>
-          <div class="menu-btn" title="下一曲" @click.stop="sendToMainWin('playNext')">
+          <div class="menu-btn" @click.stop="sendToMainWin('playNext')">
             <SvgIcon name="SkipNext" />
           </div>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="flex-end" size="small" @pointerdown.stop>
-          <div class="menu-btn" title="设置" @click.stop="sendToMain('open-setting', 'lyrics')">
+          <div class="menu-btn" @click.stop="sendToMain('open-setting', 'lyrics')">
             <SvgIcon name="Settings" />
           </div>
           <div
             class="menu-btn lock-btn"
-            :title="lyricConfig.isLock ? '解锁' : '锁定'"
             @mouseenter.stop="tempToggleLyricLock(false)"
             @mouseleave.stop="tempToggleLyricLock(true)"
             @click.stop="toggleLyricLock"
           >
             <SvgIcon :name="lyricConfig.isLock ? 'LockOpen' : 'Lock'" />
           </div>
-          <div class="menu-btn" title="关闭" @click.stop="sendToMain('closeDesktopLyric')">
+          <div class="menu-btn" @click.stop="sendToMain('closeDesktopLyric')">
             <SvgIcon name="Close" />
           </div>
         </n-flex>
@@ -197,9 +193,6 @@ const lyricConfig = reactive<LyricConfig>({
   ...defaultDesktopLyricConfig,
 });
 
-// 桌面歌词元素
-const desktopLyricRef = ref<HTMLElement>();
-
 // hover 状态控制
 const isHovered = ref<boolean>(false);
 
@@ -218,6 +211,13 @@ const handleMouseMove = () => {
   // 设置 hover 状态（锁定和非锁定状态都响应）
   isHovered.value = true;
   startHoverTimer();
+};
+
+/**
+ * 处理鼠标移出窗口，重置 hover 状态
+ */
+const handleMouseLeave = () => {
+  isHovered.value = false;
 };
 
 /**
@@ -452,24 +452,16 @@ const dragState = reactive({
 
 /**
  * 桌面歌词拖动开始
- * @param event 鼠标事件
+ * @param event 指针事件
  */
-const onDocMouseDown = async (event: MouseEvent) => {
+const onDocPointerDown = async (event: PointerEvent) => {
   if (lyricConfig.isLock) return;
-  // 仅左键触发
+  // 仅主按钮触发（鼠标左键或触摸）
   if (event.button !== 0) return;
   const target = event?.target as HTMLElement | null;
   if (!target) return;
   // 过滤 header 中的按钮：不触发拖拽
   if (target.closest(".menu-btn")) return;
-  startDrag(event);
-};
-
-/**
- * 桌面歌词拖动开始
- * @param event 鼠标事件
- */
-const startDrag = async (event: MouseEvent) => {
   dragState.isDragging = true;
   const { x, y } = await window.electron.ipcRenderer.invoke("get-window-bounds");
   const { width, height } = await window.api.store.get("lyric");
@@ -488,27 +480,25 @@ const startDrag = async (event: MouseEvent) => {
     height: safeHeight,
     fixed: true,
   });
-  dragState.startX = event?.screenX ?? 0;
-  dragState.startY = event?.screenY ?? 0;
+  dragState.startX = event.screenX ?? 0;
+  dragState.startY = event.screenY ?? 0;
   dragState.startWinX = x;
   dragState.startWinY = y;
   dragState.winWidth = safeWidth;
   dragState.winHeight = safeHeight;
-  document.addEventListener("mousemove", onDocMouseMove);
-  document.addEventListener("mouseup", onDocMouseUp);
+  document.addEventListener("pointermove", onDocPointerMove);
+  document.addEventListener("pointerup", onDocPointerUp);
   event.preventDefault();
 };
 
 /**
  * 桌面歌词拖动移动
- * @param event 鼠标事件
+ * @param event 指针事件
  */
-const onDocMouseMove = useThrottleFn((event: MouseEvent) => {
+const onDocPointerMove = useThrottleFn((event: PointerEvent) => {
   if (!dragState.isDragging || lyricConfig.isLock) return;
-  const screenX = event?.screenX ?? 0;
-  const screenY = event?.screenY ?? 0;
-  let newWinX = Math.round(dragState.startWinX + (screenX - dragState.startX));
-  let newWinY = Math.round(dragState.startWinY + (screenY - dragState.startY));
+  let newWinX = Math.round(dragState.startWinX + (event.screenX - dragState.startX));
+  let newWinY = Math.round(dragState.startWinY + (event.screenY - dragState.startY));
   // 是否限制在屏幕边界（支持多屏）- 使用缓存的边界数据同步计算
   if (lyricConfig.limitBounds) {
     newWinX = Math.round(
@@ -529,14 +519,15 @@ const onDocMouseMove = useThrottleFn((event: MouseEvent) => {
 
 /**
  * 桌面歌词拖动结束
+ * @param event 指针事件
  */
-const onDocMouseUp = () => {
+const onDocPointerUp = () => {
   if (!dragState.isDragging) return;
   // 关闭拖拽状态
   dragState.isDragging = false;
   // 移除全局监听
-  document.removeEventListener("mousemove", onDocMouseMove);
-  document.removeEventListener("mouseup", onDocMouseUp);
+  document.removeEventListener("pointermove", onDocPointerMove);
+  document.removeEventListener("pointerup", onDocPointerUp);
   requestAnimationFrame(() => {
     // 恢复拖拽前宽高
     window.electron.ipcRenderer.send("update-lyric-size", dragState.winWidth, dragState.winHeight);
@@ -686,19 +677,22 @@ onMounted(() => {
   } else {
     pauseSeek();
   }
-  // 拖拽入口
-  document.addEventListener("mousedown", onDocMouseDown);
+  // 拖拽入口（支持鼠标和触摸）
+  document.addEventListener("pointerdown", onDocPointerDown);
   // 监听鼠标移动，控制 hover 状态
   document.addEventListener("mousemove", handleMouseMove);
+  // 监听鼠标移出窗口，重置 hover 状态
+  document.addEventListener("mouseleave", handleMouseLeave);
 });
 
 onBeforeUnmount(() => {
   // 关闭 RAF
   pauseSeek();
   // 解绑事件
-  document.removeEventListener("mousedown", onDocMouseDown);
+  document.removeEventListener("pointerdown", onDocPointerDown);
   document.removeEventListener("mousemove", handleMouseMove);
-  if (dragState.isDragging) onDocMouseUp();
+  document.removeEventListener("mouseleave", handleMouseLeave);
+  if (dragState.isDragging) onDocPointerUp();
 });
 </script>
 

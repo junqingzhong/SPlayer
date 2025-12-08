@@ -32,6 +32,7 @@ declare module 'vue' {
     HomePageSectionManager: typeof import('./src/components/Modal/HomePageSectionManager.vue')['default']
     JumpArtist: typeof import('./src/components/Modal/JumpArtist.vue')['default']
     KeyboardSetting: typeof import('./src/components/Setting/KeyboardSetting.vue')['default']
+    ListComment: typeof import('./src/components/List/ListComment.vue')['default']
     ListDetail: typeof import('./src/components/List/ListDetail.vue')['default']
     LocalSetting: typeof import('./src/components/Setting/LocalSetting.vue')['default']
     Login: typeof import('./src/components/Modal/Login/Login.vue')['default']
