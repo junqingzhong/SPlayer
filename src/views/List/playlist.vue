@@ -15,7 +15,7 @@
       @play-all="playAllSongs"
       @tab-change="handleTabChange"
     >
-      <template #action-buttons="{ detailData }">
+      <template #action-buttons>
         <n-button
           v-if="isUserPlaylist"
           :focusable="false"

@@ -250,6 +250,7 @@ onMounted(() => {
 .title {
   margin-top: 28px;
   padding: 0 4px;
+  width: max-content;
   .n-h {
     margin: 0;
     display: flex;
