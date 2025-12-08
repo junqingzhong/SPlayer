@@ -110,7 +110,7 @@ const fmPlayNext = debounce(() => {
   player.nextOrPrev("next");
 }, 300);
 
-onMounted(player.initPersonalFM);
+onMounted(() => player.initPersonalFM());
 </script>
 
 <style lang="scss" scoped>

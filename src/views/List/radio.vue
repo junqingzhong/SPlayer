@@ -1,10 +1,10 @@
 <!-- 播客列表 -->
 <template>
-  <div class="radio">
+  <div class="radio-list">
     <ListDetail
       :detail-data="detailData"
       :list-data="listData"
-      :loading="loading"
+      :loading="showLoading"
       :list-scrolling="listScrolling"
       :search-value="searchValue"
       :config="listConfig"
@@ -122,9 +122,12 @@ const listConfig = {
   showCount: true,
 };
 
+// 是否显示加载状态
+const showLoading = computed(() => listData.value.length === 0 && loading.value);
+
 // 播放按钮文本
 const playButtonText = computed(() => {
-  if (loading.value) {
+  if (showLoading.value) {
     if (isSamePlaylist.value) {
       return "更新中...";
     }
@@ -274,7 +277,3 @@ onDeactivated(() => loadingMsgShow(false));
 onUnmounted(() => loadingMsgShow(false));
 onMounted(() => getRadioDetail(radioId.value));
 </script>
-
-<style lang="scss" scoped>
-// 样式已移至 src/style/main.scss
-</style>

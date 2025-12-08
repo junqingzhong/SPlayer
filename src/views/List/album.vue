@@ -1,14 +1,14 @@
 <!-- 专辑列表 -->
 <template>
-  <div class="album">
+  <div class="album-list">
     <ListDetail
       :detail-data="detailData"
       :list-data="listData"
-      :loading="loading"
+      :loading="showLoading"
       :list-scrolling="listScrolling"
       :search-value="searchValue"
       :config="listConfig"
-      :play-button-text="loading ? '加载中...' : '播放'"
+      :play-button-text="playButtonText"
       :more-options="moreOptions"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
@@ -77,9 +77,18 @@ const dataStore = useDataStore();
 const isActivated = ref<boolean>(false);
 
 // 使用 composables
-const { detailData, listData, loading, getSongListHeight, resetData, setDetailData, setListData, setLoading } =
-  useListDetail();
-const { searchValue, searchData, displayData, clearSearch, performSearch } = useListSearch(listData);
+const {
+  detailData,
+  listData,
+  loading,
+  getSongListHeight,
+  resetData,
+  setDetailData,
+  setListData,
+  setLoading,
+} = useListDetail();
+const { searchValue, searchData, displayData, clearSearch, performSearch } =
+  useListSearch(listData);
 const { listScrolling, handleListScroll, resetScroll } = useListScroll();
 const { playAllSongs: playAllSongsAction } = useListActions();
 
@@ -104,6 +113,17 @@ const listConfig = {
   showCount: true,
 };
 
+// 是否显示加载状态
+const showLoading = computed(() => listData.value.length === 0 && loading.value);
+
+// 播放按钮文本
+const playButtonText = computed(() => {
+  if (showLoading.value) {
+    return "加载中...";
+  }
+  return "播放";
+});
+
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
   {
@@ -111,10 +131,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     key: "copy",
     props: {
       onClick: () =>
-        copyData(
-          `https://music.163.com/#/album?id=${albumId.value}`,
-          "已复制分享链接到剪贴板",
-        ),
+        copyData(`https://music.163.com/#/album?id=${albumId.value}`, "已复制分享链接到剪贴板"),
     },
     icon: renderIcon("Share"),
   },
@@ -182,7 +199,3 @@ onMounted(() => {
   getAlbumDetail(albumId.value);
 });
 </script>
-
-<style lang="scss" scoped>
-// 样式已移至 src/style/main.scss
-</style>
