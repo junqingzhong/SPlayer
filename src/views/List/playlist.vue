@@ -436,8 +436,6 @@ onActivated(() => {
   } else {
     // 是否不相同
     const isSame = oldPlaylistId.value === playlistId.value;
-    // 歌单不同
-    if (!isSame) resetPlaylistData(true);
     oldPlaylistId.value = playlistId.value;
     // 刷新歌单
     getPlaylistDetail(playlistId.value, { getList: true, refresh: isSame });

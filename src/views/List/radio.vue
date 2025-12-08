@@ -83,7 +83,6 @@ const {
   listData,
   loading,
   getSongListHeight,
-  resetData,
   setDetailData,
   setListData,
   appendListData,
@@ -276,8 +275,6 @@ onActivated(() => {
   } else {
     // 是否不相同
     const isSame = oldRadioId.value === radioId.value;
-    // 播客不同，先立即清空数据，避免显示上一个播客
-    if (!isSame) resetData(true);
     oldRadioId.value = radioId.value;
     // 刷新播客
     if (!isSame) getRadioDetail(radioId.value);

@@ -201,8 +201,6 @@ onActivated(() => {
   } else {
     // 是否相同专辑
     const isSame = detailData.value?.id === albumId.value;
-    // 专辑不同
-    if (!isSame) resetData(true);
     getAlbumDetail(albumId.value, isSame);
   }
 });
