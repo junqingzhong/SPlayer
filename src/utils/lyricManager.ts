@@ -18,7 +18,7 @@ class LyricManager {
   private activeLyricReq = 0;
   /**
    * 重置当前歌曲的歌词数据
-   * 包括清空歌词数据、重置歌词索引、关闭 TTMLL 歌词等
+   * 包括清空歌词数据、重置歌词索引、关闭 TTML 歌词等
    */
   private resetSongLyric() {
     const musicStore = useMusicStore();
