@@ -16,6 +16,9 @@ const init = async () => {
   const settingStore = useSettingStore();
   const shortcutStore = useShortcutStore();
 
+  // 检查并执行设置迁移
+  settingStore.checkAndMigrate();
+
   printVersion();
 
   // 用户协议

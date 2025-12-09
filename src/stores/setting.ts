@@ -3,8 +3,14 @@ import { keywords, regexes } from "@/assets/data/exclude";
 import { SongUnlockServer } from "@/utils/songManager";
 import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
+import {
+  CURRENT_SETTING_SCHEMA_VERSION,
+  migrateSettingState,
+} from "./migrations/settingMigrations";
 
 export interface SettingState {
+  /** Schema 版本号（可选，用于数据迁移） */
+  schemaVersion?: number;
   /** 明暗模式 */
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
@@ -243,6 +249,7 @@ export interface SettingState {
 
 export const useSettingStore = defineStore("setting", {
   state: (): SettingState => ({
+    schemaVersion: CURRENT_SETTING_SCHEMA_VERSION,
     themeMode: "auto",
     themeColorType: "default",
     themeCustomColor: "#fe7971",
@@ -371,6 +378,27 @@ export const useSettingStore = defineStore("setting", {
     },
   },
   actions: {
+    /**
+     * 检查并执行数据迁移
+     * 应在应用启动时调用
+     */
+    checkAndMigrate() {
+      const currentVersion = this.schemaVersion ?? 0;
+      const targetVersion = CURRENT_SETTING_SCHEMA_VERSION;
+
+      if (currentVersion !== targetVersion) {
+        console.log(`[Setting Migration] 检测到版本差异: ${currentVersion} -> ${targetVersion}`);
+        // 保存当前完整状态
+        const currentState = { ...this.$state } as Partial<SettingState>;
+        // 执行迁移，保留所有原有字段，只更新需要的字段
+        const migratedState = migrateSettingState(currentState, currentVersion, targetVersion);
+        // 应用迁移后的状态
+        Object.assign(this, migratedState);
+        // 确保版本号已更新
+        this.schemaVersion = targetVersion;
+        console.log(`[Setting Migration] 迁移完成，已更新到版本 ${targetVersion}`);
+      }
+    },
     // 更换明暗模式
     setThemeMode(mode?: "auto" | "light" | "dark") {
       // 若未传入
