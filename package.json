@@ -59,6 +59,7 @@
     "electron-updater": "^6.6.2",
     "file-saver": "^2.0.5",
     "font-list": "^2.0.1",
+    "fuse.js": "^7.1.0",
     "get-port": "^7.1.0",
     "github-markdown-css": "^5.8.1",
     "js-cookie": "^3.0.5",
