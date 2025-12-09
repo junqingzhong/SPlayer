@@ -3,6 +3,7 @@ import { pathCase } from "change-case";
 import { serverLog } from "../../main/logger";
 import { useStore } from "../../main/store";
 import NeteaseCloudMusicApi from "@neteasecloudmusicapienhanced/api";
+import { defaultAMLLDbServer } from "../../main/utils/config";
 
 // 获取数据
 const getHandler = (name: string, neteaseApi: (params: any) => any) => {
@@ -70,7 +71,7 @@ export const initNcmAPI = async (fastify: FastifyInstance) => {
         return reply.status(400).send({ error: "id is required" });
       }
       const store = useStore();
-      const server = store.get("amllDbServer") ?? "https://amll-ttml-db.stevexmh.net/ncm/%s";
+      const server = store.get("amllDbServer") ?? defaultAMLLDbServer;
       const url = server.replace("%s", String(id));
       try {
         const response = await fetch(url);

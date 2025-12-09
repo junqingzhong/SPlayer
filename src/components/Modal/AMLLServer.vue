@@ -12,7 +12,6 @@
       v-model:value="serverUrl"
       :status="inputStatus"
       :allow-input="noSideSpace"
-      ref="inputElement"
       placeholder="请输入 AMLL TTML DB 地址"
     />
 
@@ -22,6 +21,8 @@
           <n-card
             v-for="server in amllDbServers"
             :key="server.value"
+            size="small"
+            hoverable
             @click="selectServer(server.value)"
           >
             <n-flex vertical size="small">
@@ -51,12 +52,17 @@ const props = defineProps<{ onClose: () => void }>();
 
 const settingStore = useSettingStore();
 const serverUrl = ref(settingStore.amllDbServer);
-const inputStatus = ref<"success" | "error">("success");
+const inputStatus = ref<"success" | "error" | "warning">("success");
 
 const noSideSpace = (value: string) => value.trim() === value;
 
 const isValidServer = (url: string) => isValidURL(url) && url.includes("%s");
 
+/**
+ * 渲染高亮
+ * @param text 文本
+ * @returns 高亮文本
+ */
 const renderHighlight = (text: string): string => {
   return text.replace("%s", "<span class='replace-part'>%s</span>");
 };
@@ -80,53 +86,36 @@ watch(serverUrl, (url: string) => {
   inputStatus.value = isValidServer(url) ? "success" : "error";
 });
 
-const inputElement = ref<HTMLElement | null>(null);
-let flashInputAnimate: Animation | null = null;
-
+/**
+ * 选择服务器
+ * @param url 服务器 URL
+ */
 const selectServer = (url: string) => {
   serverUrl.value = url;
-  triggerFlashInput();
-};
-
-const triggerFlashInput = () => {
-  flashInputAnimate?.cancel();
-  if (!inputElement.value) return;
-  const element: HTMLElement = inputElement.value.$el;
-
-  flashInputAnimate = element.animate([
-    { backgroundColor: "rgba(var(--primary), 0.5)" },
-    {},
-  ], {
-    duration: 500,
-    easing: 'ease-out',
-  });
+  inputStatus.value = "success";
+  useTimeoutFn(() => {
+    inputStatus.value = isValidServer(url) ? "success" : "error";
+  }, 300);
 };
 </script>
 
 <style scoped lang="scss">
 .servers-collapse {
-  margin-top: 10px;
-
   .n-card {
     cursor: pointer;
-    transition: border-color 0.3s;
-
     &:hover {
       border-color: rgba(var(--primary), 0.58);
     }
   }
-
   .server-url {
-    font-size: 11px;
-    color: var(--n-text-color-3);
+    font-size: 12px;
     margin-top: 4px;
     padding: 4px 8px;
     background: var(--n-code-color);
     border-radius: 4px;
-    font-family: monospace;
     word-break: break-all;
 
-    ::v-deep(.replace-part) {
+    :deep(.replace-part) {
       color: var(--n-color-target);
     }
   }
