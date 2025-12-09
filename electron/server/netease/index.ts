@@ -2,8 +2,8 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { pathCase } from "change-case";
 import { serverLog } from "../../main/logger";
 import { useStore } from "../../main/store";
-import NeteaseCloudMusicApi from "@neteasecloudmusicapienhanced/api";
 import { defaultAMLLDbServer } from "../../main/utils/config";
+import NeteaseCloudMusicApi from "@neteasecloudmusicapienhanced/api";
 
 // 获取数据
 const getHandler = (name: string, neteaseApi: (params: any) => any) => {

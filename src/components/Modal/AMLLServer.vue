@@ -15,7 +15,13 @@
       placeholder="请输入 AMLL TTML DB 地址"
     />
 
-    <n-collapse class="servers-collapse">
+    <n-text depth="3">
+      更多信息可前往
+      <n-a @click="openLink('https://github.com/Steve-xmh/amll-ttml-db')"> AMLL TTML DB </n-a>
+      仓库查看
+    </n-text>
+
+    <!-- <n-collapse class="servers-collapse">
       <n-collapse-item title="推荐服务器" name="servers">
         <n-flex vertical size="medium">
           <n-card
@@ -33,7 +39,7 @@
           </n-card>
         </n-flex>
       </n-collapse-item>
-    </n-collapse>
+    </n-collapse> -->
 
     <n-flex justify="end">
       <n-button @click="props.onClose()">取消</n-button>
@@ -45,8 +51,9 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import { isValidURL } from "@/utils/validate";
-import { amllDbServers } from "@/utils/meta";
+// import { amllDbServers } from "@/utils/meta";
 import { useSettingStore } from "@/stores";
+import { openLink } from "@/utils/helper";
 
 const props = defineProps<{ onClose: () => void }>();
 
@@ -57,15 +64,6 @@ const inputStatus = ref<"success" | "error" | "warning">("success");
 const noSideSpace = (value: string) => value.trim() === value;
 
 const isValidServer = (url: string) => isValidURL(url) && url.includes("%s");
-
-/**
- * 渲染高亮
- * @param text 文本
- * @returns 高亮文本
- */
-const renderHighlight = (text: string): string => {
-  return text.replace("%s", "<span class='replace-part'>%s</span>");
-};
 
 // 点击确认
 const handleConfirm = async () => {
@@ -85,18 +83,6 @@ const handleConfirm = async () => {
 watch(serverUrl, (url: string) => {
   inputStatus.value = isValidServer(url) ? "success" : "error";
 });
-
-/**
- * 选择服务器
- * @param url 服务器 URL
- */
-const selectServer = (url: string) => {
-  serverUrl.value = url;
-  inputStatus.value = "success";
-  useTimeoutFn(() => {
-    inputStatus.value = isValidServer(url) ? "success" : "error";
-  }, 300);
-};
 </script>
 
 <style scoped lang="scss">

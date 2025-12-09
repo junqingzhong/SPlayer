@@ -4,7 +4,7 @@ import { defaultAMLLDbServer } from "@/utils/meta";
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 1;
+export const CURRENT_SETTING_SCHEMA_VERSION = 2;
 
 /**
  * 迁移函数类型
@@ -19,12 +19,13 @@ export type MigrationFunction = (state: Partial<SettingState>) => Partial<Settin
  */
 export const settingMigrations: Record<number, MigrationFunction> = {
   /**
-   * 迁移到版本 1
+   * 迁移到版本 2
    */
-  1: () => {
+  2: () => {
     return {
-      schemaVersion: 1,
-      // amllDbServer 同步为新的默认值
+      schemaVersion: 2,
+      // ttml 同步
+      enableTTMLLyric: false,
       amllDbServer: defaultAMLLDbServer,
     };
   },
