@@ -87,7 +87,7 @@ class MainWindow {
       });
     }
     // 窗口关闭
-    this.win?.on("close", async (event) => {
+    this.win?.on("close", (event) => {
       if (this.isQuitting) {
         return;
       }
