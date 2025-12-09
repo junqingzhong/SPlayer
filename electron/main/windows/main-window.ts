@@ -1,4 +1,4 @@
-import { BrowserWindow, shell } from "electron";
+import { BrowserWindow, shell, app } from "electron";
 import { createWindow } from "./index";
 import { mainWinUrl } from "../utils/config";
 import { useStore } from "../store";
@@ -7,8 +7,13 @@ import { isLinux } from "../utils/config";
 class MainWindow {
   private win: BrowserWindow | null = null;
   private winURL: string;
+  private isQuitting: boolean = false;
   constructor() {
     this.winURL = mainWinUrl;
+
+    app.on("before-quit", () => {
+      this.isQuitting = true;
+    });
   }
   /**
    * 保存窗口大小和状态
@@ -83,6 +88,9 @@ class MainWindow {
     }
     // 窗口关闭
     this.win?.on("close", (event) => {
+      if (this.isQuitting) {
+        return;
+      }
       event.preventDefault();
       this.win?.hide();
     });
