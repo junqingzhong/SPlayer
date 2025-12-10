@@ -783,6 +783,7 @@ onBeforeUnmount(() => {
         text-overflow: ellipsis;
         white-space: nowrap;
         text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+        padding: 0 4px;
       }
       .name {
         line-height: normal;
@@ -807,7 +808,7 @@ onBeforeUnmount(() => {
     .lyric-line {
       width: 100%;
       line-height: normal;
-      padding: 4px 0;
+      padding: 4px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
