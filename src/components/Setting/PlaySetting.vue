@@ -208,6 +208,13 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">播放器元素自动隐藏</n-text>
+          <n-text class="tip" :depth="3">鼠标静止一段时间或者离开播放器时自动隐藏控制元素</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.autoHidePlayerMeta" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">展示播放状态信息</n-text>
           <n-text class="tip" :depth="3">展示当前歌曲及歌词的状态信息</n-text>
         </div>

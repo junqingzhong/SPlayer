@@ -134,20 +134,20 @@ const statusStore = useStatusStore();
       cursor: pointer;
       .n-icon {
         font-size: 24px;
-        color: rgb(var(--main-color));
+        color: rgb(var(--main-cover-color));
       }
       &:hover {
         transform: scale(1.1);
-        background-color: rgba(var(--main-color), 0.14);
+        background-color: rgba(var(--main-cover-color), 0.14);
       }
       &:active {
         transform: scale(1);
       }
     }
     :deep(.n-badge-sup) {
-      background-color: rgba(var(--main-color), 0.14);
+      background-color: rgba(var(--main-cover-color), 0.14);
       .n-base-slot-machine {
-        color: rgb(var(--main-color));
+        color: rgb(var(--main-cover-color));
       }
     }
   }
@@ -175,11 +175,11 @@ const statusStore = useStatusStore();
           transform 0.3s;
         cursor: pointer;
         .n-icon {
-          color: rgb(var(--main-color));
+          color: rgb(var(--main-cover-color));
         }
         &:hover {
           transform: scale(1.1);
-          background-color: rgba(var(--main-color), 0.14);
+          background-color: rgba(var(--main-cover-color), 0.14);
         }
         &:active {
           transform: scale(1);
@@ -188,21 +188,21 @@ const statusStore = useStatusStore();
       .play-pause {
         --n-width: 44px;
         --n-height: 44px;
-        --n-color: rgba(var(--main-color), 0.14);
-        --n-color-hover: rgba(var(--main-color), 0.2);
-        --n-color-focus: rgba(var(--main-color), 0.2);
-        --n-color-pressed: rgba(var(--main-color), 0.12);
+        --n-color: rgba(var(--main-cover-color), 0.14);
+        --n-color-hover: rgba(var(--main-cover-color), 0.2);
+        --n-color-focus: rgba(var(--main-cover-color), 0.2);
+        --n-color-pressed: rgba(var(--main-cover-color), 0.12);
         backdrop-filter: blur(10px);
         margin: 0 12px;
         transition:
           background-color 0.3s,
           transform 0.3s;
         .n-icon {
-          color: rgb(var(--main-color));
+          color: rgb(var(--main-cover-color));
           transition: opacity 0.1s ease-in-out;
         }
         :deep(.n-base-loading) {
-          color: rgb(var(--main-color));
+          color: rgb(var(--main-cover-color));
         }
         &:hover {
           transform: scale(1.1);
@@ -239,10 +239,10 @@ const statusStore = useStatusStore();
 }
 // slider
 .n-slider {
-  --n-rail-color: rgba(var(--main-color), 0.14);
-  --n-rail-color-hover: rgba(var(--main-color), 0.3);
-  --n-fill-color: rgb(var(--main-color));
-  --n-handle-color: rgb(var(--main-color));
-  --n-fill-color-hover: rgb(var(--main-color));
+  --n-rail-color: rgba(var(--main-cover-color), 0.14);
+  --n-rail-color-hover: rgba(var(--main-cover-color), 0.3);
+  --n-fill-color: rgb(var(--main-cover-color));
+  --n-handle-color: rgb(var(--main-cover-color));
+  --n-fill-color-hover: rgb(var(--main-cover-color));
 }
 </style>

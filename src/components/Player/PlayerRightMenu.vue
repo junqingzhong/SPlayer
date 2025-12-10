@@ -6,7 +6,11 @@
       </div>
     </n-badge>
     <!-- 其他控制 -->
-    <n-dropdown :options="controlsOptions" :show-arrow="false">
+    <n-dropdown
+      :options="controlsOptions"
+      :show-arrow="false"
+      :class="{ player: statusStore.showFullPlayer }"
+    >
       <div class="menu-icon">
         <SvgIcon name="Controls" />
       </div>
@@ -16,6 +20,7 @@
       v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode"
       :options="playModeOptions"
       :show-arrow="false"
+      :class="{ player: statusStore.showFullPlayer }"
       @select="(mode) => player.togglePlayMode(mode)"
     >
       <div class="menu-icon" @click.stop="player.togglePlayMode(false)">
@@ -23,7 +28,11 @@
       </div>
     </n-dropdown>
     <!-- 音量调节 -->
-    <n-popover :show-arrow="false" :style="{ padding: 0 }">
+    <n-popover
+      :show-arrow="false"
+      :style="{ padding: 0 }"
+      :class="{ player: statusStore.showFullPlayer }"
+    >
       <template #trigger>
         <div class="menu-icon" @click.stop="player.toggleMute" @wheel="player.setVolume">
           <SvgIcon :name="statusStore.playVolumeIcon" />

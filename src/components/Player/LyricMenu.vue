@@ -75,7 +75,7 @@ const resetOffset = () => {
   .divider {
     height: 2px;
     width: 40px;
-    background-color: rgba(var(--main-color), 0.12);
+    background-color: rgba(var(--main-cover-color), 0.12);
   }
   .time {
     width: 40px;
@@ -85,10 +85,10 @@ const resetOffset = () => {
     align-items: center;
     justify-content: center;
     font-size: 12px;
-    background-color: rgba(var(--main-color), 0.14);
+    background-color: rgba(var(--main-cover-color), 0.14);
     backdrop-filter: blur(10px);
     border-radius: 8px;
-    border: 1px solid rgba(var(--main-color), 0.12);
+    border: 1px solid rgba(var(--main-cover-color), 0.12);
     transition: background-color 0.3s;
     cursor: pointer;
     &::after {
@@ -96,7 +96,7 @@ const resetOffset = () => {
       margin-left: 2px;
     }
     &:hover {
-      background-color: rgba(var(--main-color), 0.28);
+      background-color: rgba(var(--main-cover-color), 0.28);
     }
   }
   .menu-icon {
@@ -111,11 +111,11 @@ const resetOffset = () => {
     cursor: pointer;
     .n-icon {
       font-size: 30px;
-      color: rgb(var(--main-color));
+      color: rgb(var(--main-cover-color));
     }
     &:hover {
       transform: scale(1.1);
-      background-color: rgba(var(--main-color), 0.14);
+      background-color: rgba(var(--main-cover-color), 0.14);
     }
     &:active {
       transform: scale(1);

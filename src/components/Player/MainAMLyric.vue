@@ -16,7 +16,7 @@
         :alignPosition="settingStore.lyricsScrollPosition === 'center' ? 0.5 : 0.2"
         :enableBlur="settingStore.lyricsBlur"
         :style="{
-          '--amll-lyric-view-color': mainColor,
+          '--amll-lyric-view-color': 'var(--main-cover-color)',
           '--amll-lyric-player-font-size': settingStore.lyricFontSize + 'px',
           '--ja-font-family':
             settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
@@ -55,12 +55,6 @@ const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
   const songId = musicStore.playSong?.id;
   const offsetTime = statusStore.getSongOffset(songId);
   playSeek.value = player.getSeek() + offsetTime;
-});
-
-// 歌词主色
-const mainColor = computed(() => {
-  if (!statusStore.mainColor) return "rgb(239, 239, 239)";
-  return `rgb(${statusStore.mainColor})`;
 });
 
 // 当前歌词
@@ -147,6 +141,7 @@ onBeforeUnmount(() => {
     top: 0;
     padding-left: 10px;
     padding-right: 80px;
+    --amll-lyric-view-color: rgb(239, 239, 239);
     // margin-left: -2rem;
   }
 

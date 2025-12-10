@@ -4,7 +4,6 @@
       <div
         v-if="statusStore.showFullPlayer"
         :style="{
-          '--main-color': statusStore.mainColor,
           cursor: statusStore.playerMetaShow || isShowComment ? 'auto' : 'none',
         }"
         :class="['full-player', { 'show-comment': isShowComment }]"
@@ -43,7 +42,7 @@
                 <!-- 封面 -->
                 <PlayerCover />
                 <!-- 数据 -->
-                <PlayerData :center="playerDataCenter" :theme="statusStore.mainColor" />
+                <PlayerData :center="playerDataCenter" />
               </div>
             </Transition>
             <!-- 歌词 -->
@@ -52,7 +51,6 @@
               <PlayerData
                 v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
                 :center="statusStore.pureLyricMode"
-                :theme="statusStore.mainColor"
                 :light="pureLyricMode"
               />
               <!-- 歌词 -->
@@ -89,6 +87,9 @@ import { isElectron } from "@/utils/env";
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+
+/** 封面主颜色 */
+const mainCoverColor = useCssVar("--main-cover-color", document.body);
 
 // 是否显示评论
 const isShowComment = computed<boolean>(
@@ -137,14 +138,18 @@ const {
   start: startShow,
   stop: stopShow,
 } = useTimeoutFn(() => {
-  statusStore.playerMetaShow = false;
+  if (settingStore.autoHidePlayerMeta) {
+    statusStore.playerMetaShow = false;
+  }
 }, 3000);
 
 // 鼠标移动
 const playerMove = useThrottleFn(
   () => {
     statusStore.playerMetaShow = true;
-    if (!isPending.value) startShow();
+    if (settingStore.autoHidePlayerMeta && !isPending.value) {
+      startShow();
+    }
   },
   300,
   false,
@@ -152,17 +157,30 @@ const playerMove = useThrottleFn(
 
 // 停用隐藏
 const stopHide = () => {
-  stopShow();
+  if (settingStore.autoHidePlayerMeta) {
+    stopShow();
+  }
   statusStore.playerMetaShow = true;
 };
 
 // 鼠标离开
 const playerLeave = () => {
-  statusStore.playerMetaShow = false;
-  stopShow();
+  if (settingStore.autoHidePlayerMeta) {
+    statusStore.playerMetaShow = false;
+    stopShow();
+  }
 };
 
+// 封面主色变化
+watch(
+  () => statusStore.mainColor,
+  (newVal) => {
+    mainCoverColor.value = newVal;
+  },
+);
+
 onMounted(() => {
+  mainCoverColor.value = statusStore.mainColor;
   // 阻止息屏
   if (isElectron && settingStore.preventSleep) {
     window.electron.ipcRenderer.send("prevent-sleep", true);
@@ -186,7 +204,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgb(var(--main-color));
+  color: rgb(var(--main-cover-color));
   background-color: #00000060;
   backdrop-filter: blur(80px);
   overflow: hidden;

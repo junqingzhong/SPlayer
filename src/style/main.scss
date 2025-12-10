@@ -80,6 +80,16 @@ audio {
 // dropdown
 .n-dropdown {
   --n-border-radius: 8px !important;
+  &.player {
+    --n-color: rgba(var(--main-cover-color), 0.14);
+    --n-prefix-color: rgb(var(--main-cover-color));
+    --n-option-text-color: rgb(var(--main-cover-color));
+    --n-option-text-color-hover: rgb(var(--main-cover-color));
+    --n-option-color-hover: rgba(var(--main-cover-color), 0.14);
+    --n-option-color-active: rgba(var(--main-cover-color), 0.14);
+    box-shadow: 0 0 0 -4px rgba(var(--main-cover-color), 0.24);
+    backdrop-filter: blur(10px);
+  }
 }
 
 // n-message
@@ -106,6 +116,19 @@ audio {
   overflow: hidden;
   &:not(.n-popover--raw) {
     color: var(--primary-hex);
+  }
+  &.player {
+    --n-color: rgba(var(--main-cover-color), 0.14);
+    .volume-change {
+      .slider-num {
+        color: rgb(var(--main-cover-color));
+      }
+    }
+    .n-slider{
+      --n-handle-color: rgb(var(--main-cover-color));     --n-rail-color: rgba(var(--main-cover-color), 0.2);
+      --n-rail-color-hover: rgba(var(--main-cover-color), 0.3);   --n-fill-color: rgb(var(--main-cover-color));
+      --n-fill-color-hover: rgb(var(--main-cover-color));
+    }
   }
 }
 

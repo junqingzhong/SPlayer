@@ -537,7 +537,7 @@ onBeforeUnmount(() => {
       width: 100%;
       height: 100%;
       border-radius: 8px;
-      background-color: rgba(var(--main-color), 0.14);
+      background-color: rgba(var(--main-cover-color), 0.14);
       opacity: 0;
       z-index: 0;
       transform: scale(1.05);

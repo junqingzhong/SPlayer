@@ -74,11 +74,11 @@ const { isFullscreen, toggle: toggleFullscreen } = useFullscreen();
       cursor: pointer;
       .n-icon {
         font-size: 28px;
-        color: rgb(var(--main-color));
+        color: rgb(var(--main-cover-color));
       }
       &:hover {
         transform: scale(1.05);
-        background-color: rgba(var(--main-color), 0.14);
+        background-color: rgba(var(--main-cover-color), 0.14);
         opacity: 1;
       }
       &:active {

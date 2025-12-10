@@ -590,9 +590,6 @@ const settingStore = useSettingStore();
 // 全部字体
 const allFontsData = ref<SelectOption[]>([]);
 
-// AMLL TTML DB 地址
-const amllDbServer = ref("https://amll-ttml-db.stevexmh.net/ncm/%s");
-
 // 桌面歌词配置
 const desktopLyricConfig = reactive<LyricConfig>({ ...defaultDesktopLyricConfig });
 
@@ -681,11 +678,7 @@ onMounted(async () => {
     getDesktopLyricConfig();
     getAllSystemFonts();
     // 恢复地址
-    const server = await window.api.store.get("amllDbServer");
-    if (server) {
-      amllDbServer.value = server;
-      settingStore.amllDbServer = server;
-    }
+    await window.api.store.set("amllDbServer", settingStore.amllDbServer);
   }
 });
 </script>

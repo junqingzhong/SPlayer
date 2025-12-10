@@ -5,7 +5,7 @@ import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
 import {
   CURRENT_SETTING_SCHEMA_VERSION,
-  migrateSettingState,
+  settingMigrations,
 } from "./migrations/settingMigrations";
 
 export interface SettingState {
@@ -136,6 +136,8 @@ export interface SettingState {
   playerBackgroundFps: number;
   /** 背景动画流动速度 */
   playerBackgroundFlowSpeed: number;
+  /** 播放器元素自动隐藏 */
+  autoHidePlayerMeta: boolean;
   /** 记忆最后进度 */
   memoryLastSeek: boolean;
   /** 显示播放列表数量 */
@@ -288,6 +290,7 @@ export const useSettingStore = defineStore("setting", {
     playerBackgroundType: "blur",
     playerBackgroundFps: 30,
     playerBackgroundFlowSpeed: 4,
+    autoHidePlayerMeta: true,
     memoryLastSeek: true,
     showPlaylistCount: true,
     showSpectrums: false,
@@ -390,11 +393,19 @@ export const useSettingStore = defineStore("setting", {
         console.log(`[Setting Migration] 检测到版本差异: ${currentVersion} -> ${targetVersion}`);
         // 保存当前完整状态
         const currentState = { ...this.$state } as Partial<SettingState>;
-        // 执行迁移，保留所有原有字段，只更新需要的字段
-        const migratedState = migrateSettingState(currentState, currentVersion, targetVersion);
-        // 应用迁移后的状态
-        Object.assign(this, migratedState);
-        // 确保版本号已更新
+        // 计算需要更新的字段（迁移返回的更新）
+        const updates: Partial<SettingState> = {};
+        // 按版本顺序执行迁移，收集所有更新
+        for (let version = currentVersion + 1; version <= targetVersion; version++) {
+          const migration = settingMigrations[version];
+          if (migration) {
+            const migrationUpdates = migration(currentState);
+            Object.assign(updates, migrationUpdates);
+          }
+        }
+        // 只 patch 需要更新的字段
+        this.$patch(updates);
+        // 统一设置版本号
         this.schemaVersion = targetVersion;
         console.log(`[Setting Migration] 迁移完成，已更新到版本 ${targetVersion}`);
       }
