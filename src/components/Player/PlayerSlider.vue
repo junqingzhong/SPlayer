@@ -8,7 +8,7 @@
     :format-tooltip="formatTooltip"
     :tooltip="showTooltip"
     :show-tooltip="showSliderTooltip"
-    class="player-slider"
+    :class="['player-slider', { drag: isDragging }]"
     @mouseenter="showSliderTooltip = true"
     @mouseleave="showSliderTooltip = false"
     @dragstart="startDrag"
@@ -74,5 +74,16 @@ const formatTooltip = (value: number) => {
 <style scoped lang="scss">
 .player-slider {
   width: 100%;
+  &:not(.drag) {
+    :deep(.n-slider-rail) {
+      .n-slider-rail__fill {
+        transition: width 0.3s;
+      }
+      .n-slider-handle-wrapper {
+        will-change: left;
+        transition: left 0.3s;
+      }
+    }
+  }
 }
 </style>

@@ -360,14 +360,6 @@ const instantLyrics = computed(() => {
     margin: 0;
     --n-rail-height: 3px;
     --n-handle-size: 14px;
-    // :deep(.n-slider-rail) {
-    //   .n-slider-rail__fill {
-    //     transition: width 0.3s;
-    //   }
-    //   .n-slider-handle-wrapper {
-    //     transition: left 0.3s;
-    //   }
-    // }
   }
   .play-data {
     display: flex;
