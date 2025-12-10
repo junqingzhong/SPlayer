@@ -28,47 +28,42 @@ const settingStore = useSettingStore();
 
 const page = ref("keywords");
 
-const clear = () => {
-  const pageName = page.value === "keywords" ? "关键词" : "正则表达式";
+const pageConfig = {
+  keywords: {
+    name: "关键词",
+    storeKey: "excludeKeywords",
+    defaultValue: keywords,
+  },
+  regexes: {
+    name: "正则表达式",
+    storeKey: "excludeRegexes",
+    defaultValue: regexes,
+  },
+} as const;
+
+const handleAction = (action: "clear" | "reset") => {
+  const pageKey = page.value as keyof typeof pageConfig;
+  const { name, storeKey, defaultValue } = pageConfig[pageKey];
+  const isClear = action === "clear";
+
+  const actionText = isClear ? "清空" : "重置";
+  const contentDetail = isClear ? "" : "为默认值";
+  const successMessage = isClear ? "列表已清空" : "列表已重置为默认值";
+
   window.$dialog.warning({
-    title: "清空确认",
-    content: `确认清空${pageName}列表？该操作不可撤销！`,
+    title: `${actionText}确认`,
+    content: `确认${actionText}${name}列表${contentDetail}？该操作不可撤销！`,
     positiveText: "确认",
     negativeText: "取消",
     onPositiveClick: () => {
-      switch (page.value) {
-        case "keywords":
-          settingStore.excludeKeywords = [];
-          break;
-        case "regexes":
-          settingStore.excludeRegexes = [];
-          break;
-      }
-      window.$message.success(`${pageName}列表已清空`);
-    }
+      settingStore[storeKey] = isClear ? [] : defaultValue;
+      window.$message.success(`${name}${successMessage}`);
+    },
   });
 };
 
-const reset = () => {
-  const pageName = page.value === "keywords" ? "关键词" : "正则表达式";
-  window.$dialog.warning({
-    title: "重置确认",
-    content: `确认重置${pageName}列表为默认值？该操作不可撤销！`,
-    positiveText: "确认",
-    negativeText: "取消",
-    onPositiveClick: () => {
-      switch (page.value) {
-        case "keywords":
-          settingStore.excludeKeywords = keywords;
-          break;
-        case "regexes":
-          settingStore.excludeRegexes = regexes;
-          break;
-      }
-      window.$message.success(`${pageName}列表已重置为默认值`);
-    }
-  });
-};
+const clear = () => handleAction("clear");
+const reset = () => handleAction("reset");
 </script>
 
 <style lang="scss" scoped>
