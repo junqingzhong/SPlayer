@@ -13,7 +13,7 @@ import { personalFm, personalFmToTrash } from "@/api/rec";
 import songManager, { type NextPrefetchSong } from "./songManager";
 import { isElectron } from "./env";
 import lyricManager from "./lyricManager";
-import audioManager from "./audioManager";
+import audioManager, { AudioEventType } from "./audioManager";
 import blob from "./blob";
 
 /**
@@ -29,6 +29,8 @@ class Player {
   private nextPrefetch: NextPrefetchSong = null;
   /** 当前曲目重试信息（按歌曲维度计数） */
   private retryInfo: { songId: number; count: number } = { songId: 0, count: 0 };
+  /** 存储事件回调函数的引用，用于清理 */
+  private eventCallbacks: Map<AudioEventType, (e: Event) => void> = new Map();
   constructor() {
     // 初始化媒体会话
     this.initMediaSession();
@@ -36,11 +38,23 @@ class Player {
     this.bindAudioEvents();
   }
   /**
+   * 解绑 AudioManager 事件
+   */
+  private unbindAudioEvents() {
+    // 清理所有音频事件监听器
+    this.eventCallbacks.forEach((callback, event) => {
+      audioManager.off(event, callback);
+    });
+    this.eventCallbacks.clear();
+  }
+  /**
    * 绑定 AudioManager 事件
    */
   private bindAudioEvents() {
+    // 清理可能存在的旧事件监听器
+    this.unbindAudioEvents();
     // 播放
-    audioManager.on("play", () => {
+    const playCallback = () => {
       const statusStore = useStatusStore();
       const playSongData = songManager.getPlaySongData();
       const { name, artist } = songManager.getPlayerInfoObj() || {};
@@ -60,9 +74,11 @@ class Player {
         });
       }
       console.log("▶️ song play:", playSongData);
-    });
+    };
+    audioManager.on("play", playCallback);
+    this.eventCallbacks.set("play", playCallback);
     // 暂停
-    audioManager.on("pause", () => {
+    const pauseCallback = () => {
       const statusStore = useStatusStore();
       const playSongData = songManager.getPlaySongData();
       statusStore.playStatus = false;
@@ -72,9 +88,11 @@ class Player {
         window.electron.ipcRenderer.send("play-status-change", false);
       }
       console.log("⏸️ song pause:", playSongData);
-    });
+    };
+    audioManager.on("pause", pauseCallback);
+    this.eventCallbacks.set("pause", pauseCallback);
     // 结束
-    audioManager.on("ended", () => {
+    const endedCallback = () => {
       const statusStore = useStatusStore();
       const playSongData = songManager.getPlaySongData();
       console.log("⏹️ song end:", playSongData);
@@ -88,15 +106,19 @@ class Player {
         return;
       }
       this.nextOrPrev("next", true, true);
-    });
+    };
+    audioManager.on("ended", endedCallback);
+    this.eventCallbacks.set("ended", endedCallback);
     // 错误
-    audioManager.on("error", (e: Event) => {
+    const errorCallback = (e: Event) => {
       const playSongData = songManager.getPlaySongData();
       console.error("❌ song error:", playSongData, e);
       this.handlePlaybackError();
-    });
+    };
+    audioManager.on("error", errorCallback);
+    this.eventCallbacks.set("error", errorCallback);
     // 进度更新
-    audioManager.on("timeupdate", () => {
+    const timeupdateCallback = () => {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
       const settingStore = useSettingStore();
@@ -128,14 +150,18 @@ class Player {
           window.electron.ipcRenderer.send("set-bar", progress);
         }
       }
-    });
+    };
+    audioManager.on("timeupdate", timeupdateCallback);
+    this.eventCallbacks.set("timeupdate", timeupdateCallback);
     // 加载开始
-    audioManager.on("loadstart", () => {
+    const loadstartCallback = () => {
       const statusStore = useStatusStore();
       statusStore.playLoading = true;
-    });
+    };
+    audioManager.on("loadstart", loadstartCallback);
+    this.eventCallbacks.set("loadstart", loadstartCallback);
     // 可以播放
-    audioManager.on("canplay", () => {
+    const canplayCallback = () => {
       const statusStore = useStatusStore();
       statusStore.playLoading = false;
       // 恢复均衡器
@@ -156,7 +182,9 @@ class Player {
           dataStore.isLikeSong(playSongData?.id || 0),
         );
       }
-    });
+    };
+    audioManager.on("canplay", canplayCallback);
+    this.eventCallbacks.set("canplay", canplayCallback);
   }
   /**
    * 创建播放器并播放

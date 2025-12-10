@@ -12,7 +12,7 @@ interface IExtendedAudioContext extends AudioContext {
 /**
  * 音频事件类型定义
  */
-type AudioEventType =
+export type AudioEventType =
   | "play"
   | "pause"
   | "ended"
