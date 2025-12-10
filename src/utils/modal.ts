@@ -17,15 +17,15 @@ import UpdatePlaylist from "@/components/Modal/UpdatePlaylist.vue";
 import DownloadModal from "@/components/Modal/DownloadModal.vue";
 import MainSetting from "@/components/Setting/MainSetting.vue";
 import UpdateApp from "@/components/Modal/UpdateApp.vue";
-import ExcludeLyrics from "@/components/Modal/ExcludeLyrics.vue";
+import ExcludeLyrics from "@/components/Modal/Setting/ExcludeLyrics.vue";
 import ChangeRate from "@/components/Modal/ChangeRate.vue";
 import AutoClose from "@/components/Modal/AutoClose.vue";
 import Equalizer from "@/components/Modal/Equalizer.vue";
-import SongUnlockManager from "@/components/Modal/SongUnlockManager.vue";
-import SidebarHideManager from "@/components/Modal/SidebarHideManager.vue";
-import HomePageSectionManager from "@/components/Modal/HomePageSectionManager.vue";
+import SongUnlockManager from "@/components/Modal/Setting/SongUnlockManager.vue";
+import SidebarHideManager from "@/components/Modal/Setting/SidebarHideManager.vue";
+import HomePageSectionManager from "@/components/Modal/Setting/HomePageSectionManager.vue";
 import CopyLyrics from "@/components/Modal/CopyLyrics.vue";
-import AMLLServer from "@/components/Modal/AMLLServer.vue";
+import AMLLServer from "@/components/Modal/Setting/AMLLServer.vue";
 
 // 用户协议
 export const openUserAgreement = () => {
