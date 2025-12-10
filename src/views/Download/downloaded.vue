@@ -1,6 +1,6 @@
 <template>
   <div class="download-downloaded">
-    <SongList :data="data" :loading="loading" />
+    <SongList :data="data" :loading="loading" @removeSong="getDownloadMusic" />
   </div>
 </template>
 
@@ -12,6 +12,8 @@ defineProps<{
   data: SongType[];
   loading: boolean;
 }>();
+
+const getDownloadMusic = inject("getDownloadMusic") as () => void;
 </script>
 
 <style lang="scss" scoped>

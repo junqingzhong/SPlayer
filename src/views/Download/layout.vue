@@ -127,6 +127,10 @@ watch(
   },
 );
 
+/**
+ * 获取下载音乐
+ * @param showTip 是否展示加载提示
+ */
 const getDownloadMusic = async (showTip: boolean = false) => {
   try {
     const path = settingStore.downloadPath;
@@ -159,6 +163,9 @@ const getDownloadMusic = async (showTip: boolean = false) => {
     loadingMsg.value = null;
   }
 };
+
+// 刷新列表
+provide("getDownloadMusic", () => getDownloadMusic(false));
 
 onMounted(() => {
   getDownloadMusic();

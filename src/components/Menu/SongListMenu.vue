@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import type { SongType } from "@/types/main";
 import { NAlert, type DropdownOption } from "naive-ui";
-import { useStatusStore, useLocalStore, useDataStore, useMusicStore } from "@/stores";
+import { useStatusStore, useDataStore, useMusicStore } from "@/stores";
 import DownloadManager from "@/utils/downloadManager";
 import { renderIcon, copyData } from "@/utils/helper";
 import { deleteCloudSong, importCloudSong } from "@/api/cloud";
@@ -39,7 +39,6 @@ const emit = defineEmits<{ removeSong: [index: number[]] }>();
 const router = useRouter();
 const player = usePlayer();
 const dataStore = useDataStore();
-const localStore = useLocalStore();
 const statusStore = useStatusStore();
 const musicStore = useMusicStore();
 
@@ -52,7 +51,7 @@ const dropdownOptions = ref<DropdownOption[]>([]);
 // 开启右键菜单
 const openDropdown = (
   e: MouseEvent,
-  data: SongType[],
+  _data: SongType[],
   song: SongType,
   index: number,
   type: "song" | "radio",
@@ -216,7 +215,7 @@ const openDropdown = (
           label: "从本地磁盘中删除",
           show: isLocal && !isCurrent,
           props: {
-            onClick: () => deleteLocalSong(song, data, index),
+            onClick: () => deleteLocalSong(song),
           },
           icon: renderIcon("Delete"),
         },
@@ -273,7 +272,7 @@ const openDropdown = (
 };
 
 // 删除歌曲
-const deleteLocalSong = (song: SongType, data: SongType[], index: number) => {
+const deleteLocalSong = (song: SongType) => {
   if (!song.path) return;
   window.$dialog.warning({
     title: "确认删除",
@@ -291,9 +290,14 @@ const deleteLocalSong = (song: SongType, data: SongType[], index: number) => {
     onPositiveClick: async () => {
       const result = await window.electron.ipcRenderer.invoke("delete-file", song.path);
       if (result) {
-        data.splice(index, 1);
-        localStore.deleteLocalSong(index);
-        player.removeSongIndex(index);
+        // 通知父组件删除歌曲
+        emit("removeSong", [song.id]);
+        // 从播放列表中删除该歌曲
+        const currentPlayList = dataStore.playList;
+        const songToRemoveIndex = currentPlayList.findIndex((playSong) => playSong.id === song.id);
+        if (songToRemoveIndex !== -1) {
+          player.removeSongIndex(songToRemoveIndex);
+        }
         window.$message.success(`${song.name} 删除成功`);
       } else {
         window.$message.error(`${song.name} 删除失败，请重试`);
@@ -314,8 +318,11 @@ const deleteCloudSongData = (song: SongType, index: number) => {
       if (result.code == 200) {
         dataStore.cloudPlayList.splice(index, 1);
         dataStore.setCloudPlayList(dataStore.cloudPlayList);
-        if (statusStore.playIndex === index) {
-          player.nextOrPrev("next");
+        // 从播放列表中删除该歌曲
+        const currentPlayList = dataStore.playList;
+        const songToRemoveIndex = currentPlayList.findIndex((playSong) => playSong.id === song.id);
+        if (songToRemoveIndex !== -1) {
+          player.removeSongIndex(songToRemoveIndex);
         }
         window.$message.success("删除成功");
       } else {

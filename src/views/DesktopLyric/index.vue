@@ -44,6 +44,7 @@
           v-if="lyricConfig.alwaysShowPlayInfo"
           :size="0"
           :class="['play-title', lyricConfig.position]"
+          :style="{ fontFamily: lyricConfig.fontFamily }"
           vertical
         >
           <span class="name">{{ lyricData.playName }}</span>
