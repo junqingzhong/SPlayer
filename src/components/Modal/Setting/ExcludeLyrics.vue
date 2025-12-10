@@ -11,7 +11,10 @@
       </n-tab-pane>
 
       <template #suffix>
-        <n-button type="primary" strong secondary @click="reset">重置此页</n-button>
+        <n-flex>
+          <n-button type="primary" strong secondary @click="clear">清空此页</n-button>
+          <n-button type="primary" strong secondary @click="reset">重置此页</n-button>
+        </n-flex>
       </template>
     </n-tabs>
   </div>
@@ -25,16 +28,42 @@ const settingStore = useSettingStore();
 
 const page = ref("keywords");
 
-const reset = () => {
-  switch (page.value) {
-    case "keywords":
-      settingStore.excludeKeywords = keywords;
-      break;
-    case "regexes":
-      settingStore.excludeRegexes = regexes;
-      break;
-  }
+const pageConfig = {
+  keywords: {
+    name: "关键词",
+    storeKey: "excludeKeywords",
+    defaultValue: keywords,
+  },
+  regexes: {
+    name: "正则表达式",
+    storeKey: "excludeRegexes",
+    defaultValue: regexes,
+  },
+} as const;
+
+const handleAction = (action: "clear" | "reset") => {
+  const pageKey = page.value as keyof typeof pageConfig;
+  const { name, storeKey, defaultValue } = pageConfig[pageKey];
+  const isClear = action === "clear";
+
+  const actionText = isClear ? "清空" : "重置";
+  const contentDetail = isClear ? "" : "为默认值";
+  const successMessage = isClear ? "列表已清空" : "列表已重置为默认值";
+
+  window.$dialog.warning({
+    title: `${actionText}确认`,
+    content: `确认${actionText}${name}列表${contentDetail}？该操作不可撤销！`,
+    positiveText: "确认",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      settingStore[storeKey] = isClear ? [] : defaultValue;
+      window.$message.success(`${name}${successMessage}`);
+    },
+  });
 };
+
+const clear = () => handleAction("clear");
+const reset = () => handleAction("reset");
 </script>
 
 <style lang="scss" scoped>
