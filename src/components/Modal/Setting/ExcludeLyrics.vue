@@ -11,7 +11,10 @@
       </n-tab-pane>
 
       <template #suffix>
-        <n-button type="primary" strong secondary @click="reset">重置此页</n-button>
+        <n-flex>
+          <n-button type="primary" strong secondary @click="clear">清空此页</n-button>
+          <n-button type="primary" strong secondary @click="reset">重置此页</n-button>
+        </n-flex>
       </template>
     </n-tabs>
   </div>
@@ -25,15 +28,46 @@ const settingStore = useSettingStore();
 
 const page = ref("keywords");
 
+const clear = () => {
+  const pageName = page.value === "keywords" ? "关键词" : "正则表达式";
+  window.$dialog.warning({
+    title: "清空确认",
+    content: `确认清空${pageName}列表？该操作不可撤销！`,
+    positiveText: "确认",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      switch (page.value) {
+        case "keywords":
+          settingStore.excludeKeywords = [];
+          break;
+        case "regexes":
+          settingStore.excludeRegexes = [];
+          break;
+      }
+      window.$message.success(`${pageName}列表已清空`);
+    }
+  });
+};
+
 const reset = () => {
-  switch (page.value) {
-    case "keywords":
-      settingStore.excludeKeywords = keywords;
-      break;
-    case "regexes":
-      settingStore.excludeRegexes = regexes;
-      break;
-  }
+  const pageName = page.value === "keywords" ? "关键词" : "正则表达式";
+  window.$dialog.warning({
+    title: "重置确认",
+    content: `确认重置${pageName}列表为默认值？该操作不可撤销！`,
+    positiveText: "确认",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      switch (page.value) {
+        case "keywords":
+          settingStore.excludeKeywords = keywords;
+          break;
+        case "regexes":
+          settingStore.excludeRegexes = regexes;
+          break;
+      }
+      window.$message.success(`${pageName}列表已重置为默认值`);
+    }
+  });
 };
 </script>
 
