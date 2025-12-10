@@ -49,11 +49,14 @@
           <SvgIcon :name="isMax ? 'WindowRestore' : 'WindowMaximize'" />
         </template>
       </n-button>
-      <n-button :focusable="false" title="关闭" tertiary circle @click="tryClose">
-        <template #icon>
-          <SvgIcon name="WindowClose" />
-        </template>
-      </n-button>
+      <div class="close-button-wrapper" @click="tryClose" title="关闭">
+        <n-button :focusable="false" title="关闭" tertiary circle @click.stop="tryClose">
+          <template #icon>
+            <SvgIcon name="WindowClose" />
+          </template>
+        </n-button>
+        <div class="close-expanded-area"></div>
+      </div>
     </n-flex>
     <!-- 关闭弹窗 -->
     <n-modal
@@ -235,6 +238,21 @@ onMounted(() => {
   .client-control {
     .divider {
       margin: 0 0 0 12px;
+    }
+    .close-button-wrapper {
+      position: relative;
+      cursor: pointer;
+      .close-expanded-area {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 60px;
+        height: 70px;
+        background-color: transparent;
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+        z-index: 1000;
+      }
     }
   }
 }

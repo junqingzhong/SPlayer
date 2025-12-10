@@ -6,7 +6,8 @@
         <n-flex align="center" class="about">
           <SvgIcon name="SPlayer" size="26" />
           <n-text class="logo-name">SPlayer</n-text>
-          <n-tag :bordered="false" size="small" type="primary">
+          <n-tag v-if="isDevBuild" size="small" type="warning" round> DEV </n-tag>
+          <n-tag :bordered="false" size="small" type="primary" round>
             {{ packageJson.version }}
           </n-tag>
         </n-flex>
@@ -102,7 +103,7 @@ import { getUpdateLog, openLink } from "@/utils/helper";
 import { debounce } from "lodash-es";
 import { useStatusStore } from "@/stores";
 import packageJson from "@/../package.json";
-import { isElectron } from "@/utils/env";
+import { isDevBuild, isElectron } from "@/utils/env";
 
 const statusStore = useStatusStore();
 

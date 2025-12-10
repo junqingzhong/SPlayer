@@ -19,7 +19,10 @@
           {{ packageJson.author }}
         </n-text>
         <n-text class="name">SPlayer</n-text>
-        <n-text class="version" depth="3">{{ packageJson.version }}</n-text>
+        <n-tag v-if="isDevBuild" class="version" size="small" type="warning" round>
+          DEV · v{{ packageJson.version }}
+        </n-tag>
+        <n-text v-else class="version" depth="3">v{{ packageJson.version }}</n-text>
       </div>
     </div>
     <n-scrollbar
@@ -53,8 +56,8 @@
 import type { MenuOption, NScrollbar } from "naive-ui";
 import type { SettingType } from "@/types/main";
 import { renderIcon } from "@/utils/helper";
+import { isDevBuild, isElectron } from "@/utils/env";
 import packageJson from "@/../package.json";
-import { isElectron } from "@/utils/env";
 
 const props = defineProps<{ type: SettingType }>();
 
@@ -145,10 +148,7 @@ const toGithub = () => {
         margin-right: 6px;
       }
       .version {
-        &::before {
-          content: "v";
-          margin-right: 2px;
-        }
+        pointer-events: none;
       }
       .author {
         display: flex;

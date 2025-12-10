@@ -14,4 +14,9 @@ export const isLinux = userAgent.includes("Linux");
 export const isElectron = userAgent.includes("Electron") || typeof window?.electron !== "undefined";
 
 /** 是否为移动端 */
-export const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+export const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+  userAgent,
+);
+
+/** 是否为 DEV 构建 */
+export const isDevBuild = import.meta.env.VITE_BUILD_TYPE === "dev";
