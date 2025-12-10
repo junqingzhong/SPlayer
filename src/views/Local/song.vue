@@ -16,7 +16,7 @@ import { useSettingStore, useLocalStore } from "@/stores";
 const localStore = useLocalStore();
 const settingStore = useSettingStore();
 
-const props = defineProps<{
+defineProps<{
   data: SongType[];
   loading: boolean;
 }>();
