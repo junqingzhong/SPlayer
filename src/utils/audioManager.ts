@@ -407,7 +407,7 @@ class AudioManager {
    * 获取音频错误码
    * @returns 错误码
    */
-  private getErrorCode(): number {
+  public getErrorCode(): number {
     if (!this.audioElement?.error) return 0;
 
     // 参考 HTML Audio Element 错误码
