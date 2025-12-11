@@ -240,6 +240,8 @@ export interface SettingState {
     visible: boolean;
     order: number;
   }>;
+  /** 用户协议版本 */
+  userAgreementVersion: string;
   /** 自定义协议注册 **/
   registryProtocol: {
     orpheus: boolean;
@@ -364,6 +366,7 @@ export const useSettingStore = defineStore("setting", {
       { key: "radio", name: "推荐播客", visible: true, order: 4 },
       { key: "album", name: "新碟上架", visible: true, order: 5 },
     ],
+    userAgreementVersion: "",
     registryProtocol: {
       orpheus: false,
     },

@@ -1,9 +1,10 @@
 import { h } from "vue";
 import type { CoverType, UpdateInfoType, SettingType, SongType } from "@/types/main";
+import { CURRENT_AGREEMENT_VERSION } from "@/constants/agreement";
 import { NScrollbar } from "naive-ui";
 import { isLogin } from "./auth";
 import { isArray, isFunction } from "lodash-es";
-import { useDataStore } from "@/stores";
+import { useDataStore, useSettingStore } from "@/stores";
 import router from "@/router";
 import Login from "@/components/Modal/Login/Login.vue";
 import JumpArtist from "@/components/Modal/JumpArtist.vue";
@@ -27,10 +28,12 @@ import HomePageSectionManager from "@/components/Modal/Setting/HomePageSectionMa
 import CopyLyrics from "@/components/Modal/CopyLyrics.vue";
 import AMLLServer from "@/components/Modal/Setting/AMLLServer.vue";
 
-// 用户协议
 export const openUserAgreement = () => {
-  const isAgree = window.localStorage.getItem("isAgree");
-  if (isAgree) return;
+  const settingStore = useSettingStore();
+  // 检查是否需要重新同意协议
+  const needReAgree = settingStore.userAgreementVersion !== CURRENT_AGREEMENT_VERSION;
+  // 如果已经同意了当前版本，则不需要再弹窗
+  if (!needReAgree) return;
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
@@ -45,8 +48,7 @@ export const openUserAgreement = () => {
       return h(UserAgreement, {
         onClose: () => {
           modal.destroy();
-          // 储存状态
-          window.localStorage.setItem("isAgree", Date.now().toString());
+          // 储存状态（这个逻辑现在在 UserAgreement 组件内部处理）
         },
       });
     },
