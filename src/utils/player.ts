@@ -217,12 +217,9 @@ class Player {
       if (seek && seek > 0) {
         audioManager.seek(seek / 1000);
       }
-    } catch (e) {
-      console.error("Player create failed", e);
-      // 触发错误处理
-      const errCode = audioManager.getErrorCode();
-      await this.handlePlaybackError(errCode || undefined);
-      throw e;
+    } catch (err) {
+      console.error("❌ 播放器初始化失败:", err);
+      throw err;
     }
     // 获取歌词数据
     lyricManager.handleLyric(id, path);
@@ -317,6 +314,22 @@ class Player {
       this.retryInfo = { songId: Number(currentSongId || 0), count: 0 };
     }
     this.retryInfo.count += 1;
+    // 如果错误码未定义或为 0，且重试次数过多，直接跳过避免无限重试
+    if ((errCode === undefined || errCode === 0) && this.retryInfo.count > 2) {
+      console.warn("⚠️ 未知错误且重试次数过多，跳过重试:", {
+        count: this.retryInfo.count,
+        errCode,
+      });
+      this.retryInfo.count = 0;
+      if (dataStore.playList.length > 1) {
+        window.$message.error("播放失败，已跳至下一首");
+        await this.nextOrPrev("next");
+      } else {
+        window.$message.error("当前列表暂无可播放歌曲");
+        this.cleanPlayList();
+      }
+      return;
+    }
     // 1：用户中止了加载，不进行重试
     if (errCode === 1) {
       console.log("⏸️ 用户中止播放，不进行重试");
