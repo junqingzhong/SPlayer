@@ -99,7 +99,6 @@ export const getCoverColorData = (dom: HTMLImageElement) => {
   const mostFrequentColors = sortedQuantizedColors.slice(0, 5).map((x) => argbToRgb(x[0]));
   // 如果最频繁的颜色差异很小，使用灰色强调色
   if (mostFrequentColors.every((x) => Math.max(...x) - Math.min(...x) < 5)) {
-    console.log("该封面颜色单调");
     return {
       main: { r: 239, g: 239, b: 239 },
       light: {

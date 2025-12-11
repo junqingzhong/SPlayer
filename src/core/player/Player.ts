@@ -1,7 +1,7 @@
 import { type SongType } from "@/types/main";
-import { AudioManager } from "./audioManager";
-import { LyricManager } from "./lyricManager";
-import { SongManager } from "./songManager";
+import { AudioManager } from "./AudioManager";
+import { LyricManager } from "./LyricManager";
+import { SongManager } from "./SongManager";
 import { isElectron } from "@/utils/env";
 import { throttle } from "lodash-es";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
@@ -96,6 +96,13 @@ export class Player {
   // =========================================================================
   // 核心播放流程 (Refactored)
   // =========================================================================
+  /**
+   * 初始化并播放歌曲
+   * @param song 要播放的歌曲对象，不传，默认使用 playSong
+   * @param options 配置
+   * @param options.autoPlay 是否自动播放
+   * @param options.seek 初始播放进度（毫秒）
+   */
   public async playSong(
     song?: SongType,
     options: { autoPlay: boolean; seek: number } = { autoPlay: true, seek: 0 },
@@ -106,6 +113,7 @@ export class Player {
 
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
+    const songManager = SongManager.getInstance();
 
     const { autoPlay, seek } = options;
 
@@ -133,11 +141,11 @@ export class Player {
         this.retryInfo = { songId: sid || 0, count: 0 };
       }
       // 获取音频源
-      const audioSource = await this.fetchAudioSource(targetSong);
+      const audioSource = await songManager.getAudioSource(targetSong);
       if (!audioSource.url) throw new Error("AUDIO_SOURCE_NOT_FOUND");
       // 更新音质和解锁状态
       statusStore.songQuality = audioSource.quality;
-      statusStore.playUblock = audioSource.isUnlocked;
+      statusStore.playUblock = audioSource.isUnlocked ?? false;
       // 执行底层播放
       await this.loadAndPlay(audioSource.url, autoPlay, seek);
       // 后置处理 (歌词、历史记录、MediaSession、解析本地元数据)

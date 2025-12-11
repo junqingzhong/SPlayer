@@ -15,15 +15,24 @@ export enum SongUnlockServer {
   GEQUBAO = "gequbao",
 }
 
-export type NextPrefetchSong = {
+/** 歌曲播放地址信息 */
+export type AudioSource = {
+  /** 歌曲id */
   id: number;
-  url: string | null;
-  ublock: boolean;
-  quality?: QualityType | undefined;
-} | null;
+  /** 歌曲播放地址 */
+  url?: string;
+  /** 是否解锁 */
+  isUnlocked?: boolean;
+  /** 是否为试听 */
+  isTrial?: boolean;
+  /** 音质 */
+  quality?: QualityType;
+};
 
 export class SongManager {
   private static instance: SongManager;
+  /** 预载下一首歌曲播放信息 */
+  private nextPrefetch: AudioSource | undefined;
   private constructor() {}
   /**
    * SongManager 单例实例
@@ -100,17 +109,15 @@ export class SongManager {
   /**
    * 获取在线播放链接
    * @param id 歌曲id
-   * @returns { url, isTrial } 播放链接与是否为试听
+   * @returns 在线播放信息
    */
-  public getOnlineUrl = async (
-    id: number,
-  ): Promise<{ url: string | null; isTrial: boolean; quality?: QualityType | undefined }> => {
+  public getOnlineUrl = async (id: number): Promise<AudioSource> => {
     const settingStore = useSettingStore();
     const res = await songUrl(id, settingStore.songLevel);
     console.log(`🌐 ${id} music data:`, res);
     const songData = res.data?.[0];
     // 是否有播放地址
-    if (!songData || !songData?.url) return { url: null, isTrial: false };
+    if (!songData || !songData?.url) return { id, url: undefined };
     // 是否仅能试听
     const isTrial = songData?.freeTrialInfo !== null;
     // 返回歌曲地址
@@ -126,7 +133,7 @@ export class SongManager {
     // 获取音质
     const quality = handleSongQuality(songData, "online");
     console.log(`🎧 ${id} music url:`, finalUrl, quality);
-    return { url: finalUrl, isTrial, quality };
+    return { id, url: finalUrl, isTrial, quality };
   };
 
   /**
@@ -134,47 +141,43 @@ export class SongManager {
    * @param songData 歌曲数据
    * @returns
    */
-  public getUnlockSongUrl = async (songData: SongType): Promise<string | null> => {
-    try {
-      const songId = songData.id;
-      const artist = Array.isArray(songData.artists) ? songData.artists[0].name : songData.artists;
-      const keyWord = songData.name + "-" + artist;
-      if (!songId || !keyWord) return null;
-      // 获取音源列表
-      const settingStore = useSettingStore();
-      const servers = settingStore.songUnlockServer
-        .filter((server) => server.enabled)
-        .map((server) => server.key);
-      if (servers.length === 0) return null;
-      // 并发请求
-      const promises = servers.map((server) =>
-        unlockSongUrl(songId, keyWord, server)
-          .then((result) => ({
-            server,
-            result,
-            success: result.code === 200 && !!result.url,
-          }))
-          .catch((err) => {
-            console.error(`Unlock failed with server ${server}:`, err);
-            return { server, result: null, success: false };
-          }),
-      );
-      // 按优先级顺序处理结果
-      for (const p of promises) {
-        try {
-          const item = await p;
-          if (item.success && item.result) {
-            return item.result.url;
-          }
-        } catch {
-          continue;
-        }
-      }
-      return null;
-    } catch (error) {
-      console.error("Error in getUnlockSongUrl", error);
-      return null;
+  public getUnlockSongUrl = async (song: SongType): Promise<AudioSource> => {
+    const settingStore = useSettingStore();
+    const songId = song.id;
+    const artist = Array.isArray(song.artists) ? song.artists[0].name : song.artists;
+    const keyWord = song.name + "-" + artist;
+    if (!songId || !keyWord) {
+      return { id: songId, url: undefined };
     }
+
+    // 获取音源列表
+    const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
+    if (servers.length === 0) {
+      return { id: songId, url: undefined };
+    }
+
+    // 并发执行
+    const results = await Promise.allSettled(
+      servers.map((server) =>
+        unlockSongUrl(songId, keyWord, server).then((result) => ({
+          server,
+          result,
+          success: result.code === 200 && !!result.url,
+        })),
+      ),
+    );
+
+    // 按顺序找成功项
+    for (const r of results) {
+      if (r.status === "fulfilled" && r.value.success) {
+        return {
+          id: songId,
+          url: r.value?.result?.url,
+          isUnlocked: true,
+        };
+      }
+    }
+    return { id: songId, url: undefined };
   };
 
   /**
@@ -202,7 +205,7 @@ export class SongManager {
    * 预载下一首歌曲播放地址
    * @returns 预载数据
    */
-  public getNextSongUrl = async (): Promise<NextPrefetchSong> => {
+  public getNextSongUrl = async (): Promise<AudioSource> => {
     try {
       const dataStore = useDataStore();
       const statusStore = useStatusStore();
@@ -211,56 +214,108 @@ export class SongManager {
       // 无列表或私人FM模式直接跳过
       const playList = dataStore.playList;
       if (!playList?.length || statusStore.personalFmMode) {
-        return null;
+        return { id: 0, url: undefined };
       }
 
       // 计算下一首（循环到首）
       let nextIndex = statusStore.playIndex + 1;
       if (nextIndex >= playList.length) nextIndex = 0;
       const nextSong = playList[nextIndex];
-      if (!nextSong) {
-        return null;
-      }
+      if (!nextSong) return { id: 0, url: undefined };
 
-      // 本地歌曲：直接缓存 file URL
-      if (nextSong.path) {
-        const songId = nextSong.type === "radio" ? nextSong.dj?.id : nextSong.id;
-        return {
-          id: Number(songId || nextSong.id),
-          url: `file://${nextSong.path}`,
-          ublock: false,
-        };
-      }
+      // 本地歌曲跳过
+      if (nextSong.path) return { id: Number(nextSong.id), url: `file://${nextSong.path}` };
 
       // 在线歌曲：优先官方，其次解灰
       const songId = nextSong.type === "radio" ? nextSong.dj?.id : nextSong.id;
-      if (!songId) {
-        return null;
-      }
+      if (!songId) return { id: 0, url: undefined };
+
+      // 是否可解锁
       const canUnlock = isElectron && nextSong.type !== "radio" && settingStore.useSongUnlock;
       // 先请求官方地址
       const { url: officialUrl, isTrial, quality } = await this.getOnlineUrl(songId);
       if (officialUrl && !isTrial) {
         // 官方可播放且非试听
-        return { id: songId, url: officialUrl, ublock: false, quality };
+        return { id: songId, url: officialUrl, isUnlocked: false, quality };
       } else if (canUnlock) {
         // 官方失败或为试听时尝试解锁
         const unlockUrl = await this.getUnlockSongUrl(nextSong);
-        if (unlockUrl) {
-          return { id: songId, url: unlockUrl, ublock: true };
+        if (unlockUrl.url) {
+          return { id: songId, url: unlockUrl.url, isUnlocked: true };
         } else if (officialUrl && settingStore.playSongDemo) {
           // 解锁失败，若官方为试听且允许试听，保留官方试听地址
-          return { id: songId, url: officialUrl, ublock: false };
+          return { id: songId, url: officialUrl };
         } else {
-          return { id: songId, url: null, ublock: false };
+          return { id: songId, url: undefined };
         }
       } else {
         // 不可解锁，仅保留官方结果（可能为空）
-        return { id: songId, url: officialUrl, ublock: false };
+        return { id: songId, url: officialUrl };
       }
     } catch (error) {
-      console.error("Error prefetching next song url:", error);
-      return null;
+      console.error("❌ 预加载下一首歌曲地址失败", error);
+      return { id: 0, url: undefined };
+    }
+  };
+
+  /**
+   * 获取音频源
+   * 始终从此方法获取对应歌曲播放信息
+   * @param song 歌曲
+   * @returns 音频源
+   */
+  public getAudioSource = async (song: SongType): Promise<AudioSource> => {
+    const settingStore = useSettingStore();
+
+    // 本地文件直接返回
+    if (song.path) {
+      return {
+        id: song.id,
+        url: `file://${song.path}`,
+        isUnlocked: false,
+        quality: undefined, // 本地文件稍后获取音质
+      };
+    }
+
+    // 在线歌曲
+    const songId = song.type === "radio" ? song.dj?.id : song.id;
+    if (!songId) return { id: 0, url: undefined, quality: undefined, isUnlocked: false };
+
+    // 检查缓存并返回
+    if (this.nextPrefetch && this.nextPrefetch.id === songId && settingStore.useNextPrefetch) {
+      console.log("🚀 使用预加载缓存播放");
+      return this.nextPrefetch;
+    }
+
+    // 在线获取
+    try {
+      // 是否可解锁
+      const canUnlock = isElectron && song.type !== "radio" && settingStore.useSongUnlock;
+      // 尝试获取官方链接
+      const { url: officialUrl, isTrial, quality } = await this.getOnlineUrl(songId);
+      // 如果官方链接有效且非试听（或者用户接受试听）
+      if (officialUrl && (!isTrial || (isTrial && settingStore.playSongDemo))) {
+        if (isTrial) window.$message.warning("当前歌曲仅可试听");
+        return { id: songId, url: officialUrl, quality, isUnlocked: false };
+      }
+      // 尝试解锁
+      if (canUnlock) {
+        const unlockUrl = await this.getUnlockSongUrl(song);
+        if (unlockUrl.url) {
+          console.log("🔓 Song unlock successfully");
+          return unlockUrl;
+        }
+      }
+      // 无可用源
+      return { id: songId, url: undefined, quality: undefined, isUnlocked: false };
+    } catch (e) {
+      console.error("获取音频源异常", e);
+      return {
+        id: songId,
+        url: undefined,
+        quality: undefined,
+        isUnlocked: false,
+      };
     }
   };
 }
