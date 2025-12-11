@@ -300,9 +300,21 @@ class AudioManager {
 
     events.forEach((event) => {
       this.audioElement!.addEventListener(event, (e) => {
-        const listeners = this.eventListeners.get(event);
-        if (listeners) {
-          listeners.forEach((cb) => cb(e));
+        // 传递错误码
+        if (event === "error" && this.audioElement) {
+          const errCode = this.getErrorCode();
+          const customEvent = new CustomEvent("error", {
+            detail: { originalEvent: e, errorCode: errCode },
+          });
+          const listeners = this.eventListeners.get(event);
+          if (listeners) {
+            listeners.forEach((cb) => cb(customEvent));
+          }
+        } else {
+          const listeners = this.eventListeners.get(event);
+          if (listeners) {
+            listeners.forEach((cb) => cb(e));
+          }
         }
       });
     });
@@ -389,6 +401,32 @@ class AudioManager {
    */
   public get src() {
     return this.audioElement?.src || "";
+  }
+
+  /**
+   * 获取音频错误码
+   * @returns 错误码
+   */
+  private getErrorCode(): number {
+    if (!this.audioElement?.error) return 0;
+
+    // 参考 HTML Audio Element 错误码
+    // MEDIA_ERR_ABORTED (1): 用户中止了加载
+    // MEDIA_ERR_NETWORK (2): 网络错误或资源过期
+    // MEDIA_ERR_DECODE (3): 解码错误
+    // MEDIA_ERR_SRC_NOT_SUPPORTED (4): 不支持的格式
+    switch (this.audioElement.error.code) {
+      case MediaError.MEDIA_ERR_ABORTED:
+        return 1;
+      case MediaError.MEDIA_ERR_NETWORK:
+        return 2; // 网络错误或资源过期
+      case MediaError.MEDIA_ERR_DECODE:
+        return 3;
+      case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+        return 4;
+      default:
+        return 0;
+    }
   }
 }
 

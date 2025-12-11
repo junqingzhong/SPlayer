@@ -113,7 +113,12 @@ class Player {
     const errorCallback = (e: Event) => {
       const playSongData = songManager.getPlaySongData();
       console.error("❌ song error:", playSongData, e);
-      this.handlePlaybackError();
+      // 提取错误码
+      let errCode: number | undefined;
+      if ("detail" in e && e.detail) {
+        errCode = (e.detail as { errorCode?: number }).errorCode;
+      }
+      this.handlePlaybackError(errCode);
     };
     audioManager.on("error", errorCallback);
     this.eventCallbacks.set("error", errorCallback);
@@ -301,19 +306,28 @@ class Player {
     const dataStore = useDataStore();
     const playSongData = songManager.getPlaySongData();
     const currentSongId = playSongData?.type === "radio" ? playSongData.dj?.id : playSongData?.id;
+    // 保存当前播放进度，用于恢复
+    const currentSeek = this.getSeek();
     // 初始化/切换曲目时重置计数
     if (!this.retryInfo.songId || this.retryInfo.songId !== Number(currentSongId || 0)) {
       this.retryInfo = { songId: Number(currentSongId || 0), count: 0 };
     }
     this.retryInfo.count += 1;
-    // 错误码 2：资源过期或临时网络错误
+    // 2：资源过期或临时网络错误（通常是长时间暂停导致URL过期）
     if (errCode === 2 && this.retryInfo.count <= 2) {
-      await this.initPlayer(true, this.getSeek());
+      console.log("🔄 检测到资源过期，重新获取播放地址并从原位置继续:", currentSeek);
+      await this.initPlayer(true, currentSeek);
       return;
     }
-    // 其它错误：最多 3 次
+    // 其它错误：最多 3 次，首次重试从原位置开始
     if (this.retryInfo.count <= 3) {
-      await this.initPlayer(true, 0);
+      const seekPosition = this.retryInfo.count === 1 ? currentSeek : 0;
+      console.log("🔄 播放出错，尝试重试:", { count: this.retryInfo.count, seekPosition });
+      // 只在第一次重试时显示提示，避免过于频繁
+      if (this.retryInfo.count === 1) {
+        window.$message.info("播放出现问题，正在尝试恢复...");
+      }
+      await this.initPlayer(true, seekPosition);
       return;
     }
     // 超过次数：切到下一首或清空
