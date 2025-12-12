@@ -6,7 +6,7 @@ import {
   Score,
 } from "@material/material-color-utilities";
 import { getMDColor, rgbToHex } from "@imsyy/color-utils";
-import { useSettingStore } from "@/stores";
+import { useSettingStore, useStatusStore } from "@/stores";
 import { argbToRgb } from "./helper";
 import { chunk } from "lodash-es";
 
@@ -148,5 +148,26 @@ export const getCoverColorData = (dom: HTMLImageElement) => {
         Hct.from(theme.palettes[variant].hue, theme.palettes[variant].chroma, 16).toInt(),
       ),
     },
+  };
+};
+
+/**
+ * 获取歌曲封面颜色数据
+ * @param coverUrl 歌曲封面地址
+ */
+export const getCoverColor = async (coverUrl: string) => {
+  if (!coverUrl) return;
+  const statusStore = useStatusStore();
+  // 创建图像元素
+  const image = new Image();
+  image.crossOrigin = "Anonymous";
+  image.src = coverUrl;
+  // 图像加载完成
+  image.onload = () => {
+    // 获取图片数据
+    const coverColorData = getCoverColorData(image);
+    if (coverColorData) statusStore.songCoverTheme = coverColorData;
+    // 移除元素
+    image.remove();
   };
 };

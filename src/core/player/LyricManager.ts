@@ -5,8 +5,7 @@ import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-
 import { isElectron } from "@/utils/env";
 import { isEmpty } from "lodash-es";
 
-export class LyricManager {
-  private static instance: LyricManager;
+class LyricManager {
   /**
    * 在线歌词请求序列
    * 每次发起新请求递增
@@ -17,14 +16,9 @@ export class LyricManager {
    * 用于校验返回是否属于当前歌曲的最新请求
    */
   private activeLyricReq = 0;
-  private constructor() {}
-  /**
-   * LyricManager 单例实例
-   */
-  public static getInstance(): LyricManager {
-    if (!this.instance) this.instance = new LyricManager();
-    return this.instance;
-  }
+
+  constructor() {}
+
   /**
    * 重置当前歌曲的歌词数据
    * 包括清空歌词数据、重置歌词索引、关闭 TTML 歌词等
@@ -419,3 +413,14 @@ export class LyricManager {
     return concurrent[0]; // 保持上一句（重叠时不跳）
   }
 }
+
+let instance: LyricManager | null = null;
+
+/**
+ * 获取 LyricManager 实例
+ * @returns LyricManager
+ */
+export const useLyricManager = (): LyricManager => {
+  if (!instance) instance = new LyricManager();
+  return instance;
+};

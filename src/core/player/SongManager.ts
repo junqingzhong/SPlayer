@@ -1,9 +1,12 @@
+import { personalFm, personalFmToTrash } from "@/api/rec";
 import { songUrl, unlockSongUrl } from "@/api/song";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import type { QualityType, SongType } from "@/types/main";
+import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
-import { getCoverColorData } from "@/utils/color";
+import { formatSongsList } from "@/utils/format";
 import { handleSongQuality } from "@/utils/helper";
+import { openUserLogin } from "@/utils/modal";
 
 /**
  * 歌曲解锁服务器
@@ -29,18 +32,11 @@ export type AudioSource = {
   quality?: QualityType;
 };
 
-export class SongManager {
-  private static instance: SongManager;
+class SongManager {
   /** 预载下一首歌曲播放信息 */
   private nextPrefetch: AudioSource | undefined;
-  private constructor() {}
-  /**
-   * SongManager 单例实例
-   */
-  public static getInstance(): SongManager {
-    if (!this.instance) this.instance = new SongManager();
-    return this.instance;
-  }
+
+  constructor() {}
   /**
    * 获取当前播放歌曲
    * @returns 当前播放歌曲
@@ -181,31 +177,10 @@ export class SongManager {
   };
 
   /**
-   * 获取歌曲封面颜色数据
-   * @param coverUrl 歌曲封面地址
-   */
-  public getCoverColor = async (coverUrl: string) => {
-    if (!coverUrl) return;
-    const statusStore = useStatusStore();
-    // 创建图像元素
-    const image = new Image();
-    image.crossOrigin = "Anonymous";
-    image.src = coverUrl;
-    // 图像加载完成
-    image.onload = () => {
-      // 获取图片数据
-      const coverColorData = getCoverColorData(image);
-      if (coverColorData) statusStore.songCoverTheme = coverColorData;
-      // 移除元素
-      image.remove();
-    };
-  };
-
-  /**
    * 预载下一首歌曲播放地址
    * @returns 预载数据
    */
-  public getNextSongUrl = async (): Promise<AudioSource> => {
+  public getNextSongUrl = async (): Promise<AudioSource | undefined> => {
     try {
       const dataStore = useDataStore();
       const statusStore = useStatusStore();
@@ -214,21 +189,21 @@ export class SongManager {
       // 无列表或私人FM模式直接跳过
       const playList = dataStore.playList;
       if (!playList?.length || statusStore.personalFmMode) {
-        return { id: 0, url: undefined };
+        return;
       }
 
       // 计算下一首（循环到首）
       let nextIndex = statusStore.playIndex + 1;
       if (nextIndex >= playList.length) nextIndex = 0;
       const nextSong = playList[nextIndex];
-      if (!nextSong) return { id: 0, url: undefined };
+      if (!nextSong) return;
 
       // 本地歌曲跳过
-      if (nextSong.path) return { id: Number(nextSong.id), url: `file://${nextSong.path}` };
+      if (nextSong.path) return;
 
       // 在线歌曲：优先官方，其次解灰
       const songId = nextSong.type === "radio" ? nextSong.dj?.id : nextSong.id;
-      if (!songId) return { id: 0, url: undefined };
+      if (!songId) return;
 
       // 是否可解锁
       const canUnlock = isElectron && nextSong.type !== "radio" && settingStore.useSongUnlock;
@@ -236,25 +211,29 @@ export class SongManager {
       const { url: officialUrl, isTrial, quality } = await this.getOnlineUrl(songId);
       if (officialUrl && !isTrial) {
         // 官方可播放且非试听
-        return { id: songId, url: officialUrl, isUnlocked: false, quality };
+        this.nextPrefetch = { id: songId, url: officialUrl, isUnlocked: false, quality };
+        return this.nextPrefetch;
       } else if (canUnlock) {
         // 官方失败或为试听时尝试解锁
         const unlockUrl = await this.getUnlockSongUrl(nextSong);
         if (unlockUrl.url) {
-          return { id: songId, url: unlockUrl.url, isUnlocked: true };
+          this.nextPrefetch = { id: songId, url: unlockUrl.url, isUnlocked: true };
+          return this.nextPrefetch;
         } else if (officialUrl && settingStore.playSongDemo) {
           // 解锁失败，若官方为试听且允许试听，保留官方试听地址
-          return { id: songId, url: officialUrl };
+          this.nextPrefetch = { id: songId, url: officialUrl };
+          return this.nextPrefetch;
         } else {
-          return { id: songId, url: undefined };
+          return;
         }
       } else {
         // 不可解锁，仅保留官方结果（可能为空）
-        return { id: songId, url: officialUrl };
+        this.nextPrefetch = { id: songId, url: officialUrl };
+        return this.nextPrefetch;
       }
     } catch (error) {
       console.error("❌ 预加载下一首歌曲地址失败", error);
-      return { id: 0, url: undefined };
+      return;
     }
   };
 
@@ -318,4 +297,68 @@ export class SongManager {
       };
     }
   };
+
+  /**
+   * 初始化/播放私人 FM
+   * @param playNext 是否播放下一首
+   * @returns 是否成功
+   */
+  public async initPersonalFM(playNext: boolean = false) {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+
+    try {
+      const fetchFM = async () => {
+        const res = await personalFm();
+        musicStore.personalFM.list = formatSongsList(res.data);
+        musicStore.personalFM.playIndex = 0;
+      };
+
+      // 若列表为空或已播放到最后，获取新列表
+      if (musicStore.personalFM.list.length === 0) await fetchFM();
+      // 如果需要播放下一首
+      if (playNext) {
+        statusStore.personalFmMode = true;
+        // 如果当前列表还没播完
+        if (musicStore.personalFM.playIndex < musicStore.personalFM.list.length - 1) {
+          musicStore.personalFM.playIndex++;
+        } else {
+          // 列表播完了，获取新的
+          await fetchFM();
+        }
+      }
+    } catch (error) {
+      console.error("❌ 私人 FM 初始化失败", error);
+    }
+  }
+
+  /**
+   * 私人 FM 垃圾桶
+   */
+  public async personalFMTrash(id: number) {
+    if (!isLogin()) {
+      openUserLogin(true);
+      return;
+    }
+    const statusStore = useStatusStore();
+    statusStore.personalFmMode = true;
+    try {
+      await personalFmToTrash(id);
+      window.$message.success("已移至垃圾桶");
+    } catch (error) {
+      window.$message.error("移至垃圾桶失败，请重试");
+      console.error("❌ 私人 FM 垃圾桶失败", error);
+    }
+  }
 }
+
+let instance: SongManager | null = null;
+
+/**
+ * 获取 SongManager 实例
+ * @returns SongManager
+ */
+export const useSongManager = (): SongManager => {
+  if (!instance) instance = new SongManager();
+  return instance;
+};

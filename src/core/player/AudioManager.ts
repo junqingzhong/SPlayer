@@ -4,6 +4,8 @@
  * @author imsyy
  */
 
+import { useSettingStore } from "@/stores";
+
 /** 扩充 AudioContext 接口以支持 setSinkId (实验性 API) */
 interface IExtendedAudioContext extends AudioContext {
   setSinkId(deviceId: string): Promise<void>;
@@ -29,10 +31,7 @@ export type AudioEventType =
 /**
  * 音频管理器类
  */
-export class AudioManager {
-  /** 单例实例 */
-  private static instance: AudioManager;
-
+class AudioManager {
   /** 核心上下文 */
   private audioCtx: IExtendedAudioContext | null = null;
   /** 音频元素 */
@@ -64,16 +63,6 @@ export class AudioManager {
     this.audioElement = new Audio();
     this.audioElement.crossOrigin = "anonymous";
     this.bindInternalEvents();
-  }
-
-  /**
-   * AudioManager 单例实例
-   */
-  public static getInstance() {
-    if (!this.instance) {
-      this.instance = new AudioManager();
-    }
-    return this.instance;
   }
 
   /**
@@ -373,6 +362,20 @@ export class AudioManager {
   }
 
   /**
+   * 切换输出设备
+   * @param deviceId 设备 ID
+   */
+  public toggleOutputDevice(deviceId?: string) {
+    const settingStore = useSettingStore();
+    const device = deviceId ?? settingStore.playDevice;
+    try {
+      this.setSinkId(deviceId ?? device);
+    } catch (error) {
+      console.error("AudioManager: 设置输出设备失败", error);
+    }
+  }
+
+  /**
    * 设置均衡器增益
    * @param index 频段索引 (0-9)
    * @param value 增益值 (-40 to 40)
@@ -449,3 +452,14 @@ export class AudioManager {
     }
   }
 }
+
+let instance: AudioManager | null = null;
+
+/**
+ * 获取 AudioManager 实例
+ * @returns AudioManager
+ */
+export const useAudioManager = (): AudioManager => {
+  if (!instance) instance = new AudioManager();
+  return instance;
+};

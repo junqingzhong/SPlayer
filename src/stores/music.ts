@@ -67,7 +67,7 @@ export const useMusicStore = defineStore("music", {
     isHasPlayer(state): boolean {
       return state.playSong?.id !== 0;
     },
-    // 歌曲封面
+    /** 歌曲封面 */
     songCover(state): string {
       return state.playSong.path
         ? state.playSong.cover
