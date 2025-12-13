@@ -246,6 +246,16 @@ export interface SettingState {
   registryProtocol: {
     orpheus: boolean;
   };
+  /** Last.fm 集成 */
+  lastfm: {
+    enabled: boolean;
+    apiKey: string;
+    apiSecret: string;
+    sessionKey: string;
+    username: string;
+    scrobbleEnabled: boolean;
+    nowPlayingEnabled: boolean;
+  };
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -369,6 +379,15 @@ export const useSettingStore = defineStore("setting", {
     userAgreementVersion: "",
     registryProtocol: {
       orpheus: false,
+    },
+    lastfm: {
+      enabled: false,
+      apiKey: "",
+      apiSecret: "",
+      sessionKey: "",
+      username: "",
+      scrobbleEnabled: true,
+      nowPlayingEnabled: true,
     },
   }),
   getters: {

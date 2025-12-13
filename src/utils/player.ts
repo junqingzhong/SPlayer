@@ -15,6 +15,7 @@ import { isElectron } from "./env";
 import lyricManager from "./lyricManager";
 import audioManager, { AudioEventType } from "./audioManager";
 import blob from "./blob";
+import lastfmScrobbler from "./lastfmScrobbler";
 
 /**
  * 播放器核心
@@ -63,7 +64,21 @@ class Player {
       statusStore.playStatus = true;
       // 重置重试计数
       const sid = playSongData?.type === "radio" ? playSongData?.dj?.id : playSongData?.id;
-      this.retryInfo = { songId: Number(sid || 0), count: 0 };
+      const newSongId = Number(sid || 0);
+      const isNewSong = this.retryInfo.songId !== newSongId;
+      this.retryInfo = { songId: newSongId, count: 0 };
+      // Last.fm Scrobbler - 仅在新歌曲开始播放时触发
+      if (isNewSong) {
+        const album =
+          typeof playSongData?.album === "string"
+            ? playSongData?.album
+            : playSongData?.album?.name;
+        const duration = playSongData?.duration ? Math.floor(playSongData.duration / 1000) : undefined;
+        lastfmScrobbler.startPlaying(name || "", artist || "", album, duration);
+      } else {
+        // 恢复播放
+        lastfmScrobbler.resume();
+      }
       // IPC 通知
       if (isElectron) {
         window.electron.ipcRenderer.send("play-status-change", true);
@@ -87,6 +102,8 @@ class Player {
       if (isElectron) {
         window.electron.ipcRenderer.send("play-status-change", false);
       }
+      // Last.fm Scrobbler
+      lastfmScrobbler.pause();
       console.log("⏸️ song pause:", playSongData);
     };
     audioManager.on("pause", pauseCallback);
@@ -96,6 +113,8 @@ class Player {
       const statusStore = useStatusStore();
       const playSongData = songManager.getPlaySongData();
       console.log("⏹️ song end:", playSongData);
+      // Last.fm Scrobbler
+      lastfmScrobbler.stop();
       // 检查自动关闭
       if (
         statusStore.autoClose.enable &&
