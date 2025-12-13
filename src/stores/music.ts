@@ -88,6 +88,7 @@ export const useMusicStore = defineStore("music", {
         blob.revokeBlobURL(oldPath);
       }
       this.playSong = { ...defaultMusicData };
+      this.playPlaylistId = 0;
       this.setSongLyric({ lrcData: [], yrcData: [] }, true);
       if (isElectron) {
         window.electron.ipcRenderer.send("play-song-change", undefined);

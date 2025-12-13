@@ -1,4 +1,4 @@
-import { type SongType } from "@/types/main";
+import { PlayModeType, type SongType } from "@/types/main";
 import { useAudioManager } from "./AudioManager";
 import { useSongManager } from "./SongManager";
 import { useLyricManager } from "./LyricManager";
@@ -7,8 +7,12 @@ import { isElectron } from "@/utils/env";
 import { throttle } from "lodash-es";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { calculateProgress, msToS } from "@/utils/time";
-import { handleSongQuality } from "@/utils/helper";
+import { handleSongQuality, shuffleArray } from "@/utils/helper";
 import { getCoverColor } from "@/utils/color";
+import { isLogin } from "@/utils/auth";
+import { openUserLogin } from "@/utils/modal";
+import { heartRateList } from "@/api/playlist";
+import { formatSongsList } from "@/utils/format";
 
 /**
  * 播放器 IPC 服务
@@ -80,7 +84,8 @@ const ipcService = {
 class PlayerController {
   /** 状态锁，防止快速切歌导致的竞争条件 */
   private _initializing = false;
-
+  /** 自动关闭定时器 */
+  private autoCloseInterval: ReturnType<typeof setInterval> | undefined;
   /** 最大重试次数 */
   private readonly MAX_RETRY_COUNT = 3;
   /** 当前曲目重试信息（按歌曲维度） */
@@ -91,9 +96,6 @@ class PlayerController {
     this.initMediaSession();
   }
 
-  // =========================================================================
-  // 核心播放流程 (Refactored)
-  // =========================================================================
   /**
    * 初始化并播放歌曲
    * @param song 要播放的歌曲对象，不传，默认使用 playSong
@@ -246,10 +248,6 @@ class PlayerController {
     }
   }
 
-  // =========================================================================
-  // 事件系统 (Event System)
-  // =========================================================================
-
   /**
    * 统一音频事件绑定
    */
@@ -293,6 +291,15 @@ class PlayerController {
     });
 
     // 播放结束
+    audioManager.on("ended", () => {
+      console.log("⏹️ song end");
+      // 检查定时关闭
+      if (this.checkAutoClose()) return;
+      // 自动播放下一首
+      this.nextOrPrev("next", true, true);
+    });
+
+    // 进度更新
     const handleTimeUpdate = throttle(() => {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
@@ -410,10 +417,6 @@ class PlayerController {
       await this.playSong(undefined, { autoPlay: true, seek: currentSeek });
     }, 2000);
   }
-
-  // =========================================================================
-  // 播放控制 (Control)
-  // =========================================================================
 
   /** 播放 */
   async play() {
@@ -588,6 +591,62 @@ class PlayerController {
   }
 
   /**
+   * 更新播放列表并播放
+   * @param data 歌曲列表
+   * @param song 指定播放的歌曲
+   * @param pid 歌单 ID
+   * @param options 配置项
+   * @param options.showTip 是否显示提示
+   * @param options.play 是否播放
+   * @param options.keepHeartbeatMode 是否保持心动模式
+   */
+  public async updatePlayList(
+    data: SongType[],
+    song?: SongType,
+    pid?: number,
+    options: {
+      showTip?: boolean;
+      play?: boolean;
+      keepHeartbeatMode?: boolean;
+    } = { showTip: true, play: true },
+  ) {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+    const musicStore = useMusicStore();
+
+    if (!data || !data.length) return;
+
+    // 处理随机模式
+    let processedData = [...data]; // 浅拷贝
+    if (statusStore.playSongMode === "shuffle") {
+      await dataStore.setOriginalPlayList([...data]);
+      processedData = shuffleArray(processedData);
+    }
+    // 更新列表
+    await dataStore.setPlayList(processedData);
+    // 关闭特殊模式
+    if (!options.keepHeartbeatMode && statusStore.playHeartbeatMode) {
+      this.toggleHeartMode(false);
+    }
+    if (statusStore.personalFmMode) statusStore.personalFmMode = false;
+    // 确定播放索引
+    if (song && song.id) {
+      if (musicStore.playSong.id === song.id && options.play) {
+        await this.play();
+      } else {
+        statusStore.playIndex = processedData.findIndex((s) => s.id === song.id);
+        await this.playSong();
+      }
+    } else {
+      // 默认播放第一首
+      statusStore.playIndex = 0;
+      await this.playSong();
+    }
+    musicStore.playPlaylistId = pid ?? 0;
+    if (options.showTip) window.$message.success("已开始播放");
+  }
+
+  /**
    * 清空播放列表
    */
   public async cleanPlayList() {
@@ -595,30 +654,135 @@ class PlayerController {
     const statusStore = useStatusStore();
     const musicStore = useMusicStore();
     const audioManager = useAudioManager();
-
-    audioManager.stop();
-
     // 重置状态
-    statusStore.$patch({
-      currentTime: 0,
-      duration: 0,
-      progress: 0,
-      lyricIndex: -1,
-      playStatus: false,
-      playLoading: false,
-      playListShow: false,
-      showFullPlayer: false,
-      playHeartbeatMode: false,
-      personalFmMode: false,
-      playIndex: -1,
-    });
-    musicStore.playPlaylistId = 0;
+    audioManager.stop();
+    statusStore.resetPlayStatus();
     musicStore.resetMusicData();
-
+    // 清空播放列表
     await dataStore.setPlayList([]);
     await dataStore.clearOriginalPlayList();
-
     ipcService.sendProgress("none");
+  }
+
+  /**
+   * 添加下一首歌曲
+   * @param song 歌曲
+   * @param play 是否立即播放
+   */
+  public async addNextSong(song: SongType, play: boolean = false) {
+    const dataStore = useDataStore();
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+
+    // 关闭特殊模式
+    if (statusStore.personalFmMode) statusStore.personalFmMode = false;
+
+    if (musicStore.playSong.id === song.id) {
+      await this.play();
+      window.$message.success("已开始播放");
+      return;
+    }
+
+    // 尝试添加
+    const currentSongId = musicStore.playSong.id;
+    const songIndex = await dataStore.setNextPlaySong(song, statusStore.playIndex);
+
+    // 播放歌曲
+    if (songIndex < 0) return;
+    if (play) {
+      await this.togglePlayIndex(songIndex, true);
+    } else {
+      // 修正当前播放索引
+      const newCurrentIndex = dataStore.playList.findIndex((s) => s.id === currentSongId);
+      if (newCurrentIndex !== -1 && newCurrentIndex !== statusStore.playIndex) {
+        statusStore.playIndex = newCurrentIndex;
+      }
+      window.$message.success("已添加至下一首播放");
+    }
+  }
+
+  /**
+   * 切换播放索引
+   * @param index 播放索引
+   * @param play 是否立即播放
+   */
+  public async togglePlayIndex(index: number, play: boolean = false) {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+
+    try {
+      // 立即更新UI状态，防止用户重复点击
+      statusStore.playLoading = true;
+      statusStore.playStatus = false;
+
+      // 获取数据
+      const { playList } = dataStore;
+
+      // 若超出播放列表
+      if (index >= playList.length) return;
+
+      // 相同
+      if (!play && statusStore.playIndex === index) {
+        await this.play();
+        return;
+      }
+
+      // 更改状态
+      statusStore.playIndex = index;
+      // 重置播放进度（切换歌曲时必须重置）
+      statusStore.currentTime = 0;
+      statusStore.progress = 0;
+      statusStore.lyricIndex = -1;
+
+      await this.playSong(undefined, { autoPlay: play });
+    } catch (error) {
+      console.error("Error in togglePlayIndex:", error);
+      statusStore.playLoading = false;
+      throw error;
+    }
+  }
+
+  /**
+   * 移除指定歌曲
+   * @param index 歌曲索引
+   */
+  public removeSongIndex(index: number) {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+
+    // 获取数据
+    const { playList } = dataStore;
+
+    // 若超出播放列表
+    if (index >= playList.length) return;
+
+    // 仅剩一首
+    if (playList.length === 1) {
+      this.cleanPlayList();
+      return;
+    }
+
+    // 是否为当前播放歌曲
+    const isCurrentPlay = statusStore.playIndex === index;
+
+    // 若将移除最后一首
+    if (index === playList.length - 1) {
+      statusStore.playIndex = 0;
+    }
+    // 若为当前播放之后
+    else if (statusStore.playIndex > index) {
+      statusStore.playIndex--;
+    }
+
+    // 移除指定歌曲
+    const newPlaylist = [...playList];
+    newPlaylist.splice(index, 1);
+    dataStore.setPlayList(newPlaylist);
+
+    // 若为当前播放
+    if (isCurrentPlay) {
+      this.playSong(undefined, { autoPlay: statusStore.playStatus });
+    }
   }
 
   /** MediaSession: 初始化 */
@@ -676,6 +840,205 @@ class PlayerController {
       duration: msToS(duration),
       position: msToS(position),
     });
+  }
+
+  /**
+   * 开启定时关闭
+   * @param time 自动关闭时间（分钟）
+   * @param remainTime 剩余时间（秒）
+   */
+  public startAutoCloseTimer(time: number, remainTime: number) {
+    const statusStore = useStatusStore();
+    if (!time || !remainTime) return;
+
+    if (this.autoCloseInterval) {
+      clearInterval(this.autoCloseInterval);
+    }
+
+    statusStore.autoClose.enable = true;
+    statusStore.autoClose.time = time;
+    statusStore.autoClose.remainTime = remainTime;
+
+    this.autoCloseInterval = setInterval(() => {
+      if (statusStore.autoClose.remainTime <= 0) {
+        clearInterval(this.autoCloseInterval);
+        if (!statusStore.autoClose.waitSongEnd) {
+          this.pause();
+          statusStore.autoClose.enable = false;
+          statusStore.autoClose.remainTime = statusStore.autoClose.time * 60;
+        }
+        return;
+      }
+      statusStore.autoClose.remainTime--;
+    }, 1000);
+  }
+
+  /** 检查并执行自动关闭 */
+  private checkAutoClose(): boolean {
+    const statusStore = useStatusStore();
+    const { enable, waitSongEnd, remainTime } = statusStore.autoClose;
+
+    if (enable && waitSongEnd && remainTime <= 0) {
+      console.log("🔄 执行自动关闭");
+      this.pause();
+      statusStore.autoClose.enable = false;
+      // 重置时间
+      statusStore.autoClose.remainTime = statusStore.autoClose.time * 60;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 切换播放模式
+   * @param mode 播放模式
+   */
+  public async togglePlayMode(mode: PlayModeType | false) {
+    const dataStore = useDataStore();
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+    // 退出心动模式
+    if (statusStore.playHeartbeatMode) this.toggleHeartMode(false);
+    // 计算目标模式
+    let targetMode: PlayModeType;
+    if (mode) {
+      targetMode = mode;
+    } else {
+      const modes: PlayModeType[] = ["repeat", "repeat-once", "shuffle"];
+      const nextIdx = (modes.indexOf(statusStore.playSongMode) + 1) % modes.length;
+      targetMode = modes[nextIdx];
+    }
+    // 随机模式逻辑
+    if (targetMode === "shuffle" && statusStore.playSongMode !== "shuffle") {
+      const currentList = dataStore.playList;
+      if (currentList.length > 1) {
+        await dataStore.setOriginalPlayList([...currentList]);
+        const shuffled = shuffleArray([...currentList]);
+        await dataStore.setPlayList(shuffled);
+        // 修正当前索引
+        const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
+        if (idx !== -1) statusStore.playIndex = idx;
+      }
+    }
+    // 离开随机模式：恢复到原顺序
+    else if (statusStore.playSongMode === "shuffle" && targetMode !== "shuffle") {
+      // 恢复列表
+      const original = await dataStore.getOriginalPlayList();
+      if (original?.length) {
+        await dataStore.setPlayList(original);
+        const idx = original.findIndex((s) => s.id === musicStore.playSong?.id);
+        statusStore.playIndex = idx !== -1 ? idx : 0;
+        await dataStore.clearOriginalPlayList();
+      }
+    }
+    statusStore.playSongMode = targetMode;
+    ipcService.sendPlayMode(targetMode);
+  }
+
+  /**
+   * 切换心动模式
+   * @param open 是否开启
+   */
+  public async toggleHeartMode(open: boolean = true) {
+    const statusStore = useStatusStore();
+    const musicStore = useMusicStore();
+    const dataStore = useDataStore();
+
+    if (!open && statusStore.playHeartbeatMode) {
+      statusStore.playHeartbeatMode = false;
+      window.$message.success("已退出心动模式");
+      return;
+    }
+
+    if (isLogin() !== 1) {
+      if (isLogin() === 0) {
+        openUserLogin(true);
+      } else {
+        window.$message.warning("该登录模式暂不支持该操作");
+      }
+      return;
+    }
+
+    if (statusStore.playHeartbeatMode) {
+      await this.play();
+      statusStore.showFullPlayer = true;
+      return;
+    }
+
+    window.$message.loading("心动模式开启中...");
+
+    try {
+      const pid =
+        musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
+      const res = await heartRateList(musicStore.playSong?.id || 0, pid);
+
+      if (res.code === 200) {
+        const list = formatSongsList(res.data);
+        statusStore.playIndex = 0;
+        await this.updatePlayList(list, list[0], undefined, { keepHeartbeatMode: true });
+        statusStore.playHeartbeatMode = true;
+      }
+    } catch (e) {
+      console.error(e);
+      window.$message.error("心动模式开启失败");
+    }
+  }
+
+  /**
+   * 获取频谱数据
+   */
+  public getSpectrumData(): Uint8Array | null {
+    const audioManager = useAudioManager();
+    return audioManager.getFrequencyData();
+  }
+
+  /**
+   * 更新均衡器
+   * @param options 均衡器选项
+   * @param options.bands 频带增益
+   * @param options.preamp 预放大
+   * @param options.q Q 值
+   * @param options.frequencies 频率
+   */
+  public updateEq(options?: {
+    bands?: number[];
+    preamp?: number;
+    q?: number;
+    frequencies?: number[];
+  }) {
+    const audioManager = useAudioManager();
+    // 暂未完全适配 preamp 和 q 的动态调整，仅处理 bands
+    if (options?.bands) {
+      options.bands.forEach((val, idx) => audioManager.setFilterGain(idx, val));
+    }
+  }
+
+  /**
+   * 禁用均衡器
+   */
+  public disableEq() {
+    const audioManager = useAudioManager();
+    for (let i = 0; i < 10; i++) audioManager.setFilterGain(i, 0);
+  }
+
+  /**
+   * 切换桌面歌词
+   */
+  public toggleDesktopLyric() {
+    const statusStore = useStatusStore();
+    this.setDesktopLyricShow(!statusStore.showDesktopLyric);
+  }
+
+  /**
+   * 桌面歌词控制
+   * @param show 是否显示
+   */
+  public setDesktopLyricShow(show: boolean) {
+    const statusStore = useStatusStore();
+    if (statusStore.showDesktopLyric === show) return;
+    statusStore.showDesktopLyric = show;
+    ipcService.toggleDesktopLyric(show);
+    window.$message.success(`${show ? "已开启" : "已关闭"}桌面歌词`);
   }
 }
 
