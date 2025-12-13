@@ -67,8 +67,11 @@ class Player {
       const newSongId = Number(sid || 0);
       const isNewSong = this.retryInfo.songId !== newSongId;
       this.retryInfo = { songId: newSongId, count: 0 };
-      // Last.fm Scrobbler - 仅在新歌曲开始播放时触发
+      // Last.fm Scrobbler
       if (isNewSong) {
+        // 终结上一首歌曲的 scrobble
+        lastfmScrobbler.stop();
+        // 开始新歌曲
         const album =
           typeof playSongData?.album === "string"
             ? playSongData?.album
