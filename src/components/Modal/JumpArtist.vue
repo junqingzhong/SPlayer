@@ -87,26 +87,26 @@ const getArtistData = async () => {
     }
   } else if (Array.isArray(props.artist)) {
     // 检查是否有 cover 字段，如果没有则获取歌手详情
-    const hasCover = props.artist.some((ar) => ar.cover);
-    if (hasCover) {
-      artistData.value = props.artist;
-    } else {
-      // 获取每个歌手的详情以获取头像
-      const artistPromises = props.artist.map(async (ar) => {
-        try {
-          const result = await artistDetail(ar.id);
-          const artist = result.data?.artist;
-          return {
-            id: ar.id,
-            name: ar.name,
-            cover: artist?.cover || artist?.img1v1Url || artist?.picUrl,
-          };
-        } catch {
-          return { id: ar.id, name: ar.name, cover: undefined };
-        }
-      });
-      artistData.value = await Promise.all(artistPromises);
-    }
+    const artistPromises = props.artist.map(async (ar) => {
+      // 如果已有封面，则直接返回
+      if (ar.cover) {
+        return ar;
+      }
+      // 否则，获取歌手详情
+      try {
+        const result = await artistDetail(ar.id);
+        const artist = result.data?.artist;
+        return {
+          id: ar.id,
+          name: ar.name,
+          cover: artist?.cover || artist?.img1v1Url || artist?.picUrl,
+        };
+      } catch (error) {
+        console.error(`获取歌手 ${ar.name} (${ar.id}) 的详情失败:`, error);
+        return { id: ar.id, name: ar.name, cover: undefined };
+      }
+    });
+    artistData.value = await Promise.all(artistPromises);
   }
 };
 
