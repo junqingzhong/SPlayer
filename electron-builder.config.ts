@@ -153,10 +153,10 @@ const config: Configuration = {
         arch: ["x64", "arm64"],
       },
       // Snap 包管理器（仅支持 x64 架构）
-      {
-        target: "snap",
-        arch: ["x64"],
-      },
+      // {
+      //   target: "snap",
+      //   arch: ["x64"],
+      // },
       // 压缩包格式
       {
         target: "tar.gz",
