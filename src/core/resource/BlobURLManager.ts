@@ -61,6 +61,15 @@ class BlobURLManager {
   }
 
   /**
+   * 检查 Blob URL 是否存在
+   * @param key - 要检查的键
+   * @returns 是否存在
+   */
+  hasBlobURL(key: string): boolean {
+    return this.blobURLs.has(key);
+  }
+
+  /**
    * 清理 Blob URL
    * @param key - 要清理的 Blob URL 对应的键
    */

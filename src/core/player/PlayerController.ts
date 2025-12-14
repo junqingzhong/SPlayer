@@ -391,6 +391,7 @@ class PlayerController {
    */
   private async handlePlaybackError(errCode: number | undefined, currentSeek: number = 0) {
     const dataStore = useDataStore();
+    const statusStore = useStatusStore();
 
     this.retryInfo.count++;
     console.warn(
@@ -417,15 +418,16 @@ class PlayerController {
       return;
     }
 
-    // 尝试重试 (延迟给网络缓冲)
+    // 尝试重试
     setTimeout(async () => {
       // 只有第一次重试时提示用户
       if (this.retryInfo.count === 1) {
+        statusStore.playLoading = true;
         window.$message.warning("播放异常，正在尝试恢复...");
       }
       // 重新调用 playSong，尝试恢复进度
       await this.playSong({ autoPlay: true, seek: currentSeek });
-    }, 2000);
+    }, 1000);
   }
 
   /** 播放 */

@@ -37,6 +37,7 @@ export const isLogin = (): 0 | 1 | 2 => {
 
 // 退出登录
 export const toLogout = async () => {
+  const router = useRouter();
   const dataStore = useDataStore();
   await logout();
   // 去除 cookie
@@ -45,6 +46,8 @@ export const toLogout = async () => {
   sessionStorage.clear();
   // 清除用户数据
   await dataStore.clearUserData();
+  // 跳转首页
+  router.push("/");
   window.$message.success("成功退出登录");
 };
 

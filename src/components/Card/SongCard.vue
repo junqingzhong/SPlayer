@@ -200,7 +200,20 @@ const qualityColor = computed(() => {
 // 加载本地歌曲封面
 const localCover = async (show: boolean) => {
   if (!isElectron || !show || !song.value.path) return;
-  if (song.value.cover || song.value.cover === "/images/song.jpg?assest") return;
+  // 是否还在缓存中
+  const currentCover = song.value.cover;
+  if (currentCover && currentCover.startsWith("blob:")) {
+    // 需要重新获取
+    if (!blobURLManager.hasBlobURL(song.value.path)) {
+      song.value.cover = "";
+    } else {
+      return;
+    }
+  }
+  // 如果已有非 blob URL 的封面，不需要重新获取
+  if (song.value.cover && song.value.cover !== "" && song.value.cover !== "/images/song.jpg?assest") {
+    return;
+  }
   // 获取封面
   const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", song.value.path);
   if (!coverData) return;
