@@ -108,7 +108,7 @@
       <div
         v-if="statusStore.personalFmMode"
         class="play-icon"
-        v-debounce="() => player.personalFMTrash(musicStore.personalFMSong?.id)"
+        v-debounce="() => songManager.personalFMTrash(musicStore.personalFMSong?.id)"
       >
         <SvgIcon class="icon" :size="18" name="ThumbDown" />
       </div>
@@ -199,14 +199,17 @@ import {
   openJumpArtist,
   openPlaylistAdd,
 } from "@/utils/modal";
-import { usePlayer } from "@/utils/player";
+import { useSongManager } from "@/core/player/SongManager";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 const router = useRouter();
-const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+
+const player = usePlayerController();
+const songManager = useSongManager();
 
 // 歌曲更多操作
 const songMoreOptions = computed<DropdownOption[]>(() => {

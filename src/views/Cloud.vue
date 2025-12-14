@@ -102,11 +102,11 @@ import { userCloud } from "@/api/cloud";
 import { formatSongsList } from "@/utils/format";
 import { fuzzySearch, renderIcon } from "@/utils/helper";
 import { openBatchList } from "@/utils/modal";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
-const player = usePlayer();
 const router = useRouter();
 const dataStore = useDataStore();
+const player = usePlayerController();
 
 // 是否激活
 const isActivated = ref<boolean>(false);

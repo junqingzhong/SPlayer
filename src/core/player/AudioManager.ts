@@ -277,6 +277,13 @@ class AudioManager {
   }
 
   /**
+   * 移除所有事件监听
+   */
+  public offAll() {
+    this.eventListeners.clear();
+  }
+
+  /**
    * 绑定内部音频元素事件并转发
    * @param event 事件名称
    */
@@ -430,4 +437,13 @@ class AudioManager {
   }
 }
 
-export default new AudioManager();
+let instance: AudioManager | null = null;
+
+/**
+ * 获取 AudioManager 实例
+ * @returns AudioManager
+ */
+export const useAudioManager = (): AudioManager => {
+  if (!instance) instance = new AudioManager();
+  return instance;
+};

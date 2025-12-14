@@ -44,29 +44,54 @@ export type UserType = {
   isAnnualCount?: boolean;
 };
 
+/** 歌曲信息 */
 export type SongType = {
+  /** 歌曲id */
   id: number;
+  /** 歌曲名称 */
   name: string;
+  /** 歌手 */
   artists: MetaData[] | string;
+  /** 专辑 */
   album: MetaData | string;
+  /** 电台 */
   dj?: DjData;
+  /** 封面 */
   cover: string;
+  /** 封面大小 */
   coverSize?: CoverSize;
+  /** 时长 */
   duration: number;
-  // 0: 未知 | 1: 原曲 | 2: 翻唱
+  /**
+   * 原曲类型
+   * 0: 未知 | 1: 原曲 | 2: 翻唱
+   */
   originCoverType?: number;
+  /** 别名 */
   alia?: string;
-  // 0: 免费或无版权 | 1: VIP 歌曲 | 4: 购买专辑 | 8: 非会员可免费播放低音质，会员可播放高音质及下载
+  /** 免费或无版权
+   * 1: VIP 歌曲 | 4: 购买专辑 | 8: 非会员可免费播放低音质，会员可播放高音质及下载 */
   free: 0 | 1 | 4 | 8;
+  /** MV */
   mv: number | null;
+  /** 本地路径 */
   path?: string;
+  /** 是否为云盘歌曲 */
   pc?: boolean;
+  /** 大小 */
   size?: number;
+  /** 音质 */
   quality?: QualityType;
+  /** 创建时间 */
   createTime?: number;
+  /** 更新时间 */
   updateTime?: number;
+  /** 播放量 */
   playCount?: number;
-  // 歌曲类型
+  /**
+   * 歌曲类型
+   * song: 歌曲 | radio: 电台
+   */
   type: "song" | "radio";
 };
 

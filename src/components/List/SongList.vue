@@ -114,7 +114,7 @@ import { useMusicStore, useStatusStore } from "@/stores";
 import { entries, isEmpty } from "lodash-es";
 import { sortOptions } from "@/utils/meta";
 import { renderIcon } from "@/utils/helper";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import SongListMenu from "@/components/Menu/SongListMenu.vue";
 
 const props = withDefaults(
@@ -168,9 +168,9 @@ const emit = defineEmits<{
   removeSong: [id: number[]];
 }>();
 
-const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+const player = usePlayerController();
 
 // 列表状态
 const scrollTop = ref<number>(0);
@@ -316,7 +316,6 @@ const sortSelect = (key: SortType) => {
     player.updatePlayList(listData.value, musicStore.playSong, props.playListId, {
       showTip: false,
       play: false,
-      scrobble: false,
     });
   }
   // 滚动到当前播放歌曲或顶部

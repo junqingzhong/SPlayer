@@ -42,11 +42,12 @@
 import type { SongType } from "@/types/main";
 import { useLocalStore } from "@/stores";
 import { some } from "lodash-es";
-import blob from "@/utils/blob";
+import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 
 const props = defineProps<{ data: SongType[] }>();
 
 const localStore = useLocalStore();
+const blobURLManager = useBlobURLManager();
 
 // 专辑数据
 const chooseAlbum = ref<string>("");
@@ -86,7 +87,7 @@ const loadAlbumCover = async (show: boolean, key: string) => {
   const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", path);
   if (!coverData) return;
   const { data, format } = coverData;
-  const blobURL = blob.createBlobURL(data, format, path);
+  const blobURL = blobURLManager.createBlobURL(data, format, path);
   if (blobURL) albumData.value[key][0].cover = blobURL;
 };
 
