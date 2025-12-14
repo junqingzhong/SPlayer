@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { keywords, regexes } from "@/assets/data/exclude";
-import { SongUnlockServer } from "@/utils/songManager";
+import { SongUnlockServer } from "@/core/player/SongManager";
 import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";

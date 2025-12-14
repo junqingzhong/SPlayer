@@ -3,9 +3,9 @@ import { openSetting, openUpdateApp } from "@/utils/modal";
 import { useMusicStore, useDataStore, useStatusStore } from "@/stores";
 import { toLikeSong } from "@/utils/auth";
 import { usePlayerController } from "@/core/player/PlayerController";
-import songManager from "@/utils/songManager";
 import { PlayModeType, SettingType } from "@/types/main";
 import { handleProtocolUrl } from "@/utils/protocol";
+import { getPlayerInfoObj } from "@/utils/format";
 
 /**
  * IPC 事件监听 Hook
@@ -46,7 +46,7 @@ export const useIpcEvents = () => {
     const statusStore = useStatusStore();
 
     if (player) {
-      const { name, artist } = songManager.getPlayerInfoObj() || {};
+      const { name, artist } = getPlayerInfoObj() || {};
       const lrcDataRaw = toRaw(musicStore.songLyric.lrcData) ?? [];
       const yrcDataRaw = toRaw(musicStore.songLyric.yrcData) ?? [];
 

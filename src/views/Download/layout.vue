@@ -46,7 +46,7 @@
           @click="
             currentTab === 'download-downloaded'
               ? getDownloadMusic(true)
-              : DownloadManager.retryAllDownloads()
+              : downloadManager.retryAllDownloads()
           "
         >
           <template #icon>
@@ -81,13 +81,15 @@ import type { SongType } from "@/types/main";
 import { formatSongsList } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
 import type { MessageReactive } from "naive-ui";
-import DownloadManager from "@/utils/downloadManager";
+import { useDownloadManager } from "@/core/resource/DownloadManager";
 
 const route = useRoute();
 const router = useRouter();
 const dataStore = useDataStore();
 const settingStore = useSettingStore();
+
 const player = usePlayerController();
+const downloadManager = useDownloadManager();
 
 const loading = ref<boolean>(false);
 const loadingMsg = ref<MessageReactive | null>(null);
@@ -146,7 +148,7 @@ const getDownloadMusic = async (showTip: boolean = false) => {
     }
 
     loading.value = true;
-    const result = await DownloadManager.getDownloadedSongs();
+    const result = await downloadManager.getDownloadedSongs();
 
     if (result) {
       listData.value = formatSongsList(result);

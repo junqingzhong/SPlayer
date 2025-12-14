@@ -5,7 +5,7 @@ import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
 import { songDownloadUrl, songLyric, songUrl } from "@/api/song";
 import { songLevelData } from "@/utils/meta";
-import songManager from "@/utils/songManager";
+import { getPlayerInfoObj } from "@/utils/format";
 
 interface DownloadTask {
   song: SongType;
@@ -13,18 +13,8 @@ interface DownloadTask {
 }
 
 class DownloadManager {
-  private static instance: DownloadManager;
   private queue: DownloadTask[] = [];
   private isProcessing: boolean = false;
-
-  private constructor() {}
-
-  public static getInstance(): DownloadManager {
-    if (!DownloadManager.instance) {
-      DownloadManager.instance = new DownloadManager();
-    }
-    return DownloadManager.instance;
-  }
 
   /**
    * 获取已下载歌曲列表
@@ -214,7 +204,7 @@ class DownloadManager {
         type = result.data.type?.toLowerCase() || "mp3";
       }
 
-      const infoObj = songManager.getPlayerInfoObj(song) || {
+      const infoObj = getPlayerInfoObj(song) || {
         name: song.name || "未知歌曲",
         artist: "未知歌手",
         album: "未知专辑",
@@ -470,4 +460,13 @@ class DownloadManager {
   }
 }
 
-export default DownloadManager.getInstance();
+let instance: DownloadManager | null = null;
+
+/**
+ * 获取 DownloadManager 实例
+ * @returns DownloadManager
+ */
+export const useDownloadManager = (): DownloadManager => {
+  if (!instance) instance = new DownloadManager();
+  return instance;
+};

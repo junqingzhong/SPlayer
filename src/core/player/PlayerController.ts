@@ -12,7 +12,9 @@ import { getCoverColor } from "@/utils/color";
 import { isLogin } from "@/utils/auth";
 import { openUserLogin } from "@/utils/modal";
 import { heartRateList } from "@/api/playlist";
-import { formatSongsList } from "@/utils/format";
+import { formatSongsList, getPlayerInfoObj, getPlaySongData } from "@/utils/format";
+import { calculateLyricIndex } from "@/utils/calc";
+import { LyricLine } from "@applemusic-like-lyrics/lyric";
 
 /**
  * 播放器 IPC 服务
@@ -115,7 +117,7 @@ class PlayerController {
 
     const { autoPlay = true, seek = 0 } = options;
     // 要播放的歌曲对象
-    const playSongData = songManager.getPlaySongData();
+    const playSongData = getPlaySongData();
     if (!playSongData) {
       statusStore.playLoading = false;
       throw new Error("SONG_NOT_FOUND");
@@ -229,9 +231,8 @@ class PlayerController {
 
       // Blob URL 清理
       const oldCover = musicStore.playSong.cover;
-      const oldPath = musicStore.playSong.path;
-      if (oldCover && oldCover.startsWith("blob:") && oldPath && oldPath !== path) {
-        blobURLManager.revokeBlobURL(oldPath);
+      if (oldCover && oldCover.startsWith("blob:")) {
+        blobURLManager.revokeBlobURL(musicStore.playSong.path || "");
       }
 
       // 获取封面数据
@@ -259,23 +260,24 @@ class PlayerController {
    * 统一音频事件绑定
    */
   private bindAudioEvents() {
-    const songManager = useSongManager();
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+    const musicStore = useMusicStore();
+    const settingStore = useSettingStore();
+
     const audioManager = useAudioManager();
-    const lyricManager = useLyricManager();
 
     // 清理旧事件
     audioManager.offAll();
 
     // 加载状态
     audioManager.on("loadstart", () => {
-      useStatusStore().playLoading = true;
+      statusStore.playLoading = true;
     });
 
     // 加载完成
     audioManager.on("canplay", () => {
-      const statusStore = useStatusStore();
-      const dataStore = useDataStore();
-      const playSongData = songManager.getPlaySongData();
+      const playSongData = getPlaySongData();
 
       // 结束加载
       statusStore.playLoading = false;
@@ -291,7 +293,7 @@ class PlayerController {
         // 更新喜欢状态
         ipcService.sendLikeStatus(dataStore.isLikeSong(playSongData?.id || 0));
         // 更新信息
-        const { name, artist } = songManager.getPlayerInfoObj() || {};
+        const { name, artist } = getPlayerInfoObj() || {};
         const playTitle = `${name} - ${artist}`;
         ipcService.sendSongChange(playTitle, artist || "", name || "");
       }
@@ -299,31 +301,23 @@ class PlayerController {
 
     // 播放开始
     audioManager.on("play", () => {
-      const statusStore = useStatusStore();
-
-      const { name, artist } = songManager.getPlayerInfoObj() || {};
+      const { name, artist } = getPlayerInfoObj() || {};
       const playTitle = `${name} - ${artist}`;
-
       // 更新状态
       statusStore.playStatus = true;
       window.document.title = `${playTitle} | SPlayer`;
-
       // 只有真正播放了才重置重试计数
       if (this.retryInfo.count > 0) this.retryInfo.count = 0;
-
       // IPC 通知
       ipcService.sendPlayStatus(true);
       ipcService.sendSongChange(playTitle, artist || "", name || "");
-
       console.log("▶️ song play:", name);
     });
 
     // 暂停
     audioManager.on("pause", () => {
-      const statusStore = useStatusStore();
       statusStore.playStatus = false;
       if (!isElectron) window.document.title = "SPlayer";
-
       ipcService.sendPlayStatus(false);
       console.log("⏸️ song pause");
     });
@@ -339,26 +333,28 @@ class PlayerController {
 
     // 进度更新
     const handleTimeUpdate = throttle(() => {
-      const musicStore = useMusicStore();
-      const statusStore = useStatusStore();
-      const settingStore = useSettingStore();
-
       const currentTime = Math.floor(audioManager.currentTime * 1000);
       const duration = Math.floor(audioManager.duration * 1000) || statusStore.duration;
-
-      // 更新 Store (限制频率以免阻塞 UI 线程)
-      if (Math.abs(currentTime - statusStore.currentTime) > 200) {
-        statusStore.$patch({
-          currentTime,
-          duration,
-          progress: calculateProgress(currentTime, duration),
-          lyricIndex: lyricManager.calculateLyricIndex(currentTime),
-        });
+      // 计算歌词索引
+      const songId = musicStore.playSong?.id;
+      const offset = statusStore.getSongOffset(songId);
+      const useYrc = !!(settingStore.showYrc && musicStore.songLyric.yrcData?.length);
+      let rawLyrics: LyricLine[] = [];
+      if (useYrc) {
+        rawLyrics = toRaw(musicStore.songLyric.yrcData);
+      } else {
+        rawLyrics = toRaw(musicStore.songLyric.lrcData);
       }
-
+      const lyricIndex = calculateLyricIndex(currentTime, rawLyrics, offset);
+      // 更新状态
+      statusStore.$patch({
+        currentTime,
+        duration,
+        progress: calculateProgress(currentTime, duration),
+        lyricIndex,
+      });
       // 更新系统 MediaSession
       this.updateMediaSessionState(duration, currentTime);
-
       // 更新桌面歌词
       ipcService.sendLyric({
         lyricIndex: statusStore.lyricIndex,
@@ -832,10 +828,9 @@ class PlayerController {
   private updateMediaSession() {
     if (!("mediaSession" in navigator)) return;
     const musicStore = useMusicStore();
-    const songManager = useSongManager();
 
     // 获取播放数据
-    const song = songManager.getPlaySongData();
+    const song = getPlaySongData();
     if (!song) return;
     const isRadio = song.type === "radio";
     // 更新元数据

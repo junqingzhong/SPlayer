@@ -339,11 +339,11 @@
 import type { SelectOption } from "naive-ui";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { isDev, isElectron } from "@/utils/env";
-import songManager from "@/utils/songManager";
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";
 import { openSidebarHideManager, openHomePageSectionManager } from "@/utils/modal";
 import { sendRegisterProtocol } from "@/utils/protocol";
+import { getCoverColor } from "@/utils/color";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
@@ -448,7 +448,7 @@ const modeChange = (val: boolean) => {
 
 // 全局着色更改
 const themeGlobalColorChange = (val: boolean) => {
-  if (val) songManager.getCoverColor(musicStore.songCover);
+  if (val)  getCoverColor(musicStore.songCover);
 };
 
 // 注册或取消注册协议

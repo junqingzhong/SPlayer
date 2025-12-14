@@ -19,7 +19,7 @@
 import type { SongType } from "@/types/main";
 import { NAlert, type DropdownOption } from "naive-ui";
 import { useStatusStore, useDataStore, useMusicStore } from "@/stores";
-import DownloadManager from "@/utils/downloadManager";
+import { useDownloadManager } from "@/core/resource/DownloadManager";
 import { renderIcon, copyData } from "@/utils/helper";
 import { deleteCloudSong, importCloudSong } from "@/api/cloud";
 import {
@@ -40,7 +40,9 @@ const router = useRouter();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+
 const player = usePlayerController();
+const downloadManager = useDownloadManager();
 
 // 右键菜单数据
 const dropdownX = ref<number>(0);
@@ -256,7 +258,7 @@ const openDropdown = (
           key: "retry-download",
           label: "重试下载",
           show: isDownloading,
-          props: { onClick: () => DownloadManager.retryDownload(song.id) },
+          props: { onClick: () => downloadManager.retryDownload(song.id) },
           icon: renderIcon("Refresh"),
         },
       ];
