@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import type { SongType, MetaData } from "@/types/main";
 import { useSettingStore } from "@/stores";
-import { searchArtist } from "@/api/artist";
+import { searchArtist, artistDetail } from "@/api/artist";
 import { uniq } from "lodash-es";
 
 const props = defineProps<{
@@ -86,7 +86,27 @@ const getArtistData = async () => {
       });
     }
   } else if (Array.isArray(props.artist)) {
-    artistData.value = props.artist;
+    // 检查是否有 cover 字段，如果没有则获取歌手详情
+    const hasCover = props.artist.some((ar) => ar.cover);
+    if (hasCover) {
+      artistData.value = props.artist;
+    } else {
+      // 获取每个歌手的详情以获取头像
+      const artistPromises = props.artist.map(async (ar) => {
+        try {
+          const result = await artistDetail(ar.id);
+          const artist = result.data?.artist;
+          return {
+            id: ar.id,
+            name: ar.name,
+            cover: artist?.cover || artist?.img1v1Url || artist?.picUrl,
+          };
+        } catch {
+          return { id: ar.id, name: ar.name, cover: undefined };
+        }
+      });
+      artistData.value = await Promise.all(artistPromises);
+    }
   }
 };
 
