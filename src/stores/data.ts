@@ -246,7 +246,7 @@ export const useDataStore = defineStore("data", {
       if (currentList.length === 0) {
         const newList = [song];
         this.playList = markRaw(newList);
-        await musicDB.setItem("playList", newList);
+        await musicDB.setItem("playList", cloneDeep(newList));
         return 0;
       }
       // 浅拷贝数组，准备修改

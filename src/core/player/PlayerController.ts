@@ -747,8 +747,8 @@ class PlayerController {
       audioManager.stop();
 
       // 相同歌曲且需要播放
-      if (!play && statusStore.playIndex === index) {
-        await this.playSong({ autoPlay: true });
+      if (statusStore.playIndex === index) {
+        if (play) await this.play();
         return;
       }
 
