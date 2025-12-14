@@ -74,13 +74,13 @@ import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/
 import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
 import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
-const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 // 播放模式数据
 const playModeOptions: DropdownOption[] = [

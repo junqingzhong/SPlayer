@@ -37,13 +37,13 @@ import { LyricPlayer } from "@applemusic-like-lyrics/vue";
 import { type LyricLine } from "@applemusic-like-lyrics/lyric";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import LyricMenu from "./LyricMenu.vue";
 
-const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 const lyricPlayerRef = ref<any | null>(null);
 

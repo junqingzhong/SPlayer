@@ -16,7 +16,7 @@ import { artistAllSongs } from "@/api/artist";
 import { songDetail } from "@/api/song";
 import { formatSongsList } from "@/utils/format";
 import { debounce } from "lodash-es";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 const props = defineProps<{
   id: number;
@@ -26,7 +26,7 @@ const emit = defineEmits<{
   scroll: [e: Event];
 }>();
 
-const player = usePlayer();
+const player = usePlayerController();
 
 // 歌曲数据
 const loading = ref<boolean>(true);

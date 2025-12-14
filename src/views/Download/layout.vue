@@ -79,15 +79,15 @@
 import { useSettingStore, useDataStore } from "@/stores";
 import type { SongType } from "@/types/main";
 import { formatSongsList } from "@/utils/format";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import type { MessageReactive } from "naive-ui";
 import DownloadManager from "@/utils/downloadManager";
 
 const route = useRoute();
 const router = useRouter();
-const settingStore = useSettingStore();
 const dataStore = useDataStore();
-const player = usePlayer();
+const settingStore = useSettingStore();
+const player = usePlayerController();
 
 const loading = ref<boolean>(false);
 const loadingMsg = ref<MessageReactive | null>(null);

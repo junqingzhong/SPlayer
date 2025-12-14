@@ -173,15 +173,15 @@
 import { LyricWord } from "@applemusic-like-lyrics/lyric";
 import { NScrollbar } from "naive-ui";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { getLyricLanguage } from "@/utils/format";
 import { isElectron } from "@/utils/env";
 import LyricMenu from "./LyricMenu.vue";
 
-const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 const lrcMouseStatus = ref<boolean>(false);
 const lyricScroll = ref<InstanceType<typeof NScrollbar> | null>(null);

@@ -14,9 +14,6 @@ import Fuse from "fuse.js";
 
 type AnyObject = { [key: string]: any };
 
-// 必要数据
-let imageBlobURL: string = "";
-
 /**
  * 打开链接
  * @param url 链接地址
@@ -156,25 +153,6 @@ export const formatFileSize = (bytes: number): string => {
   } else {
     return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
   }
-};
-
-/**
- * 将图片链接转为 BlobUrl
- * @param imageUrl 图片链接
- * @returns BlobUrl
- */
-export const convertImageUrlToBlobUrl = async (imageUrl: string) => {
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  // 将响应数据转换为 Blob 对象
-  const blob = await response.blob();
-  // 撤销之前生成的对象 URL
-  if (imageBlobURL) URL.revokeObjectURL(imageBlobURL);
-  // 生成对象 URL
-  imageBlobURL = URL.createObjectURL(blob);
-  return imageBlobURL;
 };
 
 /**

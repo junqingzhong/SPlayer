@@ -39,7 +39,7 @@
             <div
               v-if="statusStore.personalFmMode"
               class="btn-icon"
-              v-debounce="() => player.personalFMTrash(musicStore.personalFMSong?.id)"
+              v-debounce="() => songManager.personalFMTrash(musicStore.personalFMSong?.id)"
             >
               <SvgIcon class="icon" :size="18" name="ThumbDown" />
             </div>
@@ -95,12 +95,15 @@ import { useMusicStore, useStatusStore, useDataStore } from "@/stores";
 import { msToTime } from "@/utils/time";
 import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
 import { toLikeSong } from "@/utils/auth";
-import { usePlayer } from "@/utils/player";
+import { useSongManager } from "@/core/player/SongManager";
+import { usePlayerController } from "@/core/player/PlayerController";
 
-const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+
+const songManager = useSongManager();
+const player = usePlayerController();
 </script>
 
 <style lang="scss" scoped>

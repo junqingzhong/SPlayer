@@ -1,11 +1,11 @@
 import type { SongType } from "@/types/main";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 /**
  * 列表操作逻辑
  */
 export const useListActions = () => {
-  const player = usePlayer();
+  const player = usePlayerController();
 
   /**
    * 播放全部歌曲

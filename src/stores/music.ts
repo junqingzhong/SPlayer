@@ -3,7 +3,6 @@ import type { SongType } from "@/types/main";
 import { isElectron } from "@/utils/env";
 import { cloneDeep } from "lodash-es";
 import { SongLyric } from "@/types/lyric";
-import blob from "@/utils/blob";
 
 interface MusicState {
   playSong: SongType;
@@ -81,12 +80,6 @@ export const useMusicStore = defineStore("music", {
   actions: {
     /** 重置音乐数据 */
     resetMusicData() {
-      // 清理旧的 blob URL（如果 cover 是 blob URL）
-      const oldCover = this.playSong.cover;
-      const oldPath = this.playSong.path;
-      if (oldCover && oldCover.startsWith("blob:") && oldPath) {
-        blob.revokeBlobURL(oldPath);
-      }
       this.playSong = { ...defaultMusicData };
       this.playPlaylistId = 0;
       this.setSongLyric({ lrcData: [], yrcData: [] }, true);

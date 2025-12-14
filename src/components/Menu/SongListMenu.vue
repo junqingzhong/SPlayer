@@ -32,15 +32,15 @@ import { deleteSongs, isLogin } from "@/utils/auth";
 import { songUrl } from "@/api/song";
 import { dailyRecommendDislike } from "@/api/rec";
 import { formatSongsList } from "@/utils/format";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 const emit = defineEmits<{ removeSong: [index: number[]] }>();
 
 const router = useRouter();
-const player = usePlayer();
 const dataStore = useDataStore();
-const statusStore = useStatusStore();
 const musicStore = useMusicStore();
+const statusStore = useStatusStore();
+const player = usePlayerController();
 
 // 右键菜单数据
 const dropdownX = ref<number>(0);

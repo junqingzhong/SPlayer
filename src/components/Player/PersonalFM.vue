@@ -60,7 +60,7 @@
           <!-- 不喜欢 -->
           <div
             class="menu-icon"
-            v-debounce="() => player.personalFMTrash(musicStore.personalFMSong?.id)"
+            v-debounce="() => songManager.personalFMTrash(musicStore.personalFMSong?.id)"
           >
             <SvgIcon class="icon" size="18" name="ThumbDown" />
           </div>
@@ -79,11 +79,14 @@
 import { useMusicStore, useStatusStore } from "@/stores";
 import { coverLoaded } from "@/utils/helper";
 import { debounce, isObject } from "lodash-es";
-import { usePlayer } from "@/utils/player";
+import { useSongManager } from "@/core/player/SongManager";
+import { usePlayerController } from "@/core/player/PlayerController";
 
-const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+
+const player = usePlayerController();
+const songManager = useSongManager();
 
 // 播放图标
 const playIcon = computed(() =>
@@ -98,8 +101,7 @@ const fmPlayOrPause = () => {
     // 更改播放模式
     statusStore.personalFmMode = true;
     statusStore.playHeartbeatMode = false;
-    player.resetStatus();
-    player.initPlayer();
+    player.playSong();
   }
 };
 
@@ -110,7 +112,7 @@ const fmPlayNext = debounce(() => {
   player.nextOrPrev("next");
 }, 300);
 
-onMounted(() => player.initPersonalFM());
+onMounted(() => songManager.initPersonalFM());
 </script>
 
 <style lang="scss" scoped>

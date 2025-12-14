@@ -132,14 +132,14 @@ import { formatCommentList, formatCoverList } from "@/utils/format";
 import { isArray, isEmpty } from "lodash-es";
 import { formatNumber } from "@/utils/helper";
 import { getComment } from "@/api/comment";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 // Plyr
 import Plyr from "plyr";
 import "plyr/dist/plyr.css";
 import { formatTimestamp } from "@/utils/time";
 
 const router = useRouter();
-const player = usePlayer();
+const player = usePlayerController();
 const statusStore = useStatusStore();
 
 // 是否激活

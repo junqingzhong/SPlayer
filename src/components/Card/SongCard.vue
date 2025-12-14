@@ -162,9 +162,9 @@ import { openJumpArtist } from "@/utils/modal";
 import { toLikeSong } from "@/utils/auth";
 import { isObject } from "lodash-es";
 import { formatTimestamp, msToTime } from "@/utils/time";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { isElectron } from "@/utils/env";
-import blob from "@/utils/blob";
+import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 
 const props = defineProps<{
   // 歌曲
@@ -178,11 +178,13 @@ const props = defineProps<{
 }>();
 
 const router = useRouter();
-const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+
+const player = usePlayerController();
+const blobURLManager = useBlobURLManager();
 
 // 歌曲数据
 const song = toRef(props, "song");
@@ -203,7 +205,7 @@ const localCover = async (show: boolean) => {
   const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", song.value.path);
   if (!coverData) return;
   const { data, format } = coverData;
-  const blobURL = blob.createBlobURL(data, format, song.value.path);
+  const blobURL = blobURLManager.createBlobURL(data, format, song.value.path);
   if (blobURL) song.value.cover = blobURL;
 };
 </script>

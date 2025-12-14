@@ -579,11 +579,11 @@ import { cloneDeep, isEqual } from "lodash-es";
 import { isElectron } from "@/utils/env";
 import { openLyricExclude, openAMLLServer } from "@/utils/modal";
 import { LyricConfig } from "@/types/desktop-lyric";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { SelectOption } from "naive-ui";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
-const player = usePlayer();
+const player = usePlayerController();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 

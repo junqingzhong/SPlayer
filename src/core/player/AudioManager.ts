@@ -4,8 +4,6 @@
  * @author imsyy
  */
 
-import { useSettingStore } from "@/stores";
-
 /** 扩充 AudioContext 接口以支持 setSinkId (实验性 API) */
 interface IExtendedAudioContext extends AudioContext {
   setSinkId(deviceId: string): Promise<void>;
@@ -356,20 +354,6 @@ class AudioManager {
       if (this.audioElement && typeof this.audioElement.setSinkId === "function") {
         await this.audioElement.setSinkId(deviceId);
       }
-    } catch (error) {
-      console.error("AudioManager: 设置输出设备失败", error);
-    }
-  }
-
-  /**
-   * 切换输出设备
-   * @param deviceId 设备 ID
-   */
-  public toggleOutputDevice(deviceId?: string) {
-    const settingStore = useSettingStore();
-    const device = deviceId ?? settingStore.playDevice;
-    try {
-      this.setSinkId(deviceId ?? device);
     } catch (error) {
       console.error("AudioManager: 设置输出设备失败", error);
     }
