@@ -251,7 +251,9 @@ const listScroll = (e: Event) => {
 
 onBeforeRouteUpdate((to) => {
   listScrolling.value = false;
-  if (to.matched[0].name !== "artist") return;
+  // 检查是否仍在 artist 路由下
+  const isArtistRoute = to.matched.some((m) => m.name === "artist");
+  if (!isArtistRoute) return;
   artistType.value = to.name as string;
   const id = Number(to.query.id as string);
   if (id && id !== artistId.value) getArtistDetail(id);
