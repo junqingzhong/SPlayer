@@ -7,10 +7,7 @@
     :keyboard="false"
     :format-tooltip="formatTooltip"
     :tooltip="showTooltip"
-    :show-tooltip="showSliderTooltip"
     :class="['player-slider', { drag: isDragging }]"
-    @mouseenter="showSliderTooltip = true"
-    @mouseleave="showSliderTooltip = false"
     @dragstart="startDrag"
     @dragend="endDrag"
   />
@@ -35,7 +32,7 @@ const dragValue = ref(0);
 // 是否拖动
 const isDragging = ref(false);
 // 是否显示提示
-const showSliderTooltip = ref(false);
+// const showSliderTooltip = ref(false);
 
 // 实时进度
 const sliderProgress = computed({
@@ -101,8 +98,8 @@ const setSeek = (value: number) => {
 
 // 格式化提示
 const formatTooltip = (value: number) => {
-  const nearestLyric = getCurrentLyric(value);
-  return nearestLyric
+  const nearestLyric = settingStore.progressLyricShow ? getCurrentLyric(value) : null;
+  return nearestLyric?.text?.length
     ? `${msToTime(value)} / ${nearestLyric.text.length > 30 ? nearestLyric.text.slice(0, 30) + "..." : nearestLyric.text}`
     : msToTime(value);
 };

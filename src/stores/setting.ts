@@ -258,6 +258,8 @@ export interface SettingState {
   };
   /** 播放器跟随封面主色 */
   playerFollowCoverColor: boolean;
+  /** 进度条悬浮时显示歌词 */
+  progressLyricShow: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -388,6 +390,7 @@ export const useSettingStore = defineStore("setting", {
       orpheus: false,
     },
     playerFollowCoverColor: true,
+    progressLyricShow: true,
   }),
   getters: {
     /**

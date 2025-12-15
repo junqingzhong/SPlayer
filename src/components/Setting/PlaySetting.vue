@@ -30,6 +30,12 @@
         </div>
         <n-switch v-model:value="settingStore.memoryLastSeek" class="set" :round="false" />
       </n-card>
+       <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">进度条悬浮时显示歌词</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.progressLyricShow" class="set" :round="false" />
+      </n-card>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">进度调节吸附最近歌词</n-text>
