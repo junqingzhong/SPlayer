@@ -126,14 +126,11 @@ class PlayerController {
       statusStore.playLoading = true;
       // 停止当前播放
       audioManager.stop();
-      // 如果传入了新的歌曲，才更新 Store
-      if (musicStore.playSong.id !== playSongData.id) {
-        musicStore.playSong = playSongData;
-        // 重置播放进度
-        statusStore.currentTime = 0;
-        statusStore.progress = 0;
-        statusStore.lyricIndex = -1;
-      }
+      musicStore.playSong = playSongData;
+      // 重置播放进度
+      statusStore.currentTime = 0;
+      statusStore.progress = 0;
+      statusStore.lyricIndex = -1;
       // 重置重试计数
       const sid = playSongData.type === "radio" ? playSongData.dj?.id : playSongData.id;
       if (this.retryInfo.songId !== sid) {
