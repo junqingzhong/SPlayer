@@ -83,6 +83,55 @@
       </n-card>
     </div>
     <div class="set-list">
+      <n-h3 prefix="bar"> 缓存配置 </n-h3>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">启用缓存</n-text>
+          <n-text class="tip" :depth="3">开启缓存会加快资源加载速度，但会占用更多磁盘空间</n-text>
+        </div>
+        <n-switch class="set" v-model:value="settingStore.cacheEnabled" :round="false" />
+      </n-card>
+      <n-collapse-transition :show="settingStore.cacheEnabled">
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">缓存大小上限</n-text>
+            <n-text class="tip" :depth="3">达到上限后将清理最旧的缓存</n-text>
+          </div>
+          <n-select
+            v-model:value="settingStore.cacheMaxSizeGB"
+            :options="cacheSizeOptions"
+            class="set"
+          />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">缓存目录</n-text>
+            <n-text class="tip" :depth="3">
+              {{ cachePath || "未配置时将使用默认缓存目录" }}
+            </n-text>
+          </div>
+          <n-flex>
+            <n-button strong secondary @click="confirmChangeCachePath">
+              <template #icon>
+                <SvgIcon name="Folder" />
+              </template>
+              更改
+            </n-button>
+          </n-flex>
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">缓存占用与清理</n-text>
+            <n-text class="tip" :depth="3">当前缓存占用：{{ cacheSizeDisplay }}</n-text>
+          </div>
+          <n-flex>
+            <n-button strong secondary @click="loadCacheSize"> 刷新占用 </n-button>
+            <n-button type="error" strong secondary @click="confirmClearCache"> 清空缓存 </n-button>
+          </n-flex>
+        </n-card>
+      </n-collapse-transition>
+    </div>
+    <div class="set-list">
       <n-h3 prefix="bar"> 下载配置 </n-h3>
       <n-card class="set-item">
         <div class="label">
@@ -182,9 +231,7 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">音乐命名格式</n-text>
-          <n-text class="tip" :depth="3">
-            选择下载文件的命名方式，建议包含歌手信息便于区分
-          </n-text>
+          <n-text class="tip" :depth="3"> 选择下载文件的命名方式，建议包含歌手信息便于区分 </n-text>
         </div>
         <n-select
           v-model:value="settingStore.fileNameFormat"
@@ -195,9 +242,7 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">文件智能分类</n-text>
-          <n-text class="tip" :depth="3">
-            自动按歌手或歌手与专辑创建子文件夹进行分类
-          </n-text>
+          <n-text class="tip" :depth="3"> 自动按歌手或歌手与专辑创建子文件夹进行分类 </n-text>
         </div>
         <n-select
           v-model:value="settingStore.folderStrategy"
@@ -240,9 +285,13 @@
 import { useSettingStore } from "@/stores";
 import { changeLocalLyricPath, changeLocalMusicPath } from "@/utils/helper";
 import { songLevelData, getSongLevelsData } from "@/utils/meta";
+import { useCacheManager, type CacheResourceType } from "@/core/resource/CacheManager";
 import { pick } from "lodash-es";
 
 const settingStore = useSettingStore();
+const cacheManager = useCacheManager();
+const cachePath = ref<string>("");
+const cacheSizeDisplay = ref<string>("--");
 
 // 默认下载音质选项
 const downloadQualityOptions = computed(() => {
@@ -283,10 +332,122 @@ const folderStrategyOptions = [
   },
 ];
 
+const cacheSizeOptions = [
+  {
+    label: "不限制",
+    value: 0,
+  },
+  {
+    label: "5G",
+    value: 5,
+  },
+  {
+    label: "10G",
+    value: 10,
+  },
+  {
+    label: "15G",
+    value: 15,
+  },
+  {
+    label: "20G",
+    value: 20,
+  },
+  {
+    label: "25G",
+    value: 25,
+  },
+  {
+    label: "30G",
+    value: 30,
+  },
+  {
+    label: "50G",
+    value: 50,
+  },
+];
+
 // 选择下载路径
 const choosePath = async () => {
   const path = await window.electron.ipcRenderer.invoke("choose-path");
   if (path) settingStore.downloadPath = path;
+};
+
+// 选择缓存路径并写回主进程 Store
+const changeCachePath = async () => {
+  const path = await window.electron.ipcRenderer.invoke("choose-path");
+  if (path) {
+    cachePath.value = path;
+    await window.api.store.set("cachePath", path);
+  }
+};
+
+// 确认更改缓存目录
+const confirmChangeCachePath = () => {
+  window.$dialog.warning({
+    title: "更改缓存目录",
+    content: "更改缓存目录不会自动移动已有缓存文件，建议在清空缓存后再更改目录。确定要继续吗？",
+    positiveText: "确定更改",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      return changeCachePath();
+    },
+  });
+};
+
+// 格式化字节大小为可读字符串
+const formatBytes = (bytes: number): string => {
+  if (!bytes) return "0 B";
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(1)} MB`;
+  const gb = mb / 1024;
+  return `${gb.toFixed(2)} GB`;
+};
+
+// 统计全部缓存目录占用大小
+const loadCacheSize = async () => {
+  const types: CacheResourceType[] = ["music", "lyrics", "local-data", "playlist-data"];
+  let total = 0;
+  for (const type of types) {
+    const res = await cacheManager.list(type);
+    if (res.success && res.data) {
+      total += res.data.reduce((sum, item) => sum + item.size, 0);
+    }
+  }
+  cacheSizeDisplay.value = formatBytes(total);
+};
+
+// 清空所有缓存目录
+const clearCache = async () => {
+  const types: CacheResourceType[] = ["music", "lyrics", "local-data", "playlist-data"];
+  let hasError = false;
+  for (const type of types) {
+    const res = await cacheManager.clear(type);
+    if (!res.success) {
+      hasError = true;
+    }
+  }
+  await loadCacheSize();
+  if (hasError) {
+    window.$message.error("部分缓存清理失败");
+  } else {
+    window.$message.success("缓存已清空");
+  }
+};
+
+// 确认清空缓存
+const confirmClearCache = () => {
+  window.$dialog.warning({
+    title: "清空缓存",
+    content: "将删除所有缓存的音乐、歌词和本地数据，此操作不可恢复，确定要继续吗？",
+    positiveText: "清空缓存",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      return clearCache();
+    },
+  });
 };
 
 // 模拟播放下载开关
@@ -306,6 +467,16 @@ const handlePlaybackDownloadChange = (value: boolean) => {
     settingStore.usePlaybackForDownload = false;
   }
 };
+
+onMounted(async () => {
+  try {
+    const path = await window.api.store.get("cachePath");
+    cachePath.value = path || "";
+  } catch (error) {
+    console.error("读取缓存路径失败:", error);
+  }
+  await loadCacheSize();
+});
 </script>
 
 <style lang="scss" scoped>

@@ -8,6 +8,7 @@ import initTrayIpc from "./ipc-tray";
 import initUpdateIpc from "./ipc-update";
 import initWindowsIpc from "./ipc-window";
 import initProtocolIpc from "./ipc-protocol";
+import initCacheIpc from "./ipc-cache";
 
 /**
  * 初始化全部 IPC 通信
@@ -24,6 +25,7 @@ const initIpc = (): void => {
   initThumbarIpc();
   initShortcutIpc();
   initProtocolIpc();
+  initCacheIpc();
 };
 
 export default initIpc;

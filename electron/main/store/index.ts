@@ -1,7 +1,8 @@
-import { screen } from "electron";
+import { app, screen } from "electron";
 import { storeLog } from "../logger";
 import type { LyricConfig } from "../../../src/types/desktop-lyric";
 import { defaultAMLLDbServer } from "../utils/config";
+import { join } from "path";
 import defaultLyricConfig from "../../../src/assets/data/lyricConfig";
 import Store from "electron-store";
 
@@ -27,6 +28,8 @@ export interface StoreType {
   proxy: string;
   // amll-db-server
   amllDbServer: string;
+  // 缓存地址
+  cachePath: string;
 }
 
 /**
@@ -51,6 +54,7 @@ export const useStore = () => {
       },
       proxy: "",
       amllDbServer: defaultAMLLDbServer,
+      cachePath: join(app.getPath("userData"), "cache-data"),
     },
   });
 };
