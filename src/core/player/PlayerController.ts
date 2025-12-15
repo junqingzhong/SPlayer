@@ -539,7 +539,10 @@ class PlayerController {
     return Math.floor(audioManager.currentTime * 1000);
   }
 
-  /** 设置进度 */
+  /**
+   * 设置进度
+   * @param time 时间 (ms)
+   */
   public setSeek(time: number) {
     const statusStore = useStatusStore();
     const audioManager = useAudioManager();

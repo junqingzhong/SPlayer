@@ -17,14 +17,18 @@
 </template>
 
 <script setup lang="ts">
-import { useStatusStore } from "@/stores";
+import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { msToTime } from "@/utils/time";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { LyricLine } from "@applemusic-like-lyrics/lyric";
 
 withDefaults(defineProps<{ showTooltip?: boolean }>(), { showTooltip: true });
 
-const player = usePlayerController();
+const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+const settingStore = useSettingStore();
+
+const player = usePlayerController();
 
 // 拖动时的临时值
 const dragValue = ref(0);
@@ -45,9 +49,7 @@ const sliderProgress = computed({
       return;
     }
     // 结束或者为点击
-    useThrottleFn((value: number) => {
-      player.setSeek(value);
-    }, 30);
+    useThrottleFn((value: number) => setSeek(value), 30);
   },
 });
 
@@ -62,12 +64,47 @@ const startDrag = () => {
 const endDrag = () => {
   isDragging.value = false;
   // 直接更改进度
-  player.setSeek(dragValue.value);
+  setSeek(dragValue.value);
+};
+
+/**
+ * 获取当前时间最近一句歌词
+ * @param value 当前时间
+ * @returns 最近一句歌词的开始时间和内容
+ */
+const getCurrentLyric = (value: number) => {
+  const lyric = toRaw(musicStore.songLyric.lrcData);
+  if (!lyric?.length) return null;
+  //  查找最近一句歌词
+  let nearestLyric: LyricLine | null = null;
+  for (let i = lyric.length - 1; i >= 0; i--) {
+    if (value >= lyric[i].startTime) {
+      nearestLyric = lyric[i];
+      break;
+    }
+  }
+  return {
+    time: nearestLyric?.startTime,
+    text: nearestLyric?.words?.[0]?.word || "",
+  };
+};
+
+// 调节进度
+const setSeek = (value: number) => {
+  if (settingStore.progressAdjustLyric) {
+    const nearestLyric = getCurrentLyric(value);
+    player.setSeek(nearestLyric?.time ?? value);
+    return;
+  }
+  player.setSeek(value);
 };
 
 // 格式化提示
 const formatTooltip = (value: number) => {
-  return `${msToTime(value)} / ${msToTime(statusStore.duration)}`;
+  const nearestLyric = getCurrentLyric(value);
+  return nearestLyric
+    ? `${msToTime(value)} / ${nearestLyric.text.length > 30 ? nearestLyric.text.slice(0, 30) + "..." : nearestLyric.text}`
+    : msToTime(value);
 };
 </script>
 
@@ -82,6 +119,21 @@ const formatTooltip = (value: number) => {
       .n-slider-handle-wrapper {
         will-change: left;
         transition: left 0.3s;
+      }
+    }
+  }
+  :deep(.n-slider-handles) {
+    .n-slider-handle {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+  }
+  &:hover,
+  &.drag {
+    :deep(.n-slider-handles) {
+      .n-slider-handle {
+        opacity: 1;
+        transform: scale(1);
       }
     }
   }

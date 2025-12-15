@@ -158,6 +158,7 @@ export const getCoverColorData = (dom: HTMLImageElement) => {
 export const getCoverColor = async (coverUrl: string) => {
   if (!coverUrl) return;
   const statusStore = useStatusStore();
+  const settingStore = useSettingStore();
   // 创建图像元素
   const image = new Image();
   image.crossOrigin = "Anonymous";
@@ -167,6 +168,9 @@ export const getCoverColor = async (coverUrl: string) => {
     // 获取图片数据
     const coverColorData = getCoverColorData(image);
     if (coverColorData) statusStore.songCoverTheme = coverColorData;
+    if (!settingStore.playerFollowCoverColor) {
+      statusStore.songCoverTheme.main = { r: 239, g: 239, b: 239 };
+    }
     // 移除元素
     image.remove();
   };

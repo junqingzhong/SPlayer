@@ -12,17 +12,17 @@ export interface SettingState {
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
   themeColorType:
-  | "default"
-  | "orange"
-  | "blue"
-  | "pink"
-  | "brown"
-  | "indigo"
-  | "green"
-  | "purple"
-  | "yellow"
-  | "teal"
-  | "custom";
+    | "default"
+    | "orange"
+    | "blue"
+    | "pink"
+    | "brown"
+    | "indigo"
+    | "green"
+    | "purple"
+    | "yellow"
+    | "teal"
+    | "custom";
   /** 主题自定义颜色 */
   themeCustomColor: string;
   /** 全局着色 */
@@ -103,14 +103,14 @@ export interface SettingState {
   proxyPort: number;
   /** 歌曲音质 */
   songLevel:
-  | "standard"
-  | "higher"
-  | "exhigh"
-  | "lossless"
-  | "hires"
-  | "jyeffect"
-  | "sky"
-  | "jymaster";
+    | "standard"
+    | "higher"
+    | "exhigh"
+    | "lossless"
+    | "hires"
+    | "jyeffect"
+    | "sky"
+    | "jymaster";
   /** 播放设备 */
   playDevice: "default" | string;
   /** 自动播放 */
@@ -141,6 +141,8 @@ export interface SettingState {
   autoHidePlayerMeta: boolean;
   /** 记忆最后进度 */
   memoryLastSeek: boolean;
+  /** 进度调节吸附最近歌词 */
+  progressAdjustLyric: boolean;
   /** 显示播放列表数量 */
   showPlaylistCount: boolean;
   /** 是否显示音乐频谱 */
@@ -250,6 +252,8 @@ export interface SettingState {
   registryProtocol: {
     orpheus: boolean;
   };
+  /** 播放器跟随封面主色 */
+  playerFollowCoverColor: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -297,6 +301,7 @@ export const useSettingStore = defineStore("setting", {
     playerBackgroundFlowSpeed: 4,
     autoHidePlayerMeta: true,
     memoryLastSeek: true,
+    progressAdjustLyric: false,
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
@@ -376,6 +381,7 @@ export const useSettingStore = defineStore("setting", {
     registryProtocol: {
       orpheus: false,
     },
+    playerFollowCoverColor: true,
   }),
   getters: {
     /**
@@ -432,11 +438,12 @@ export const useSettingStore = defineStore("setting", {
       }
       window.$message.info(
         `已切换至
-        ${this.themeMode === "auto"
-          ? "跟随系统"
-          : this.themeMode === "light"
-            ? "浅色模式"
-            : "深色模式"
+        ${
+          this.themeMode === "auto"
+            ? "跟随系统"
+            : this.themeMode === "light"
+              ? "浅色模式"
+              : "深色模式"
         }`,
         {
           showIcon: false,
