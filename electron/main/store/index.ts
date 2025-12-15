@@ -54,7 +54,7 @@ export const useStore = () => {
       },
       proxy: "",
       amllDbServer: defaultAMLLDbServer,
-      cachePath: join(app.getPath("userData"), "cache-data"),
+      cachePath: join(app.getPath("userData"), "DataCache"),
     },
   });
 };
