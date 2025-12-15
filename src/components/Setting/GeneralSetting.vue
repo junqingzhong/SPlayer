@@ -242,81 +242,29 @@
         </n-flex>
       </n-card>
       <n-collapse-transition :show="settingStore.LyricFont !== 'follow'">
-        <n-card class="set-item">
+        <n-card
+          v-for="item in languageFontSettings"
+          :key="item.key"
+          class="set-item"
+        >
           <div class="label">
-            <n-text class="name">英语歌词字体</n-text>
-            <n-text class="tip" :depth="3"> 是否在歌词为英语时单独设置字体 </n-text>
+            <n-text class="name">{{ item.name }}歌词字体</n-text>
+            <n-text class="tip" :depth="3"> {{ item.tip }} </n-text>
           </div>
           <n-flex>
             <Transition name="fade" mode="out-in">
               <n-button
-                v-if="settingStore.englishLyricFont !== 'follow'"
+                v-if="settingStore[item.key] !== 'follow'"
                 type="primary"
                 strong
                 secondary
-                @click="settingStore.englishLyricFont = 'follow'"
+                @click="settingStore[item.key] = 'follow'"
               >
                 恢复默认
               </n-button>
             </Transition>
             <n-select
-              v-model:value="settingStore.englishLyricFont"
-              :options="[
-                { label: '跟随全局', value: 'follow' },
-                ...allFontsData.filter((v) => v.value !== 'default'),
-              ]"
-              class="set"
-              filterable
-            />
-          </n-flex>
-        </n-card>
-        <n-card class="set-item">
-          <div class="label">
-            <n-text class="name">日语歌词字体</n-text>
-            <n-text class="tip" :depth="3"> 是否在歌词为日语时单独设置字体 </n-text>
-          </div>
-          <n-flex>
-            <Transition name="fade" mode="out-in">
-              <n-button
-                v-if="settingStore.japaneseLyricFont !== 'follow'"
-                type="primary"
-                strong
-                secondary
-                @click="settingStore.japaneseLyricFont = 'follow'"
-              >
-                恢复默认
-              </n-button>
-            </Transition>
-            <n-select
-              v-model:value="settingStore.japaneseLyricFont"
-              :options="[
-                { label: '跟随全局', value: 'follow' },
-                ...allFontsData.filter((v) => v.value !== 'default'),
-              ]"
-              class="set"
-              filterable
-            />
-          </n-flex>
-        </n-card>
-        <n-card class="set-item">
-          <div class="label">
-            <n-text class="name">韩语歌词字体</n-text>
-            <n-text class="tip" :depth="3"> 是否在歌词为韩语时单独设置字体 </n-text>
-          </div>
-          <n-flex>
-            <Transition name="fade" mode="out-in">
-              <n-button
-                v-if="settingStore.koreanLyricFont !== 'follow'"
-                type="primary"
-                strong
-                secondary
-                @click="settingStore.koreanLyricFont = 'follow'"
-              >
-                恢复默认
-              </n-button>
-            </Transition>
-            <n-select
-              v-model:value="settingStore.koreanLyricFont"
+              v-model:value="settingStore[item.key]"
               :options="[
                 { label: '跟随全局', value: 'follow' },
                 ...allFontsData.filter((v) => v.value !== 'default'),
@@ -430,6 +378,25 @@ const themeColorOptions: SelectOption[] = [
 const closeTaskbarProgress = (val: boolean) => {
   if (!val) window.electron.ipcRenderer.send("set-bar", "none");
 };
+
+// 语言字体配置
+const languageFontSettings = [
+  {
+    name: "英语",
+    key: "englishLyricFont" as const,
+    tip: "是否在歌词为英语时单独设置字体",
+  },
+  {
+    name: "日语",
+    key: "japaneseLyricFont" as const,
+    tip: "是否在歌词为日语时单独设置字体",
+  },
+  {
+    name: "韩语",
+    key: "koreanLyricFont" as const,
+    tip: "是否在歌词为韩语时单独设置字体",
+  },
+];
 
 // 获取全部系统字体
 const getAllSystemFonts = async () => {
