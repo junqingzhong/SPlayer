@@ -121,6 +121,64 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">歌词区域字体</n-text>
+          <n-text class="tip" :depth="3"> 是否独立更改歌词区域字体 </n-text>
+        </div>
+        <n-flex>
+          <Transition name="fade" mode="out-in">
+            <n-button
+              v-if="settingStore.LyricFont !== 'follow'"
+              type="primary"
+              strong
+              secondary
+              @click="settingStore.LyricFont = 'follow'"
+            >
+              恢复默认
+            </n-button>
+          </Transition>
+          <n-select
+            v-model:value="settingStore.LyricFont"
+            :options="[
+              { label: '跟随全局', value: 'follow' },
+              ...allFontsData.filter((v) => v.value !== 'default'),
+            ]"
+            class="set"
+            filterable
+          />
+        </n-flex>
+      </n-card>
+      <n-collapse-transition :show="settingStore.LyricFont !== 'follow'">
+        <n-card v-for="item in languageFontSettings" :key="item.key" class="set-item">
+          <div class="label">
+            <n-text class="name">{{ item.name }}歌词字体</n-text>
+            <n-text class="tip" :depth="3"> {{ item.tip }} </n-text>
+          </div>
+          <n-flex>
+            <Transition name="fade" mode="out-in">
+              <n-button
+                v-if="settingStore[item.key] !== 'follow'"
+                type="primary"
+                strong
+                secondary
+                @click="settingStore[item.key] = 'follow'"
+              >
+                恢复默认
+              </n-button>
+            </Transition>
+            <n-select
+              v-model:value="settingStore[item.key]"
+              :options="[
+                { label: '跟随全局', value: 'follow' },
+                ...allFontsData.filter((v) => v.value !== 'default'),
+              ]"
+              class="set"
+              filterable
+            />
+          </n-flex>
+        </n-card>
+      </n-collapse-transition>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">歌词字体加粗</n-text>
           <n-text class="tip" :depth="3">是否将歌词字体加粗显示，部分字体可能显示异常</n-text>
         </div>
@@ -648,6 +706,25 @@ const restoreDesktopLyricConfig = () => {
     getDesktopLyricConfig();
   }
 };
+
+// 语言字体配置
+const languageFontSettings = [
+  {
+    name: "英语",
+    key: "englishLyricFont" as const,
+    tip: "是否在歌词为英语时单独设置字体",
+  },
+  {
+    name: "日语",
+    key: "japaneseLyricFont" as const,
+    tip: "是否在歌词为日语时单独设置字体",
+  },
+  {
+    name: "韩语",
+    key: "koreanLyricFont" as const,
+    tip: "是否在歌词为韩语时单独设置字体",
+  },
+];
 
 // 获取全部系统字体
 const getAllSystemFonts = async () => {
