@@ -47,19 +47,19 @@ export const formatSongsList = (data: any[]): SongType[] => {
         typeof item.album === "string"
           ? item.album
           : {
-            id: (item.album || item.al)?.id,
-            name: (item.album || item.al)?.name,
-            cover: (item.album || item.al)?.picUrl,
-          },
+              id: (item.album || item.al)?.id,
+              name: (item.album || item.al)?.name,
+              cover: (item.album || item.al)?.picUrl,
+            },
       alia: isArray(item.alia || item.alias || item.transNames || item.tns)
         ? item.alia?.[0] || item.alias?.[0] || item.transNames?.[0] || item.tns?.[0]
         : item.alia,
       dj: item.dj
         ? {
-          id: item.mainTrackId || item.id,
-          name: item.dj?.brand,
-          creator: item.dj?.nickname,
-        }
+            id: item.mainTrackId || item.id,
+            name: item.dj?.brand,
+            creator: item.dj?.nickname,
+          }
         : undefined,
       ...getCoverUrl(item),
       duration: Number(item.duration || item.dt || 0),
@@ -175,13 +175,13 @@ export const formatCommentList = (data: any[]): CommentType[] => {
     beReplied:
       item.beReplied?.length > 0
         ? {
-          content: item.beReplied[0]?.content,
-          user: {
-            id: item.beReplied[0]?.user.userId,
-            name: item.beReplied[0]?.user.nickname,
-            avatarUrl: item.beReplied[0]?.user.avatarUrl,
-          },
-        }
+            content: item.beReplied[0]?.content,
+            user: {
+              id: item.beReplied[0]?.user.userId,
+              name: item.beReplied[0]?.user.nickname,
+              avatarUrl: item.beReplied[0]?.user.avatarUrl,
+            },
+          }
         : undefined,
     time: item.time,
     likedCount: item.likedCount,
@@ -197,9 +197,9 @@ export const formatCommentList = (data: any[]): CommentType[] => {
     },
     ip: item?.ip
       ? {
-        ip: item.ip,
-        location: item.location,
-      }
+          ip: item.ip,
+          location: item.location,
+        }
       : undefined,
   }));
 };
@@ -277,13 +277,14 @@ const getCoverSizeUrl = (url: string, size: number | null = null) => {
  * @param lyric 歌词内容
  * @returns 语言代码（"ja" | "zh-CN" | "en"）
  */
-export const getLyricLanguage = (lyric: string): string => {
+export const getLyricLanguage = (lyric: string): "ja" | "ko" | "zh-CN" | "en" => {
+  if (!lyric || typeof lyric !== "string") return "en";
   // 判断日语 根据平假名和片假名
-  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(lyric)) return "ja";
+  if (/[\u3040-\u309F\u30A0-\u30FF]/.test(lyric)) return "ja";
   // 判断韩语 根据韩文音节
-  if (/[\uac00-\ud7af]/.test(lyric)) return "ko";
+  if (/[\uAC00-\uD7AF]/.test(lyric)) return "ko";
   // 判断简体中文 根据中日韩统一表意文字基本区
-  if (/[\u4e00-\u9fa5]/.test(lyric)) return "zh-CN";
+  if (/[\u4E00-\u9FFF]/.test(lyric)) return "zh-CN";
   // 默认英语
   return "en";
 };

@@ -161,15 +161,12 @@ onBeforeUnmount(() => {
       }
     }
   }
-
   :lang(ja) {
     font-family: var(--ja-font-family);
   }
-
   :lang(en) {
     font-family: var(--en-font-family);
   }
-
   :lang(ko) {
     font-family: var(--ko-font-family);
   }

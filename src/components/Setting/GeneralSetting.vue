@@ -215,68 +215,6 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">歌词区域字体</n-text>
-          <n-text class="tip" :depth="3"> 是否独立更改歌词区域字体 </n-text>
-        </div>
-        <n-flex>
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="settingStore.LyricFont !== 'follow'"
-              type="primary"
-              strong
-              secondary
-              @click="settingStore.LyricFont = 'follow'"
-            >
-              恢复默认
-            </n-button>
-          </Transition>
-          <n-select
-            v-model:value="settingStore.LyricFont"
-            :options="[
-              { label: '跟随全局', value: 'follow' },
-              ...allFontsData.filter((v) => v.value !== 'default'),
-            ]"
-            class="set"
-            filterable
-          />
-        </n-flex>
-      </n-card>
-      <n-collapse-transition :show="settingStore.LyricFont !== 'follow'">
-        <n-card
-          v-for="item in languageFontSettings"
-          :key="item.key"
-          class="set-item"
-        >
-          <div class="label">
-            <n-text class="name">{{ item.name }}歌词字体</n-text>
-            <n-text class="tip" :depth="3"> {{ item.tip }} </n-text>
-          </div>
-          <n-flex>
-            <Transition name="fade" mode="out-in">
-              <n-button
-                v-if="settingStore[item.key] !== 'follow'"
-                type="primary"
-                strong
-                secondary
-                @click="settingStore[item.key] = 'follow'"
-              >
-                恢复默认
-              </n-button>
-            </Transition>
-            <n-select
-              v-model:value="settingStore[item.key]"
-              :options="[
-                { label: '跟随全局', value: 'follow' },
-                ...allFontsData.filter((v) => v.value !== 'default'),
-              ]"
-              class="set"
-              filterable
-            />
-          </n-flex>
-        </n-card>
-      </n-collapse-transition>
-      <n-card class="set-item">
-        <div class="label">
           <n-text class="name">关闭软件时</n-text>
           <n-text class="tip" :depth="3">选择关闭软件的方式</n-text>
         </div>
@@ -328,7 +266,12 @@
             该协议通常用于官方网页端唤起官方客户端， 启用后可能导致官方客户端无法被唤起
           </n-text>
         </div>
-        <n-switch v-model:value="settingStore.registryProtocol.orpheus" class="set" :round="false" @update:value="orpheusChange" />
+        <n-switch
+          v-model:value="settingStore.registryProtocol.orpheus"
+          class="set"
+          :round="false"
+          @update:value="orpheusChange"
+        />
       </n-card>
       <n-card class="set-item">
         <div class="label">
@@ -378,25 +321,6 @@ const themeColorOptions: SelectOption[] = [
 const closeTaskbarProgress = (val: boolean) => {
   if (!val) window.electron.ipcRenderer.send("set-bar", "none");
 };
-
-// 语言字体配置
-const languageFontSettings = [
-  {
-    name: "英语",
-    key: "englishLyricFont" as const,
-    tip: "是否在歌词为英语时单独设置字体",
-  },
-  {
-    name: "日语",
-    key: "japaneseLyricFont" as const,
-    tip: "是否在歌词为日语时单独设置字体",
-  },
-  {
-    name: "韩语",
-    key: "koreanLyricFont" as const,
-    tip: "是否在歌词为韩语时单独设置字体",
-  },
-];
 
 // 获取全部系统字体
 const getAllSystemFonts = async () => {
@@ -473,12 +397,12 @@ const modeChange = (val: boolean) => {
 
 // 全局着色更改
 const themeGlobalColorChange = (val: boolean) => {
-  if (val)  getCoverColor(musicStore.songCover);
+  if (val) getCoverColor(musicStore.songCover);
 };
 
 // 注册或取消注册协议
 const orpheusChange = async (isRegistry: boolean) => {
-  sendRegisterProtocol("orpheus", isRegistry)
+  sendRegisterProtocol("orpheus", isRegistry);
 };
 
 onMounted(() => {
