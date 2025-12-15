@@ -20,6 +20,10 @@
           '--amll-lyric-player-font-size': settingStore.lyricFontSize + 'px',
           '--ja-font-family':
             settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
+          '--en-font-family':
+            settingStore.englishLyricFont !== 'follow' ? settingStore.englishLyricFont : '',
+          '--ko-font-family':
+            settingStore.koreanLyricFont !== 'follow' ? settingStore.koreanLyricFont : '',
           'font-weight': settingStore.lyricFontBold ? 'bold' : 'normal',
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
         }"
@@ -160,6 +164,14 @@ onBeforeUnmount(() => {
 
   :lang(ja) {
     font-family: var(--ja-font-family);
+  }
+
+  :lang(en) {
+    font-family: var(--en-font-family);
+  }
+
+  :lang(ko) {
+    font-family: var(--ko-font-family);
   }
 }
 

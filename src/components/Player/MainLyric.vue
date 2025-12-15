@@ -7,6 +7,10 @@
       '--lrc-bold': settingStore.lyricFontBold ? 'bold' : 'normal',
       '--ja-font-family':
         settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
+      '--en-font-family':
+        settingStore.englishLyricFont !== 'follow' ? settingStore.englishLyricFont : '',
+      '--ko-font-family':
+        settingStore.koreanLyricFont !== 'follow' ? settingStore.koreanLyricFont : '',
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
       cursor: statusStore.playerMetaShow ? 'auto' : 'none',
     }"
@@ -446,6 +450,12 @@ onBeforeUnmount(() => {
       }
       &:lang(ja) {
         font-family: var(--ja-font-family);
+      }
+      &:lang(en) {
+        font-family: var(--en-font-family);
+      }
+      &:lang(ko) {
+        font-family: var(--ko-font-family);
       }
     }
     .tran {
