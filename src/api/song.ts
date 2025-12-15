@@ -1,4 +1,6 @@
-import { songLevelData } from "@/utils/meta";
+import { isElectron } from "@/utils/env";
+import { defaultAMLLDbServer, songLevelData } from "@/utils/meta";
+import { useSettingStore } from "@/stores";
 import request from "@/utils/request";
 import config from "@/config";
 
@@ -77,7 +79,7 @@ export const unlockSongUrl = (
   return request({
     baseURL: config.unblockApiUrl,
     url: `/${server}`,
-    params,
+    params: { ...params, noCookie: true },
   });
 };
 
@@ -89,6 +91,31 @@ export const songLyric = (id: number) => {
       id,
     },
   });
+};
+
+/**
+ * 获取歌曲 TTML 歌词
+ * @param id 音乐 id
+ * @returns TTML 格式歌词
+ */
+export const songLyricTTML = async (id: number) => {
+  if (isElectron) {
+    return request({ url: "/lyric/ttml", params: { id, noCookie: true } });
+  } else {
+    const settingStore = useSettingStore();
+    const server = settingStore.amllDbServer || defaultAMLLDbServer;
+    const url = server.replace("%s", String(id));
+    try {
+      const response = await fetch(url);
+      if (response === null || response.status !== 200) {
+        return null;
+      }
+      const data = await response.text();
+      return data;
+    } catch {
+      return null;
+    }
+  }
 };
 
 /**

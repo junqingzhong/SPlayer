@@ -1,7 +1,9 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { pathCase } from "change-case";
-import NeteaseCloudMusicApi from "NeteaseCloudMusicApi";
-import log from "../../main/logger";
+import { serverLog } from "../../main/logger";
+import { useStore } from "../../main/store";
+import { defaultAMLLDbServer } from "../../main/utils/config";
+import NeteaseCloudMusicApi from "@neteasecloudmusicapienhanced/api";
 
 // 获取数据
 const getHandler = (name: string, neteaseApi: (params: any) => any) => {
@@ -9,7 +11,7 @@ const getHandler = (name: string, neteaseApi: (params: any) => any) => {
     req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
     reply: FastifyReply,
   ) => {
-    log.info("🌐 Request NcmAPI:", name);
+    serverLog.log("🌐 Request NcmAPI:", name);
     // 获取 NcmAPI 数据
     try {
       const result = await neteaseApi({
@@ -19,7 +21,7 @@ const getHandler = (name: string, neteaseApi: (params: any) => any) => {
       });
       return reply.send(result.body);
     } catch (error: any) {
-      log.error("❌ NcmAPI Error:", error);
+      serverLog.error("❌ NcmAPI Error:", error);
       if ([400, 301].includes(error.status)) {
         return reply.status(error.status).send(error.body);
       }
@@ -29,16 +31,16 @@ const getHandler = (name: string, neteaseApi: (params: any) => any) => {
 };
 
 // 初始化 NcmAPI
-const initNcmAPI = async (fastify: FastifyInstance) => {
+export const initNcmAPI = async (fastify: FastifyInstance) => {
   // 主信息
   fastify.get("/netease", (_, reply) => {
     reply.send({
-      name: "NeteaseCloudMusicApi",
-      version: "4.25.0",
-      description: "网易云音乐 Node.js API service",
-      author: "@binaryify",
+      name: "@neteaseapireborn/api",
+      version: "4.29.2",
+      description: "网易云音乐 API Enhanced",
+      author: "@MoeFurina",
       license: "MIT",
-      url: "https://gitlab.com/Binaryify/neteasecloudmusicapi",
+      url: "https://github.com/NeteaseCloudMusicApiEnhanced/api-enhanced",
     });
   });
 
@@ -60,7 +62,30 @@ const initNcmAPI = async (fastify: FastifyInstance) => {
     }
   });
 
-  log.info("🌐 Register NcmAPI successfully");
-};
+  // 获取 TTML 歌词
+  fastify.get(
+    "/netease/lyric/ttml",
+    async (req: FastifyRequest<{ Querystring: { id: string } }>, reply: FastifyReply) => {
+      const { id } = req.query;
+      if (!id) {
+        return reply.status(400).send({ error: "id is required" });
+      }
+      const store = useStore();
+      const server = store.get("amllDbServer") ?? defaultAMLLDbServer;
+      const url = server.replace("%s", String(id));
+      try {
+        const response = await fetch(url);
+        if (response.status !== 200) {
+          return reply.send(null);
+        }
+        const data = await response.text();
+        return reply.send(data);
+      } catch (error) {
+        serverLog.error("❌ TTML Lyric Fetch Error:", error);
+        return reply.send(null);
+      }
+    },
+  );
 
-export default initNcmAPI;
+  serverLog.info("🌐 Register NcmAPI successfully");
+};

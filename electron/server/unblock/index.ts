@@ -1,11 +1,23 @@
+/*
+ * @Author: ZJQ
+ * @Date: 2025-05-23 10:50:52
+ * @LastEditors: zjq zjq@xkb.com.cn
+ * @LastEditTime: 2025-12-11 15:53:37
+ * @FilePath: \tea\electron\server\unblock\index.ts
+ * @Description:
+ *
+ * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
+ */
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
 import { SongUrlResult } from "./unblock";
 import getKuwoSongUrl from "./kuwo";
 import getKugouSongUrl from "./kugou";
 import getQQSongUrl from "./qq";
 import { check as getBilibiliSongUrl } from "./bilibili";
-import log from "../../main/logger";
+import { serverLog } from "../../main/logger";
 import axios from "axios";
+import getBodianSongUrl from "./bodian";
+import getGequbaoSongUrl from "./gequbao";
 
 // 最小有效音频时长（毫秒）
 const MIN_VALID_DURATION = 30 * 1000; // 60秒，避免11秒音频
@@ -23,19 +35,19 @@ export const filterByDuration = (result: SongUrlResult): SongUrlResult => {
   if (result.duration !== undefined) {
     // 排除时长过短的音频（小于60秒）
     if (result.duration < MIN_VALID_DURATION) {
-      log.info(`🔍 排除时长过短的音频链接: ${result.duration}ms < ${MIN_VALID_DURATION}ms`);
+      serverLog.log(`🔍 排除时长过短的音频链接: ${result.duration}ms < ${MIN_VALID_DURATION}ms`);
       return { code: 404, url: null };
     }
 
     // 排除异常时长（如11秒、22秒等常见无效时长）
     const invalidDurations = [11000, 22000, 33000]; // 常见无效时长
     if (invalidDurations.includes(result.duration)) {
-      log.info(`🔍 排除异常时长音频链接: ${result.duration}ms`);
+      serverLog.log(`🔍 排除异常时长音频链接: ${result.duration}ms`);
       return { code: 404, url: null };
     }
   } else {
     // 如果没有时长信息，记录日志但允许通过
-    log.info(`⚠️ 音频链接缺少时长信息: ${result.url}`);
+    serverLog.log(`⚠️ 音频链接缺少时长信息: ${result.url}`);
   }
 
   return result;
@@ -54,7 +66,7 @@ const getNeteaseSongUrl = async (id: number | string): Promise<SongUrlResult> =>
       params: { types: "url", id },
     });
     const songUrl = result.data.url;
-    log.info("🔗 NeteaseSongUrl URL:", songUrl);
+    serverLog.log("🔗 NeteaseSongUrl URL:", songUrl);
 
     // 尝试获取音频时长
     let duration: number | undefined = undefined;
@@ -65,13 +77,13 @@ const getNeteaseSongUrl = async (id: number | string): Promise<SongUrlResult> =>
     // 应用时长过滤
     return filterByDuration({ code: 200, url: songUrl, duration });
   } catch (error) {
-    log.error("❌ Get NeteaseSongUrl Error:", error);
+    serverLog.error("❌ Get NeteaseSongUrl Error:", error);
     return { code: 404, url: null };
   }
 };
 
 // 初始化 UnblockAPI
-const UnblockAPI = async (fastify: FastifyInstance) => {
+export const initUnblockAPI = async (fastify: FastifyInstance) => {
   // 主信息
   fastify.get("/unblock", (_, reply) => {
     reply.send({
@@ -103,6 +115,30 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
     ) => {
       const { keyword } = req.query;
       const result = await getKuwoSongUrl(keyword);
+      return reply.send(result);
+    },
+  );
+  // bodian
+  fastify.get(
+    "/unblock/bodian",
+    async (
+      req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const { keyword } = req.query;
+      const result = await getBodianSongUrl(keyword);
+      return reply.send(result);
+    },
+  );
+  // gequbao
+  fastify.get(
+    "/unblock/gequbao",
+    async (
+      req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const { keyword } = req.query;
+      const result = await getGequbaoSongUrl(keyword);
       return reply.send(result);
     },
   );
@@ -146,7 +182,5 @@ const UnblockAPI = async (fastify: FastifyInstance) => {
     },
   );
 
-  log.info("🌐 Register UnblockAPI successfully");
+  serverLog.log("🌐 Register UnblockAPI successfully");
 };
-
-export default UnblockAPI;

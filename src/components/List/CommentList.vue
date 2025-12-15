@@ -218,6 +218,9 @@ const likeComment = debounce(async (data: CommentType) => {
             color: var(--primary-hex);
           }
         }
+        .text {
+          white-space: pre-wrap;
+        }
       }
       .reply {
         width: 100%;
@@ -226,6 +229,9 @@ const likeComment = debounce(async (data: CommentType) => {
         font-size: 13px;
         margin-top: 6px;
         background-color: rgba(var(--primary), 0.12);
+        .text {
+          white-space: pre-wrap;
+        }
       }
       .meta {
         padding-top: 12px;

@@ -1,9 +1,10 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError, AxiosResponse } from "axios";
-import { isDev, isElectron } from "./helper";
+import { isDev, isElectron } from "./env";
 import { useSettingStore } from "@/stores";
 import { getCookie } from "./cookie";
 import { isLogin } from "./auth";
 import config from "@/config";
+// import axiosRetry from "axios-retry";
 
 // 全局地址
 const baseURL: string = String(isDev ? config.neteaseApiUrl : config.apiBaseUrl);
@@ -16,6 +17,12 @@ const server: AxiosInstance = axios.create({
   // 超时时间
   timeout: 15000,
 });
+
+// 请求重试
+// axiosRetry(server, {
+//   // 重试次数
+//   retries: 3,
+// });
 
 // 请求拦截器
 server.interceptors.request.use(
@@ -34,7 +41,11 @@ server.interceptors.request.use(
     }
     // 自定义 realIP
     if (settingStore.useRealIP) {
-      request.params.realIP = settingStore.realIP || config.defaultRealIP;
+      if (settingStore.realIP) {
+        request.params.realIP = settingStore.realIP;
+      } else {
+        request.params.randomCNIP = true;
+      }
     }
     // 全局代理配置优先
     if (config.globalProxyConfig.enabled && config.globalProxyConfig.host && config.globalProxyConfig.port) {
@@ -92,13 +103,13 @@ server.interceptors.response.use(
         // 处理其他状态码或错误条件
         console.error("未处理的错误：", error.message);
     }
-    window.$notification.error({
-      title: "请求错误",
-      description: `状态码: ${response?.status || ""}`,
-      content: (response && (response.data as { message?: string }).message) || error.message,
-      meta: "若持续发生，可尝试软件热重载",
-      duration: 5000,
-    });
+    // window.$notification.error({
+    //   title: "请求错误",
+    //   description: `状态码: ${response?.status || ""}`,
+    //   content: (response && (response.data as { message?: string }).message) || error.message,
+    //   meta: "若持续发生，可尝试软件热重载",
+    //   duration: 5000,
+    // });
     // 返回错误
     return Promise.reject(error);
   },

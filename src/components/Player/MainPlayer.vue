@@ -26,7 +26,7 @@
             </template>
           </n-image>
           <!-- 打开播放器 -->
-          <SvgIcon name="Zoom" :size="30" />
+          <SvgIcon name="Expand" :size="30" />
         </div>
       </Transition>
       <!-- 信息 -->
@@ -79,8 +79,17 @@
         <SvgIcon :size="26" name="SkipPrev" />
       </div>
       <!-- 播放暂停 -->
-      <n-button :loading="statusStore.playLoading" :focusable="false" :keyboard="false" class="play-pause"
-        type="primary" strong secondary circle v-debounce="() => player.playOrPause()">
+      <n-button
+        :loading="statusStore.playLoading"
+        :focusable="false"
+        :keyboard="false"
+        class="play-pause"
+        type="primary"
+        strong
+        secondary
+        circle
+        @click.stop="player.playOrPause()"
+      >
         <template #icon>
           <Transition name="fade" mode="out-in">
             <SvgIcon :key="statusStore.playStatus ? 'Pause' : 'Play'" :name="statusStore.playStatus ? 'Pause' : 'Play'"
@@ -142,36 +151,21 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { secondsToTime, calculateCurrentTime } from "@/utils/time";
-import { renderIcon, isElectron, coverLoaded } from "@/utils/helper";
+import { renderIcon, coverLoaded, copyData } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
-import { openDownloadSong, openJumpArtist, openPlaylistAdd } from "@/utils/modal";
-import player from "@/utils/player";
+import {
+  openDownloadSong,
+  openJumpArtist,
+  openPlaylistAdd,
+} from "@/utils/modal";
+import { usePlayer } from "@/utils/player";
 
 const router = useRouter();
+const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
-
-// 播放模式数据
-const playModeOptions = ref([
-  {
-    label: "列表循环",
-    key: "repeat",
-    icon: renderIcon("Repeat"),
-  },
-  {
-    label: "单曲循环",
-    key: "repeat-once",
-    icon: renderIcon("RepeatSong"),
-  },
-  {
-    label: "随机播放",
-    key: "shuffle",
-    icon: renderIcon("Shuffle"),
-  },
-]);
 
 // 歌曲更多操作
 const songMoreOptions = computed<DropdownOption[]>(() => {
@@ -181,6 +175,55 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
   const isSong = song.type === "song";
   const isLocal = !!song?.path;
   return [
+    {
+      key: "more",
+      label: "更多操作",
+      icon: renderIcon("Menu", { size: 18 }),
+      children: [
+        {
+          key: "code-name",
+          label: `复制${song.type === "song" ? "歌曲" : "节目"}名称`,
+          props: {
+            onClick: () => copyData(song.name),
+          },
+          icon: renderIcon("Copy", { size: 18 }),
+        },
+        {
+          key: "code-id",
+          label: `复制${song.type === "song" ? "歌曲" : "节目"} ID`,
+          show: !isLocal,
+          props: {
+            onClick: () => copyData(song.id),
+          },
+          icon: renderIcon("Copy", { size: 18 }),
+        },
+        {
+          key: "share",
+          label: `分享${song.type === "song" ? "歌曲" : "节目"}链接`,
+          show: !isLocal,
+          props: {
+            onClick: () =>
+              copyData(
+                `https://music.163.com/#/${song.type}?id=${song.id}`,
+                "已复制分享链接到剪切板",
+              ),
+          },
+          icon: renderIcon("Share", { size: 18 }),
+        },
+      ],
+    },
+    {
+      key: "search",
+      label: "同名搜索",
+      props: {
+        onClick: () => router.push({ name: "search", query: { keyword: song.name } }),
+      },
+      icon: renderIcon("Search"),
+    },
+    {
+      key: "line",
+      type: "divider",
+    },
     {
       key: "playlist-add",
       label: "添加到歌单",
@@ -223,20 +266,12 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
   ];
 });
 
-// 进度条拖拽结束
-const sliderDragend = () => {
-  const seek = calculateCurrentTime(statusStore.progress, statusStore.duration);
-  statusStore.playStatus = true;
-  // 调整进度
-  player.setSeek(seek);
-  player.play();
-};
-
 // 是否展示歌词
 const isShowLyrics = computed(() => {
   const isHasLrc = musicStore.isHasLrc;
   return (
     isHasLrc &&
+    !statusStore.lyricLoading &&
     settingStore.barLyricShow &&
     musicStore.playSong.type !== "radio" &&
     statusStore.playStatus &&
@@ -250,10 +285,33 @@ const instantLyrics = computed(() => {
   const content = isYrc
     ? musicStore.songLyric.yrcData[statusStore.lyricIndex]
     : musicStore.songLyric.lrcData[statusStore.lyricIndex];
-  return content?.tran && settingStore.showTran
-    ? `${content?.content}（ ${content?.tran} ）`
-    : content?.content;
+  const contentStr = content?.words?.map((v) => v.word).join("") || "";
+  return content?.translatedLyric && settingStore.showTran
+    ? `${contentStr}（ ${content?.translatedLyric} ）`
+    : contentStr || "";
 });
+
+// 滑块拖拽结束
+const sliderDragend = () => {
+  player.play();
+};
+
+// 秒转时间
+const secondsToTime = (seconds: number) => {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.floor(seconds % 60);
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+};
+
+// 是否 Electron 环境
+const isElectron = window.electron !== undefined;
+
+// 播放模式选项
+const playModeOptions = [
+  { label: "列表循环", value: "repeat" },
+  { label: "单曲循环", value: "repeatOnce" },
+  { label: "随机播放", value: "shuffle" },
+];
 </script>
 
 <style lang="scss" scoped>
@@ -267,7 +325,7 @@ const instantLyrics = computed(() => {
   background-color: var(--surface-container-hex);
   // background-color: rgba(var(--surface-container), 0.28);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   transition: bottom 0.3s;
   z-index: 10;
@@ -285,12 +343,20 @@ const instantLyrics = computed(() => {
     margin: 0;
     --n-rail-height: 3px;
     --n-handle-size: 14px;
+    // :deep(.n-slider-rail) {
+    //   .n-slider-rail__fill {
+    //     transition: width 0.3s;
+    //   }
+    //   .n-slider-handle-wrapper {
+    //     transition: left 0.3s;
+    //   }
+    // }
   }
   .play-data {
     display: flex;
     flex-direction: row;
-    max-width: 100%;
     overflow: hidden;
+    max-width: 640px;
     .cover {
       position: relative;
       display: flex;
@@ -341,7 +407,8 @@ const instantLyrics = computed(() => {
     .info {
       display: flex;
       flex-direction: column;
-      width: 100%;
+      flex: 1;
+      min-width: 0;
       .data {
         display: flex;
         align-items: center;
@@ -349,15 +416,21 @@ const instantLyrics = computed(() => {
         .name {
           font-weight: bold;
           font-size: 16px;
-          width: max-content;
-          max-width: calc(100% - 100px);
+          flex: 0 1 auto;
+          width: auto;
+          min-width: 0;
           transition: color 0.3s;
+        }
+        .n-tag {
+          margin-left: 8px;
+          flex-shrink: 0;
         }
         .like {
           color: var(--primary-hex);
           margin-left: 8px;
           transition: transform 0.3s;
           cursor: pointer;
+          flex-shrink: 0;
           &:hover {
             transform: scale(1.15);
           }
@@ -368,6 +441,7 @@ const instantLyrics = computed(() => {
         .more {
           margin-left: 8px;
           cursor: pointer;
+          flex-shrink: 0;
         }
       }
       .artists {
@@ -411,6 +485,7 @@ const instantLyrics = computed(() => {
     flex-direction: row;
     justify-content: center;
     align-items: center;
+    margin: 0 40px;
     .play-pause {
       --n-width: 44px;
       --n-height: 44px;
@@ -435,6 +510,7 @@ const instantLyrics = computed(() => {
       width: 38px;
       height: 38px;
       border-radius: 50%;
+      will-change: transform;
       transition:
         background-color 0.3s,
         transform 0.3s;
@@ -452,12 +528,19 @@ const instantLyrics = computed(() => {
     }
   }
   .play-menu {
-    flex-wrap: nowrap !important;
+    margin-left: auto;
+    max-width: 640px;
+    .time-container {
+      margin-right: 8px;
+      .n-tag {
+        justify-content: center;
+        font-size: 12px;
+      }
+    }
     .time {
       display: flex;
       align-items: center;
       font-size: 12px;
-      margin-right: 8px;
       .n-text {
         color: var(--primary-hex);
         opacity: 0.8;
@@ -469,48 +552,6 @@ const instantLyrics = computed(() => {
         }
       }
     }
-    .menu-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
-      border-radius: 8px;
-      transition:
-        background-color 0.3s,
-        transform 0.3s;
-      cursor: pointer;
-      .n-icon {
-        font-size: 22px;
-        color: var(--primary-hex);
-      }
-      &:hover {
-        transform: scale(1.1);
-        background-color: rgba(var(--primary), 0.28);
-      }
-      &:active {
-        transform: scale(1);
-      }
-    }
-    :deep(.n-badge-sup) {
-      background-color: rgba(var(--primary), 0.28);
-      backdrop-filter: blur(20px);
-      .n-base-slot-machine {
-        color: var(--primary-hex);
-      }
-    }
-  }
-}
-// 音量调节
-.volume-change {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 64px;
-  height: 200px;
-  padding: 12px 16px;
-  .slider-num {
-    margin-top: 4px;
-    font-size: 12px;
   }
 }
 </style>

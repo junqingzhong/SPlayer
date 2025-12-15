@@ -81,13 +81,7 @@
       <template #footer>
         <n-grid :cols="2" x-gap="16" class="playlist-menu">
           <n-gi>
-            <n-button
-              :focusable="false"
-              size="large"
-              strong
-              secondary
-              @click="player.cleanPlayList()"
-            >
+            <n-button :focusable="false" size="large" strong secondary @click="cleanPlayList">
               <template #icon>
                 <SvgIcon name="DeleteSweep" />
               </template>
@@ -117,8 +111,9 @@
 <script setup lang="ts">
 import { useStatusStore, useDataStore } from "@/stores";
 import type { VirtualListInst } from "naive-ui";
-import player from "@/utils/player";
+import { usePlayer } from "@/utils/player";
 
+const player = usePlayer();
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
 
@@ -135,8 +130,22 @@ const playListData = computed(() => {
 });
 
 // 滚动至指定元素
-const scrollToItem = (index: number, behavior: "smooth" | "auto" = "smooth") => {
-  playListRef.value?.scrollTo({ index, behavior });
+const scrollToItem = (index: number) => {
+  playListRef.value?.scrollTo({ index });
+};
+
+// 清空播放列表
+const cleanPlayList = () => {
+  window.$dialog.warning({
+    title: "清空播放列表",
+    content: "确认清空全部播放列表吗？",
+    positiveText: "确认",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      player.cleanPlayList();
+      window.$message.success("播放列表已清空");
+    },
+  });
 };
 </script>
 

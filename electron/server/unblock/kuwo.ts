@@ -1,16 +1,16 @@
 /*
  * @Author: ZJQ
  * @Date: 2025-05-23 10:50:52
- * @LastEditors: zjq 631724110@qq.com
- * @LastEditTime: 2025-08-23 01:10:55
- * @FilePath: /llm/electron/server/unblock/kuwo.ts
+ * @LastEditors: zjq zjq@xkb.com.cn
+ * @LastEditTime: 2025-12-10 17:03:44
+ * @FilePath: \tea\electron\server\unblock\kuwo.ts
  * @Description:
  *
  * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
  */
 import { encryptQuery } from "./kwDES";
 import { SongUrlResult } from "./unblock";
-import log from "../../main/logger";
+import { serverLog } from "../../main/logger";
 import axios from "axios";
 
 // 导入时长过滤函数
@@ -56,7 +56,7 @@ const getKuwoSongId = async (keyword: string): Promise<string | null> => {
     if (songName && !songName?.includes(originalName[0])) return null;
     return songId.slice("MUSIC_".length);
   } catch (error) {
-    log.error("❌ Get KuwoSongId Error:", error);
+    serverLog.error("❌ Get KuwoSongId Error:", error);
     return null;
   }
 };
@@ -83,7 +83,7 @@ const getKuwoSongUrl = async (keyword: string): Promise<SongUrlResult> => {
     });
     if (result.data) {
       const urlMatch = result.data.match(/http[^\s$"]+/)[0];
-      log.info("🔗 KuwoSong URL:", urlMatch);
+      serverLog.log("🔗 KuwoSong URL:", urlMatch);
 
       // 尝试获取歌曲时长信息
       let duration: number | undefined = undefined;
@@ -108,7 +108,7 @@ const getKuwoSongUrl = async (keyword: string): Promise<SongUrlResult> => {
           }
         }
       } catch (detailError) {
-        log.error("❌ Get Kuwo Song Duration Error:", detailError);
+        serverLog.error("❌ Get Kuwo Song Duration Error:", detailError);
       }
 
       // 应用时长过滤
@@ -116,7 +116,7 @@ const getKuwoSongUrl = async (keyword: string): Promise<SongUrlResult> => {
     }
     return { code: 404, url: null };
   } catch (error) {
-    log.error("❌ Get KuwoSong URL Error:", error);
+    serverLog.error("❌ Get KuwoSong URL Error:", error);
     return { code: 404, url: null };
   }
 };

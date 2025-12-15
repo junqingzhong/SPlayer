@@ -49,11 +49,14 @@
           <SvgIcon :name="isMax ? 'WindowRestore' : 'WindowMaximize'" />
         </template>
       </n-button>
-      <n-button :focusable="false" title="关闭" tertiary circle @click="tryClose">
-        <template #icon>
-          <SvgIcon name="WindowClose" />
-        </template>
-      </n-button>
+      <div class="close-button-wrapper" @click="tryClose" title="关闭">
+        <n-button :focusable="false" title="关闭" tertiary circle @click.stop="tryClose">
+          <template #icon>
+            <SvgIcon name="WindowClose" />
+          </template>
+        </n-button>
+        <div class="close-expanded-area"></div>
+      </div>
     </n-flex>
     <!-- 关闭弹窗 -->
     <n-modal v-model:show="showCloseModal" :auto-focus="false" title="关闭软件" style="width: 600px" preset="card"
@@ -83,8 +86,9 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useSettingStore } from "@/stores";
-import { isElectron, isDev, renderIcon } from "@/utils/helper";
+import { renderIcon } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
+import { isDev, isElectron } from "@/utils/env";
 
 const router = useRouter();
 const settingStore = useSettingStore();
@@ -112,10 +116,8 @@ const min = () => window.electron.ipcRenderer.send("win-min");
 // 最大化或还原
 const maxOrRes = () => {
   if (window.electron.ipcRenderer.sendSync("win-state")) {
-    isMax.value = false;
     window.electron.ipcRenderer.send("win-restore");
   } else {
-    isMax.value = true;
     window.electron.ipcRenderer.send("win-max");
   }
 };
@@ -127,7 +129,7 @@ const hideOrClose = (action: "hide" | "exit") => {
     settingStore.closeAppMethod = action;
   }
   showCloseModal.value = false;
-  window.electron.ipcRenderer.send(action === "hide" ? "win-hide" : "win-close");
+  window.electron.ipcRenderer.send(action === "hide" ? "win-hide" : "quit-app");
 };
 
 // 尝试关闭软件
@@ -171,7 +173,7 @@ const setOptions = computed<DropdownOption[]>(() => [
     key: "restart",
     label: "软件热重载",
     show: isElectron,
-    props: { onClick: () => window.location.reload() },
+    props: { onClick: () => window.electron.ipcRenderer.send("win-reload") },
     icon: renderIcon("Restart"),
   },
   {
@@ -217,9 +219,12 @@ const handleResize = () => {
 };
 
 onMounted(() => {
-  // 获取窗口状态
+  // 获取窗口状态并监听主进程的状态变更
   if (isElectron) {
     isMax.value = window.electron.ipcRenderer.sendSync("win-state");
+    window.electron.ipcRenderer.on("win-state-change", (_event, value: boolean) => {
+      isMax.value = value;
+    });
   }
   // 添加窗口大小监听器
   window.addEventListener('resize', handleResize);
@@ -271,6 +276,21 @@ onUnmounted(() => {
   .client-control {
     .divider {
       margin: 0 0 0 12px;
+    }
+    .close-button-wrapper {
+      position: relative;
+      cursor: pointer;
+      .close-expanded-area {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 60px;
+        height: 70px;
+        background-color: transparent;
+        cursor: pointer;
+        -webkit-app-region: no-drag;
+        z-index: 1000;
+      }
     }
   }
 }

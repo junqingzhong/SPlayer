@@ -13,8 +13,6 @@ export default {
     "MaybeRefOrGetter": true,
     "PropType": true,
     "Ref": true,
-    "Slot": true,
-    "Slots": true,
     "VNode": true,
     "WritableComputedRef": true,
     "asyncComputed": true,

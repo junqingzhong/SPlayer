@@ -1,58 +1,84 @@
 <!-- 歌曲列表 - 虚拟列表 -->
-<!-- vue-virt-list https://github.com/keno-lee/vue-virt-list -->
 <template>
   <Transition name="fade" mode="out-in">
-    <div v-if="!isEmpty(listData)" ref="songListRef" :class="[
-        'song-list',
-        {
-          'hidden-scrollbar': hiddenScrollbar,
-        },
-      ]">
+    <div v-if="!isEmpty(listData)" ref="songListRef" class="song-list">
       <Transition name="fade" mode="out-in">
-        <VirtList ref="listRef" :key="listData?.[0]?.id" :list="listData" :minSize="94" :buffer="2" :offset="offset"
-          :style="{ height: height === 'auto' ? 'auto' : `${height || songListHeight}px` }" itemKey="id"
-          @scroll="onScroll" @toBottom="onToBottom">
+        <div
+          :key="listKey"
+          :style="{ height: height === 'auto' ? 'auto' : `${height || songListHeight}px` }"
+          class="virtual-list-wrapper"
+        >
           <!-- 悬浮顶栏 -->
-          <template #stickyHeader>
-            <div class="list-header song-card">
-              <n-text class="num">#</n-text>
-              <n-dropdown v-if="!disabledSort" :options="sortMenuOptions" trigger="click" placement="bottom-start"
-                @select="sortSelect">
-                <div class="title has-sort">
-                  <n-text>歌名</n-text>
-                  <n-text v-if="statusStore.listSort !== 'default'" class="sort" depth="3">
-                    {{ sortOptions[statusStore.listSort].name }}
-                  </n-text>
-                </div>
-              </n-dropdown>
-              <n-text v-else class="title">歌名</n-text>
-              <n-text v-if="type !== 'radio' && !hiddenAlbum && !settingStore.isMobileMode" class="album">专辑</n-text>
-              <n-text v-if="type !== 'radio'" class="actions">操作</n-text>
-              <n-text v-if="type === 'radio'" class="meta date">更新日期</n-text>
-              <n-text v-if="type === 'radio'" class="meta">播放量</n-text>
-              <n-text class="meta">时长</n-text>
-              <n-text v-if="data?.[0].size && !hiddenSize" class="meta size">大小</n-text>
-            </div>
-          </template>
-          <!-- 主内容 -->
-          <template #default="{ itemData, index }">
-            <SongCard :song="itemData" :index="index" :hiddenCover="hiddenCover" :hiddenAlbum="hiddenAlbum"
-              :hiddenSize="hiddenSize" @dblclick.stop="player.updatePlayList(listData, itemData, playListId)"
-              @contextmenu.stop="
-                songListMenuRef?.openDropdown($event, listData, itemData, index, type, playListId)
-              " />
-          </template>
-          <!-- 加载更多 -->
-          <template #footer>
-            <div class="load-more">
-              <n-flex v-if="loadMore && loading">
-                <n-spin size="small" />
-                <n-text>{{ loadingText || "努力加载中" }}</n-text>
-              </n-flex>
-              <n-divider v-else dashed> 没有更多啦 ~ </n-divider>
-            </div>
-          </template>
-        </VirtList>
+          <div class="list-header song-card sticky-header">
+            <n-text class="num">#</n-text>
+            <n-dropdown
+              v-if="!disabledSort"
+              :options="sortMenuOptions"
+              trigger="click"
+              placement="bottom-start"
+              @select="sortSelect"
+            >
+              <div class="title has-sort">
+                <n-text>标题</n-text>
+                <n-text v-if="statusStore.listSort !== 'default'" class="sort" depth="3">
+                  {{ sortOptions[statusStore.listSort].name }}
+                </n-text>
+              </div>
+            </n-dropdown>
+            <n-text v-else class="title">标题</n-text>
+            <n-text v-if="type !== 'radio' && !hiddenAlbum" class="album">专辑</n-text>
+            <n-text v-if="type !== 'radio'" class="actions">操作</n-text>
+            <n-text v-if="type === 'radio'" class="meta date">更新日期</n-text>
+            <n-text v-if="type === 'radio'" class="meta">播放量</n-text>
+            <n-text class="meta">时长</n-text>
+            <n-text v-if="data?.[0].size && !hiddenSize" class="meta size">大小</n-text>
+          </div>
+          <!-- 虚拟列表 -->
+          <n-virtual-list
+            ref="listRef"
+            :item-size="94"
+            :items="virtualListItems"
+            :style="{ height: `calc(100% - 40px)` }"
+            :padding-bottom="80"
+            item-resizable
+            @scroll="onScroll"
+          >
+            <template #default="{ item, index }">
+              <SongCard
+                v-if="item.type === 'song'"
+                :song="item.data"
+                :index="index"
+                :hiddenCover="hiddenCover"
+                :hiddenAlbum="hiddenAlbum"
+                :hiddenSize="hiddenSize"
+                @dblclick.stop="
+                  doubleClickAction === 'add'
+                    ? player.addNextSong(item.data, true)
+                    : player.updatePlayList(listData, item.data, playListId)
+                "
+                @contextmenu.stop="
+                  songListMenuRef?.openDropdown(
+                    $event,
+                    listData,
+                    item.data,
+                    index,
+                    type,
+                    playListId,
+                    isDailyRecommend,
+                  )
+                "
+              />
+              <!-- 加载更多 -->
+              <div v-else-if="item.type === 'footer'" class="load-more">
+                <n-flex v-if="loadMore && loading">
+                  <n-spin size="small" />
+                  <n-text>{{ loadingText || "努力加载中" }}</n-text>
+                </n-flex>
+                <n-divider v-else dashed> 没有更多啦 ~ </n-divider>
+              </div>
+            </template>
+          </n-virtual-list>
+        </div>
       </Transition>
       <!-- 右键菜单 -->
       <SongListMenu ref="songListMenuRef" @removeSong="removeSong" />
@@ -61,11 +87,11 @@
         <Transition name="fade" mode="out-in">
           <n-float-button-group v-if="floatToolShow" class="list-menu">
             <Transition name="fade" mode="out-in">
-              <n-float-button v-if="scrollTop > 100" width="42" @click="listRef?.scrollToTop()">
+              <n-float-button v-if="scrollTop > 100" width="42" @click="scrollToTop">
                 <SvgIcon :size="22" name="Up" />
               </n-float-button>
             </Transition>
-            <n-float-button v-if="hasPlaySong >= 0" width="42" @click="listRef?.scrollToIndex(hasPlaySong)">
+            <n-float-button v-if="hasPlaySong >= 0" width="42" @click="listRef?.scrollTo({ index: hasPlaySong })">
               <SvgIcon :size="22" name="Location" />
             </n-float-button>
           </n-float-button-group>
@@ -82,15 +108,14 @@
 </template>
 
 <script setup lang="ts">
-import type { DropdownOption } from "naive-ui";
-import type { SongType, SortType } from "@/types/main";
-import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
-import { VirtList } from "vue-virt-list";
-import { cloneDeep, entries, isEmpty } from "lodash-es";
+import type { DropdownOption, VirtualListInst } from "naive-ui";
+import { SongType, SortType } from "@/types/main";
+import { useMusicStore, useStatusStore } from "@/stores";
+import { entries, isEmpty } from "lodash-es";
 import { sortOptions } from "@/utils/meta";
 import { renderIcon } from "@/utils/helper";
+import { usePlayer } from "@/utils/player";
 import SongListMenu from "@/components/Menu/SongListMenu.vue";
-import player from "@/utils/player";
 
 const props = withDefaults(
   defineProps<{
@@ -115,11 +140,16 @@ const props = withDefaults(
     disabledSort?: boolean;
     // 播放歌单 ID
     playListId?: number;
+    // 是否为每日推荐
+    isDailyRecommend?: boolean;
+    // 双击播放操作
+    doubleClickAction?: "all" | "add";
   }>(),
   {
     type: "song",
     loadingText: "努力加载中...",
     playListId: 0,
+    isDailyRecommend: false,
   },
 );
 
@@ -132,16 +162,16 @@ const emit = defineEmits<{
   removeSong: [id: number[]];
 }>();
 
+const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
-const settingStore = useSettingStore();
 
 // 列表状态
-const offset = ref<number>(0);
 const scrollTop = ref<number>(0);
+const scrollIndex = ref<number>(0);
 
 // 列表元素
-const listRef = ref<InstanceType<typeof VirtList> | null>(null);
+const listRef = ref<VirtualListInst | null>(null);
 const songListRef = ref<HTMLElement | null>(null);
 
 // 悬浮工具
@@ -152,8 +182,9 @@ const songListMenuRef = ref<InstanceType<typeof SongListMenu> | null>(null);
 
 // 列表数据
 const listData = computed<SongType[]>(() => {
-  const data = cloneDeep(props.data);
-  if (props.disabledSort) return data;
+  if (props.disabledSort) return props.data;
+  // 创建副本用于排序（避免修改原数组）
+  const data = [...props.data];
   // 排序
   switch (statusStore.listSort) {
     case "titleAZ":
@@ -185,6 +216,42 @@ const listData = computed<SongType[]>(() => {
   }
 });
 
+// 虚拟列表项类型
+type VirtualListItem =
+  | { type: "song"; data: SongType; key: number }
+  | { type: "footer"; data: null; key: string };
+
+// 虚拟列表数据（包含歌曲和 footer）
+const virtualListItems = computed<VirtualListItem[]>(() => {
+  const items: VirtualListItem[] = listData.value.map((song) => ({
+    type: "song" as const,
+    data: song,
+    key: song.id,
+  }));
+  // 如果有加载更多，添加 footer
+  if (props.loadMore !== undefined) {
+    items.push({
+      type: "footer" as const,
+      data: null,
+      key: "footer",
+    });
+  }
+  return items;
+});
+
+// 虚拟列表 key
+const listKey = computed(() => {
+  // 每日推荐
+  if (props.isDailyRecommend) {
+    return `daily-${musicStore.dailySongsData.timestamp || 0}`;
+  }
+  // 使用 playListId 作为主要 key
+  if (props.playListId) {
+    return `playlist-${props.playListId}`;
+  }
+  return `type-${props.type}`;
+});
+
 // 列表是否具有播放歌曲
 const hasPlaySong = computed(() => {
   return listData.value.findIndex((item) => item.id === musicStore.playSong.id);
@@ -206,13 +273,22 @@ const sortMenuOptions = computed<DropdownOption[]>(() =>
 // 列表滚动
 const onScroll = (e: Event) => {
   emit("scroll", e);
-  scrollTop.value = (e.target as HTMLElement).scrollTop;
+  const target = e.target as HTMLElement;
+  const top = target.scrollTop;
+  scrollTop.value = top;
+  scrollIndex.value = Math.floor(top / 94);
+
+  // 触底检测
+  const scrollHeight = target.scrollHeight;
+  const clientHeight = target.clientHeight;
+  if (scrollHeight - top - clientHeight < 100 && !props.loading && props.loadMore) {
+    emit("reachBottom", e);
+  }
 };
 
-// 列表触底
-const onToBottom = (e: Event) => {
-  if (props.loading) return;
-  emit("reachBottom", e);
+// 滚动到顶部
+const scrollToTop = () => {
+  listRef.value?.scrollTo({ index: 0 });
 };
 
 // 排序更改
@@ -226,8 +302,14 @@ const sortSelect = (key: SortType) => {
       scrobble: false,
     });
   }
-  // 滚动到顶部
-  listRef.value?.scrollToIndex(hasPlaySong.value || 0);
+  // 滚动到当前播放歌曲或顶部
+  nextTick(() => {
+    if (hasPlaySong.value >= 0) {
+      listRef.value?.scrollTo({ index: hasPlaySong.value });
+    } else {
+      listRef.value?.scrollTo({ index: 0 });
+    }
+  });
 };
 
 // 删除指定索引
@@ -235,14 +317,17 @@ const removeSong = (id: number[]) => emit("removeSong", id);
 
 // keep-alive 处理
 onBeforeRouteLeave(() => {
-  offset.value = listRef.value?.getOffset() || 0;
   floatToolShow.value = false;
 });
 
 onActivated(() => {
   floatToolShow.value = true;
   if (props.height === "auto") stopCalcHeight();
-  if (offset.value > 0) listRef.value?.scrollToOffset(offset.value);
+  if (scrollIndex.value > 0) {
+    nextTick(() => {
+      listRef.value?.scrollTo({ index: scrollIndex.value, behavior: "auto" });
+    });
+  }
 });
 
 onBeforeUnmount(() => {
@@ -334,7 +419,6 @@ onBeforeUnmount(() => {
     }
     .meta {
       width: 50px;
-      font-size: 13px;
       text-align: center;
       &.size {
         width: 60px;

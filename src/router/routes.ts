@@ -1,15 +1,17 @@
 import { type RouteRecordRaw } from "vue-router";
+import AppLayout from "@/layout/AppLayout.vue";
+// import AppLayout from "@/layout/AppLayout.vue"; // 未使用，注释掉
 
-const routes: Array<RouteRecordRaw> = [
+const appRoutes: Array<RouteRecordRaw> = [
   // 首页 (现在是活动列表)
   {
-    path: "/home",
+    path: "/",
     name: "home",
     component: () => import("@/views/Home/index.vue"), // 修改为 Activities/index.vue
   },
-   // 活动列表
+  //  活动列表
   {
-    path: "",
+    path: "/activities",
     name: "activities",
     component: () => import("@/views/Activities/index.vue"),
     meta: {
@@ -195,6 +197,46 @@ const routes: Array<RouteRecordRaw> = [
       },
     ],
   },
+  // 下载管理
+  {
+    path: "/download",
+    name: "download",
+    meta: { needApp: true },
+    component: () => import("@/views/Download/layout.vue"),
+    redirect: "/download/downloaded",
+    children: [
+      {
+        path: "downloaded",
+        name: "download-downloaded",
+        component: () => import("@/views/Download/downloaded.vue"),
+      },
+      {
+        path: "downloading",
+        name: "download-downloading",
+        component: () => import("@/views/Download/downloading.vue"),
+      },
+    ],
+  },
+  // 下载管理
+  {
+    path: "/download",
+    name: "download",
+    meta: { needApp: true },
+    component: () => import("@/views/Download/layout.vue"),
+    redirect: "/download/downloaded",
+    children: [
+      {
+        path: "downloaded",
+        name: "download-downloaded",
+        component: () => import("@/views/Download/downloaded.vue"),
+      },
+      {
+        path: "downloading",
+        name: "download-downloading",
+        component: () => import("@/views/Download/downloading.vue"),
+      },
+    ],
+  },
   // 本地歌曲
   {
     path: "/local",
@@ -266,5 +308,23 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("@/views/Status/500.vue"),
   },
 ];
-
+const routes: Array<RouteRecordRaw> = [
+  // 应用路由
+  {
+    path: "/",
+    component: AppLayout,
+    children: [...appRoutes],
+  },
+  // 桌面歌词
+  {
+    path: "/desktop-lyric",
+    name: "desktop-lyric",
+    component: () => import("@/views/DesktopLyric/index.vue"),
+  },
+  // 404
+  {
+    path: "/:pathMatch(.*)*",
+    redirect: "/404",
+  },
+];
 export default routes;

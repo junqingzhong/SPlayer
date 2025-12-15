@@ -9,7 +9,8 @@ import {
   net,
 } from "electron";
 import { File, Picture, Id3v2Settings } from "node-taglib-sharp";
-import { parseFile } from "music-metadata";
+// @ts-ignore
+const { parseFile } = require("music-metadata");
 import { getFonts } from "font-list";
 import { MainTray } from "./tray";
 import { Thumbar } from "./thumbar";
@@ -21,7 +22,7 @@ import { join, basename, resolve, relative, isAbsolute } from "path";
 import { download } from "electron-dl";
 import { checkUpdate, startDownloadUpdate } from "./update";
 import fs from "fs/promises";
-import log from "../main/logger";
+import { serverLog } from "../main/logger";
 import Store from "electron-store";
 import fg from "fast-glob";
 import openLoginWin from "./loginWin";
@@ -136,7 +137,7 @@ const initWinIpcMain = (
       const fonts = await getFonts();
       return fonts;
     } catch (error) {
-      log.error(`❌ Failed to get all system fonts: ${error}`);
+      serverLog.error(`❌ Failed to get all system fonts: ${error}`);
       return [];
     }
   });
@@ -153,11 +154,11 @@ const initWinIpcMain = (
   ipcMain.on("prevent-sleep", (_, val: boolean) => {
     if (val) {
       preventId = powerSaveBlocker.start("prevent-display-sleep");
-      log.info("⏾ System sleep prevention started");
+      serverLog.log("⏾ System sleep prevention started");
     } else {
       if (preventId !== null) {
         powerSaveBlocker.stop(preventId);
-        log.info("✅ System sleep prevention stopped");
+        serverLog.log("✅ System sleep prevention stopped");
       }
     }
   });
@@ -209,7 +210,7 @@ const initWinIpcMain = (
       const metadataArray = await Promise.all(metadataPromises);
       return metadataArray;
     } catch (error) {
-      log.error("❌ Error fetching music metadata:", error);
+      serverLog.error("❌ Error fetching music metadata:", error);
       throw error;
     }
   });
@@ -232,7 +233,7 @@ const initWinIpcMain = (
         md5: await getFileMD5(filePath),
       };
     } catch (error) {
-      log.error("❌ Error fetching music metadata:", error);
+      serverLog.error("❌ Error fetching music metadata:", error);
       throw error;
     }
   });
@@ -256,7 +257,7 @@ const initWinIpcMain = (
         }
       }
     } catch (error) {
-      log.error("❌ Error fetching music lyric:", error);
+      serverLog.error("❌ Error fetching music lyric:", error);
       throw error;
     }
   });
@@ -303,7 +304,7 @@ const initWinIpcMain = (
       await fs.unlink(resolvedPath);
       return true;
     } catch (error) {
-      log.error("❌ File delete error", error);
+      serverLog.error("❌ File delete error", error);
       return false;
     }
   });
@@ -322,7 +323,7 @@ const initWinIpcMain = (
       // 打开文件夹
       shell.showItemInFolder(resolvedPath);
     } catch (error) {
-      log.error("❌ Folder open error", error);
+      serverLog.error("❌ Folder open error", error);
       throw error;
     }
   });
@@ -337,7 +338,7 @@ const initWinIpcMain = (
       if (!filePaths || filePaths.length === 0) return null;
       return filePaths[0];
     } catch (error) {
-      log.error("❌ Image choose error", error);
+      serverLog.error("❌ Image choose error", error);
       return null;
     }
   });
@@ -354,7 +355,7 @@ const initWinIpcMain = (
       if (!filePaths || filePaths.length === 0) return null;
       return filePaths[0];
     } catch (error) {
-      log.error("❌ Path choose error", error);
+      serverLog.error("❌ Path choose error", error);
       return null;
     }
   });
@@ -386,7 +387,7 @@ const initWinIpcMain = (
       songFile.dispose();
       return true;
     } catch (error) {
-      log.error("❌ Error setting music metadata:", error);
+      serverLog.error("❌ Error setting music metadata:", error);
       throw error;
     }
   });
@@ -472,7 +473,7 @@ const initWinIpcMain = (
         if (!saveMetaFile || !downloadCover) await fs.unlink(coverDownload.getSavePath());
         return true;
       } catch (error) {
-        log.error("❌ Error downloading file:", error);
+        serverLog.error("❌ Error downloading file:", error);
         return false;
       }
     },
@@ -483,33 +484,33 @@ const initWinIpcMain = (
     if (store) {
       // @ts-ignore
       store.set("proxyConfig", newProxyConfig);
-      log.info("Proxy config updated in store:", newProxyConfig);
+      serverLog.log("Proxy config updated in store:", newProxyConfig);
       applyProxyFromMain(newProxyConfig);
     } else {
-      log.error("Store not available to update proxy config");
+      serverLog.error("Store not available to update proxy config");
     }
   });
 
   // IPC handler for applying global proxy configuration
   ipcMain.on("apply-global-proxy", (_, globalProxyConfig) => {
     try {
-      log.info("Received global proxy configuration from renderer");
+      serverLog.log("Received global proxy configuration from renderer");
       // 导入applyGlobalProxyFromMain函数
       const { applyGlobalProxyFromMain } = require("./index");
       applyGlobalProxyFromMain(globalProxyConfig);
     } catch (error) {
-      log.error("Error applying global proxy configuration:", error);
+      serverLog.error("Error applying global proxy configuration:", error);
     }
   });
 
   // New IPC handler for testing proxy settings
   ipcMain.handle("test-new-proxy", async (_, testProxyConfig: StoreType["proxyConfig"]) => {
     if (!win) {
-      log.error("Main window not available for proxy test");
+      serverLog.error("Main window not available for proxy test");
       return false;
     }
     const originalProxyConfig = (store as any)?.get("proxyConfig");
-    log.info("Testing proxy configuration:", testProxyConfig);
+    serverLog.log("Testing proxy configuration:", testProxyConfig);
 
     try {
       // Apply temporary proxy settings for testing
@@ -519,11 +520,11 @@ const initWinIpcMain = (
       const request = net.request({ url: "https://www.baidu.com" }); // Or any other reliable URL
       const result = await new Promise<boolean>((resolve) => {
         request.on("response", (response) => {
-          log.info(`Proxy test response status: ${response.statusCode}`);
+          serverLog.log(`Proxy test response status: ${response.statusCode}`);
           resolve(response.statusCode === 200);
         });
         request.on("error", (error) => {
-          log.error("Proxy test request error:", error);
+          serverLog.error("Proxy test request error:", error);
           resolve(false);
         });
         request.end();
@@ -531,11 +532,11 @@ const initWinIpcMain = (
 
       return result;
     } catch (error) {
-      log.error("Error during proxy test:", error);
+      serverLog.error("Error during proxy test:", error);
       return false;
     } finally {
       // Revert to original proxy settings
-      log.info("Reverting to original proxy configuration after test");
+      serverLog.log("Reverting to original proxy configuration after test");
       if (originalProxyConfig) {
         // @ts-ignore
         applyProxyFromMain(originalProxyConfig);
@@ -550,7 +551,7 @@ const initWinIpcMain = (
   ipcMain.on("reset-setting", () => {
     // @ts-ignore
     store.reset();
-    log.info("✅ Reset setting successfully");
+    serverLog.log("✅ Reset setting successfully");
   });
 
   // 检查更新

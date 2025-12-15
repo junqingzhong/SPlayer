@@ -2,7 +2,7 @@
 import axios from "axios";
 import type { SongUrlResult } from "./unblock";
 import { filterByDuration } from "./index";
-import log from "../../main/logger";
+import { serverLog } from "../../main/logger";
 
 // 搜索 QQ 歌曲
 const qqSearch = async (keyword: string, cookie: string = "") => {
@@ -95,7 +95,7 @@ export const getQQSongUrl = async (keyword: string, cookie: string = ""): Promis
     for (const song of list) {
       const playUrl = await qqTrack(song.songmid, cookie);
       if (playUrl) {
-        log.info("🔗 QQSong URL:", playUrl);
+        serverLog.log("🔗 QQSong URL:", playUrl);
         // 应用时长过滤，使用搜索结果中的时长信息
         return filterByDuration({
           code: 200,
@@ -106,7 +106,7 @@ export const getQQSongUrl = async (keyword: string, cookie: string = ""): Promis
     }
     return { code: 404, url: null };
   } catch (e) {
-    log.error("❌ Get QQSong URL Error:", e);
+    serverLog.error("❌ Get QQSong URL Error:", e);
     return { code: 404, url: null };
   }
 };

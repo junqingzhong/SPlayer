@@ -2,7 +2,8 @@ import axios from "axios";
 import crypto from "crypto";
 import { SongUrlResult } from "./unblock";
 import { filterByDuration } from "./index";
-import log from "../../main/logger";
+import { serverLog } from "../../main/logger";
+
 
 // 格式化搜索结果
 const format = (song: any) => ({
@@ -83,7 +84,7 @@ export const getKugouSongUrl = async (keyword: string): Promise<SongUrlResult> =
     for (const song of list) {
       const playUrl = await kugouTrack(song);
       if (playUrl) {
-        log.info("🔗 KugouSong URL:", playUrl);
+        serverLog.log("🔗 KugouSong URL:", playUrl);
         // 应用时长过滤，使用搜索结果中的时长信息
         return filterByDuration({
           code: 200,
@@ -95,7 +96,7 @@ export const getKugouSongUrl = async (keyword: string): Promise<SongUrlResult> =
     // 全部尝试后都没有可用直链
     return { code: 404, url: null };
   } catch (e) {
-    log.error("❌ Get KugouSong URL Error:", e);
+    serverLog.error("❌ Get KugouSong URL Error:", e);
     return { code: 404, url: null };
   }
 };
