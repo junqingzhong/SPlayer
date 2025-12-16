@@ -163,12 +163,12 @@ const initWindowsIpc = (): void => {
   });
 
   // 开启设置
-  ipcMain.on("open-setting", (_, type) => {
+  ipcMain.on("open-setting", (_, type, scrollTo) => {
     const mainWin = mainWindow.getWin();
     if (!mainWin) return;
     mainWin?.show();
     mainWin?.focus();
-    mainWin?.webContents.send("openSetting", type);
+    mainWin?.webContents.send("openSetting", type, scrollTo);
   });
 };
 

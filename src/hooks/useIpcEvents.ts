@@ -27,7 +27,8 @@ export const useIpcEvents = () => {
   const handleVolumeUp = () => player.setVolume("up");
   const handleVolumeDown = () => player.setVolume("down");
   const handleChangeMode = (_: any, mode: PlayModeType) => player.togglePlayMode(mode);
-  const handleOpenSetting = (_: any, type: SettingType) => openSetting(type);
+  const handleOpenSetting = (_: any, type: SettingType, scrollTo?: string) =>
+    openSetting(type, scrollTo);
   const handleToggleDesktopLyric = () => player.toggleDesktopLyric();
   const handleCloseDesktopLyric = () => player.setDesktopLyricShow(false);
 

@@ -1,7 +1,7 @@
 <template>
   <n-flex :size="8" align="center" class="right-menu">
     <n-badge v-if="isElectron" value="ON" :show="statusStore.showDesktopLyric">
-      <div class="menu-icon" @click.stop="player.toggleDesktopLyric">
+      <div class="menu-icon" @click.stop="player.toggleDesktopLyric()">
         <SvgIcon name="DesktopLyric2" :depth="statusStore.showDesktopLyric ? 1 : 3" />
       </div>
     </n-badge>

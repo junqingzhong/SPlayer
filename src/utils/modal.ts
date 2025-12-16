@@ -237,7 +237,7 @@ export const openDownloadSongs = (songs: SongType[]): void => {
 };
 
 // 打开设置
-export const openSetting = (type: SettingType = "general") => {
+export const openSetting = (type: SettingType = "general", scrollTo?: string) => {
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
@@ -247,7 +247,7 @@ export const openSetting = (type: SettingType = "general") => {
     bordered: true,
     class: "main-setting",
     content: () => {
-      return h(MainSetting, { type });
+      return h(MainSetting, { type, scrollTo });
     },
   });
 };

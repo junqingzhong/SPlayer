@@ -400,7 +400,7 @@
         />
       </n-card>
     </div>
-    <div v-if="isElectron" class="set-list">
+    <div v-if="isElectron" ref="desktopLyricRef" class="set-list">
       <n-h3 prefix="bar">
         桌面歌词
         <n-tag type="warning" size="small" round>Beta</n-tag>
@@ -414,7 +414,7 @@
           :value="statusStore.showDesktopLyric"
           :round="false"
           class="set"
-          @update:value="player.toggleDesktopLyric"
+          @update:value="() => player.toggleDesktopLyric()"
         />
       </n-card>
       <n-card class="set-item">
@@ -641,9 +641,14 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { SelectOption } from "naive-ui";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
+const props = defineProps<{ scrollTo?: string }>();
+
 const player = usePlayerController();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+
+// 桌面歌词区域引用
+const desktopLyricRef = ref<HTMLElement | null>(null);
 
 // 全部字体
 const allFontsData = ref<SelectOption[]>([]);
@@ -756,6 +761,12 @@ onMounted(async () => {
     getAllSystemFonts();
     // 恢复地址
     await window.api.store.set("amllDbServer", settingStore.amllDbServer);
+  }
+  // 如果需要滚动到桌面歌词部分
+  if (props.scrollTo === "desktop" && desktopLyricRef.value) {
+    nextTick(() => {
+      desktopLyricRef.value?.scrollIntoView({ behavior: "instant", block: "start" });
+    });
   }
 });
 </script>
