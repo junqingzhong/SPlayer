@@ -414,7 +414,7 @@
           :value="statusStore.showDesktopLyric"
           :round="false"
           class="set"
-          @update:value="() => player.toggleDesktopLyric()"
+          @update:value="player.setDesktopLyricShow"
         />
       </n-card>
       <n-card class="set-item">
