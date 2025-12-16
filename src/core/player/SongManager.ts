@@ -172,6 +172,14 @@ class SongManager {
   };
 
   /**
+   * 清除预加载缓存
+   */
+  public clearPrefetch() {
+    this.nextPrefetch = undefined;
+    console.log("🧹 已清除歌曲 URL 缓存");
+  }
+
+  /**
    * 获取音频源
    * 始终从此方法获取对应歌曲播放信息
    * @param song 歌曲
@@ -182,12 +190,14 @@ class SongManager {
 
     // 本地文件直接返回
     if (song.path) {
-      return {
-        id: song.id,
-        url: `file://${song.path}`,
-        isUnlocked: false,
-        quality: undefined, // 本地文件稍后获取音质
-      };
+      // 检查本地文件是否存在
+      const result = await window.electron.ipcRenderer.invoke("file-exists", song.path);
+      if (!result) {
+        this.nextPrefetch = undefined;
+        console.error("❌ 本地文件不存在");
+        return { id: song.id, url: undefined };
+      }
+      return { id: song.id, url: `file://${song.path}` };
     }
 
     // 在线歌曲
@@ -197,7 +207,9 @@ class SongManager {
     // 检查缓存并返回
     if (this.nextPrefetch && this.nextPrefetch.id === songId && settingStore.useNextPrefetch) {
       console.log("🚀 使用预加载缓存播放");
-      return this.nextPrefetch;
+      const cachedSource = this.nextPrefetch;
+      this.nextPrefetch = undefined;
+      return cachedSource;
     }
 
     // 在线获取

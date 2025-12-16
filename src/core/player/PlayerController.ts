@@ -84,8 +84,6 @@ const ipcService = {
  * 职责：负责音频生命周期管理、与 AudioManager 交互、调度 Store
  */
 class PlayerController {
-  /** 状态锁，防止快速切歌导致的竞争条件 */
-  private _initializing = false;
   /** 自动关闭定时器 */
   private autoCloseInterval: ReturnType<typeof setInterval> | undefined;
   /** 最大重试次数 */
@@ -106,10 +104,6 @@ class PlayerController {
   public async playSong(
     options: { autoPlay?: boolean; seek?: number } = { autoPlay: true, seek: 0 },
   ) {
-    // 防止快速切歌
-    if (this._initializing) return;
-    this._initializing = true;
-
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();
@@ -138,7 +132,11 @@ class PlayerController {
       }
       // 获取音频源
       const audioSource = await songManager.getAudioSource(playSongData);
-      if (!audioSource.url) throw new Error("AUDIO_SOURCE_NOT_FOUND");
+      if (!audioSource.url) {
+        window.$message.error("音频源获取失败，跳过当前歌曲");
+        await this.nextOrPrev("next");
+        return;
+      }
       // 更新音质和解锁状态
       statusStore.songQuality = audioSource.quality;
       statusStore.playUblock = audioSource.isUnlocked ?? false;
@@ -150,8 +148,6 @@ class PlayerController {
       console.error("❌ 播放初始化失败:", error);
       // 触发错误处理流程
       await this.handlePlaybackError(error?.code || 0, seek);
-    } finally {
-      this._initializing = false;
     }
   }
 
@@ -384,7 +380,22 @@ class PlayerController {
    */
   private async handlePlaybackError(errCode: number | undefined, currentSeek: number = 0) {
     const dataStore = useDataStore();
+    const musicStore = useMusicStore();
     const statusStore = useStatusStore();
+    const songManager = useSongManager();
+
+    // 清除预加载缓存
+    songManager.clearPrefetch();
+
+    // 是否为本地歌曲
+    const isLocalSong = musicStore.playSong.path;
+    if (isLocalSong) {
+      console.error("❌ 本地文件加载失败，停止重试");
+      window.$message.error("本地文件无法播放");
+      this.retryInfo.count = 0;
+      await this.nextOrPrev("next");
+      return;
+    }
 
     this.retryInfo.count++;
     console.warn(

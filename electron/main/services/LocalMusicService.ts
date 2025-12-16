@@ -7,6 +7,9 @@ import { type IAudioMetadata, parseFile } from "music-metadata";
 import FastGlob, { type Entry } from "fast-glob";
 import pLimit from "p-limit";
 
+/** 当前本地音乐库 DB 版本，用于控制缓存结构升级 */
+const CURRENT_DB_VERSION = 2;
+
 /** 音乐数据接口 */
 export interface MusicTrack {
   /** 文件id */
@@ -27,6 +30,8 @@ export interface MusicTrack {
   mtime: number;
   /** 文件大小 */
   size: number;
+  /** 文件码率（bps） */
+  bitrate?: number;
 }
 
 /** 音乐库数据库接口 */
@@ -44,7 +49,7 @@ export class LocalMusicService {
   /** 封面目录 */
   private coverDir: string;
   /** 数据库 */
-  private db: MusicLibraryDB = { version: 1, tracks: {} };
+  private db: MusicLibraryDB = { version: CURRENT_DB_VERSION, tracks: {} };
   /** 限制并发解析数为 10，防止内存溢出 */
   private limit = pLimit(10);
 
@@ -69,16 +74,26 @@ export class LocalMusicService {
     try {
       if (existsSync(this.dbPath)) {
         const data = await readFile(this.dbPath, "utf-8");
-        this.db = JSON.parse(data);
+        const parsed = JSON.parse(data) as MusicLibraryDB;
+        // 如果历史 DB 没有版本号或版本过旧，则重建，触发全量重新扫描以补齐新字段（如 bitrate）
+        if (!parsed.version || parsed.version < CURRENT_DB_VERSION) {
+          this.db = { version: CURRENT_DB_VERSION, tracks: {} };
+        } else {
+          this.db = parsed;
+        }
+      } else {
+        this.db = { version: CURRENT_DB_VERSION, tracks: {} };
       }
     } catch (e) {
       console.error("Failed to load DB, resetting:", e);
-      this.db = { version: 1, tracks: {} };
+      this.db = { version: CURRENT_DB_VERSION, tracks: {} };
     }
   }
 
   /** 保存数据库 */
   private async saveDB() {
+    // 确保版本号始终为当前版本
+    this.db.version = CURRENT_DB_VERSION;
     await writeFile(this.dbPath, JSON.stringify(this.db), "utf-8");
   }
 
@@ -173,6 +188,7 @@ export class LocalMusicService {
             mtime,
             size,
             cover: coverPath,
+            bitrate: metadata.format.bitrate ?? 0,
           };
 
           this.db.tracks[filePath] = track;

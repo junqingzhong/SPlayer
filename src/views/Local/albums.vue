@@ -18,7 +18,7 @@
           />
         </Transition>
         <div class="data">
-          <n-text class="name">{{ key }}</n-text>
+          <n-text class="name">{{ key || "未知专辑" }}</n-text>
           <n-text class="num" depth="3">
             <SvgIcon name="Music" :depth="3" />
             {{ item.length }} 首
@@ -29,8 +29,8 @@
     <Transition name="fade" mode="out-in">
       <SongList
         :key="chooseAlbum"
-        :data="chooseAlbum ? albumData[chooseAlbum] : []"
-        :loading="true"
+        :data="albumSongs"
+        :loading="albumSongs?.length ? false : true"
         @removeSong="handleRemoveSong"
         hidden-cover
       />
@@ -52,6 +52,9 @@ const blobURLManager = useBlobURLManager();
 // 专辑数据
 const chooseAlbum = ref<string>("");
 const albumData = computed<Record<string, SongType[]>>(() => formatArtistsList(props.data));
+
+// 对应专辑歌曲
+const albumSongs = computed<SongType[]>(() => albumData.value?.[chooseAlbum.value] || []);
 
 // 区分专辑数据
 const formatArtistsList = (data: SongType[]): Record<string, SongType[]> => {

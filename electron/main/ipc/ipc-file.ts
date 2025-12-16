@@ -7,12 +7,16 @@ import { File, Picture, Id3v2Settings, TagTypes } from "node-taglib-sharp";
 import { ipcLog } from "../logger";
 import { download } from "electron-dl";
 import { Options as GlobOptions } from "fast-glob/out/settings";
+import { LocalMusicService } from "../services/LocalMusicService";
 import FastGlob from "fast-glob";
 
 /**
  * 文件相关 IPC
  */
 const initFileIpc = (): void => {
+  /** 本地音乐服务 */
+  const localMusicService = new LocalMusicService();
+
   /**
    * 获取全局搜索配置
    * @param cwd 当前工作目录
@@ -22,6 +26,16 @@ const initFileIpc = (): void => {
     caseSensitiveMatch: false,
   });
 
+  // 检查文件是否存在
+  ipcMain.handle("file-exists", async (_, path: string) => {
+    try {
+      await access(path);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
   // 默认文件夹
   ipcMain.handle(
     "get-default-dir",
@@ -29,6 +43,19 @@ const initFileIpc = (): void => {
       return app.getPath(type);
     },
   );
+
+  // 本地音乐同步
+  ipcMain.handle("local-music-sync", async (event, dirs: string[]) => {
+    try {
+      const tracks = await localMusicService.refreshLibrary(dirs, (current, total) => {
+        // 发送进度
+        event.sender.send("music-sync-progress", { current, total });
+      });
+      return { success: true, data: tracks };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  });
 
   // 遍历音乐文件
   ipcMain.handle("get-music-files", async (_, dirPath: string) => {
@@ -358,10 +385,10 @@ const initFileIpc = (): void => {
   });
 
   // 路径选择窗口
-  ipcMain.handle("choose-path", async () => {
+  ipcMain.handle("choose-path", async (_, title: string) => {
     try {
       const { filePaths } = await dialog.showOpenDialog({
-        title: "选择文件夹",
+        title: title ?? "选择文件夹",
         defaultPath: app.getPath("downloads"),
         properties: ["openDirectory", "createDirectory"],
         buttonLabel: "选择文件夹",
@@ -392,10 +419,10 @@ const initFileIpc = (): void => {
         songData?: any;
         skipIfExist?: boolean;
       } = {
-          fileName: "未知文件名",
-          fileType: "mp3",
-          path: app.getPath("downloads"),
-        },
+        fileName: "未知文件名",
+        fileType: "mp3",
+        path: app.getPath("downloads"),
+      },
     ): Promise<{ status: "success" | "skipped" | "error"; message?: string }> => {
       try {
         // 获取窗口

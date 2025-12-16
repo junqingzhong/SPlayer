@@ -71,16 +71,16 @@
           v-model:value="localType"
           class="tabs"
           type="segment"
-          @update:value="(name: string) => router.push({ name })"
+          @update:value="handleTabUpdate"
         >
-          <n-tab name="local-songs"> 单曲 </n-tab>
-          <n-tab :disabled="listData.length === 0" name="local-artists"> 歌手 </n-tab>
-          <n-tab :disabled="listData.length === 0" name="local-albums"> 专辑 </n-tab>
+          <n-tab :disabled="tabsDisabled" name="local-songs"> 单曲 </n-tab>
+          <n-tab :disabled="tabsDisabled" name="local-artists"> 歌手 </n-tab>
+          <n-tab :disabled="tabsDisabled" name="local-albums"> 专辑 </n-tab>
         </n-tabs>
       </n-flex>
     </n-flex>
     <!-- 路由 -->
-    <RouterView v-slot="{ Component }">
+    <RouterView v-if="!showEmptyState" v-slot="{ Component }">
       <Transition :name="`router-${settingStore.routeAnimation}`" mode="out-in">
         <KeepAlive v-if="settingStore.useKeepAlive">
           <component :is="Component" :data="listData" :loading="loading" class="router-view" />
@@ -88,6 +88,19 @@
         <component v-else :is="Component" :data="listData" :loading="loading" class="router-view" />
       </Transition>
     </RouterView>
+    <!-- 空状态 -->
+    <n-flex v-else align="center" justify="center" vertical class="router-view">
+      <n-empty size="large" description="当前本地歌曲为空">
+        <template #extra>
+          <n-button type="primary" strong secondary @click="localPathShow = true">
+            <template #icon>
+              <SvgIcon name="FolderCog" />
+            </template>
+            本地目录管理
+          </n-button>
+        </template>
+      </n-empty>
+    </n-flex>
     <!-- 目录管理 -->
     <n-modal
       v-model:show="localPathShow"
@@ -102,19 +115,6 @@
         <template #header>
           <n-text>请选择本地音乐文件夹，将自动扫描您添加的目录，歌曲增删实时同步</n-text>
         </template>
-        <n-list-item v-if="defaultMusicPath">
-          <template #prefix>
-            <SvgIcon :size="20" name="FolderMusic" />
-          </template>
-          <template #suffix>
-            <n-switch
-              v-model:value="settingStore.showDefaultLocalPath"
-              :round="false"
-              class="set"
-            />
-          </template>
-          <n-thing :title="defaultMusicPath" description="系统默认音乐文件夹" />
-        </n-list-item>
         <n-list-item v-for="(item, index) in settingStore.localFilesPath" :key="index">
           <template #prefix>
             <SvgIcon :size="20" name="Folder" />
@@ -148,7 +148,7 @@ import type { SongType } from "@/types/main";
 import type { DropdownOption, MessageReactive } from "naive-ui";
 import { useLocalStore, useSettingStore } from "@/stores";
 import { formatSongsList } from "@/utils/format";
-import { uniqBy, flattenDeep, debounce } from "lodash-es";
+import { debounce } from "lodash-es";
 import { changeLocalMusicPath, fuzzySearch, renderIcon } from "@/utils/helper";
 import { openBatchList } from "@/utils/modal";
 import { usePlayerController } from "@/core/player/PlayerController";
@@ -160,6 +160,7 @@ const player = usePlayerController();
 
 const loading = ref<boolean>(false);
 const loadingMsg = ref<MessageReactive | null>(null);
+const syncProgress = ref<{ current: number; total: number }>({ current: 0, total: 0 });
 
 // 本地歌曲总线
 const localEventBus = useEventBus("local");
@@ -172,7 +173,6 @@ const searchValue = ref<string>("");
 const searchData = ref<SongType[]>([]);
 
 // 目录管理
-const defaultMusicPath = ref<string>("");
 const localPathShow = ref<boolean>(false);
 
 // 列表数据
@@ -181,13 +181,22 @@ const listData = computed<SongType[]>(() => {
   return localStore.localSongs;
 });
 
-// 获取音乐文件夹
+// 是否存在配置目录与歌曲
+const hasConfig = computed<boolean>(() => settingStore.localFilesPath.length > 0);
+const hasSong = computed<boolean>(() => localStore.localSongs.length > 0);
+const tabsDisabled = computed<boolean>(() => !hasConfig.value || !hasSong.value);
+
+// 当前是否在本地单曲路由
+const isLocalSongsRoute = computed<boolean>(
+  () => (router.currentRoute.value?.name as string) === "local-songs",
+);
+
+// 是否展示空状态
+const showEmptyState = computed<boolean>(() => isLocalSongsRoute.value && !hasSong.value);
+
+// 获取音乐文件夹（仅使用配置的本地文件夹）
 const getMusicFolder = async (): Promise<string[]> => {
-  defaultMusicPath.value = await window.electron.ipcRenderer.invoke("get-default-dir", "music");
-  const paths = [
-    settingStore.showDefaultLocalPath ? defaultMusicPath.value : "",
-    ...settingStore.localFilesPath,
-  ];
+  const paths = [...settingStore.localFilesPath];
   // 过滤空路径
   return paths.filter((p) => p && p.trim() !== "");
 };
@@ -225,7 +234,13 @@ const getAllLocalMusic = debounce(
       // 获取路径
       const allPath = await getMusicFolder();
       if (!allPath || !allPath.length) {
+        // 目录列表为空，以目录为准，清空本地歌曲
+        localStore.updateLocalSong([]);
+        searchData.value = [];
         loading.value = false;
+        if (showTip) {
+          window.$message.info("当前未配置本地目录");
+        }
         return;
       }
       // 加载提示
@@ -233,20 +248,35 @@ const getAllLocalMusic = debounce(
         loadingMsg.value = window.$message.loading("正在获取本地歌曲", {
           duration: 0,
         });
+        syncProgress.value = { current: 0, total: 0 };
       }
       // 获取全部歌曲
       loading.value = true;
-      const dirContentsPromises = allPath.map((path) =>
-        window.electron.ipcRenderer.invoke("get-music-files", path),
-      );
-      const results = await Promise.allSettled(dirContentsPromises);
-      const allSongData = results
-        .filter((result) => result.status === "fulfilled")
-        .map((result) => (result as PromiseFulfilledResult<any>).value);
-      // 展平去重
-      const songData = uniqBy(flattenDeep(allSongData), "id");
+      const res = await window.electron.ipcRenderer.invoke("local-music-sync", allPath);
+      if (!res || !res.success) {
+        throw new Error(res?.message || "本地音乐同步失败");
+      }
+      console.log("res", res);
+
+      const tracks = res.data || [];
+      // 转换结构
+      const adaptedData = tracks.map((track: any) => {
+        // 将字节转换为 MB，保留两位小数
+        const sizeMB =
+          track.size && track.size > 0 ? Number((track.size / (1024 * 1024)).toFixed(2)) : 0;
+        return {
+          id: track.id,
+          name: track.title,
+          artists: track.artist,
+          album: track.album,
+          duration: track.duration,
+          size: sizeMB,
+          path: track.path,
+          quality: track.bitrate ?? 0,
+        };
+      });
       // 处理数据
-      const listData = formatSongsList(songData);
+      const listData = formatSongsList(adaptedData);
       // 数据是否变化
       const oldLength = localStore.localSongs.length;
       if (oldLength === 0 && listData.length > 0) {
@@ -283,17 +313,43 @@ localEventBus.on(() => getAllLocalMusic());
 
 // 本地目录变化
 watch(
-  () => [settingStore.localFilesPath, settingStore.showDefaultLocalPath],
+  () => settingStore.localFilesPath,
   async () => await getAllLocalMusic(),
   { deep: true },
 );
+
+// 处理 Tab 切换
+const handleTabUpdate = (name: string) => {
+  if (tabsDisabled.value) return;
+  router.push({ name });
+};
 
 onBeforeRouteUpdate((to) => {
   if (to.matched[0].name !== "local") return;
   localType.value = to.name as string;
 });
 
-onMounted(getAllLocalMusic);
+onMounted(() => {
+  // 监听本地音乐同步进度
+  window.electron.ipcRenderer.on(
+    "music-sync-progress",
+    (_event, payload: { current: number; total: number }) => {
+      if (!loading.value) return;
+      const { current, total } = payload || { current: 0, total: 0 };
+      if (!total || total <= 0) return;
+      syncProgress.value = { current, total };
+      if (loadingMsg.value) {
+        console.log("正在获取本地歌曲（${current}/${total}）");
+        loadingMsg.value.content = `正在获取本地歌曲（${current}/${total}）`;
+      }
+    },
+  );
+  getAllLocalMusic();
+});
+
+onUnmounted(() => {
+  window.electron.ipcRenderer.removeAllListeners("music-sync-progress");
+});
 </script>
 
 <style lang="scss" scoped>
