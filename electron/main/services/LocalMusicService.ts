@@ -6,6 +6,7 @@ import { useStore } from "../store";
 import { type IAudioMetadata, parseFile } from "music-metadata";
 import FastGlob, { type Entry } from "fast-glob";
 import pLimit from "p-limit";
+import sharp from "sharp";
 
 /** 当前本地音乐库 DB 版本，用于控制缓存结构升级 */
 const CURRENT_DB_VERSION = 2;
@@ -75,7 +76,7 @@ export class LocalMusicService {
       if (existsSync(this.dbPath)) {
         const data = await readFile(this.dbPath, "utf-8");
         const parsed = JSON.parse(data) as MusicLibraryDB;
-        // 如果历史 DB 没有版本号或版本过旧，则重建，触发全量重新扫描以补齐新字段（如 bitrate）
+        // 如果历史 DB 没有版本号或版本过旧，则重建
         if (!parsed.version || parsed.version < CURRENT_DB_VERSION) {
           this.db = { version: CURRENT_DB_VERSION, tracks: {} };
         } else {
@@ -109,48 +110,56 @@ export class LocalMusicService {
   ): Promise<string | undefined> {
     const picture = metadata.common.picture?.[0];
     if (!picture) return undefined;
-    const ext = picture.format === "image/png" ? ".png" : ".jpg";
-    const fileName = `${fileId}${ext}`;
+    const fileName = `${fileId}.webp`;
     const savePath = join(this.coverDir, fileName);
-    // 只有当封面不存在时才写入，节省 IO
-    if (!existsSync(savePath)) {
-      await writeFile(savePath, picture.data);
-    }
+    // 已存在
+    if (existsSync(savePath)) return fileName;
+    // 压缩封面处理
+    await sharp(picture.data)
+      .resize(256, 256, { fit: "cover", position: "centre" })
+      .webp({ quality: 80 })
+      .toFile(savePath);
     return fileName;
   }
 
   /**
-   * 🔄 核心方法：刷新所有库文件夹
-   * @param dirPaths 文件夹路径数组 ["D:/Music", "E:/Songs"]
+   * 刷新所有库文件夹
+   * @param dirPaths 文件夹路径数组
    * @param onProgress 进度回调
    */
   async refreshLibrary(dirPaths: string[], onProgress?: (current: number, total: number) => void) {
     if (!dirPaths || dirPaths.length === 0) return [];
-
+    // 音乐文件扩展名
+    const musicExtensions = [
+      "mp3",
+      "wav",
+      "flac",
+      "aac",
+      "webm",
+      "m4a",
+      "mp4",
+      "ogg",
+      "aiff",
+      "aif",
+    ];
     // 构造 Glob 模式数组
     const patterns = dirPaths.map((dir) =>
-      join(dir, "**/*.{mp3,flac,wav,ogg,m4a}").replace(/\\/g, "/"),
+      join(dir, `**/*.{${musicExtensions.join(",")}}`).replace(/\\/g, "/"),
     );
-
-    console.log("Scanning patterns:", patterns);
-
     // 扫描磁盘
     const entries: Entry[] = await FastGlob(patterns, {
       stats: true,
       absolute: true,
       onlyFiles: true,
     });
-
     /** 总文件数 */
     const totalFiles = entries.length;
     /** 已处理文件数 */
     let processedCount = 0;
     /** 是否脏数据 */
     let isDirty = false;
-
     // 用于记录本次扫描到的文件路径，用于后续清理“不存在的文件”
     const scannedPaths = new Set<string>();
-
     // 处理文件 (新增/更新)
     const tasks = entries.map((entry) => {
       return this.limit(async () => {
@@ -164,20 +173,18 @@ export class LocalMusicService {
         scannedPaths.add(filePath);
         /** 缓存 */
         const cached = this.db.tracks[filePath];
-
         // 只有当缓存存在 && 修改时间没变 && 文件大小没变 -> 才跳过
         if (cached && cached.mtime === mtime && cached.size === size) {
           processedCount++;
           return;
         }
-
         // 解析元数据
         try {
           // console.log("Parsing:", filePath);
           const id = this.getFileId(filePath);
           const metadata = await parseFile(filePath);
           const coverPath = await this.extractCover(metadata, id);
-
+          // 构建音乐数据
           const track: MusicTrack = {
             id,
             path: filePath,
