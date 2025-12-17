@@ -270,8 +270,6 @@ type ChangeLocalPathOptions = {
   errorConsole: string;
   /** 错误信息 */
   errorMessage: string;
-  /** 是否需要获取默认音乐路径 */
-  needDefaultMusicPath: boolean;
 };
 
 /**
@@ -280,7 +278,6 @@ type ChangeLocalPathOptions = {
  * @param includeSubFolders 是否包含子文件夹
  * @param errorConsole 控制台输出的错误信息
  * @param errorMessage 错误信息
- * @param needDefaultMusicPath 是否需要获取默认音乐路径
  */
 const changeLocalPath =
   (
@@ -290,52 +287,47 @@ const changeLocalPath =
       title: "选择文件夹",
       errorConsole: "Error changing local path",
       errorMessage: "更改本地歌曲文件夹出错，请重试",
-      needDefaultMusicPath: true,
     },
   ) =>
   async (delIndex?: number) => {
-    const {
-      settingsKey,
-      includeSubFolders,
-      title,
-      errorConsole,
-      errorMessage,
-      needDefaultMusicPath,
-    } = options;
+    const { settingsKey, includeSubFolders, title, errorConsole, errorMessage } = options;
     try {
       if (!isElectron) return;
       const settingStore = useSettingStore();
+      // 删除目录
       if (typeof delIndex === "number" && delIndex >= 0) {
         settingStore[settingsKey].splice(delIndex, 1);
-      } else {
-        const selectedDir = await window.electron.ipcRenderer.invoke("choose-path", title);
-        if (!selectedDir) return;
-        // 动态获取默认路径
-        let allPath = [...settingStore[settingsKey]];
-        if (needDefaultMusicPath) {
-          const defaultDir = await window.electron.ipcRenderer.invoke("get-default-dir", "music");
-          if (defaultDir) allPath = [defaultDir, ...allPath];
-        }
-        // 检查是否为子文件夹
-        if (includeSubFolders) {
-          const isSubfolder = await window.electron.ipcRenderer.invoke(
-            "check-if-subfolder",
-            allPath,
-            selectedDir,
-          );
-          if (!isSubfolder) {
-            settingStore[settingsKey].push(selectedDir);
-          } else {
-            window.$message.error("添加的目录与现有目录有重叠，请重新选择");
-          }
-        } else {
-          if (allPath.includes(selectedDir)) {
-            window.$message.error("添加的目录已存在");
-          } else {
-            settingStore[settingsKey].push(selectedDir);
-          }
+        return;
+      }
+      // 添加目录
+      const selectedDir = await window.electron.ipcRenderer.invoke("choose-path", title);
+      if (!selectedDir) return;
+      // 所有需要检查的路径
+      const allPath = [...settingStore[settingsKey]];
+      // 是否是完全相同的路径
+      const isExactMatch = await window.electron.ipcRenderer.invoke(
+        "check-if-same-path",
+        allPath,
+        selectedDir,
+      );
+      if (isExactMatch) {
+        window.$message.error("添加的目录已存在");
+        return;
+      }
+      // 检查是否为子文件夹关系
+      if (includeSubFolders) {
+        const isSubfolder = await window.electron.ipcRenderer.invoke(
+          "check-if-subfolder",
+          allPath,
+          selectedDir,
+        );
+        if (isSubfolder) {
+          window.$message.error("添加的目录与现有目录有重叠，请重新选择");
+          return;
         }
       }
+      // 通过所有检查，添加目录
+      settingStore[settingsKey].push(selectedDir);
     } catch (error) {
       console.error(`${errorConsole}: `, error);
       window.$message.error(errorMessage);
@@ -352,7 +344,6 @@ export const changeLocalMusicPath = changeLocalPath({
   title: "选择本地歌曲文件夹",
   errorConsole: "Error changing local path",
   errorMessage: "更改本地歌曲文件夹出错，请重试",
-  needDefaultMusicPath: true,
 });
 
 /**
@@ -365,7 +356,6 @@ export const changeLocalLyricPath = changeLocalPath({
   title: "选择本地歌词文件夹",
   errorConsole: "Error changing local lyric path",
   errorMessage: "更改本地歌词文件夹出错，请重试",
-  needDefaultMusicPath: false,
 });
 
 /**

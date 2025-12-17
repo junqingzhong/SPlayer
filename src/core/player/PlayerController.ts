@@ -723,16 +723,17 @@ class PlayerController {
     const currentSongId = musicStore.playSong.id;
     const songIndex = await dataStore.setNextPlaySong(song, statusStore.playIndex);
 
+    // 修正当前播放索引
+    const newCurrentIndex = dataStore.playList.findIndex((s) => s.id === currentSongId);
+    if (newCurrentIndex !== -1 && newCurrentIndex !== statusStore.playIndex) {
+      statusStore.playIndex = newCurrentIndex;
+    }
+
     // 播放歌曲
     if (songIndex < 0) return;
     if (play) {
       await this.togglePlayIndex(songIndex, true);
     } else {
-      // 修正当前播放索引
-      const newCurrentIndex = dataStore.playList.findIndex((s) => s.id === currentSongId);
-      if (newCurrentIndex !== -1 && newCurrentIndex !== statusStore.playIndex) {
-        statusStore.playIndex = newCurrentIndex;
-      }
       window.$message.success("已添加至下一首播放");
     }
   }

@@ -31,6 +31,8 @@
           播放
         </n-button>
         <n-button
+          :disabled="loading"
+          :loading="loading"
           :focusable="false"
           class="more"
           strong
@@ -76,6 +78,7 @@
           <n-tab :disabled="tabsDisabled" name="local-songs"> 单曲 </n-tab>
           <n-tab :disabled="tabsDisabled" name="local-artists"> 歌手 </n-tab>
           <n-tab :disabled="tabsDisabled" name="local-albums"> 专辑 </n-tab>
+          <n-tab :disabled="tabsDisabled" name="local-folders"> 文件夹 </n-tab>
         </n-tabs>
       </n-flex>
     </n-flex>
@@ -227,40 +230,81 @@ const moreOptions = computed<DropdownOption[]>(() => [
   },
 ]);
 
-// 获取全部路径歌曲
+/** 主进程发送的Track数据类型 */
+interface MusicTrackData {
+  id: string;
+  path: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: number;
+  cover?: string;
+  mtime: number;
+  size: number;
+  bitrate?: number;
+}
+
+/** 同步完成事件类型 */
+interface SyncCompleteData {
+  success: boolean;
+  message?: string;
+}
+
+// 获取全部路径歌曲（流式接收）
 const getAllLocalMusic = debounce(
   async (showTip: boolean = false) => {
-    try {
-      // 获取路径
-      const allPath = await getMusicFolder();
-      if (!allPath || !allPath.length) {
-        // 目录列表为空，以目录为准，清空本地歌曲
-        localStore.updateLocalSong([]);
-        searchData.value = [];
+    // 获取路径
+    const allPath = await getMusicFolder();
+    if (!allPath || !allPath.length) {
+      // 目录列表为空，以目录为准，清空本地歌曲
+      localStore.updateLocalSong([]);
+      searchData.value = [];
+      loading.value = false;
+      if (showTip) {
+        window.$message.info("当前未配置本地目录");
+      }
+      return;
+    }
+
+    // 加载提示
+    if (showTip) {
+      loadingMsg.value = window.$message.loading("正在获取本地歌曲", {
+        duration: 0,
+      });
+      syncProgress.value = { current: 0, total: 0 };
+    }
+    loading.value = true;
+    // 记录初始歌曲数量，用于计算新增数量
+    const initialSongCount = localStore.localSongs.length;
+    // 累积接收到的tracks
+    const receivedTracks: MusicTrackData[] = [];
+    let isCompleted = false;
+    // 清理之前的监听器
+    window.electron.ipcRenderer.removeAllListeners("music-sync-tracks-batch");
+    window.electron.ipcRenderer.removeAllListeners("music-sync-complete");
+    // 监听批量track数据
+    const tracksBatchHandler = (_event: unknown, tracks: MusicTrackData[]) => {
+      if (!loading.value || isCompleted) return;
+      // 批量添加tracks
+      receivedTracks.push(...tracks);
+    };
+    // 监听完成事件
+    const completeHandler = (_event: unknown, data: SyncCompleteData) => {
+      if (isCompleted) return;
+      isCompleted = true;
+      if (!data.success) {
+        const errorMsg = data.message || "本地音乐同步失败";
+        console.error("获取本地音乐失败:", errorMsg);
+        window.$message.error(errorMsg);
         loading.value = false;
-        if (showTip) {
-          window.$message.info("当前未配置本地目录");
-        }
+        loadingMsg.value?.destroy();
+        loadingMsg.value = null;
+        // 清理监听器
+        window.electron.ipcRenderer.removeAllListeners("music-sync-tracks-batch");
+        window.electron.ipcRenderer.removeAllListeners("music-sync-complete");
         return;
       }
-      // 加载提示
-      if (showTip) {
-        loadingMsg.value = window.$message.loading("正在获取本地歌曲", {
-          duration: 0,
-        });
-        syncProgress.value = { current: 0, total: 0 };
-      }
-      // 获取全部歌曲
-      loading.value = true;
-      const res = await window.electron.ipcRenderer.invoke("local-music-sync", allPath);
-      if (!res || !res.success) {
-        throw new Error(res?.message || "本地音乐同步失败");
-      }
-      console.log("res", res);
-
-      const tracks = res.data || [];
-      // 转换结构
-      const adaptedData = tracks.map((track: any) => {
+      const adaptedDataList = receivedTracks.map((track) => {
         // 将字节转换为 MB，保留两位小数
         const sizeMB =
           track.size && track.size > 0 ? Number((track.size / (1024 * 1024)).toFixed(2)) : 0;
@@ -268,6 +312,7 @@ const getAllLocalMusic = debounce(
           id: track.id,
           name: track.title,
           artists: track.artist,
+          cover: track.cover,
           album: track.album,
           duration: track.duration,
           size: sizeMB,
@@ -275,25 +320,64 @@ const getAllLocalMusic = debounce(
           quality: track.bitrate ?? 0,
         };
       });
-      // 处理数据
-      const listData = formatSongsList(adaptedData);
-      // 数据是否变化
-      const oldLength = localStore.localSongs.length;
-      if (oldLength === 0 && listData.length > 0) {
-        window.$message.success(`发现 ${listData.length} 首歌曲`);
-      } else if (listData.length > oldLength) {
-        window.$message.success(`新增 ${listData.length - oldLength} 首歌曲`);
+      // 批量格式化
+      const finalSongs = formatSongsList(adaptedDataList);
+      localStore.updateLocalSong(finalSongs);
+      // 更新搜索数据
+      if (searchValue.value) {
+        searchData.value = fuzzySearch(searchValue.value, finalSongs);
       }
-      if (showTip) window.$message.success(`已发现 ${listData.length} 首`);
-      // 保存并更新
-      localStore.updateLocalSong(listData);
-    } catch (error) {
-      console.error("获取本地音乐失败:", error);
-      window.$message.error("获取本地音乐失败，请重试");
-    } finally {
+      // 变化统计
+      const addedCount = finalSongs.length - initialSongCount;
+      if (showTip) {
+        if (addedCount > 0) {
+          window.$message.success(`新增 ${addedCount} 首歌曲`);
+        } else if (finalSongs.length > 0) {
+          window.$message.success(`已发现 ${finalSongs.length} 首歌曲`);
+        }
+      } else {
+        if (addedCount > 0) {
+          window.$message.success(`新增 ${addedCount} 首歌曲`);
+        }
+      }
       loading.value = false;
       loadingMsg.value?.destroy();
       loadingMsg.value = null;
+      // 清理监听器
+      window.electron.ipcRenderer.removeAllListeners("music-sync-tracks-batch");
+      window.electron.ipcRenderer.removeAllListeners("music-sync-complete");
+    };
+    // 注册监听器
+    window.electron.ipcRenderer.on("music-sync-tracks-batch", tracksBatchHandler);
+    window.electron.ipcRenderer.on("music-sync-complete", completeHandler);
+    // 触发同步
+    try {
+      // 触发同步
+      const res = await window.electron.ipcRenderer.invoke("local-music-sync", allPath);
+      // 检查返回值，如果是扫描正在进行中
+      if (res && !res.success) {
+        isCompleted = true;
+        loading.value = false;
+        loadingMsg.value?.destroy();
+        loadingMsg.value = null;
+        if (res.message && res.message.includes("扫描正在进行中")) {
+          window.$message.info(res.message);
+        } else {
+          window.$message.error(res.message || "本地音乐同步失败");
+        }
+        window.electron.ipcRenderer.removeAllListeners("music-sync-tracks-batch");
+        window.electron.ipcRenderer.removeAllListeners("music-sync-complete");
+      }
+    } catch (error) {
+      isCompleted = true;
+      console.error("获取本地音乐失败:", error);
+      window.$message.error("获取本地音乐失败，请重试");
+      loading.value = false;
+      loadingMsg.value?.destroy();
+      loadingMsg.value = null;
+      // 清理监听器
+      window.electron.ipcRenderer.removeAllListeners("music-sync-tracks-batch");
+      window.electron.ipcRenderer.removeAllListeners("music-sync-complete");
     }
   },
   300,
@@ -331,24 +415,25 @@ onBeforeRouteUpdate((to) => {
 
 onMounted(() => {
   // 监听本地音乐同步进度
-  window.electron.ipcRenderer.on(
-    "music-sync-progress",
-    (_event, payload: { current: number; total: number }) => {
-      if (!loading.value) return;
-      const { current, total } = payload || { current: 0, total: 0 };
-      if (!total || total <= 0) return;
-      syncProgress.value = { current, total };
-      if (loadingMsg.value) {
-        console.log("正在获取本地歌曲（${current}/${total}）");
-        loadingMsg.value.content = `正在获取本地歌曲（${current}/${total}）`;
-      }
-    },
-  );
+  const progressHandler = (_event: unknown, payload: { current: number; total: number }) => {
+    if (!loading.value) return;
+    const { current, total } = payload || { current: 0, total: 0 };
+    if (!total || total <= 0) return;
+    syncProgress.value = { current, total };
+    if (loadingMsg.value) {
+      loadingMsg.value.content = `正在获取本地歌曲（${current}/${total}）`;
+    }
+  };
+  // 监听进度
+  window.electron.ipcRenderer.on("music-sync-progress", progressHandler);
   getAllLocalMusic();
 });
 
 onUnmounted(() => {
+  // 清理所有相关监听器
   window.electron.ipcRenderer.removeAllListeners("music-sync-progress");
+  window.electron.ipcRenderer.removeAllListeners("music-sync-tracks-batch");
+  window.electron.ipcRenderer.removeAllListeners("music-sync-complete");
 });
 </script>
 
@@ -406,7 +491,7 @@ onUnmounted(() => {
       }
     }
     .n-tabs {
-      width: 200px;
+      width: 280px;
       --n-tab-border-radius: 25px !important;
       :deep(.n-tabs-rail) {
         outline: 1px solid var(--n-tab-color-segment);

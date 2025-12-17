@@ -240,27 +240,22 @@ export const useDataStore = defineStore("data", {
      * @returns 插入的歌曲索引
      */
     async setNextPlaySong(song: SongType, index: number): Promise<number> {
-      // 获取原始数组副本
-      const currentList = toRaw(this.playList);
       // 若为空,则直接添加
-      if (currentList.length === 0) {
-        const newList = [song];
-        this.playList = markRaw(newList);
-        await musicDB.setItem("playList", cloneDeep(newList));
+      if (this.playList.length === 0) {
+        this.playList = [song];
+        await musicDB.setItem("playList", cloneDeep(this.playList));
         return 0;
       }
-      // 浅拷贝数组，准备修改
-      let newList = [...currentList];
+      // 在当前播放位置之后插入歌曲
       const indexAdd = index + 1;
-      // 插入
-      newList.splice(indexAdd, 0, song);
-      // 去重：移除除刚刚插入位置之外的相同 ID 歌曲
-      // 注意逻辑：保留 indexAdd 位置的，过滤掉其他位置重复的
-      newList = newList.filter((item, idx) => idx === indexAdd || item.id !== song.id);
-      this.playList = markRaw(newList);
-      await musicDB.setItem("playList", cloneDeep(toRaw(newList)));
+      this.playList.splice(indexAdd, 0, song);
+      // 移除重复的歌曲（如果存在）
+      const playList = this.playList.filter((item, idx) => idx === indexAdd || item.id !== song.id);
+      // 更新本地存储
+      this.playList = markRaw(playList);
+      await musicDB.setItem("playList", cloneDeep(playList));
       // 返回刚刚插入的歌曲索引
-      return newList.findIndex((item) => item.id === song.id);
+      return playList.indexOf(song);
     },
     /**
      * 设置播放历史
