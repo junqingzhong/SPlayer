@@ -111,6 +111,31 @@ const toBuffer = (data: any): Buffer => {
 };
 
 /**
+ * 递归计算目录大小
+ * @param dirPath 目录路径
+ * @returns 目录总大小（字节）
+ */
+const calculateDirSize = async (dirPath: string): Promise<number> => {
+  let totalSize = 0;
+  try {
+    const entries = await readdir(dirPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dirPath, entry.name);
+      if (entry.isDirectory()) {
+        totalSize += await calculateDirSize(fullPath);
+      } else if (entry.isFile()) {
+        const info = await stat(fullPath);
+        totalSize += info.size;
+      }
+    }
+  } catch (error) {
+    // 忽略无法访问的目录或文件
+    processLog.warn(`⚠️ 无法访问目录: ${dirPath}`, error);
+  }
+  return totalSize;
+};
+
+/**
  * 通用错误捕获包装器，为 IPC 返回统一结果结构
  * @param action 实际执行的异步逻辑
  * @returns 包装后的结果对象
@@ -224,6 +249,25 @@ const initCacheIpc = (): void => {
         await rm(dir, { recursive: true, force: true });
         ensureCacheDirs(basePath);
         return null;
+      });
+    },
+  );
+
+  // 获取所有缓存类型的总大小
+  ipcMain.handle(
+    "cache-size",
+    (_event): Promise<CacheIpcResult<number>> => {
+      return withErrorCatch(async () => {
+        const basePath = getCacheBasePath(store);
+        ensureCacheDirs(basePath);
+        let totalSize = 0;
+
+        for (const type of Object.keys(CACHE_SUB_DIR) as CacheResourceType[]) {
+          const dir = join(basePath, CACHE_SUB_DIR[type]);
+          totalSize += await calculateDirSize(dir);
+        }
+
+        return totalSize;
       });
     },
   );
