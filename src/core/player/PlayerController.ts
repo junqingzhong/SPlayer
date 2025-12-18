@@ -138,9 +138,8 @@ class PlayerController {
       statusStore.playLoading = true;
       // 获取音频源
       const audioSource = await songManager.getAudioSource(playSongData);
-      if (!audioSource.url) {
-        throw new Error("AUDIO_SOURCE_EMPTY");
-      }
+      if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
+      console.log(`🎧 [${playSongData.id}] 最终播放信息:`, audioSource);
       // 更新音质和解锁状态
       statusStore.songQuality = audioSource.quality;
       statusStore.playUblock = audioSource.isUnlocked ?? false;

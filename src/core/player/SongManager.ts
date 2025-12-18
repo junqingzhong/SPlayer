@@ -100,7 +100,6 @@ class SongManager {
     const finalUrl = isTrial && !settingStore.playSongDemo ? null : normalizedUrl;
     // 获取音质
     const quality = handleSongQuality(songData, "online");
-    console.log(`🎧 ${id} music url:`, finalUrl, quality);
     // 检查本地缓存
     if (finalUrl && quality) {
       const cachedUrl = await this.checkLocalCache(id, quality);
