@@ -223,90 +223,95 @@ export class LocalMusicService {
       }
     };
 
-    // 处理文件 (新增/更新)
-    const tasks = entries.map((entry) => {
-      return this.limit(async () => {
-        const filePath = entry.path;
-        const stats = entry.stats;
-        if (!stats) return;
-        /** 修改时间 */
-        const mtime = stats.mtimeMs;
-        /** 文件大小 */
-        const size = stats.size;
-        // 小于 1MB 的文件不处理
-        if (size < 1024 * 1024) return;
-        scannedPaths.add(filePath);
-        /** 缓存 */
-        const cached = this.db.tracks[filePath];
-        // 判断是否可以使用缓存
-        let useCache = false;
-        if (cached && cached.mtime === mtime && cached.size === size) {
-          useCache = true;
-          // 额外检查：如果记录中有封面，验证封面文件是否真实存在
-          if (cached.cover && !existsSync(join(coverDir, cached.cover))) {
-            useCache = false;
+    // 分批处理扫描任务，避免内存溢出
+    const PROCESS_BATCH_SIZE = 200; // 每批处理200个文件
+    for (let i = 0; i < entries.length; i += PROCESS_BATCH_SIZE) {
+      const chunk = entries.slice(i, i + PROCESS_BATCH_SIZE);
+      const tasks = chunk.map((entry) => {
+        return this.limit(async () => {
+          const filePath = entry.path;
+          const stats = entry.stats;
+          if (!stats) return;
+          /** 修改时间 */
+          const mtime = stats.mtimeMs;
+          /** 文件大小 */
+          const size = stats.size;
+          // 小于 1MB 的文件不处理
+          if (size < 1024 * 1024) return;
+          scannedPaths.add(filePath);
+          /** 缓存 */
+          const cached = this.db.tracks[filePath];
+          // 判断是否可以使用缓存
+          let useCache = false;
+          if (cached && cached.mtime === mtime && cached.size === size) {
+            useCache = true;
+            // 额外检查：如果记录中有封面，验证封面文件是否真实存在
+            if (cached.cover && !existsSync(join(coverDir, cached.cover))) {
+              useCache = false;
+            }
           }
-        }
-        // 只有当缓存存在 && 修改时间没变 && 文件大小没变 && 封面存在 -> 才跳过
-        if (useCache) {
-          processedCount++;
-          // 添加到批量缓冲区
-          tracksBuffer.push(cached!);
-          // 达到批量大小，发送一批
-          if (tracksBuffer.length >= BATCH_SIZE) {
-            flushBatch();
+          // 只有当缓存存在 && 修改时间没变 && 文件大小没变 && 封面存在 -> 才跳过
+          if (useCache) {
+            processedCount++;
+            // 添加到批量缓冲区
+            tracksBuffer.push(cached!);
+            // 达到批量大小，发送一批
+            if (tracksBuffer.length >= BATCH_SIZE) {
+              flushBatch();
+            }
+            // 节流发送进度
+            if (processedCount % 10 === 0 || processedCount === totalFiles) {
+              onProgress?.(processedCount, totalFiles);
+            }
+            return;
           }
-          // 节流发送进度
-          if (processedCount % 10 === 0 || processedCount === totalFiles) {
-            onProgress?.(processedCount, totalFiles);
+          // 解析元数据
+          try {
+            const id = this.getFileId(filePath);
+            const metadata = await parseFile(filePath);
+            // 过滤规则
+            // 时长 < 30s
+            if (metadata.format.duration && metadata.format.duration < 30) return;
+            // 时长 > 2h (7200s)
+            if (metadata.format.duration && metadata.format.duration > 7200) return;
+            // 提取封面
+            const coverPath = await this.extractCover(metadata, id);
+            // 构建音乐数据
+            const track: MusicTrack = {
+              id,
+              path: filePath,
+              title: metadata.common.title || basename(filePath),
+              artist: metadata.common.artist || "Unknown Artist",
+              album: metadata.common.album || "Unknown Album",
+              duration: (metadata.format.duration || 0) * 1000,
+              mtime,
+              size,
+              cover: coverPath,
+              bitrate: metadata.format.bitrate ?? 0,
+            };
+            // 添加到数据库
+            this.db.tracks[filePath] = track;
+            isDirty = true;
+            // 添加到批量缓冲区
+            tracksBuffer.push(track);
+            // 达到批量大小，发送一批
+            if (tracksBuffer.length >= BATCH_SIZE) {
+              flushBatch();
+            }
+          } catch (err) {
+            console.warn(`Parse error [${filePath}]:`, err);
+          } finally {
+            processedCount++;
+            // 节流发送进度
+            if (processedCount % 10 === 0 || processedCount === totalFiles) {
+              onProgress?.(processedCount, totalFiles);
+            }
           }
-          return;
-        }
-        // 解析元数据
-        try {
-          const id = this.getFileId(filePath);
-          const metadata = await parseFile(filePath);
-          // 过滤规则
-          // 时长 < 30s
-          if (metadata.format.duration && metadata.format.duration < 30) return;
-          // 时长 > 2h (7200s)
-          if (metadata.format.duration && metadata.format.duration > 7200) return;
-          // 提取封面
-          const coverPath = await this.extractCover(metadata, id);
-          // 构建音乐数据
-          const track: MusicTrack = {
-            id,
-            path: filePath,
-            title: metadata.common.title || basename(filePath),
-            artist: metadata.common.artist || "Unknown Artist",
-            album: metadata.common.album || "Unknown Album",
-            duration: (metadata.format.duration || 0) * 1000,
-            mtime,
-            size,
-            cover: coverPath,
-            bitrate: metadata.format.bitrate ?? 0,
-          };
-          // 添加到数据库
-          this.db.tracks[filePath] = track;
-          isDirty = true;
-          // 添加到批量缓冲区
-          tracksBuffer.push(track);
-          // 达到批量大小，发送一批
-          if (tracksBuffer.length >= BATCH_SIZE) {
-            flushBatch();
-          }
-        } catch (err) {
-          console.warn(`Parse error [${filePath}]:`, err);
-        } finally {
-          processedCount++;
-          // 节流发送进度
-          if (processedCount % 10 === 0 || processedCount === totalFiles) {
-            onProgress?.(processedCount, totalFiles);
-          }
-        }
+        });
       });
-    });
-    await Promise.all(tasks);
+      // 等待当前批次完成，释放闭包引用，避免内存积压
+      await Promise.all(tasks);
+    }
     // 发送最后一批数据
     flushBatch();
     // 清理脏数据 (处理文件删除 或 移除文件夹的情况)
