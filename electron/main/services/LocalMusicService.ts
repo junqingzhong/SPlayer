@@ -1,5 +1,6 @@
 import { join, basename } from "path";
-import { writeFile, readFile, mkdir } from "fs/promises";
+import { readFile, mkdir } from "fs/promises";
+import { CacheService } from "./CacheService";
 import { existsSync } from "fs";
 import { createHash } from "crypto";
 import { useStore } from "../store";
@@ -118,10 +119,10 @@ export class LocalMusicService {
 
   /** 保存数据库 */
   private async saveDB() {
-    const { dbPath } = this.paths;
+    const cacheService = CacheService.getInstance();
     // 确保版本号始终为当前版本
     this.db.version = CURRENT_DB_VERSION;
-    await writeFile(dbPath, JSON.stringify(this.db), "utf-8");
+    await cacheService.put("local-data", "library.json", JSON.stringify(this.db));
   }
 
   /** 获取文件id */
@@ -142,10 +143,12 @@ export class LocalMusicService {
     // 已存在
     if (existsSync(savePath)) return fileName;
     // 压缩封面处理
-    await sharp(picture.data)
+    const cacheService = CacheService.getInstance();
+    const buffer = await sharp(picture.data)
       .resize(256, 256, { fit: "cover", position: "centre" })
       .webp({ quality: 80 })
-      .toFile(savePath);
+      .toBuffer();
+    await cacheService.put("local-data", `covers/${fileName}`, buffer);
     return fileName;
   }
 
