@@ -77,8 +77,6 @@ export interface SettingState {
   downloadPath: string;
   /** 是否启用缓存 */
   cacheEnabled: boolean;
-  /** 缓存大小上限（GB，0 表示不限制） */
-  cacheMaxSizeGB: number;
   /** 音乐命名格式 */
   fileNameFormat: "title" | "artist-title" | "title-artist";
   /** 文件智能分类 */
@@ -346,7 +344,6 @@ export const useSettingStore = defineStore("setting", {
     showLocalCover: true,
     downloadPath: "",
     cacheEnabled: true,
-    cacheMaxSizeGB: 10,
     fileNameFormat: "title-artist",
     folderStrategy: "none",
     downloadMeta: true,

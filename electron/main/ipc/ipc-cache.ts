@@ -1,5 +1,6 @@
 import { ipcMain } from "electron";
 import { CacheService, type CacheResourceType, type CacheListItem } from "../services/CacheService";
+import { MusicCacheService } from "../services/MusicCacheService";
 import { processLog } from "../logger";
 
 /**
@@ -35,6 +36,7 @@ const withErrorCatch = async <T>(action: () => Promise<T>): Promise<CacheIpcResu
  */
 const initCacheIpc = (): void => {
   const cacheService = CacheService.getInstance();
+  const musicCacheService = MusicCacheService.getInstance();
 
   // 初始化缓存服务
   cacheService.init();
@@ -103,6 +105,35 @@ const initCacheIpc = (): void => {
       return await cacheService.getSize();
     });
   });
+
+  // ---------------------------------------------------------
+  // 音乐缓存专用接口 (Music Cache Specific IPC)
+  // ---------------------------------------------------------
+
+  // 检查是否存在音乐缓存
+  ipcMain.handle("music-cache-check", async (_event, id: number | string, quality?: string) => {
+    try {
+      return await musicCacheService.hasCache(id, quality);
+    } catch (error) {
+      processLog.error("Check music cache failed:", error);
+      return null;
+    }
+  });
+
+  // 下载并缓存音乐
+  ipcMain.handle(
+    "music-cache-download",
+    async (_event, id: number | string, url: string, quality?: string) => {
+      try {
+        const qualitySuffix = quality || "standard";
+        const path = await musicCacheService.cacheMusic(id, url, qualitySuffix);
+        return { success: true, path };
+      } catch (error: any) {
+        processLog.error("Download music cache failed:", error);
+        return { success: false, message: error.message };
+      }
+    },
+  );
 };
 
 export default initCacheIpc;

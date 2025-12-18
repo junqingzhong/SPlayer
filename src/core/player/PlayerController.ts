@@ -122,7 +122,6 @@ class PlayerController {
       throw new Error("SONG_NOT_FOUND");
     }
     try {
-      statusStore.playLoading = true;
       // 停止当前播放
       audioManager.stop();
       musicStore.playSong = playSongData;
@@ -135,6 +134,8 @@ class PlayerController {
       if (this.retryInfo.songId !== sid) {
         this.retryInfo = { songId: sid || 0, count: 0 };
       }
+      // 设置加载状态
+      statusStore.playLoading = true;
       // 获取音频源
       const audioSource = await songManager.getAudioSource(playSongData);
       if (!audioSource.url) {
@@ -308,7 +309,7 @@ class PlayerController {
       // IPC 通知
       ipcService.sendPlayStatus(true);
       ipcService.sendSongChange(playTitle, artist || "", name || "");
-      console.log("▶️ song play:", name);
+      console.log(`▶️ [${musicStore.playSong?.id}] 歌曲播放:`, name);
     });
 
     // 暂停
@@ -316,12 +317,12 @@ class PlayerController {
       statusStore.playStatus = false;
       if (!isElectron) window.document.title = "SPlayer";
       ipcService.sendPlayStatus(false);
-      console.log("⏸️ song pause");
+      console.log(`⏸️ [${musicStore.playSong?.id}] 歌曲暂停`);
     });
 
     // 播放结束
     audioManager.on("ended", () => {
-      console.log("⏹️ song end");
+      console.log(`⏹️ [${musicStore.playSong?.id}] 歌曲结束`);
       // 检查定时关闭
       if (this.checkAutoClose()) return;
       // 自动播放下一首

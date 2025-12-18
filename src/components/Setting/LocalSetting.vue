@@ -98,9 +98,10 @@
             <n-text class="tip" :depth="3">达到上限后将清理最旧的缓存</n-text>
           </div>
           <n-select
-            v-model:value="settingStore.cacheMaxSizeGB"
+            v-model:value="cacheLimit"
             :options="cacheSizeOptions"
             class="set"
+            @update:value="changeCacheLimit"
           />
         </n-card>
         <n-card class="set-item">
@@ -289,6 +290,7 @@ const settingStore = useSettingStore();
 const cacheManager = useCacheManager();
 const cachePath = ref<string>("");
 const cacheSizeDisplay = ref<string>("--");
+const cacheLimit = ref<number>(10); // 本地状态
 
 // 默认下载音质选项
 const downloadQualityOptions = computed(() => {
@@ -392,6 +394,12 @@ const confirmChangeCachePath = () => {
   });
 };
 
+// 更改缓存大小限制
+const changeCacheLimit = async (value: number) => {
+  cacheLimit.value = value;
+  await window.api.store.set("cacheLimit", value);
+};
+
 // 统计全部缓存目录占用大小
 const loadCacheSize = async () => {
   const res = await cacheManager.getSize();
@@ -455,6 +463,8 @@ onMounted(async () => {
   try {
     const path = await window.api.store.get("cachePath");
     cachePath.value = path || "";
+    const limit = await window.api.store.get("cacheLimit");
+    if (typeof limit === "number") cacheLimit.value = limit;
   } catch (error) {
     console.error("读取缓存路径失败:", error);
   }

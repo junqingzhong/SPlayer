@@ -2,7 +2,7 @@ import { join, resolve, dirname } from "path";
 import { existsSync } from "fs";
 import { readdir, readFile, rm, stat, writeFile, mkdir } from "fs/promises";
 import { useStore } from "../store";
-import { processLog } from "../logger";
+import { cacheLog } from "../logger";
 
 /**
  * 缓存资源类型
@@ -97,7 +97,7 @@ export class CacheService {
         }
       }
     } catch (error) {
-      processLog.warn(`⚠️ 无法访问目录: ${dirPath}`, error);
+      cacheLog.warn(`⚠️ 无法访问目录: ${dirPath}`, error);
     }
     return totalSize;
   }
@@ -131,15 +131,14 @@ export class CacheService {
       for (const type of Object.keys(this.CACHE_SUB_DIR) as CacheResourceType[]) {
         const dir = join(basePath, this.CACHE_SUB_DIR[type]);
         if (!existsSync(dir)) await mkdir(dir, { recursive: true });
-
         // 计算初始大小
         this.sizes[type] = await this.calculateDirSize(dir);
       }
 
       this.isInitialized = true;
-      processLog.info("CacheService initialized. Sizes:", this.sizes);
+      cacheLog.info("CacheService initialized. Sizes:", this.sizes);
     } catch (error) {
-      processLog.error("CacheService init failed:", error);
+      cacheLog.error("CacheService init failed:", error);
     }
   }
 
@@ -149,6 +148,29 @@ export class CacheService {
   public async getSize(): Promise<number> {
     await this.init();
     return Object.values(this.sizes).reduce((a, b) => a + b, 0);
+  }
+
+  /**
+   * 获取缓存文件路径
+   * @param type 缓存类型
+   * @param key 缓存 key
+   * @returns 缓存文件路径
+   */
+  public getFilePath(type: CacheResourceType, key: string): string {
+    const { target } = this.resolveSafePath(type, key);
+    return target;
+  }
+
+  /**
+   * 通知文件变动（用于外部直接写入文件后更新大小记录）
+   */
+  public async notifyFileChange(type: CacheResourceType, key: string): Promise<void> {
+    await this.init();
+    // 确保 key 合法性
+    this.resolveSafePath(type, key);
+    const basePath = this.getCacheBasePath();
+    const dir = join(basePath, this.CACHE_SUB_DIR[type]);
+    this.sizes[type] = await this.calculateDirSize(dir);
   }
 
   /**
@@ -250,5 +272,33 @@ export class CacheService {
     }
 
     return items;
+  }
+
+  /**
+   * 清理旧缓存（LRU：删除最早修改的文件）
+   * @param type 缓存类型
+   * @param targetFreeSize 需要腾出的空间大小
+   */
+  public async cleanOldCache(type: CacheResourceType, targetFreeSize: number): Promise<void> {
+    await this.init();
+    let freedSize = 0;
+    const items = await this.list(type);
+
+    // 按 mtime 升序排序 (旧的在前)
+    items.sort((a, b) => a.mtime - b.mtime);
+
+    for (const item of items) {
+      if (freedSize >= targetFreeSize) break;
+      try {
+        await this.remove(type, item.key);
+        freedSize += item.size;
+        cacheLog.info(`Cleaned old cache: ${type}/${item.key}, size: ${item.size}`);
+      } catch (e) {
+        cacheLog.warn(`Failed to remove cache file: ${item.key}`, e);
+      }
+    }
+
+    // 重新计算该类型的准确大小，确保数据一致
+    await this.notifyFileChange(type, "");
   }
 }

@@ -30,6 +30,8 @@ export interface StoreType {
   amllDbServer: string;
   // 缓存地址
   cachePath: string;
+  // 缓存大小限制 (GB)
+  cacheLimit: number;
 }
 
 /**
@@ -55,6 +57,7 @@ export const useStore = () => {
       proxy: "",
       amllDbServer: defaultAMLLDbServer,
       cachePath: join(app.getPath("userData"), "DataCache"),
+      cacheLimit: 10, // 默认 10GB
     },
   });
 };
