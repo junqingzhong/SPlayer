@@ -106,10 +106,6 @@ const initCacheIpc = (): void => {
     });
   });
 
-  // ---------------------------------------------------------
-  // 音乐缓存专用接口 (Music Cache Specific IPC)
-  // ---------------------------------------------------------
-
   // 检查是否存在音乐缓存
   ipcMain.handle("music-cache-check", async (_event, id: number | string, quality?: string) => {
     try {
