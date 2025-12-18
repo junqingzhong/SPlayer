@@ -91,6 +91,9 @@ class PlayerController {
   /** 当前曲目重试信息（按歌曲维度） */
   private retryInfo: { songId: number | string; count: number } = { songId: 0, count: 0 };
 
+  /** 连续跳过计数 */
+  private failSkipCount = 0;
+
   constructor() {
     this.bindAudioEvents();
   }
@@ -114,6 +117,8 @@ class PlayerController {
     const playSongData = getPlaySongData();
     if (!playSongData) {
       statusStore.playLoading = false;
+      // 初始化或无歌曲时
+      if (!statusStore.playStatus && !autoPlay) return;
       throw new Error("SONG_NOT_FOUND");
     }
     try {
@@ -133,9 +138,7 @@ class PlayerController {
       // 获取音频源
       const audioSource = await songManager.getAudioSource(playSongData);
       if (!audioSource.url) {
-        window.$message.error("音频源获取失败，跳过当前歌曲");
-        await this.nextOrPrev("next");
-        return;
+        throw new Error("AUDIO_SOURCE_EMPTY");
       }
       // 更新音质和解锁状态
       statusStore.songQuality = audioSource.quality;
@@ -301,6 +304,7 @@ class PlayerController {
       window.document.title = `${playTitle} | SPlayer`;
       // 只有真正播放了才重置重试计数
       if (this.retryInfo.count > 0) this.retryInfo.count = 0;
+      this.failSkipCount = 0;
       // IPC 通知
       ipcService.sendPlayStatus(true);
       ipcService.sendSongChange(playTitle, artist || "", name || "");
@@ -411,14 +415,19 @@ class PlayerController {
     // 达到最大重试次数 -> 切歌
     if (this.retryInfo.count > this.MAX_RETRY_COUNT) {
       console.error("❌ 超过最大重试次数，跳过当前歌曲");
-      window.$message.error("播放失败，已自动跳过");
-      this.retryInfo.count = 0;
 
-      if (dataStore.playList.length > 1) {
-        await this.nextOrPrev("next");
-      } else {
+      this.retryInfo.count = 0;
+      this.failSkipCount++;
+
+      // 列表只有一首，或连续跳过所有歌曲
+      if (dataStore.playList.length <= 1 || this.failSkipCount >= dataStore.playList.length) {
+        window.$message.error("当前已无可播放歌曲");
         this.cleanPlayList();
+        this.failSkipCount = 0;
+        return;
       }
+      window.$message.error("播放失败，已自动跳过");
+      await this.nextOrPrev("next");
       return;
     }
 
