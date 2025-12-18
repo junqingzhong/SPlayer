@@ -191,18 +191,7 @@ export class LocalMusicService {
     }
     this.isRefreshing = true;
     // 音乐文件扩展名
-    const musicExtensions = [
-      "mp3",
-      "wav",
-      "flac",
-      "aac",
-      "webm",
-      "m4a",
-      "mp4",
-      "ogg",
-      "aiff",
-      "aif",
-    ];
+    const musicExtensions = ["mp3", "wav", "flac", "aac", "webm", "m4a", "ogg", "aiff", "aif"];
     // 构造 Glob 模式数组
     const patterns = dirPaths.map((dir) =>
       join(dir, `**/*.{${musicExtensions.join(",")}}`).replace(/\\/g, "/"),
@@ -244,6 +233,8 @@ export class LocalMusicService {
         const mtime = stats.mtimeMs;
         /** 文件大小 */
         const size = stats.size;
+        // 小于 1MB 的文件不处理
+        if (size < 1024 * 1024) return;
         scannedPaths.add(filePath);
         /** 缓存 */
         const cached = this.db.tracks[filePath];
@@ -275,6 +266,12 @@ export class LocalMusicService {
         try {
           const id = this.getFileId(filePath);
           const metadata = await parseFile(filePath);
+          // 过滤规则
+          // 时长 < 30s
+          if (metadata.format.duration && metadata.format.duration < 30) return;
+          // 时长 > 2h (7200s)
+          if (metadata.format.duration && metadata.format.duration > 7200) return;
+          // 提取封面
           const coverPath = await this.extractCover(metadata, id);
           // 构建音乐数据
           const track: MusicTrack = {
