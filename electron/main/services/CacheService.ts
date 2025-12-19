@@ -213,9 +213,10 @@ export class CacheService {
   /**
    * 读取缓存
    */
-  public async get(type: CacheResourceType, key: string): Promise<Buffer> {
+  public async get(type: CacheResourceType, key: string): Promise<Buffer | null> {
     await this.init();
     const { target } = this.resolveSafePath(type, key);
+    if (!existsSync(target)) return null;
     return await readFile(target);
   }
 
