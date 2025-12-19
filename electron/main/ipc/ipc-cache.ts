@@ -54,7 +54,7 @@ const initCacheIpc = (): void => {
   // 读取指定缓存文件
   ipcMain.handle(
     "cache-get",
-    (_event, type: CacheResourceType, key: string): Promise<CacheIpcResult<Buffer>> => {
+    (_event, type: CacheResourceType, key: string): Promise<CacheIpcResult<Buffer | null>> => {
       return withErrorCatch(async () => {
         return await cacheService.get(type, key);
       });

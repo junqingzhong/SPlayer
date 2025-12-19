@@ -342,7 +342,6 @@ const checkMenuItem = () => {
       menuActiveKey.value = routerName;
       break;
   }
-  console.log(menuActiveKey.value);
 };
 
 // 开启心动模式
