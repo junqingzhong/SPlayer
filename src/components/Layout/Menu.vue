@@ -223,7 +223,7 @@ const renderPlaylist = (playlist: CoverType[], showCover: boolean) => {
         ? h("div", { class: "pl-cover" }, [
             h(NAvatar, {
               src: playlist.coverSize?.s || playlist.cover,
-              fallbackSrc: "/images/album.jpg?assest",
+              fallbackSrc: "/images/album.jpg?asset",
               lazy: true,
             }),
             h(NEllipsis, null, () => playlist.name),

@@ -260,7 +260,7 @@ class PlayerController {
         const blobURL = blobURLManager.createBlobURL(coverData.data, coverData.format, path);
         if (blobURL) musicStore.playSong.cover = blobURL;
       } else {
-        musicStore.playSong.cover = "/images/song.jpg?assest";
+        musicStore.playSong.cover = "/images/song.jpg?asset";
       }
 
       // 获取元数据

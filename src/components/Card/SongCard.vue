@@ -208,7 +208,7 @@ const localCover = async (show: boolean) => {
   // 直接复用
   if (
     currentCover &&
-    currentCover !== "/images/song.jpg?assest" &&
+    currentCover !== "/images/song.jpg?asset" &&
     !currentCover.startsWith("blob:")
   ) {
     return;
