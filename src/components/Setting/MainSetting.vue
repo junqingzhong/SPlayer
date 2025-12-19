@@ -36,7 +36,7 @@
         <!-- 播放 -->
         <PlaySetting v-else-if="activeKey === 'play'" />
         <!-- 歌词 -->
-        <LyricsSetting v-else-if="activeKey === 'lyrics'" />
+        <LyricsSetting v-else-if="activeKey === 'lyrics'" :scroll-to="props.scrollTo" />
         <!-- 快捷键 -->
         <KeyboardSetting v-else-if="activeKey === 'keyboard'" />
         <!-- 本地 -->
@@ -59,7 +59,7 @@ import { renderIcon } from "@/utils/helper";
 import { isDevBuild, isElectron } from "@/utils/env";
 import packageJson from "@/../package.json";
 
-const props = defineProps<{ type: SettingType }>();
+const props = defineProps<{ type: SettingType; scrollTo?: string }>();
 
 // 设置内容
 const setScrollbar = ref<InstanceType<typeof NScrollbar> | null>(null);

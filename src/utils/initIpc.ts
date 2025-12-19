@@ -42,7 +42,9 @@ const initIpc = () => {
       await toLikeSong(musicStore.playSong, !dataStore.isLikeSong(musicStore.playSong.id));
     });
     // 开启设置
-    window.electron.ipcRenderer.on("openSetting", (_, type: SettingType) => openSetting(type));
+    window.electron.ipcRenderer.on("openSetting", (_, type: SettingType, scrollTo?: string) =>
+      openSetting(type, scrollTo),
+    );
     // 桌面歌词开关
     window.electron.ipcRenderer.on("toogleDesktopLyric", () => player.toggleDesktopLyric());
     // 显式关闭桌面歌词

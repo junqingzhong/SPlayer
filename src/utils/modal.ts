@@ -236,8 +236,17 @@ export const openDownloadSongs = (songs: SongType[]): void => {
   });
 };
 
+// 设置页面是否已打开
+let isSettingOpen = false;
+
 // 打开设置
-export const openSetting = (type: SettingType = "general") => {
+export const openSetting = (type: SettingType = "general", scrollTo?: string) => {
+  // 如果设置页面已打开，显示提醒
+  if (isSettingOpen) {
+    window.$message.warning("设置页面已打开");
+    return;
+  }
+  isSettingOpen = true;
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
@@ -247,7 +256,10 @@ export const openSetting = (type: SettingType = "general") => {
     bordered: true,
     class: "main-setting",
     content: () => {
-      return h(MainSetting, { type });
+      return h(MainSetting, { type, scrollTo });
+    },
+    onAfterLeave: () => {
+      isSettingOpen = false;
     },
   });
 };
