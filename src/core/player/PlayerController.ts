@@ -123,7 +123,7 @@ class PlayerController {
     }
     try {
       // 停止当前播放
-      audioManager.stop();
+      audioManager.pause();
       musicStore.playSong = playSongData;
       // 重置播放进度
       statusStore.currentTime = 0;
@@ -163,7 +163,7 @@ class PlayerController {
     const audioManager = useAudioManager();
 
     // 停止当前播放并清理
-    audioManager.stop();
+    // audioManager.stop();
 
     // 设置基础参数
     audioManager.setVolume(statusStore.playVolume);
@@ -511,7 +511,7 @@ class PlayerController {
 
     // 先暂停当前播放
     const audioManager = useAudioManager();
-    audioManager.stop();
+    audioManager.pause();
 
     // 私人FM
     if (statusStore.personalFmMode) {
