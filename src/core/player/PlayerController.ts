@@ -233,12 +233,8 @@ class PlayerController {
     // Last.fm Scrobbler
     if (settingStore.lastfm.enabled && settingStore.isLastfmConfigured) {
       const { name, artist, album } = getPlayerInfoObj() || {};
-      lastfmScrobbler.startPlaying(
-        name || "",
-        artist || "",
-        album,
-        Math.floor(song.duration / 1000) ?? undefined,
-      );
+      const durationInSeconds = song.duration > 0 ? Math.floor(song.duration / 1000) : undefined;
+      lastfmScrobbler.startPlaying(name || "", artist || "", album, durationInSeconds);
     }
   }
 

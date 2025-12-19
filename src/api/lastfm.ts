@@ -27,6 +27,23 @@ const getApiConfig = () => {
 };
 
 /**
+ * 准备请求参数
+ * @param method API 方法名
+ * @param params 参数
+ * @returns 请求参数
+ */
+const prepareRequestParams = (method: string, params: Record<string, string | number> = {}) => {
+  const { apiKey } = getApiConfig();
+  const requestParams: Record<string, string | number> = {
+    method,
+    api_key: apiKey,
+    format: "json",
+    ...params,
+  };
+  return requestParams;
+};
+
+/**
  * 生成 API 签名
  * @param params 参数对象
  */
@@ -52,13 +69,7 @@ const lastfmRequest = async (
   params: Record<string, string | number> = {},
   needAuth: boolean = false,
 ) => {
-  const { apiKey } = getApiConfig();
-  const requestParams: Record<string, string | number> = {
-    method,
-    api_key: apiKey,
-    format: "json",
-    ...params,
-  };
+  const requestParams = prepareRequestParams(method, params);
 
   if (needAuth) {
     requestParams.api_sig = generateSignature(requestParams);
@@ -79,13 +90,7 @@ const lastfmRequest = async (
  * @param params 参数
  */
 const lastfmPostRequest = async (method: string, params: Record<string, string | number> = {}) => {
-  const { apiKey } = getApiConfig();
-  const requestParams: Record<string, string | number> = {
-    method,
-    api_key: apiKey,
-    format: "json",
-    ...params,
-  };
+  const requestParams = prepareRequestParams(method, params);
 
   requestParams.api_sig = generateSignature(requestParams);
 

@@ -120,6 +120,14 @@ const connectLastfm = async () => {
 
       // 轮询等待用户授权
       const checkAuth = setInterval(async () => {
+        if (authWindow?.closed) {
+          clearInterval(checkAuth);
+          if (lastfmAuthLoading.value) {
+            lastfmAuthLoading.value = false;
+            window.$message.warning("授权已取消");
+          }
+          return;
+        }
         try {
           // 尝试获取会话
           const sessionResponse = await getSession(token);
