@@ -90,7 +90,8 @@ class PlayerController {
   private readonly MAX_RETRY_COUNT = 3;
   /** 当前曲目重试信息（按歌曲维度） */
   private retryInfo: { songId: number | string; count: number } = { songId: 0, count: 0 };
-
+  /** 当前播放请求标识 */
+  private currentRequestToken = 0;
   /** 连续跳过计数 */
   private failSkipCount = 0;
 
@@ -111,6 +112,10 @@ class PlayerController {
     const statusStore = useStatusStore();
     const songManager = useSongManager();
     const audioManager = useAudioManager();
+
+    // 生成新的请求标识
+    this.currentRequestToken++;
+    const requestToken = this.currentRequestToken;
 
     const { autoPlay = true, seek = 0 } = options;
     // 要播放的歌曲对象
@@ -138,6 +143,10 @@ class PlayerController {
       statusStore.playLoading = true;
       // 获取音频源
       const audioSource = await songManager.getAudioSource(playSongData);
+      if (requestToken !== this.currentRequestToken) {
+        console.log(`🚫 [${playSongData.id}] 请求已过期，舍弃`);
+        return;
+      }
       if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
       console.log(`🎧 [${playSongData.id}] 最终播放信息:`, audioSource);
       // 更新音质和解锁状态
@@ -145,12 +154,18 @@ class PlayerController {
       statusStore.playUblock = audioSource.isUnlocked ?? false;
       // 执行底层播放
       await this.loadAndPlay(audioSource.url, autoPlay, seek);
+      if (requestToken !== this.currentRequestToken) return;
       // 后置处理
       await this.afterPlaySetup(playSongData);
     } catch (error: any) {
-      console.error("❌ 播放初始化失败:", error);
-      // 触发错误处理流程
-      await this.handlePlaybackError(error?.code || 0, seek);
+      if (requestToken === this.currentRequestToken) {
+        console.error("❌ 播放初始化失败:", error);
+        await this.handlePlaybackError(error?.code || 0, options.seek || 0);
+      }
+    } finally {
+      if (requestToken === this.currentRequestToken) {
+        statusStore.playLoading = false;
+      }
     }
   }
 
