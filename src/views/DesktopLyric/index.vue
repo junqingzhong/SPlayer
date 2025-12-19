@@ -24,7 +24,7 @@
           </div>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="flex-end" size="small" @pointerdown.stop>
-          <div class="menu-btn" @click.stop="sendToMain('open-setting', 'lyrics')">
+          <div class="menu-btn" @click.stop="sendToMain('open-setting', 'lyrics', 'desktop')">
             <SvgIcon name="Settings" />
           </div>
           <div

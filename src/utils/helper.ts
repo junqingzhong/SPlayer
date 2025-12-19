@@ -1,7 +1,6 @@
 import { QualityType, SongType, UpdateLogType } from "@/types/main";
 import { NTooltip, SelectOption } from "naive-ui";
 import { h, VNode } from "vue";
-import { useClipboard } from "@vueuse/core";
 import { getCacheData } from "./cache";
 import { updateLog } from "@/api/other";
 import { isEmpty } from "lodash-es";
@@ -13,9 +12,6 @@ import SvgIcon from "@/components/Global/SvgIcon.vue";
 import Fuse from "fuse.js";
 
 type AnyObject = { [key: string]: any };
-
-// 必要数据
-let imageBlobURL: string = "";
 
 /**
  * 打开链接
@@ -157,47 +153,42 @@ export const formatFileSize = (bytes: number): string => {
     return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
   }
 };
-
 /**
- * 将图片链接转为 BlobUrl
- * @param imageUrl 图片链接
- * @returns BlobUrl
- */
-export const convertImageUrlToBlobUrl = async (imageUrl: string) => {
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  // 将响应数据转换为 Blob 对象
-  const blob = await response.blob();
-  // 撤销之前生成的对象 URL
-  if (imageBlobURL) URL.revokeObjectURL(imageBlobURL);
-  // 生成对象 URL
-  imageBlobURL = URL.createObjectURL(blob);
-  return imageBlobURL;
-};
-
-/**
- * 复制数据到剪贴板
+ * 复制数据到剪贴板（原生实现）
  * @param text 要复制的数据
  * @param message 复制成功提示消息（可选）
- * @returns 无
  */
 export const copyData = async (text: any, message?: string) => {
-  const { copy, copied, isSupported } = useClipboard({ legacy: true });
-  if (!isSupported.value) {
-    window.$message.error("暂时无法使用复制功能");
-    return;
+  if (!text) return;
+  const content = typeof text === "string" ? text.trim() : JSON.stringify(text, null, 2);
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(content);
+      window.$message.success(message ?? "已复制到剪贴板");
+      return;
+    } catch (err) {
+      console.error("clipboard.writeText 失败，尝试降级方案", err);
+    }
   }
-  // 开始复制
+  // 降级方案
   try {
-    if (!text) return;
-    text = typeof text === "string" ? text.trim() : JSON.stringify(text, null, 2);
-    await copy(text);
-    if (copied.value) {
+    const textarea = document.createElement("textarea");
+    textarea.value = content;
+    // 避免页面滚动
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+    // 添加到页面
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    // 执行复制
+    const success = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    if (success) {
       window.$message.success(message ?? "已复制到剪贴板");
     } else {
-      window.$message.error("复制出错，请重试");
+      throw new Error("execCommand 返回 false");
     }
   } catch (error) {
     window.$message.error("复制出错，请重试");
@@ -267,57 +258,76 @@ export const getUpdateLog = async (): Promise<UpdateLogType[]> => {
   return updateLogs;
 };
 
+/** 更改本地目录选项 */
+type ChangeLocalPathOptions = {
+  /** 设置项 key */
+  settingsKey: string;
+  /** 标题 */
+  title: string;
+  /** 是否包含子文件夹 */
+  includeSubFolders: boolean;
+  /** 控制台输出的错误信息 */
+  errorConsole: string;
+  /** 错误信息 */
+  errorMessage: string;
+};
+
 /**
- * 获取 更改本地目录 函数
+ * 获取 更改本地目录
  * @param settingsKey 设置项 key
  * @param includeSubFolders 是否包含子文件夹
  * @param errorConsole 控制台输出的错误信息
  * @param errorMessage 错误信息
- * @param needDefaultMusicPath 是否需要获取默认音乐路径
  */
 const changeLocalPath =
   (
-    settingsKey: string,
-    includeSubFolders: boolean,
-    errorConsole: string,
-    errorMessage: string,
-    needDefaultMusicPath: boolean = false,
+    options: ChangeLocalPathOptions = {
+      settingsKey: "localFilesPath",
+      includeSubFolders: true,
+      title: "选择文件夹",
+      errorConsole: "Error changing local path",
+      errorMessage: "更改本地歌曲文件夹出错，请重试",
+    },
   ) =>
   async (delIndex?: number) => {
+    const { settingsKey, includeSubFolders, title, errorConsole, errorMessage } = options;
     try {
       if (!isElectron) return;
       const settingStore = useSettingStore();
+      // 删除目录
       if (typeof delIndex === "number" && delIndex >= 0) {
         settingStore[settingsKey].splice(delIndex, 1);
-      } else {
-        const selectedDir = await window.electron.ipcRenderer.invoke("choose-path");
-        if (!selectedDir) return;
-        // 动态获取默认路径
-        let allPath = [...settingStore[settingsKey]];
-        if (needDefaultMusicPath) {
-          const defaultDir = await window.electron.ipcRenderer.invoke("get-default-dir", "music");
-          if (defaultDir) allPath = [defaultDir, ...allPath];
-        }
-        // 检查是否为子文件夹
-        if (includeSubFolders) {
-          const isSubfolder = await window.electron.ipcRenderer.invoke(
-            "check-if-subfolder",
-            allPath,
-            selectedDir,
-          );
-          if (!isSubfolder) {
-            settingStore[settingsKey].push(selectedDir);
-          } else {
-            window.$message.error("添加的目录与现有目录有重叠，请重新选择");
-          }
-        } else {
-          if (allPath.includes(selectedDir)) {
-            window.$message.error("添加的目录已存在");
-          } else {
-            settingStore[settingsKey].push(selectedDir);
-          }
+        return;
+      }
+      // 添加目录
+      const selectedDir = await window.electron.ipcRenderer.invoke("choose-path", title);
+      if (!selectedDir) return;
+      // 所有需要检查的路径
+      const allPath = [...settingStore[settingsKey]];
+      // 是否是完全相同的路径
+      const isExactMatch = await window.electron.ipcRenderer.invoke(
+        "check-if-same-path",
+        allPath,
+        selectedDir,
+      );
+      if (isExactMatch) {
+        window.$message.error("添加的目录已存在");
+        return;
+      }
+      // 检查是否为子文件夹关系
+      if (includeSubFolders) {
+        const isSubfolder = await window.electron.ipcRenderer.invoke(
+          "check-if-subfolder",
+          allPath,
+          selectedDir,
+        );
+        if (isSubfolder) {
+          window.$message.error("添加的目录与现有目录有重叠，请重新选择");
+          return;
         }
       }
+      // 通过所有检查，添加目录
+      settingStore[settingsKey].push(selectedDir);
     } catch (error) {
       console.error(`${errorConsole}: `, error);
       window.$message.error(errorMessage);
@@ -328,25 +338,25 @@ const changeLocalPath =
  * 更改本地音乐目录
  * @param delIndex 删除文件夹路径的索引
  */
-export const changeLocalMusicPath = changeLocalPath(
-  "localFilesPath",
-  true,
-  "Error changing local path",
-  "更改本地歌曲文件夹出错，请重试",
-  true,
-);
+export const changeLocalMusicPath = changeLocalPath({
+  settingsKey: "localFilesPath",
+  includeSubFolders: true,
+  title: "选择本地歌曲文件夹",
+  errorConsole: "Error changing local path",
+  errorMessage: "更改本地歌曲文件夹出错，请重试",
+});
 
 /**
  * 更改本地歌词目录
  * @param delIndex 删除文件夹路径的索引
  */
-export const changeLocalLyricPath = changeLocalPath(
-  "localLyricPath",
-  true,
-  "Error changing local lyric path",
-  "更改本地歌词文件夹出错，请重试",
-  false,
-);
+export const changeLocalLyricPath = changeLocalPath({
+  settingsKey: "localLyricPath",
+  includeSubFolders: true,
+  title: "选择本地歌词文件夹",
+  errorConsole: "Error changing local lyric path",
+  errorMessage: "更改本地歌词文件夹出错，请重试",
+});
 
 /**
  * 洗牌数组（Fisher-Yates）

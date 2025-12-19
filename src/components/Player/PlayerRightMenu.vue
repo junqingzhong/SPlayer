@@ -1,7 +1,7 @@
 <template>
   <n-flex :size="8" align="center" class="right-menu">
     <n-badge v-if="isElectron" value="ON" :show="statusStore.showDesktopLyric">
-      <div class="menu-icon" @click.stop="player.toggleDesktopLyric">
+      <div class="menu-icon" @click.stop="player.toggleDesktopLyric()">
         <SvgIcon name="DesktopLyric2" :depth="statusStore.showDesktopLyric ? 1 : 3" />
       </div>
     </n-badge>
@@ -74,13 +74,13 @@ import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/
 import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
 import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
-const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 // 播放模式数据
 const playModeOptions: DropdownOption[] = [

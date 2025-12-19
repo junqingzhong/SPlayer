@@ -91,6 +91,24 @@ class LastfmScrobbler {
    */
   public stop() {
     this.clearScrobbleTimer();
+
+    // 如果歌曲播放时间足够但尚未 scrobble，则立即执行
+    if (this.currentTrack && !this.hasScrobbled) {
+      const settingStore = useSettingStore();
+      if (settingStore.lastfm.scrobbleEnabled) {
+        const playedTime = (Date.now() - this.playStartTime) / 1000;
+        const duration = this.currentTrack.duration || 0;
+
+        // 歌曲必须长于30秒才能 scrobble
+        if (duration > 30) {
+          const scrobblePoint = Math.min(duration / 2, 240);
+          if (playedTime >= scrobblePoint) {
+            this.scrobble();
+          }
+        }
+      }
+    }
+
     this.currentTrack = null;
     this.hasScrobbled = false;
   }

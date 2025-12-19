@@ -2,8 +2,9 @@ import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
 import { songLyric, songLyricTTML } from "@/api/song";
 import { type SongLyric } from "@/types/lyric";
 import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
-import { isElectron } from "./env";
+import { isElectron } from "@/utils/env";
 import { isEmpty } from "lodash-es";
+import { useCacheManager } from "@/core/resource/CacheManager";
 
 class LyricManager {
   /**
@@ -16,6 +17,9 @@ class LyricManager {
    * 用于校验返回是否属于当前歌曲的最新请求
    */
   private activeLyricReq = 0;
+
+  constructor() {}
+
   /**
    * 重置当前歌曲的歌词数据
    * 包括清空歌词数据、重置歌词索引、关闭 TTML 歌词等
@@ -29,6 +33,47 @@ class LyricManager {
     // 重置歌词索引
     statusStore.lyricIndex = -1;
   }
+
+  /**
+   * 获取缓存歌词（原始数据）
+   * @param id 歌曲 ID
+   * @param type 缓存类型
+   * @returns 缓存数据
+   */
+  private async getRawLyricCache(id: number, type: "lrc" | "ttml"): Promise<string | null> {
+    const settingStore = useSettingStore();
+    if (!isElectron || !settingStore.cacheEnabled) return null;
+    try {
+      const cacheManager = useCacheManager();
+      const result = await cacheManager.get("lyrics", `${id}.${type === "ttml" ? "ttml" : "json"}`);
+      if (result.success && result.data) {
+        // Uint8Array to string
+        const decoder = new TextDecoder();
+        return decoder.decode(result.data);
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 保存缓存歌词（原始数据）
+   * @param id 歌曲 ID
+   * @param type 缓存类型
+   * @param data 数据
+   */
+  private async saveRawLyricCache(id: number, type: "lrc" | "ttml", data: string) {
+    const settingStore = useSettingStore();
+    if (!isElectron || !settingStore.cacheEnabled) return;
+    try {
+      const cacheManager = useCacheManager();
+      await cacheManager.set("lyrics", `${id}.${type === "ttml" ? "ttml" : "json"}`, data);
+    } catch (error) {
+      console.error("写入歌词缓存失败:", error);
+    }
+  }
+
   /**
    * 歌词内容对齐
    * @param lyrics 歌词数据
@@ -53,6 +98,7 @@ class LyricManager {
     }
     return lyricsData;
   }
+
   /**
    * 对齐本地歌词
    * @param lyrics 本地歌词数据
@@ -86,6 +132,7 @@ class LyricManager {
     });
     return { lrcData: aligned, yrcData: lyricData.yrcData };
   }
+
   /**
    * 处理在线歌词
    * @param id 歌曲 ID
@@ -106,7 +153,13 @@ class LyricManager {
     // 处理 TTML 歌词
     const adoptTTML = async () => {
       if (!settingStore.enableTTMLLyric) return;
-      const ttmlContent = await songLyricTTML(id);
+      let ttmlContent: string | null = await this.getRawLyricCache(id, "ttml");
+      if (!ttmlContent) {
+        ttmlContent = await songLyricTTML(id);
+        if (ttmlContent && typeof ttmlContent === "string") {
+          this.saveRawLyricCache(id, "ttml", ttmlContent);
+        }
+      }
       if (isStale()) return;
       if (!ttmlContent || typeof ttmlContent !== "string") return;
       const parsed = parseTTML(ttmlContent);
@@ -117,7 +170,21 @@ class LyricManager {
     };
     // 处理 LRC 歌词
     const adoptLRC = async () => {
-      const data = await songLyric(id);
+      let data: any = null;
+      const cached = await this.getRawLyricCache(id, "lrc");
+      if (cached) {
+        try {
+          data = JSON.parse(cached);
+        } catch {
+          data = null;
+        }
+      }
+      if (!data) {
+        data = await songLyric(id);
+        if (data && data.code === 200) {
+          this.saveRawLyricCache(id, "lrc", JSON.stringify(data));
+        }
+      }
       if (isStale()) return;
       if (!data || data.code !== 200) return;
       let lrcLines: LyricLine[] = [];
@@ -156,6 +223,7 @@ class LyricManager {
     statusStore.usingTTMLLyric = ttmlAdopted;
     return result;
   }
+
   /**
    * 处理本地歌词
    * @param path 本地歌词路径
@@ -183,6 +251,7 @@ class LyricManager {
       return { lrcData: [], yrcData: [] };
     }
   }
+
   /**
    * 检测本地歌词覆盖
    * @param id 歌曲 ID
@@ -235,6 +304,7 @@ class LyricManager {
       return { lrcData: [], yrcData: [] };
     }
   }
+
   /**
    * 处理歌词排除
    * @param lyricData 歌词数据
@@ -279,6 +349,7 @@ class LyricManager {
           : lyricData.yrcData || [],
     };
   }
+
   /**
    * 设置最终歌词
    * @param lyricData 歌词数据
@@ -309,6 +380,7 @@ class LyricManager {
     // 结束加载状态
     statusStore.lyricLoading = false;
   }
+
   /**
    * 处理歌词
    * @param id 歌曲 ID
@@ -358,57 +430,15 @@ class LyricManager {
       this.resetSongLyric();
     }
   }
-  /**
-   * 计算歌词索引
-   * - 普通歌词(LRC)：沿用当前按开始时间定位的算法
-   * - 逐字歌词(YRC)：当播放时间位于某句 [time, endTime) 区间内时，索引为该句；
-   *   若下一句开始时间落在上一句区间（对唱重叠），仍保持上一句索引，直到上一句结束。
-   */
-  public calculateLyricIndex(currentTime: number): number {
-    const musicStore = useMusicStore();
-    const statusStore = useStatusStore();
-    const settingStore = useSettingStore();
-    // 应用实时偏移（按歌曲 id 记忆） + 0.3s（解决对唱时歌词延迟问题）
-    const songId = musicStore.playSong?.id;
-    const offset = statusStore.getSongOffset(songId);
-    const playSeek = currentTime + offset + 300;
-    // 选择歌词类型
-    const useYrc = !!(settingStore.showYrc && musicStore.songLyric.yrcData.length);
-    const lyrics = useYrc ? musicStore.songLyric.yrcData : musicStore.songLyric.lrcData;
-    // 无歌词时
-    if (!lyrics || !lyrics.length) return -1;
-    // 获取开始时间和结束时间
-    const getStart = (v: LyricLine) => v.startTime || 0;
-    const getEnd = (v: LyricLine) => v.endTime ?? Infinity;
-    // 普通歌词：保持原有计算方式
-    if (!useYrc) {
-      const idx = lyrics.findIndex((v) => getStart(v) >= playSeek);
-      return idx === -1 ? lyrics.length - 1 : idx - 1;
-    }
-    // TTML / YRC（支持对唱重叠）
-    // 在第一句之前
-    if (playSeek < getStart(lyrics[0])) return -1;
-    // 计算在播放进度下处于激活区间的句子集合 activeIndices（[time, endTime)）
-    const activeIndices: number[] = [];
-    for (let i = 0; i < lyrics.length; i++) {
-      const start = getStart(lyrics[i]);
-      const end = getEnd(lyrics[i]);
-      if (playSeek >= start && playSeek < end) {
-        activeIndices.push(i);
-      }
-    }
-    // 不在任何区间 → 找最近的上一句
-    if (activeIndices.length === 0) {
-      const next = lyrics.findIndex((v) => getStart(v) > playSeek);
-      return next === -1 ? lyrics.length - 1 : next - 1;
-    }
-    // 1 句激活 → 直接返回
-    if (activeIndices.length === 1) return activeIndices[0];
-    // 多句激活（对唱）
-    const keepCount = activeIndices.length >= 3 ? 3 : 2;
-    const concurrent = activeIndices.slice(-keepCount);
-    return concurrent[0]; // 保持上一句（重叠时不跳）
-  }
 }
 
-export default new LyricManager();
+let instance: LyricManager | null = null;
+
+/**
+ * 获取 LyricManager 实例
+ * @returns LyricManager
+ */
+export const useLyricManager = (): LyricManager => {
+  if (!instance) instance = new LyricManager();
+  return instance;
+};

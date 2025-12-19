@@ -3,18 +3,19 @@ import { useEventListener } from "@vueuse/core";
 import { openUserAgreement } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import { isElectron } from "./env";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import packageJson from "@/../package.json";
 import log from "./log";
 
 // 应用初始化时需要执行的操作
 const init = async () => {
   // init pinia-data
-  const player = usePlayer();
   const dataStore = useDataStore();
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
   const shortcutStore = useShortcutStore();
+
+  const player = usePlayerController();
 
   // 检查并执行设置迁移
   settingStore.checkAndMigrate();
@@ -30,11 +31,14 @@ const init = async () => {
   // 加载数据
   await dataStore.loadData();
 
+  // 初始化 MediaSession
+  player.initMediaSession();
+
   // 初始化播放器
-  player.initPlayer(
-    settingStore.autoPlay,
-    settingStore.memoryLastSeek ? statusStore.currentTime : 0,
-  );
+  player.playSong({
+    autoPlay: settingStore.autoPlay,
+    seek: settingStore.memoryLastSeek ? statusStore.currentTime : 0,
+  });
   // 同步播放模式
   player.playModeSyncIpc();
   // 初始化自动关闭定时器
@@ -62,7 +66,7 @@ const initEventListener = () => {
 
 // 键盘事件
 const keyDownEvent = debounce((event: KeyboardEvent) => {
-  const player = usePlayer();
+  const player = usePlayerController();
   const shortcutStore = useShortcutStore();
   const statusStore = useStatusStore();
   const target = event.target as HTMLElement;

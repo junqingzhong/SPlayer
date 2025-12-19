@@ -244,6 +244,24 @@ export const useStatusStore = defineStore("status", {
     setEqPreset(preset: string) {
       this.eqPreset = preset;
     },
+    /**
+     * 重置播放状态
+     */
+    resetPlayStatus() {
+      this.$patch({
+        currentTime: 0,
+        duration: 0,
+        progress: 0,
+        lyricIndex: -1,
+        playStatus: false,
+        playLoading: false,
+        playListShow: false,
+        showFullPlayer: false,
+        playHeartbeatMode: false,
+        personalFmMode: false,
+        playIndex: -1,
+      });
+    },
   },
   // 持久化
   persist: {

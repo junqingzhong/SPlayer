@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { keywords, regexes } from "@/assets/data/exclude";
-import { SongUnlockServer } from "@/utils/songManager";
+import { SongUnlockServer } from "@/core/player/SongManager";
 import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
@@ -35,6 +35,10 @@ export interface SettingState {
   LyricFont: "follow" | string;
   /** 日语歌词字体 */
   japaneseLyricFont: "follow" | string;
+  /** 英语歌词字体 */
+  englishLyricFont: "follow" | string;
+  /** 韩语歌词字体 */
+  koreanLyricFont: "follow" | string;
   /** 隐藏 VIP 标签 */
   showCloseAppTip: boolean;
   /** 关闭应用方式 */
@@ -71,6 +75,8 @@ export interface SettingState {
   lyricsScrollPosition: "start" | "center";
   /** 下载路径 */
   downloadPath: string;
+  /** 是否启用缓存 */
+  cacheEnabled: boolean;
   /** 音乐命名格式 */
   fileNameFormat: "title" | "artist-title" | "title-artist";
   /** 文件智能分类 */
@@ -137,6 +143,10 @@ export interface SettingState {
   autoHidePlayerMeta: boolean;
   /** 记忆最后进度 */
   memoryLastSeek: boolean;
+  /** 显示进度条悬浮信息 */
+  progressTooltipShow: boolean;
+  /** 进度调节吸附最近歌词 */
+  progressAdjustLyric: boolean;
   /** 显示播放列表数量 */
   showPlaylistCount: boolean;
   /** 是否显示音乐频谱 */
@@ -256,6 +266,10 @@ export interface SettingState {
     scrobbleEnabled: boolean;
     nowPlayingEnabled: boolean;
   };
+  /** 播放器跟随封面主色 */
+  playerFollowCoverColor: boolean;
+  /** 进度条悬浮时显示歌词 */
+  progressLyricShow: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -269,6 +283,8 @@ export const useSettingStore = defineStore("setting", {
     globalFont: "default",
     LyricFont: "follow",
     japaneseLyricFont: "follow",
+    englishLyricFont: "follow",
+    koreanLyricFont: "follow",
     hideVipTag: false,
     showSearchHistory: true,
     menuShowCover: true,
@@ -301,6 +317,8 @@ export const useSettingStore = defineStore("setting", {
     playerBackgroundFlowSpeed: 4,
     autoHidePlayerMeta: true,
     memoryLastSeek: true,
+    progressTooltipShow: true,
+    progressAdjustLyric: false,
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
@@ -335,6 +353,7 @@ export const useSettingStore = defineStore("setting", {
     localSeparators: ["/", "&"],
     showLocalCover: true,
     downloadPath: "",
+    cacheEnabled: true,
     fileNameFormat: "title-artist",
     folderStrategy: "none",
     downloadMeta: true,
@@ -389,6 +408,8 @@ export const useSettingStore = defineStore("setting", {
       scrobbleEnabled: true,
       nowPlayingEnabled: true,
     },
+    playerFollowCoverColor: true,
+    progressLyricShow: true,
   }),
   getters: {
     /**
@@ -397,6 +418,13 @@ export const useSettingStore = defineStore("setting", {
      */
     getFadeTime(state): number {
       return state.songVolumeFade ? state.songVolumeFadeTime : 0;
+    },
+    /**
+     * 检查 Last.fm 配置是否有效
+     */
+    isLastfmConfigured(state): boolean {
+      const { lastfm } = state;
+      return Boolean(lastfm.apiKey && lastfm.apiSecret);
     },
   },
   actions: {

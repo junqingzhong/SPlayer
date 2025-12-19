@@ -31,7 +31,7 @@
               :class="['song-item', { on: statusStore.playIndex === index }]"
               v-debounce="
                 () => {
-                  player.togglePlayIndex(index);
+                  player.togglePlayIndex(index, true);
                   statusStore.playListShow = false;
                 }
               "
@@ -110,11 +110,11 @@
 <script setup lang="ts">
 import { useStatusStore, useDataStore } from "@/stores";
 import type { VirtualListInst } from "naive-ui";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
-const player = usePlayer();
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
+const player = usePlayerController();
 
 const playListRef = ref<VirtualListInst | null>(null);
 

@@ -32,6 +32,30 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">显示进度条悬浮信息</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.progressTooltipShow" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">进度条悬浮时显示歌词</n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.progressLyricShow"
+          :disabled="!settingStore.progressTooltipShow"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">进度调节吸附最近歌词</n-text>
+          <n-text class="tip" :depth="3">进度调节时从当前时间最近一句歌词开始播放</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.progressAdjustLyric" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">音乐渐入渐出</n-text>
         </div>
         <n-switch v-model:value="settingStore.songVolumeFade" class="set" :round="false" />
@@ -194,6 +218,13 @@
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">播放器主色跟随封面</n-text>
+          <n-text class="tip" :depth="3">播放器主颜色是否跟随封面主色，下一曲生效</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.playerFollowCoverColor" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">显示前奏倒计时</n-text>
           <n-text class="tip" :depth="3">部分歌曲前奏可能存在显示错误</n-text>
         </div>
@@ -273,10 +304,10 @@ import { isLogin } from "@/utils/auth";
 import { renderOption } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
 import { uniqBy } from "lodash";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { openSongUnlockManager } from "@/utils/modal";
 
-const player = usePlayer();
+const player = usePlayerController();
 const settingStore = useSettingStore();
 
 // 输出设备数据
@@ -356,59 +387,14 @@ const getOutputDevices = async () => {
 
 // 切换输出设备
 const playDeviceChange = (deviceId: string, option: SelectOption) => {
-  // if (settingStore.showSpectrums) {
-  //   window.$dialog.warning({
-  //     title: "音频通道占用",
-  //     content:
-  //       "由于系统限制，切换音频输出设备会导致音乐频谱失效，将会关闭音乐频谱，并将于热重载后生效（ 请点击右上角的设置菜单中的热重载按钮 ），是否继续？",
-  //     positiveText: "继续",
-  //     negativeText: "取消",
-  //     closeOnEsc: false,
-  //     closable: false,
-  //     maskClosable: false,
-  //     autoFocus: false,
-  //     onPositiveClick: () => {
-  //       showSpectrums.value = false;
-  //       settingStore.showSpectrums = false;
-  //       player.toggleOutputDevice(deviceId);
-  //       window.$message.success(`已切换输出设备为 ${option.label}`);
-  //     },
-  //     onNegativeClick: () => {
-  //       settingStore.playDevice = "default";
-  //     },
-  //   });
-  // } else {
-  //   player.toggleOutputDevice(deviceId);
-  //   window.$message.success(`已切换输出设备为 ${option.label}`);
-  // }
   player.toggleOutputDevice(deviceId);
   window.$message.success(`已切换输出设备为 ${option.label}`);
 };
 
 // 显示音乐频谱更改
 const showSpectrumsChange = (value: boolean) => {
-  if (value) {
-    // if (settingStore.playDevice !== "default") {
-    //   window.$dialog.warning({
-    //     title: "音频通道占用",
-    //     content: "开启音乐频谱会导致自定义音频输出设备失效，将会恢复默认输出设备，是否继续开启？",
-    //     positiveText: "开启",
-    //     negativeText: "取消",
-    //     onPositiveClick: () => {
-    //       showSpectrums.value = true;
-    //       settingStore.showSpectrums = true;
-    //       settingStore.playDevice = "default";
-    //       player.toggleOutputDevice("default");
-    //     },
-    //   });
-    //   return;
-    // }
-    showSpectrums.value = true;
-    settingStore.showSpectrums = true;
-  } else {
-    showSpectrums.value = false;
-    settingStore.showSpectrums = false;
-  }
+  showSpectrums.value = value;
+  settingStore.showSpectrums = value;
 };
 
 onMounted(() => {

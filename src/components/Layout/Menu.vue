@@ -35,14 +35,14 @@ import { openCreatePlaylist } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 const router = useRouter();
-const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 // 菜单数据
 const menuRef = ref<MenuInst | null>(null);
@@ -272,8 +272,7 @@ const menuUpdate = (key: string, item: MenuOption) => {
       // 更改播放模式
       statusStore.personalFmMode = true;
       statusStore.playHeartbeatMode = false;
-      player.resetStatus();
-      player.initPlayer();
+      player.playSong();
     }
     statusStore.showFullPlayer = true;
     window.$message.info("已开启私人漫游", { icon: renderIcon("Radio") });
@@ -311,17 +310,18 @@ const checkMenuItem = () => {
     (router.currentRoute.value.matched?.[0]?.name as string) ||
     (router.currentRoute.value?.name as string);
   if (!routerName) return;
-  // 处理本地歌曲子路由
-  if (routerName.startsWith("local-")) {
-    routerName = "local";
-  }
-  // 处理收藏子路由
-  if (routerName.startsWith("like-") && routerName !== "like-songs") {
-    routerName = "like";
-  }
-  // 处理下载子路由
-  if (routerName.startsWith("download-")) {
-    routerName = "download";
+  // 处理路由名称
+  const prefixMap = [
+    { prefix: "discover-", name: "discover" },
+    { prefix: "local-", name: "local" },
+    { prefix: "like-", name: "like", exclude: "like-songs" },
+    { prefix: "download-", name: "download" },
+  ];
+  for (const item of prefixMap) {
+    if (routerName.startsWith(item.prefix) && (!item.exclude || routerName !== item.exclude)) {
+      routerName = item.name;
+      break;
+    }
   }
   // 显示菜单
   menuRef.value?.showOption(routerName);

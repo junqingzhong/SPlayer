@@ -2,11 +2,11 @@ import { isElectron } from "./env";
 import { openSetting, openUpdateApp } from "./modal";
 import { useMusicStore, useDataStore, useStatusStore } from "@/stores";
 import { toLikeSong } from "./auth";
-import { usePlayer } from "./player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { cloneDeep } from "lodash-es";
-import songManager from "./songManager";
 import { SettingType } from "@/types/main";
 import { handleProtocolUrl } from "@/utils/protocol";
+import { getPlayerInfoObj } from "./format";
 
 // 关闭更新状态
 const closeUpdateStatus = () => {
@@ -18,7 +18,7 @@ const closeUpdateStatus = () => {
 const initIpc = () => {
   try {
     if (!isElectron) return;
-    const player = usePlayer();
+    const player = usePlayerController();
     // 播放
     window.electron.ipcRenderer.on("play", () => player.play());
     // 暂停
@@ -42,7 +42,9 @@ const initIpc = () => {
       await toLikeSong(musicStore.playSong, !dataStore.isLikeSong(musicStore.playSong.id));
     });
     // 开启设置
-    window.electron.ipcRenderer.on("openSetting", (_, type: SettingType) => openSetting(type));
+    window.electron.ipcRenderer.on("openSetting", (_, type: SettingType, scrollTo?: string) =>
+      openSetting(type, scrollTo),
+    );
     // 桌面歌词开关
     window.electron.ipcRenderer.on("toogleDesktopLyric", () => player.toggleDesktopLyric());
     // 显式关闭桌面歌词
@@ -52,7 +54,7 @@ const initIpc = () => {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
       if (player) {
-        const { name, artist } = songManager.getPlayerInfoObj() || {};
+        const { name, artist } = getPlayerInfoObj() || {};
         window.electron.ipcRenderer.send(
           "update-desktop-lyric-data",
           cloneDeep({

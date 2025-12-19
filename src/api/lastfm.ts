@@ -304,11 +304,3 @@ export const getArtistTopTracks = async (artist: string, limit: number = 50) => 
 export const getAlbumInfo = async (artist: string, album: string) => {
   return await lastfmRequest("album.getInfo", { artist, album });
 };
-
-/**
- * 检查 Last.fm 配置是否有效
- */
-export const isLastfmConfigured = (): boolean => {
-  const { apiKey, apiSecret } = getApiConfig();
-  return Boolean(apiKey && apiSecret);
-};
