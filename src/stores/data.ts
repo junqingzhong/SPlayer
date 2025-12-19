@@ -246,16 +246,18 @@ export const useDataStore = defineStore("data", {
         await musicDB.setItem("playList", cloneDeep(this.playList));
         return 0;
       }
+      // 避免直接修改 state
+      const newList = [...this.playList];
       // 在当前播放位置之后插入歌曲
       const indexAdd = index + 1;
-      this.playList.splice(indexAdd, 0, song);
+      newList.splice(indexAdd, 0, song);
       // 移除重复的歌曲（如果存在）
-      const playList = this.playList.filter((item, idx) => idx === indexAdd || item.id !== song.id);
+      const finalList = newList.filter((item, idx) => idx === indexAdd || item.id !== song.id);
       // 更新本地存储
-      this.playList = markRaw(playList);
-      await musicDB.setItem("playList", cloneDeep(playList));
+      this.playList = markRaw(finalList);
+      await musicDB.setItem("playList", cloneDeep(finalList));
       // 返回刚刚插入的歌曲索引
-      return playList.indexOf(song);
+      return finalList.indexOf(song);
     },
     /**
      * 设置播放历史
