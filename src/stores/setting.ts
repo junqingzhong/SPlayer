@@ -256,6 +256,16 @@ export interface SettingState {
   registryProtocol: {
     orpheus: boolean;
   };
+  /** Last.fm 集成 */
+  lastfm: {
+    enabled: boolean;
+    apiKey: string;
+    apiSecret: string;
+    sessionKey: string;
+    username: string;
+    scrobbleEnabled: boolean;
+    nowPlayingEnabled: boolean;
+  };
   /** 播放器跟随封面主色 */
   playerFollowCoverColor: boolean;
   /** 进度条悬浮时显示歌词 */
@@ -389,6 +399,15 @@ export const useSettingStore = defineStore("setting", {
     registryProtocol: {
       orpheus: false,
     },
+    lastfm: {
+      enabled: false,
+      apiKey: "",
+      apiSecret: "",
+      sessionKey: "",
+      username: "",
+      scrobbleEnabled: true,
+      nowPlayingEnabled: true,
+    },
     playerFollowCoverColor: true,
     progressLyricShow: true,
   }),
@@ -399,6 +418,13 @@ export const useSettingStore = defineStore("setting", {
      */
     getFadeTime(state): number {
       return state.songVolumeFade ? state.songVolumeFadeTime : 0;
+    },
+    /**
+     * 检查 Last.fm 配置是否有效
+     */
+    isLastfmConfigured(state): boolean {
+      const { lastfm } = state;
+      return Boolean(lastfm.apiKey && lastfm.apiSecret);
     },
   },
   actions: {

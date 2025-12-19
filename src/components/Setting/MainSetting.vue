@@ -41,6 +41,8 @@
         <KeyboardSetting v-else-if="activeKey === 'keyboard'" />
         <!-- 本地 -->
         <LocalSetting v-else-if="activeKey === 'local'" />
+        <!-- 第三方 -->
+        <ThirdSetting v-else-if="activeKey === 'third'" />
         <!-- 其他 -->
         <OtherSetting v-else-if="activeKey === 'other'" />
         <!-- 关于 -->
@@ -95,6 +97,11 @@ const menuOptions: MenuOption[] = [
     label: "本地与下载",
     show: isElectron,
     icon: renderIcon("Storage"),
+  },
+  {
+    key: "third",
+    label: "第三方设置",
+    icon: renderIcon("Extension"),
   },
   {
     key: "other",
