@@ -95,7 +95,7 @@
         <n-card class="set-item">
           <div class="label">
             <n-text class="name">缓存大小上限</n-text>
-            <n-text class="tip" :depth="3">达到上限后将清理最旧的缓存，数值可以是小数，最低 2GB</n-text>
+            <n-text class="tip" :depth="3">达到上限后将清理最旧的缓存，可以是小数，最低 2GB</n-text>
           </div>
           <n-input-group class="set">
             <n-input-number
@@ -105,31 +105,35 @@
               :max="9999"
               :style="{
                 width: cacheLimited ? '55%' : '0%',
-                transition: isMounted ? 'width 0.3s ease' : 'none',
+                transition: 'width 0.3s',
               }"
-              @update:value="(value) => {
-                cacheLimit = value ?? 2;
-                changeCacheLimit(cacheLimit);
-              }"
+              @update:value="
+                (value) => {
+                  cacheLimit = value ?? 2;
+                  changeCacheLimit(cacheLimit);
+                }
+              "
             />
             <n-select
               v-model:value="cacheLimited"
               :options="[
                 { label: '不限制', value: 0 },
-                { label: cacheLimited === 0 ? '输入数值 (单位 GB)' : 'GB', value: 1 },
+                { label: cacheLimited === 0 ? '自定义大小 (GB)' : 'GB', value: 1 },
               ]"
               :style="{
                 width: cacheLimited ? '45%' : '100%',
-                transition: isMounted ? 'width 0.3s ease' : 'none',
+                transition: 'width 0.3s',
               }"
-              @update:value="(value) => {
-                if (value === 0) {
-                  changeCacheLimit(0);
-                } else {
-                  if (cacheLimit === 0) cacheLimit = 2;
-                  changeCacheLimit(cacheLimit);
+              @update:value="
+                (value) => {
+                  if (value === 0) {
+                    changeCacheLimit(0);
+                  } else {
+                    if (cacheLimit === 0) cacheLimit = 2;
+                    changeCacheLimit(cacheLimit);
+                  }
                 }
-              }"
+              "
             />
           </n-input-group>
         </n-card>
@@ -158,7 +162,7 @@
         <n-button type="error" strong secondary @click="confirmClearCache"> 清空缓存 </n-button>
       </n-card>
     </div>
-    <div v-if="isDevBuild" class="set-list">
+    <div v-if="statusStore.isDeveloperMode" class="set-list">
       <n-h3 prefix="bar"> 下载配置 </n-h3>
       <n-card class="set-item">
         <div class="label">
@@ -309,17 +313,15 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingStore } from "@/stores";
+import { useSettingStore, useStatusStore } from "@/stores";
 import { changeLocalLyricPath, changeLocalMusicPath, formatFileSize } from "@/utils/helper";
 import { songLevelData, getSongLevelsData } from "@/utils/meta";
 import { useCacheManager, type CacheResourceType } from "@/core/resource/CacheManager";
 import { pick } from "lodash-es";
-import { isDevBuild } from "@/utils/env";
 
+const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const cacheManager = useCacheManager();
-
-const isMounted = ref<boolean>(false);
 
 const cachePath = ref<string>("");
 const cacheSizeDisplay = ref<string>("--");
@@ -470,7 +472,6 @@ onMounted(async () => {
     console.error("读取缓存路径失败:", error);
   }
   await loadCacheSize();
-  isMounted.value = true;
 });
 </script>
 

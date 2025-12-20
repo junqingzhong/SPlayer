@@ -239,10 +239,6 @@ export interface SettingState {
   hideHeartbeatMode: boolean;
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
-  /** 应用启动次数 */
-  appLaunchCount: number;
-  /** 隐藏 Star 弹窗 */
-  hideStarPopup: boolean;
   /** 首页栏目顺序和显示配置 */
   homePageSections: Array<{
     key: "playlist" | "radar" | "artist" | "video" | "radio" | "album";
@@ -385,8 +381,6 @@ export const useSettingStore = defineStore("setting", {
     hideLikedPlaylists: false,
     hideHeartbeatMode: false,
     enableSearchKeyword: true,
-    appLaunchCount: 0,
-    hideStarPopup: true,
     homePageSections: [
       { key: "playlist", name: "专属歌单", visible: true, order: 0 },
       { key: "radar", name: "雷达歌单", visible: true, order: 1 },

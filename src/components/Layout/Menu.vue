@@ -34,7 +34,7 @@ import { renderIcon } from "@/utils/helper";
 import { openCreatePlaylist } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import { isLogin } from "@/utils/auth";
-import { isDevBuild, isElectron } from "@/utils/env";
+import { isElectron } from "@/utils/env";
 import { usePlayerController } from "@/core/player/PlayerController";
 
 const router = useRouter();
@@ -105,7 +105,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
               h(NText, null, () => "我喜欢的音乐"),
               !settingStore.hideHeartbeatMode
                 ? h(NButton, {
-                    type: "tertiary",
+                    type: "primary",
                     round: true,
                     strong: true,
                     secondary: true,
@@ -145,7 +145,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
               },
               () => "下载管理",
             ),
-          show: isDevBuild && isElectron && !settingStore.hideDownload,
+          show: statusStore.isDeveloperMode && isElectron && !settingStore.hideDownload,
           icon: renderIcon("Download"),
         },
         {

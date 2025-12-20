@@ -19,7 +19,7 @@
           {{ packageJson.author }}
         </n-text>
         <n-text class="name">SPlayer</n-text>
-        <n-tag v-if="isDevBuild" class="version" size="small" type="warning" round>
+        <n-tag v-if="statusStore.isDeveloperMode" class="version" size="small" type="warning" round>
           DEV · v{{ packageJson.version }}
         </n-tag>
         <n-text v-else class="version" depth="3">v{{ packageJson.version }}</n-text>
@@ -58,10 +58,13 @@
 import type { MenuOption, NScrollbar } from "naive-ui";
 import type { SettingType } from "@/types/main";
 import { renderIcon } from "@/utils/helper";
-import { isDevBuild, isElectron } from "@/utils/env";
+import { isElectron } from "@/utils/env";
+import { useStatusStore } from "@/stores";
 import packageJson from "@/../package.json";
 
 const props = defineProps<{ type: SettingType; scrollTo?: string }>();
+
+const statusStore = useStatusStore();
 
 // 设置内容
 const setScrollbar = ref<InstanceType<typeof NScrollbar> | null>(null);

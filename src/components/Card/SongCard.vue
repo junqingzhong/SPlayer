@@ -420,6 +420,7 @@ const localCover = async (show: boolean) => {
     justify-content: center;
     width: 40px;
     .n-icon {
+      color: var(--primary-hex);
       transition: transform 0.3s;
       cursor: pointer;
       &:hover {

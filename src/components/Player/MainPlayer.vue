@@ -201,7 +201,6 @@ import {
 } from "@/utils/modal";
 import { useSongManager } from "@/core/player/SongManager";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { isDevBuild } from "@/utils/env";
 
 const router = useRouter();
 const dataStore = useDataStore();
@@ -290,7 +289,7 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
     {
       key: "download",
       label: "下载歌曲",
-      show: isDevBuild && !isLocal && isSong,
+      show: statusStore.isDeveloperMode && !isLocal && isSong,
       props: { onClick: () => openDownloadSong(musicStore.playSong) },
       icon: renderIcon("Download"),
     },
