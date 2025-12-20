@@ -297,7 +297,6 @@ export const useStatusStore = defineStore("status", {
       "eqEnabled",
       "eqBands",
       "eqPreset",
-      "developerMode",
     ],
   },
 });
