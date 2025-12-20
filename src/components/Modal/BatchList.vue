@@ -41,6 +41,7 @@
       <n-flex class="menu">
         <!-- 批量下载 -->
         <n-button
+          v-if="isDevBuild"
           :disabled="!checkCount || isLocal"
           type="primary"
           strong
@@ -112,6 +113,7 @@ import { deleteSongs } from "@/utils/auth";
 import { NInput, NInputNumber, NButton, NText, NFlex } from "naive-ui";
 import { useLocalStore } from "@/stores";
 import { openDownloadSongs } from "@/utils/modal";
+import { isDevBuild } from "@/utils/env";
 
 const localStore = useLocalStore();
 

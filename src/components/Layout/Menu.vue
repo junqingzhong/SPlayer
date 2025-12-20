@@ -34,7 +34,7 @@ import { renderIcon } from "@/utils/helper";
 import { openCreatePlaylist } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import { isLogin } from "@/utils/auth";
-import { isElectron } from "@/utils/env";
+import { isDevBuild, isElectron } from "@/utils/env";
 import { usePlayerController } from "@/core/player/PlayerController";
 
 const router = useRouter();
@@ -145,7 +145,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
               },
               () => "下载管理",
             ),
-          show: isElectron && !settingStore.hideDownload,
+          show: isDevBuild && isElectron && !settingStore.hideDownload,
           icon: renderIcon("Download"),
         },
         {

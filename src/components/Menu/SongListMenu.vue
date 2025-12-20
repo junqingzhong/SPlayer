@@ -33,6 +33,7 @@ import { songUrl } from "@/api/song";
 import { dailyRecommendDislike } from "@/api/rec";
 import { formatSongsList } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { isDevBuild } from "@/utils/env";
 
 const emit = defineEmits<{ removeSong: [index: number[]] }>();
 
@@ -250,14 +251,14 @@ const openDropdown = (
         {
           key: "download",
           label: "下载歌曲",
-          show: !isLocal && type === "song" && !isDownloading,
+          show: isDevBuild && !isLocal && type === "song" && !isDownloading,
           props: { onClick: () => openDownloadSong(song) },
           icon: renderIcon("Download"),
         },
         {
           key: "retry-download",
           label: "重试下载",
-          show: isDownloading,
+          show: isDevBuild && isDownloading,
           props: { onClick: () => downloadManager.retryDownload(song.id) },
           icon: renderIcon("Refresh"),
         },

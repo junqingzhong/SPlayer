@@ -129,7 +129,7 @@
         <n-button type="error" strong secondary @click="confirmClearCache"> 清空缓存 </n-button>
       </n-card>
     </div>
-    <div class="set-list">
+    <div v-if="isDevBuild" class="set-list">
       <n-h3 prefix="bar"> 下载配置 </n-h3>
       <n-card class="set-item">
         <div class="label">
@@ -285,6 +285,7 @@ import { changeLocalLyricPath, changeLocalMusicPath, formatFileSize } from "@/ut
 import { songLevelData, getSongLevelsData } from "@/utils/meta";
 import { useCacheManager, type CacheResourceType } from "@/core/resource/CacheManager";
 import { pick } from "lodash-es";
+import { isDevBuild } from "@/utils/env";
 
 const settingStore = useSettingStore();
 const cacheManager = useCacheManager();
