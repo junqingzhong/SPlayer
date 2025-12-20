@@ -95,14 +95,43 @@
         <n-card class="set-item">
           <div class="label">
             <n-text class="name">缓存大小上限</n-text>
-            <n-text class="tip" :depth="3">达到上限后将清理最旧的缓存</n-text>
+            <n-text class="tip" :depth="3">达到上限后将清理最旧的缓存，数值可以是小数，最低 2GB</n-text>
           </div>
-          <n-select
-            v-model:value="cacheLimit"
-            :options="cacheSizeOptions"
-            class="set"
-            @update:value="changeCacheLimit"
-          />
+          <n-input-group class="set">
+            <n-input-number
+              :value="cacheLimit"
+              :update-value-on-input="false"
+              :min="2"
+              :max="9999"
+              :style="{
+                width: cacheLimited ? '55%' : '0%',
+                transition: isMounted ? 'width 0.3s ease' : 'none',
+              }"
+              @update:value="(value) => {
+                cacheLimit = value ?? 2;
+                changeCacheLimit(cacheLimit);
+              }"
+            />
+            <n-select
+              v-model:value="cacheLimited"
+              :options="[
+                { label: '不限制', value: 0 },
+                { label: cacheLimited === 0 ? '输入数值 (单位 GB)' : 'GB', value: 1 },
+              ]"
+              :style="{
+                width: cacheLimited ? '45%' : '100%',
+                transition: isMounted ? 'width 0.3s ease' : 'none',
+              }"
+              @update:value="(value) => {
+                if (value === 0) {
+                  changeCacheLimit(0);
+                } else {
+                  if (cacheLimit === 0) cacheLimit = 2;
+                  changeCacheLimit(cacheLimit);
+                }
+              }"
+            />
+          </n-input-group>
         </n-card>
         <n-card class="set-item">
           <div class="label">
@@ -289,9 +318,13 @@ import { isDevBuild } from "@/utils/env";
 
 const settingStore = useSettingStore();
 const cacheManager = useCacheManager();
+
+const isMounted = ref<boolean>(false);
+
 const cachePath = ref<string>("");
 const cacheSizeDisplay = ref<string>("--");
 const cacheLimit = ref<number>(10); // 本地状态
+const cacheLimited = ref<number>(1); // 是否限制缓存 (1 为限制)
 
 // 默认下载音质选项
 const downloadQualityOptions = computed(() => {
@@ -332,41 +365,6 @@ const folderStrategyOptions = [
   },
 ];
 
-const cacheSizeOptions = [
-  {
-    label: "不限制",
-    value: 0,
-  },
-  {
-    label: "5G",
-    value: 5,
-  },
-  {
-    label: "10G",
-    value: 10,
-  },
-  {
-    label: "15G",
-    value: 15,
-  },
-  {
-    label: "20G",
-    value: 20,
-  },
-  {
-    label: "25G",
-    value: 25,
-  },
-  {
-    label: "30G",
-    value: 30,
-  },
-  {
-    label: "50G",
-    value: 50,
-  },
-];
-
 // 选择下载路径
 const choosePath = async () => {
   const path = await window.electron.ipcRenderer.invoke("choose-path");
@@ -397,7 +395,6 @@ const confirmChangeCachePath = () => {
 
 // 更改缓存大小限制
 const changeCacheLimit = async (value: number) => {
-  cacheLimit.value = value;
   await window.api.store.set("cacheLimit", value);
 };
 
@@ -465,11 +462,15 @@ onMounted(async () => {
     const path = await window.api.store.get("cachePath");
     cachePath.value = path || "";
     const limit = await window.api.store.get("cacheLimit");
-    if (typeof limit === "number") cacheLimit.value = limit;
+    if (typeof limit === "number") {
+      cacheLimit.value = limit;
+      if (limit === 0) cacheLimited.value = 0;
+    }
   } catch (error) {
     console.error("读取缓存路径失败:", error);
   }
   await loadCacheSize();
+  isMounted.value = true;
 });
 </script>
 
