@@ -54,7 +54,7 @@ router.afterEach((to, from) => {
   // 进度条
   window.$loadingBar.finish();
   // 路由变化时重置滚动位置（排除仅 hash 变化的情况）
-  if (to.path !== from.path || to.query.id !== from.query.id) {
+  if (to.fullPath.split("#")[0] !== from.fullPath.split("#")[0]) {
     const mainContent = document.getElementById("main-content");
     if (mainContent) {
       const scrollContainer = mainContent.querySelector(".n-scrollbar-container");
