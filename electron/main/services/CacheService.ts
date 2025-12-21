@@ -130,7 +130,21 @@ export class CacheService {
 
       for (const type of Object.keys(this.CACHE_SUB_DIR) as CacheResourceType[]) {
         const dir = join(basePath, this.CACHE_SUB_DIR[type]);
-        if (!existsSync(dir)) await mkdir(dir, { recursive: true });
+        if (!existsSync(dir)) {
+          await mkdir(dir, { recursive: true });
+        } else {
+          // 清理可能残留的临时文件 (.tmp)
+          try {
+            const files = await readdir(dir);
+            for (const file of files) {
+              if (file.endsWith(".tmp")) {
+                await rm(join(dir, file), { force: true });
+              }
+            }
+          } catch (e) {
+            cacheLog.warn(`⚠️ 无法清理目录中的临时文件: ${dir}`, e);
+          }
+        }
         // 计算初始大小
         this.sizes[type] = await this.calculateDirSize(dir);
       }

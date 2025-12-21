@@ -208,7 +208,7 @@ const localCover = async (show: boolean) => {
   // 直接复用
   if (
     currentCover &&
-    currentCover !== "/images/song.jpg?assest" &&
+    currentCover !== "/images/song.jpg?asset" &&
     !currentCover.startsWith("blob:")
   ) {
     return;
@@ -420,6 +420,7 @@ const localCover = async (show: boolean) => {
     justify-content: center;
     width: 40px;
     .n-icon {
+      color: var(--primary-hex);
       transition: transform 0.3s;
       cursor: pointer;
       &:hover {

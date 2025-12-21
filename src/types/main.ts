@@ -267,7 +267,7 @@ export type SongLevelDataType = {
 };
 
 // setting
-export type SettingType = "general" | "play" | "lyrics" | "keyboard" | "local" | "other" | "about";
+export type SettingType = "general" | "play" | "lyrics" | "keyboard" | "local" | "third" | "other" | "about";
 
 // UpdateLog
 export type UpdateLogType = {
