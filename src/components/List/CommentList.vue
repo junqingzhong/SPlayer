@@ -16,7 +16,7 @@
             >
               <template #placeholder>
                 <div class="cover-loading">
-                  <img src="/images/avatar.jpg?assest" class="loading-img" alt="loading-img" />
+                  <img src="/images/avatar.jpg?asset" class="loading-img" alt="loading-img" />
                 </div>
               </template>
             </n-image>
@@ -25,7 +25,7 @@
               v-if="item.user.isAnnualCount"
               class="annual"
               alt="annual"
-              src="/images/annual.png?assest"
+              src="/images/annual.png?asset"
               title="网易音乐人"
             />
           </div>

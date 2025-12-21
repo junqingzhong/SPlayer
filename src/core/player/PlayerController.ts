@@ -15,6 +15,7 @@ import { heartRateList } from "@/api/playlist";
 import { formatSongsList, getPlayerInfoObj, getPlaySongData } from "@/utils/format";
 import { calculateLyricIndex } from "@/utils/calc";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
+import lastfmScrobbler from "@/utils/lastfmScrobbler";
 
 /**
  * 播放器 IPC 服务
@@ -128,7 +129,7 @@ class PlayerController {
     }
     try {
       // 停止当前播放
-      audioManager.pause();
+      audioManager.stop();
       musicStore.playSong = playSongData;
       // 重置播放进度
       statusStore.currentTime = 0;
@@ -228,6 +229,13 @@ class PlayerController {
 
     // 预载下一首
     if (settingStore.useNextPrefetch) songManager.getNextSongUrl();
+
+    // Last.fm Scrobbler
+    if (settingStore.lastfm.enabled && settingStore.isLastfmConfigured) {
+      const { name, artist, album } = getPlayerInfoObj() || {};
+      const durationInSeconds = song.duration > 0 ? Math.floor(song.duration / 1000) : undefined;
+      lastfmScrobbler.startPlaying(name || "", artist || "", album, durationInSeconds);
+    }
   }
 
   /**
@@ -252,7 +260,7 @@ class PlayerController {
         const blobURL = blobURLManager.createBlobURL(coverData.data, coverData.format, path);
         if (blobURL) musicStore.playSong.cover = blobURL;
       } else {
-        musicStore.playSong.cover = "/images/song.jpg?assest";
+        musicStore.playSong.cover = "/images/song.jpg?asset";
       }
 
       // 获取元数据
@@ -320,6 +328,8 @@ class PlayerController {
       // 只有真正播放了才重置重试计数
       if (this.retryInfo.count > 0) this.retryInfo.count = 0;
       this.failSkipCount = 0;
+      // Last.fm Scrobbler
+      lastfmScrobbler.resume();
       // IPC 通知
       ipcService.sendPlayStatus(true);
       ipcService.sendSongChange(playTitle, artist || "", name || "");
@@ -331,12 +341,14 @@ class PlayerController {
       statusStore.playStatus = false;
       if (!isElectron) window.document.title = "SPlayer";
       ipcService.sendPlayStatus(false);
+      lastfmScrobbler.pause();
       console.log(`⏸️ [${musicStore.playSong?.id}] 歌曲暂停`);
     });
 
     // 播放结束
     audioManager.on("ended", () => {
       console.log(`⏹️ [${musicStore.playSong?.id}] 歌曲结束`);
+      lastfmScrobbler.stop();
       // 检查定时关闭
       if (this.checkAutoClose()) return;
       // 自动播放下一首
@@ -526,7 +538,7 @@ class PlayerController {
 
     // 先暂停当前播放
     const audioManager = useAudioManager();
-    audioManager.pause();
+    audioManager.stop();
 
     // 私人FM
     if (statusStore.personalFmMode) {
