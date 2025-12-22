@@ -4,7 +4,7 @@
       :key="amLyricsData?.[0]?.words?.length"
       :class="['lyric-am', { pure: statusStore.pureLyricMode }]"
       :style="{
-        '--amll-lp-color': 'rgb(var(--main-cover-color))',
+        '--amll-lp-color': 'rgb(var(--main-cover-color, 239 239 239))',
       }"
     >
       <div v-if="statusStore.lyricLoading" class="lyric-loading">歌词正在加载中...</div>
@@ -150,8 +150,6 @@ onBeforeUnmount(() => {
     top: 0;
     padding-left: 10px;
     padding-right: 80px;
-    --amll-lp-color: rgb(239, 239, 239);
-    // margin-left: -2rem;
   }
 
   &.pure {
