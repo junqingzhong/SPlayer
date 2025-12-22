@@ -163,5 +163,6 @@ declare module 'vue' {
     UpdatePlaylist: typeof import('./src/components/Modal/UpdatePlaylist.vue')['default']
     User: typeof import('./src/components/Layout/User.vue')['default']
     UserAgreement: typeof import('./src/components/Modal/UserAgreement.vue')['default']
+    VirtualScroll: typeof import('./src/components/UI/VirtualScroll.vue')['default']
   }
 }
