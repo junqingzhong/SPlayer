@@ -1,9 +1,5 @@
 <template>
-  <div
-    ref="wrapperRef"
-    class="virtual-scroll-wrapper"
-    :style="{ height: containerHeightStyle }"
-  >
+  <div ref="wrapperRef" class="virtual-scroll-wrapper" :style="{ height: containerHeightStyle }">
     <n-scrollbar
       ref="scrollbarRef"
       class="custom-virtual-list"
@@ -39,7 +35,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUpdated, nextTick } from "vue";
 import { NScrollbar } from "naive-ui";
 import { useElementSize } from "@vueuse/core";
 
@@ -76,12 +71,10 @@ const emit = defineEmits<{
   (e: "reachBottom"): void;
 }>();
 
-// 容器引用（现在指向外层div）
 const wrapperRef = ref<HTMLElement | null>(null);
-// 滚动条引用
 const scrollbarRef = ref<InstanceType<typeof NScrollbar> | null>(null);
 
-// 使用 VueUse 测量外层容器高度，而不是尝试测量 NScrollbar 的实例
+// 测量外层容器高度
 const { height: containerHeight } = useElementSize(wrapperRef);
 
 // 项目元素引用
@@ -91,9 +84,9 @@ const itemRefs = ref<HTMLElement[]>([]);
 const scrollTop = ref(0);
 
 // 存储每个项目的实际高度
-const itemHeights = ref<number[]>([]);
+const itemHeights = shallowRef<number[]>([]);
 // 存储每个项目的累积高度（用于定位）
-const itemTops = ref<number[]>([]);
+const itemTops = shallowRef<number[]>([]);
 
 // 当前可见的起始索引
 const actualStartIndex = ref(0);
@@ -113,23 +106,20 @@ const viewportHeight = computed(() => {
 
 // 初始化高度数组
 const initializeHeights = () => {
-  if (props.itemFixed) return; // 定高模式无需初始化数组
+  if (props.itemFixed) return;
 
   const length = props.items.length;
   // 如果之前已经有数据，尽量复用，否则重置
   if (itemHeights.value.length !== length) {
     const oldHeights = itemHeights.value;
-    itemHeights.value = Array.from(
-      { length },
-      (_, i) => oldHeights[i] || props.itemHeight,
-    );
+    itemHeights.value = Array.from({ length }, (_, i) => oldHeights[i] || props.itemHeight);
   }
   updateTops();
 };
 
 // 更新累积高度
 const updateTops = () => {
-  if (props.itemFixed) return; // 定高模式无需更新累积高度数组
+  if (props.itemFixed) return;
 
   itemTops.value = [];
   let top = 0;
@@ -146,11 +136,7 @@ const totalHeight = computed(() => {
   }
   if (itemTops.value.length === 0) return props.paddingBottom;
   const lastIndex = itemTops.value.length - 1;
-  return (
-    itemTops.value[lastIndex] +
-    itemHeights.value[lastIndex] +
-    props.paddingBottom
-  );
+  return itemTops.value[lastIndex] + itemHeights.value[lastIndex] + props.paddingBottom;
 });
 
 // 计算可见区域
@@ -168,12 +154,12 @@ const calculateVisibleRange = (currentScrollTop: number) => {
   let endIndex = 0;
 
   if (props.itemFixed) {
-    // 定高模式：直接数学计算
+    // 定高模式
     startIndex = Math.floor(currentScrollTop / props.itemHeight);
     const visibleCount = Math.ceil(vHeight / props.itemHeight);
     endIndex = startIndex + visibleCount;
   } else {
-    // 动态高度模式：二分查找
+    // 动态高度模式
     let start = 0;
     let end = itemTops.value.length - 1;
 
@@ -204,11 +190,13 @@ const calculateVisibleRange = (currentScrollTop: number) => {
   }
 
   // 应用缓冲区
-  actualStartIndex.value = Math.max(0, startIndex - props.bufferSize);
-  actualEndIndex.value = Math.min(
-    props.items.length - 1,
-    endIndex + props.bufferSize,
-  );
+  const newStart = Math.max(0, startIndex - props.bufferSize);
+  const newEnd = Math.min(props.items.length - 1, endIndex + props.bufferSize);
+
+  if (newStart !== actualStartIndex.value || newEnd !== actualEndIndex.value) {
+    actualStartIndex.value = newStart;
+    actualEndIndex.value = newEnd;
+  }
 };
 
 // 可见项
@@ -227,9 +215,9 @@ const offsetY = computed(() => {
   return itemTops.value[actualStartIndex.value];
 });
 
-// 测量项目高度（保留动态高度支持）
+// 测量项目高度
 const measureItemHeights = () => {
-  if (props.itemFixed) return; // 定高模式无需测量
+  if (props.itemFixed) return;
   if (!itemRefs.value.length || props.items.length === 0) return;
 
   let hasChanges = false;
@@ -240,13 +228,10 @@ const measureItemHeights = () => {
     if (actualIndex < 0 || actualIndex >= props.items.length) return;
 
     try {
-      const height = el.getBoundingClientRect().height; // 使用 getBoundingClientRect 更精确
+      const height = el.getBoundingClientRect().height;
 
       // 允许 1px 误差，避免频繁更新
-      if (
-        height > 0 &&
-        Math.abs(height - itemHeights.value[actualIndex]) > 0.5
-      ) {
+      if (height > 0 && Math.abs(height - itemHeights.value[actualIndex]) > 0.5) {
         itemHeights.value[actualIndex] = height;
         hasChanges = true;
       }
@@ -256,23 +241,33 @@ const measureItemHeights = () => {
   });
 
   if (hasChanges) {
+    triggerRef(itemHeights);
     updateTops();
   }
 };
 
 // 处理滚动事件
+let ticking = false;
 const handleScroll = (event: Event) => {
   const target = event.target as HTMLElement;
-  if (target) {
-    const { scrollTop: st, scrollHeight, clientHeight } = target;
-    scrollTop.value = st;
-    calculateVisibleRange(st);
-    emit("scroll", event);
+  if (!target) return;
 
-    // 触底检测
-    if (scrollHeight - st - clientHeight < 50) {
-      emit("reachBottom");
-    }
+  // 触发外部事件
+  emit("scroll", event);
+
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      const { scrollTop: st, scrollHeight, clientHeight } = target;
+      scrollTop.value = st;
+      calculateVisibleRange(st);
+
+      // 触底检测
+      if (scrollHeight - st - clientHeight < 50) {
+        emit("reachBottom");
+      }
+      ticking = false;
+    });
+    ticking = true;
   }
 };
 
@@ -323,11 +318,13 @@ watch(
   () => {
     initializeHeights();
     calculateVisibleRange(scrollTop.value);
+    // 重新测量高度
+    nextTick(measureItemHeights);
   },
   { deep: false },
-); // items 引用变化时触发
+);
 
-// 监听数据长度变化（针对数组变更）
+// 监听数据长度变化
 watch(
   () => props.items.length,
   () => {
@@ -341,6 +338,17 @@ watch(viewportHeight, () => {
   calculateVisibleRange(scrollTop.value);
 });
 
+// 监听可见区域变化，仅在非定高模式下触发测量
+watch(
+  () => [actualStartIndex.value, actualEndIndex.value],
+  () => {
+    if (!props.itemFixed) {
+      nextTick(measureItemHeights);
+    }
+  },
+  { flush: "post" },
+);
+
 // 组件挂载后初始化
 onMounted(() => {
   initializeHeights();
@@ -350,13 +358,8 @@ onMounted(() => {
     if (props.defaultScrollIndex) {
       scrollToIndex(props.defaultScrollIndex);
     }
-  });
-});
-
-// 组件更新后测量高度
-onUpdated(() => {
-  nextTick(() => {
-    measureItemHeights();
+    // 初始测量
+    if (!props.itemFixed) measureItemHeights();
   });
 });
 </script>
@@ -364,12 +367,14 @@ onUpdated(() => {
 <style scoped>
 .virtual-scroll-wrapper {
   width: 100%;
+  contain: layout paint;
+  overflow-anchor: none;
 }
 .custom-virtual-list {
-  will-change: transform; /* 优化滚动性能 */
+  /* will-change: transform; */
   width: 100%;
 }
 .virtual-item {
-  box-sizing: border-box;
+  contain: layout paint;
 }
 </style>

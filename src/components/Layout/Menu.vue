@@ -105,7 +105,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
               h(NText, null, () => "我喜欢的音乐"),
               !settingStore.hideHeartbeatMode
                 ? h(NButton, {
-                    type: "primary",
+                    type: statusStore.playHeartbeatMode ? "primary" : "default",
                     round: true,
                     strong: true,
                     secondary: true,
