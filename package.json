@@ -48,7 +48,6 @@
     "@pixi/filter-bulge-pinch": "^5.1.1",
     "@pixi/filter-color-matrix": "^7.4.3",
     "@pixi/sprite": "^7.4.3",
-    "@tanstack/vue-virtual": "^3.13.13",
     "@vueuse/core": "^13.9.0",
     "@vueuse/integrations": "^14.1.0",
     "axios": "^1.13.2",

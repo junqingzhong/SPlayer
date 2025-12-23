@@ -111,7 +111,7 @@
         />
       </n-card>
     </div>
-    <div v-if="isElectron&& statusStore.isDeveloperMode" class="set-list">
+    <div v-if="isElectron && statusStore.isDeveloperMode" class="set-list">
       <n-h3 prefix="bar">
         音乐解锁
         <n-tag type="warning" size="small" round>Beta</n-tag>
