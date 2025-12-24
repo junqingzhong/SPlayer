@@ -63,8 +63,6 @@ export interface SettingState {
   showYrc: boolean;
   /** 显示逐字歌词动画 */
   showYrcAnimation: boolean;
-  /** 显示逐字歌词长音发光效果 */
-  showYrcLongEffect: boolean;
   /** 显示歌词翻译 */
   showTran: boolean;
   /** 显示歌词音译 */
@@ -338,7 +336,6 @@ export const useSettingStore = defineStore("setting", {
     amllDbServer: defaultAMLLDbServer,
     showYrc: true,
     showYrcAnimation: true,
-    showYrcLongEffect: true,
     showTran: true,
     showRoma: true,
     lyricsPosition: "flex-start",

@@ -260,18 +260,6 @@
             class="set"
           />
         </n-card>
-        <n-card class="set-item">
-          <div class="label">
-            <n-text class="name">显示长音发光效果</n-text>
-            <n-text class="tip" :depth="3"> 当单词持续时间过长时显示发光效果 </n-text>
-          </div>
-          <n-switch
-            v-model:value="settingStore.showYrcLongEffect"
-            :disabled="settingStore.useAMLyrics || !settingStore.showYrcAnimation"
-            :round="false"
-            class="set"
-          />
-        </n-card>
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
