@@ -32,7 +32,9 @@
         <div class="card-header">
           <span class="magic-icon">✨</span>
           <div class="header-text">
-            您的设备应该是 <strong>{{ platformName }}</strong>
+            您的设备应该是
+            <span class="spacer"></span>
+            <strong>{{ platformName }}</strong>
             <span class="spacer"></span>
             <span v-if="archName" class="tag tag-theme">
               {{ archName }}
@@ -242,7 +244,7 @@ const getExtensionName = (name: string) => {
 const getArchDisplay = (name: string, platformId: string) => {
   const n = name.toLowerCase();
   if (n.includes("arm64") || n.includes("aarch64")) return "ARM64";
-  if (n.includes("x64") || n.includes("amd64")) return "x64";
+  if (n.includes("x64") || n.includes("x86_64") || n.includes("amd64")) return "x64";
   if (n.includes("ia32") || n.includes("x86")) return "32位 (x86)";
 
   if (platformId === "windows") return "x86 / x64 兼容";
@@ -260,8 +262,8 @@ const sortAssets = (assets: GitHubAsset[]) => {
   return assets.sort((a, b) => {
     const nA = a.name.toLowerCase();
     const nB = b.name.toLowerCase();
-    const isX64A = nA.includes("x64") || nA.includes("amd64");
-    const isX64B = nB.includes("x64") || nB.includes("amd64");
+    const isX64A = nA.includes("x64") || nA.includes("x86_64") || nA.includes("amd64");
+    const isX64B = nB.includes("x64") || nB.includes("x86_64") || nB.includes("amd64");
     if (isX64A && !isX64B) return -1;
     if (!isX64A && isX64B) return 1;
     return 0;
@@ -271,7 +273,7 @@ const sortAssets = (assets: GitHubAsset[]) => {
 const isArchCompatible = (name: string, targetArch: string) => {
   const n = name.toLowerCase();
   const isArmAsset = n.includes("arm64") || n.includes("aarch64");
-  const is32BitAsset = n.includes("ia32") || n.includes("x86");
+  const is32BitAsset = n.includes("ia32") || (n.includes("x86") && !n.includes("x86_64"));
 
   if (targetArch === "arm64") {
     return isArmAsset;
@@ -330,7 +332,7 @@ const recommendedAssets = computed(() => {
     if (dmg) result.push(dmg);
   } else if (p === "linux") {
     const appImage = assets.find(
-      (f) => f.name.toLowerCase().endsWith(".appimage") && isArchCompatible(f.name, arch),
+      (f) => f.name.endsWith(".AppImage") && isArchCompatible(f.name, arch),
     );
     const deb = assets.find((f) => f.name.endsWith(".deb") && isArchCompatible(f.name, arch));
 
@@ -406,7 +408,7 @@ const classifiedAssets = computed<PlatformGroup[]>(() => {
         {
           title: "通用运行包",
           desc: "AppImage",
-          assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".appimage"))),
+          assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".AppImage"))),
         },
         {
           title: "Debian / Ubuntu / Linux Mint...",
