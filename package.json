@@ -30,7 +30,10 @@
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win --config electron-builder.config.ts",
     "build:mac": "npm run build && electron-builder --mac --config electron-builder.config.ts",
-    "build:linux": "npm run build && electron-builder --linux --config electron-builder.config.ts"
+    "build:linux": "npm run build && electron-builder --linux --config electron-builder.config.ts",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@applemusic-like-lyrics/core": "^0.2.0",
@@ -116,6 +119,7 @@
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-vue-devtools": "^8.0.5",
     "vite-plugin-wasm": "^3.5.0",
+    "vitepress": "2.0.0-alpha.15",
     "vue": "^3.5.25",
     "vue-router": "^4.6.3",
     "vue-tsc": "2.2.12"
