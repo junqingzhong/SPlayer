@@ -240,26 +240,62 @@ export class SocketService {
       return;
     }
 
-    try {
-      const parsed = JSON.parse(message);
-      socketLog.info("📨 Received message:", parsed);
-
-      // 根据消息类型进行处理
-      if (parsed.type === "control") {
-        this.handleControlCommand(socket, parsed.data);
-      } else {
-        // 未知的消息类型
-        this.sendToClient(socket, {
-          type: "error",
-          data: { message: `Unknown message type: ${parsed.type}` },
-        });
+    // 处理 WebSocket 协议消息
+    const trimmedMessage = message.trim().toUpperCase();
+    // 自动回复 PONG
+    if (trimmedMessage === "PING") {
+      try {
+        if (socket.readyState === socket.OPEN) {
+          socket.send("PONG");
+        }
+      } catch {
+        // ignore
       }
-    } catch (error) {
-      socketLog.error("⚠️ Error handling message:", error);
-      // 如果消息格式不正确，可以发送错误响应
+      return;
+    }
+    // 解析 JSON
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(message);
+    } catch {
       this.sendToClient(socket, {
         type: "error",
-        data: { message: "Invalid message format" },
+        data: {
+          message: "消息格式错误，请发送有效的 JSON 格式消息",
+          received: message.substring(0, 100),
+        },
+      });
+      return;
+    }
+    // 解析对象结构
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      socketLog.warn("⚠️ Invalid message structure: not an object");
+      this.sendToClient(socket, {
+        type: "error",
+        data: { message: "消息格式错误，根对象必须是对象类型" },
+      });
+      return;
+    }
+
+    const messageObj = parsed as { type?: string; data?: unknown };
+    if (!messageObj.type) {
+      socketLog.warn("⚠️ Missing message type");
+      this.sendToClient(socket, {
+        type: "error",
+        data: { message: "消息格式错误，缺少 type 字段" },
+      });
+      return;
+    }
+    socketLog.log(`📨 Received message type: ${messageObj.type}`);
+    // 根据消息类型进行处理
+    if (messageObj.type === "control") {
+      this.handleControlCommand(socket, messageObj.data as { command?: string });
+    } else {
+      // 未知的消息类型
+      socketLog.warn(`⚠️ Unknown message type: ${messageObj.type}`);
+      this.sendToClient(socket, {
+        type: "error",
+        data: { message: `未知的消息类型: ${messageObj.type}` },
       });
     }
   }
