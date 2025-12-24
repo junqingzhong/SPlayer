@@ -406,23 +406,23 @@ const classifiedAssets = computed<PlatformGroup[]>(() => {
       icon: "🐧",
       groups: [
         {
-          title: "通用运行包",
-          desc: "AppImage",
+          title: "AppImage",
+          desc: "通用运行包",
           assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".AppImage"))),
         },
         {
-          title: "Debian / Ubuntu / Linux Mint...",
-          desc: "DEB 安装包",
+          title: "Debian 包",
+          desc: "Debian / Ubuntu / Linux Mint...",
           assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".deb"))),
         },
         {
-          title: "RedHat / Fedora / AlmaLinux...",
-          desc: "RPM 安装包",
+          title: "RPM 包",
+          desc: "Red Hat / Fedora / AlmaLinux...",
           assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".rpm"))),
         },
         {
-          title: "Arch Linux / Manjaro...",
-          desc: "Pacman 安装包",
+          title: "Pacman 包",
+          desc: "Arch Linux / Manjaro...",
           assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".pacman"))),
         },
         {
