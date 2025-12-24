@@ -78,6 +78,29 @@ const initSocketIpc = (): void => {
       });
     },
   );
+
+  // 音频事件广播
+  ipcMain.on("play-status-change", (_, status) => {
+    socketService.broadcast({
+      type: "status-change",
+      data: { status, timestamp: Date.now() },
+    });
+  });
+  ipcMain.on("play-lyric-change", (_, lyricData) => {
+    // 是否存在歌词
+    const { lrcData, yrcData } = lyricData;
+    if (!lrcData && !yrcData) return;
+    socketService.broadcast({
+      type: "lyric-change",
+      data: { lrcData, yrcData, timestamp: Date.now() },
+    });
+  });
+  ipcMain.on("play-song-change", (_, options) => {
+    socketService.broadcast({
+      type: "song-change",
+      data: { ...options, timestamp: Date.now() },
+    });
+  });
 };
 
 export default initSocketIpc;

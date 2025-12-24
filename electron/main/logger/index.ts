@@ -68,3 +68,4 @@ export const rendererLog = log.scope("renderer");
 export const shortcutLog = log.scope("shortcut");
 export const serverLog = log.scope("server");
 export const cacheLog = log.scope("cache");
+export const socketLog = log.scope("socket");

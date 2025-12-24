@@ -1,7 +1,8 @@
 import { WebSocketServer, type WebSocket } from "ws";
 import { createServer } from "net";
-import { serverLog } from "../logger";
+import { socketLog } from "../logger";
 import { useStore } from "../store";
+import mainWindow from "../windows/main-window";
 
 /**
  * WebSocket 主服务
@@ -65,7 +66,7 @@ export class SocketService {
       }
     }
 
-    serverLog.info(`🔌 Trying to start WebSocket server on port ${port}`);
+    socketLog.info(`🔌 Trying to start WebSocket server on port ${port}`);
 
     // 先验证端口是否可用
     const isAvailable = await this.testPort(port);
@@ -78,31 +79,21 @@ export class SocketService {
         this.currentPort = port;
 
         wss.on("connection", (socket: WebSocket) => {
-          this.clients.add(socket);
-          serverLog.info("🔗 WebSocket client connected");
-
-          socket.on("close", () => {
-            this.clients.delete(socket);
-            serverLog.info("🔌 WebSocket client disconnected");
-          });
-
-          socket.on("error", (error: Error) => {
-            serverLog.error("⚠️ WebSocket client error:", error);
-          });
+          this.handleClientConnection(socket);
         });
 
         wss.once("listening", () => {
-          serverLog.info(`✅ WebSocket server started on port ${port}`);
+          socketLog.info(`✅ WebSocket server started on port ${port}`);
           resolve({ port });
         });
 
         wss.once("error", (error: Error) => {
-          serverLog.error("❌ WebSocket server failed to start:", error);
+          socketLog.error("❌ WebSocket server failed to start:", error);
           this.cleanupServer();
           reject(error);
         });
       } catch (error) {
-        serverLog.error("❌ WebSocket server creation error:", error);
+        socketLog.error("❌ WebSocket server creation error:", error);
         this.cleanupServer();
         reject(error instanceof Error ? error : new Error(String(error)));
       }
@@ -151,10 +142,10 @@ export class SocketService {
       const websocketConfig = store.get("websocket");
       if (!websocketConfig?.enabled) return;
       const { port } = await this.start(websocketConfig.port, false);
-      serverLog.info(`🔌 Auto-start WebSocket server on port ${port}`);
+      socketLog.info(`🔌 Auto-start WebSocket server on port ${port}`);
       store.set("websocket", { enabled: true, port });
     } catch (error) {
-      serverLog.error("❌ Error while auto-starting WebSocket server from store:", error);
+      socketLog.error("❌ Error while auto-starting WebSocket server from store:", error);
       store.set("websocket.enabled", false);
     }
   }
@@ -166,7 +157,7 @@ export class SocketService {
     if (!this.wss) return;
 
     const server = this.wss;
-    serverLog.info("🛑 Stopping WebSocket server...");
+    socketLog.info("🛑 Stopping WebSocket server...");
 
     // 关闭所有客户端
     for (const client of this.clients) {
@@ -180,12 +171,262 @@ export class SocketService {
 
     await new Promise<void>((resolve) => {
       server.close(() => {
-        serverLog.info("✅ WebSocket server stopped");
+        socketLog.info("✅ WebSocket server stopped");
         resolve();
       });
     });
 
     this.cleanupServer();
+  }
+
+  /**
+   * 处理客户端连接
+   * @param socket WebSocket 客户端连接
+   */
+  private handleClientConnection(socket: WebSocket): void {
+    // 检查服务是否已开启
+    if (!this.isRunning()) {
+      socketLog.warn("⚠️ Cannot handle connection: WebSocket service is not running");
+      socket.close();
+      return;
+    }
+
+    // 检查 socket 是否存在
+    if (!socket) {
+      socketLog.warn("⚠️ Cannot handle connection: socket is null or undefined");
+      return;
+    }
+
+    this.clients.add(socket);
+    socketLog.info("🔗 WebSocket client connected");
+
+    // 发送欢迎消息
+    this.sendWelcome(socket);
+
+    // 监听消息
+    socket.on("message", (data: Buffer) => {
+      try {
+        const message = data.toString();
+        this.handleMessage(socket, message);
+      } catch (error) {
+        socketLog.error("⚠️ Error parsing message:", error);
+      }
+    });
+
+    // 监听关闭
+    socket.on("close", () => {
+      this.clients.delete(socket);
+      socketLog.info("🔌 WebSocket client disconnected");
+    });
+
+    // 监听错误
+    socket.on("error", (error: Error) => {
+      socketLog.error("⚠️ WebSocket client error:", error);
+    });
+  }
+
+  /**
+   * 处理接收到的消息
+   * @param socket WebSocket 客户端连接
+   * @param message 接收到的消息字符串
+   */
+  private handleMessage(socket: WebSocket, message: string): void {
+    // 检查服务是否已开启
+    if (!this.isRunning()) return;
+
+    // 检查 socket 是否存在且在客户端集合中
+    if (!socket || !this.clients.has(socket)) {
+      socketLog.warn("⚠️ Cannot handle message: socket is invalid or not in clients set");
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(message);
+      socketLog.info("📨 Received message:", parsed);
+
+      // 根据消息类型进行处理
+      if (parsed.type === "control") {
+        this.handleControlCommand(socket, parsed.data);
+      } else {
+        // 未知的消息类型
+        this.sendToClient(socket, {
+          type: "error",
+          data: { message: `Unknown message type: ${parsed.type}` },
+        });
+      }
+    } catch (error) {
+      socketLog.error("⚠️ Error handling message:", error);
+      // 如果消息格式不正确，可以发送错误响应
+      this.sendToClient(socket, {
+        type: "error",
+        data: { message: "Invalid message format" },
+      });
+    }
+  }
+
+  /**
+   * 向指定客户端发送消息
+   * @param socket WebSocket 客户端连接
+   * @param message 要发送的消息
+   * @returns 发送成功返回 true，失败返回 false
+   */
+  public sendToClient(socket: WebSocket, message: unknown): boolean {
+    // 检查服务是否已开启
+    if (!this.isRunning()) return false;
+
+    // 检查 socket 是否存在
+    if (!socket) {
+      socketLog.warn("⚠️ Cannot send message: socket is null or undefined");
+      return false;
+    }
+
+    // 检查 socket 是否在客户端集合中
+    if (!this.clients.has(socket)) {
+      socketLog.warn("⚠️ Cannot send message: socket is not in clients set");
+      return false;
+    }
+
+    // 检查 socket 连接状态
+    if (socket.readyState !== socket.OPEN) {
+      socketLog.warn("⚠️ Cannot send message: socket is not open");
+      return false;
+    }
+
+    try {
+      const jsonMessage = JSON.stringify(message);
+      socket.send(jsonMessage);
+      return true;
+    } catch (error) {
+      socketLog.error("⚠️ Error sending message to client:", error);
+      return false;
+    }
+  }
+
+  /**
+   * 向所有连接的客户端广播消息
+   * @param message 要广播的消息
+   */
+  public broadcast(message: unknown): void {
+    // 检查服务是否已开启
+    if (!this.isRunning() || this.clients.size === 0) return;
+
+    const jsonMessage = JSON.stringify(message);
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const client of this.clients) {
+      if (client.readyState === client.OPEN) {
+        try {
+          client.send(jsonMessage);
+          successCount++;
+        } catch (error) {
+          socketLog.error("⚠️ Error broadcasting to client:", error);
+          failCount++;
+        }
+      } else {
+        failCount++;
+      }
+    }
+    if (successCount > 0) {
+      socketLog.log(`📢 Broadcast message: ${successCount} success, ${failCount} failed`);
+    }
+  }
+
+  /**
+   * 处理播放器控制命令
+   * @param socket WebSocket 客户端连接
+   * @param data 控制命令数据
+   */
+  private handleControlCommand(socket: WebSocket, data: { command?: string }): void {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin || mainWin.isDestroyed() || mainWin.webContents.isDestroyed()) {
+      this.sendToClient(socket, {
+        type: "error",
+        data: { message: "应用程序未找到或已销毁" },
+      });
+      return;
+    }
+
+    const command = data?.command;
+    if (!command) {
+      this.sendToClient(socket, {
+        type: "error",
+        data: { message: "缺少 command 参数" },
+      });
+      return;
+    }
+
+    // 根据命令发送相应的 IPC 事件到渲染进程
+    let ipcEvent: string | null = null;
+    let commandName: string = "";
+
+    switch (command) {
+      case "toggle":
+        ipcEvent = "playOrPause";
+        commandName = "播放/暂停切换";
+        break;
+      case "play":
+        ipcEvent = "play";
+        commandName = "播放";
+        break;
+      case "pause":
+        ipcEvent = "pause";
+        commandName = "暂停";
+        break;
+      case "next":
+        ipcEvent = "playNext";
+        commandName = "下一曲";
+        break;
+      case "prev":
+        ipcEvent = "playPrev";
+        commandName = "上一曲";
+        break;
+      default:
+        this.sendToClient(socket, {
+          type: "error",
+          data: { message: `未知的控制命令: ${command}` },
+        });
+        return;
+    }
+
+    // 发送 IPC 事件到渲染进程
+    try {
+      mainWin.webContents.send(ipcEvent);
+      socketLog.log(`🎮 Control command executed: ${commandName} (${command})`);
+      // 返回成功响应
+      this.sendToClient(socket, {
+        type: "control-response",
+        data: {
+          success: true,
+          command,
+          message: `${commandName}命令已执行`,
+        },
+      });
+    } catch (error) {
+      socketLog.error(`❌ Error executing control command ${command}:`, error);
+      this.sendToClient(socket, {
+        type: "error",
+        data: { message: `执行${commandName}命令失败` },
+      });
+    }
+  }
+
+  /**
+   * 发送欢迎消息给新连接的客户端
+   * @param socket WebSocket 客户端连接
+   */
+  private sendWelcome(socket: WebSocket): void {
+    // 检查服务是否已开启
+    if (!this.isRunning() || !socket) return;
+
+    const welcomeMessage = {
+      type: "welcome",
+      data: {
+        message: "欢迎连接到 SPlayer WebSocket 服务",
+        timestamp: Date.now(),
+      },
+    };
+    this.sendToClient(socket, welcomeMessage);
   }
 
   /**

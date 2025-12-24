@@ -32,12 +32,15 @@ const ipcService = {
   /**
    * 发送歌曲信息
    * @param title 歌曲标题
-   * @param artist 歌手
    * @param name 歌曲名称
+   * @param artist 歌手
+   * @param album 专辑
    */
-  sendSongChange: (title: string, artist: string, name: string) => {
+  sendSongChange: (title: string, name: string, artist: string, album: string) => {
     if (!isElectron) return;
-    window.electron.ipcRenderer.send("play-song-change", `${title} | SPlayer`);
+    // 获取歌曲时长
+    const duration = getPlaySongData()?.duration ?? 0;
+    window.electron.ipcRenderer.send("play-song-change", { title, name, artist, album, duration });
     window.electron.ipcRenderer.send("update-desktop-lyric-data", {
       playName: name,
       artistName: artist,
@@ -312,15 +315,15 @@ class PlayerController {
         // 更新喜欢状态
         ipcService.sendLikeStatus(dataStore.isLikeSong(playSongData?.id || 0));
         // 更新信息
-        const { name, artist } = getPlayerInfoObj() || {};
+        const { name, artist, album } = getPlayerInfoObj() || {};
         const playTitle = `${name} - ${artist}`;
-        ipcService.sendSongChange(playTitle, artist || "", name || "");
+        ipcService.sendSongChange(playTitle, name || "", artist || "", album || "");
       }
     });
 
     // 播放开始
     audioManager.on("play", () => {
-      const { name, artist } = getPlayerInfoObj() || {};
+      const { name, artist, album } = getPlayerInfoObj() || {};
       const playTitle = `${name} - ${artist}`;
       // 更新状态
       statusStore.playStatus = true;
@@ -332,7 +335,7 @@ class PlayerController {
       lastfmScrobbler.resume();
       // IPC 通知
       ipcService.sendPlayStatus(true);
-      ipcService.sendSongChange(playTitle, artist || "", name || "");
+      ipcService.sendSongChange(playTitle, name || "", artist || "", album || "");
       console.log(`▶️ [${musicStore.playSong?.id}] 歌曲播放:`, name);
     });
 
