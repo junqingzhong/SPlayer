@@ -75,7 +75,8 @@
     "pinia": "^3.0.4",
     "pinia-plugin-persistedstate": "^4.7.1",
     "plyr": "^3.8.3",
-    "sortablejs": "^1.15.6"
+    "sortablejs": "^1.15.6",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.1",
@@ -89,6 +90,7 @@
     "@types/js-cookie": "^3.0.6",
     "@types/md5": "^2.3.6",
     "@types/node": "^24.10.1",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
     "@typescript-eslint/parser": "^8.48.1",
     "@vitejs/plugin-vue": "^6.0.2",

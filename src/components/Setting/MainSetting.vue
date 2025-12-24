@@ -103,7 +103,7 @@ const menuOptions: MenuOption[] = [
   },
   {
     key: "third",
-    label: "第三方设置",
+    label: "连接与集成",
     icon: renderIcon("Extension"),
   },
   {
