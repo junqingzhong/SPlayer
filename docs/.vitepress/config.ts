@@ -33,7 +33,7 @@ export default defineConfig({
       },
       {
         text: "API",
-        items: [{ text: "API 文档", link: "/API" }],
+        items: [{ text: "API 接口文档", link: "/api" }],
       },
     ],
 
@@ -50,8 +50,8 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: "https://github.com/imsyy/SPlayer/edit/main/docs/:path",
-      text: "在 GitHub 上编辑此页",
+      pattern: "https://github.com/imsyy/SPlayer/edit/dev/docs/:path",
+      text: "查看或编辑此页",
     },
 
     lastUpdated: {

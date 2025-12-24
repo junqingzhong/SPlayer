@@ -1,17 +1,5 @@
 # 使用指南
 
-## 🚀 快速开始
-
-### 稳定版
-
-通常情况下，可以在 [Releases](https://github.com/imsyy/SPlayer/releases) 中获取稳定版
-
-### 开发版
-
-可以通过 `GitHub Actions` 工作流获取最新的开发版
-
-[Dev Workflow](https://github.com/imsyy/SPlayer/actions/workflows/dev.yml)
-
 ## 📦 安装方式
 
 ### Docker 部署

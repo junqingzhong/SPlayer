@@ -8,7 +8,10 @@ hero:
   tagline: 基于 Vue 3 + TypeScript + Naïve UI + Electron 开发，支持网页端与客户端
   actions:
     - theme: brand
-      text: 开始使用
+      text: 立即获取
+      link: /download
+    - theme: alt
+      text: 使用指南
       link: /guide
     - theme: alt
       text: API

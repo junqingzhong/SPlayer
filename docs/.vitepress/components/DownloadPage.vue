@@ -1,169 +1,138 @@
 <template>
   <div class="download-page">
-    <!-- 加载状态 -->
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="state-container loading">
       <div class="spinner"></div>
       <p>正在同步 GitHub 版本数据...</p>
     </div>
 
-    <!-- 错误状态 -->
-    <div v-else-if="error" class="error">
+    <div v-else-if="error" class="state-container error">
       <p>无法连接至 GitHub API: {{ error }}</p>
-      <a :href="githubReleasesUrl" target="_blank" class="simple-link">访问镜像下载地址 →</a>
+      <a :href="githubReleasesUrl" target="_blank" class="link-btn">前往 GitHub 下载页 →</a>
     </div>
 
-    <!-- 正常显示 -->
-    <div v-else-if="latestRelease" class="content-fade-in">
-      <!-- 版本信息概览 -->
-      <div class="version-hero">
-        <div class="version-meta">
-          <span class="version-tag">{{ latestRelease.tag_name }}</span>
-          <span class="release-date">{{ formatDate(latestRelease.published_at) }}</span>
+    <div v-else-if="latestRelease" class="content-animate">
+      <!-- Hero: 版本概览 -->
+      <header class="version-hero">
+        <div class="version-badges">
+          <span class="v-tag">{{ latestRelease.tag_name }}</span>
+          <span class="v-date">{{ formatDate(latestRelease.published_at) }}</span>
+        </div>
+        <div class="mirror-selector">
+          <label for="mirror-select">下载太慢？切换线路：</label>
+          <select id="mirror-select" v-model="selectedMirror" class="mirror-select">
+            <option v-for="mirror in mirrors" :key="mirror.id" :value="mirror.id">
+              {{ mirror.name }}
+            </option>
+          </select>
+        </div>
+      </header>
+
+      <!-- 智能推荐 -->
+      <section class="recommend-card" v-if="recommendedAssets.length > 0">
+        <div class="card-header">
+          <span class="magic-icon">✨</span>
+          <div class="header-text">
+            您的设备应该是 <strong>{{ platformName }}</strong>
+            <span class="spacer"></span>
+            <span v-if="archName" class="tag tag-theme">
+              {{ archName }}
+            </span>
+          </div>
         </div>
 
-        <!-- 推荐下载卡片 -->
-        <div class="recommended-card" v-if="recommendedAssets.length > 0">
-          <div class="smart-info">
-            <span class="magic-icon">✨</span>
-            <div class="smart-text">
-              您正在使用 <strong>{{ platformName }} {{ archName }}</strong> 架构
-            </div>
-          </div>
-
-          <div class="recommended-actions">
-            <a
-              v-for="asset in recommendedAssets"
-              :key="asset.name"
-              :href="asset.browser_download_url"
-              class="cta-button"
-              :download="asset.name"
-            >
-              <div class="btn-content">
-                <div class="main-text-row">
-                  <span class="main-text">立即下载 SPlayer</span>
-                  <span v-if="asset.name.toLowerCase().includes('portable')" class="portable-tag"
-                    >便携版</span
-                  >
-                </div>
-                <span class="sub-text">{{ getAssetVersionDesc(asset.name) }}</span>
+        <div class="action-list">
+          <a
+            v-for="(asset, index) in recommendedAssets"
+            :key="asset.name + index"
+            :href="getMirrorUrl(asset.browser_download_url)"
+            class="action-btn"
+          >
+            <div class="btn-main">
+              <div class="btn-title-row">
+                <span class="btn-title">下载 SPlayer</span>
+                <span class="tag tag-theme">
+                  {{ isPortable(asset.name) ? "便携版" : "安装版" }}
+                </span>
               </div>
-              <div class="btn-badge">{{ formatFileSize(asset.size) }}</div>
-            </a>
-          </div>
-
-          <!-- 更新日志 -->
-          <div class="changelog-compact" v-if="latestRelease.body">
-            <details>
-              <summary>查看本版本更新详情</summary>
-              <div class="markdown-body" v-html="renderMarkdown(latestRelease.body)"></div>
-            </details>
-          </div>
+              <span class="btn-desc">{{ getAssetRecommendDesc(asset.name) }}</span>
+            </div>
+            <div class="btn-side">
+              <span class="size-badge">预估 {{ formatFileSize(asset.size) }}</span>
+            </div>
+          </a>
         </div>
-      </div>
 
-      <!-- 所有平台下载区 -->
+        <!-- 更新日志 -->
+        <div class="changelog-section" v-if="latestRelease.body">
+          <details>
+            <summary>查看版本更新详情</summary>
+            <div class="markdown-body" v-html="renderMarkdown(latestRelease.body)"></div>
+          </details>
+        </div>
+      </section>
+
+      <!-- 全平台下载列表 -->
       <section class="platforms-section">
-        <div class="section-header">
-          <h2 class="section-title">全平台安装包</h2>
-          <p class="section-desc">根据您的设备架构选择对应的文件类型</p>
+        <div class="section-divider">
+          <h2>多平台安装包</h2>
+
+          <!-- 架构说明指南 -->
+          <div class="arch-guide">
+            <span class="guide-item">
+              <strong>x64 / amd64</strong>: 适用于大多数 Intel/AMD 电脑
+            </span>
+            <span class="guide-item">
+              <strong>ARM64</strong>: 适用于 M1/M2/M3 Mac 或 ARM 架构设备
+            </span>
+          </div>
         </div>
 
-        <div class="platform-container">
-          <!-- Windows -->
-          <div class="platform-block" v-if="windowsDownloads.length > 0">
-            <div class="block-header">
-              <span class="platform-icon">🪟</span>
-              <h3>Windows</h3>
-            </div>
-            <div class="download-grid">
-              <a
-                v-for="(file, index) in windowsDownloads"
-                :key="index"
-                :href="file.browser_download_url"
-                class="download-card"
-                :download="file.name"
-              >
-                <div class="file-info">
-                  <div class="file-label-row">
-                    <span class="file-label">{{ getSimpleFileName(file.name) }}</span>
-                    <span
-                      v-if="file.name.toLowerCase().includes('portable')"
-                      class="portable-tag mini"
-                      >便携版</span
-                    >
-                  </div>
-                  <span class="file-type-tag">{{ getFileTypeDesc(file.name) }}</span>
-                </div>
-                <span class="file-size-tag">{{ formatFileSize(file.size) }}</span>
-              </a>
-            </div>
+        <!-- 平台列表 -->
+        <div v-for="platform in classifiedAssets" :key="platform.id" class="platform-block">
+          <div class="block-title">
+            <span class="platform-icon">{{ platform.icon }}</span>
+            <h3>{{ platform.name }}</h3>
           </div>
 
-          <!-- macOS -->
-          <div class="platform-block" v-if="macosDownloads.length > 0">
-            <div class="block-header">
-              <span class="platform-icon">🍎</span>
-              <h3>macOS</h3>
-            </div>
-            <div class="download-grid">
-              <a
-                v-for="(file, index) in macosDownloads"
-                :key="index"
-                :href="file.browser_download_url"
-                class="download-card"
-                :download="file.name"
-              >
-                <div class="file-info">
-                  <div class="file-label-row">
-                    <span class="file-label">{{ getSimpleFileName(file.name) }}</span>
-                    <span
-                      v-if="file.name.toLowerCase().includes('portable')"
-                      class="portable-tag mini"
-                      >便携版</span
-                    >
-                  </div>
-                  <span class="file-type-tag">{{ getFileTypeDesc(file.name) }}</span>
-                </div>
-                <span class="file-size-tag">{{ formatFileSize(file.size) }}</span>
-              </a>
-            </div>
-          </div>
+          <!-- 子分类循环 -->
+          <div class="sub-groups-container">
+            <div v-for="sub in platform.groups" :key="sub.title" class="sub-group-item">
+              <div class="sub-header">
+                <span class="sub-title">{{ sub.title }}</span>
+                <span class="sub-desc">{{ sub.desc }}</span>
+              </div>
 
-          <!-- Linux -->
-          <div class="platform-block" v-if="linuxDownloads.length > 0">
-            <div class="block-header">
-              <span class="platform-icon">🐧</span>
-              <h3>Linux</h3>
-            </div>
-            <div class="download-grid">
-              <a
-                v-for="(file, index) in linuxDownloads"
-                :key="index"
-                :href="file.browser_download_url"
-                class="download-card"
-                :download="file.name"
-              >
-                <div class="file-info">
-                  <div class="file-label-row">
-                    <span class="file-label">{{ getSimpleFileName(file.name) }}</span>
-                    <span
-                      v-if="file.name.toLowerCase().includes('portable')"
-                      class="portable-tag mini"
-                      >便携版</span
-                    >
+              <div class="files-grid">
+                <a
+                  v-for="file in sub.assets"
+                  :key="file.name"
+                  :href="getMirrorUrl(file.browser_download_url)"
+                  class="file-card"
+                >
+                  <div class="file-content">
+                    <div class="file-name" :title="file.name">
+                      {{ getSimpleFileName(file.name) }}
+                    </div>
+                    <div class="file-tags">
+                      <span class="tag tag-theme">
+                        {{ getArchDisplay(file.name, platform.id) }}
+                      </span>
+                      <span class="tag tag-theme">{{ getExtensionName(file.name) }}</span>
+                    </div>
                   </div>
-                  <span class="file-type-tag">{{ getFileTypeDesc(file.name) }}</span>
-                </div>
-                <span class="file-size-tag">{{ formatFileSize(file.size) }}</span>
-              </a>
+                  <span class="file-size">{{ formatFileSize(file.size) }}</span>
+                </a>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <footer class="download-footer">
+      <footer class="page-footer">
         <p>
-          需要旧版本？<a :href="githubReleasesUrl" target="_blank">前往 GitHub Release 归档列表</a>
+          需要查找历史版本？<a :href="githubReleasesUrl" target="_blank">
+            访问 GitHub Release 归档
+          </a>
         </p>
       </footer>
     </div>
@@ -174,602 +143,808 @@
 import { ref, computed, onMounted } from "vue";
 import { marked } from "marked";
 
+// --- 配置常量 ---
 const GITHUB_REPO = "imsyy/SPlayer";
 const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 const githubReleasesUrl = `https://github.com/${GITHUB_REPO}/releases`;
 
+// --- 类型定义 ---
 interface GitHubAsset {
   name: string;
   browser_download_url: string;
   size: number;
 }
-
 interface GitHubRelease {
   tag_name: string;
   body: string;
   published_at: string;
   assets: GitHubAsset[];
 }
+interface SubGroup {
+  title: string;
+  desc: string;
+  assets: GitHubAsset[];
+}
+interface PlatformGroup {
+  id: string;
+  name: string;
+  icon: string;
+  groups: SubGroup[];
+}
 
+// --- 镜像站配置 ---
+interface Mirror {
+  id: string;
+  name: string;
+  url: string;
+}
+
+const mirrors: Mirror[] = [
+  { id: "official", name: "GitHub", url: "" },
+  { id: "cloudflare", name: "Cloudflare", url: "https://gh-proxy.org/" },
+  { id: "hk", name: "Sharon CDN", url: "https://hk.gh-proxy.org/" },
+  { id: "fastly", name: "Fastly", url: "https://cdn.gh-proxy.org/" },
+  { id: "edgeone", name: "EdgeOne", url: "https://edgeone.gh-proxy.org/" },
+];
+
+const selectedMirror = ref("official");
+
+// --- 响应式状态 ---
 const loading = ref(true);
 const error = ref<string | null>(null);
 const latestRelease = ref<GitHubRelease | null>(null);
-const platform = ref<string>("");
-const arch = ref<string>("x64");
+const userPlatform = ref("unknown");
+const userArch = ref("x64");
 
-// 检测架构
-const detectArch = () => {
-  if (typeof window === "undefined") return "x64";
-  const ua = window.navigator.userAgent;
-  if (ua.includes("arm64") || ua.includes("aarch64")) return "ARM64";
-  return "x64";
+// --- 环境检测 ---
+const detectEnvironment = () => {
+  if (typeof window === "undefined") return;
+  const ua = navigator.userAgent.toLowerCase();
+
+  // 1. 平台检测
+  if (ua.includes("win")) userPlatform.value = "windows";
+  else if (ua.includes("mac")) userPlatform.value = "macos";
+  else if (ua.includes("linux")) userPlatform.value = "linux";
+
+  if (ua.includes("arm64") || ua.includes("aarch64")) {
+    userArch.value = "arm64";
+  } else {
+    userArch.value = "x64";
+  }
 };
 
-const detectPlatform = (): string => {
-  if (typeof window === "undefined") return "unknown";
-  const userAgent = window.navigator.userAgent.toLowerCase();
-  const platformStr = window.navigator.platform.toLowerCase();
-  if (userAgent.includes("win") || platformStr.includes("win")) return "windows";
-  if (userAgent.includes("mac") || platformStr.includes("mac")) return "macos";
-  if (userAgent.includes("linux") || platformStr.includes("linux")) return "linux";
-  return "unknown";
-};
-
-const platformNames: Record<string, string> = {
-  windows: "Windows",
-  macos: "macOS",
-  linux: "Linux",
-  unknown: "未知平台",
-};
-
-const platformName = computed(() => platformNames[platform.value] || "未知平台");
-const archName = computed(() => arch.value);
-
-const fetchLatestRelease = async () => {
+// --- 数据获取 ---
+const fetchRelease = async () => {
   try {
-    loading.value = true;
-    const response = await fetch(GITHUB_API_URL);
-    if (!response.ok) throw new Error(`${response.status}`);
-    latestRelease.value = await response.json();
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "获取失败";
+    const res = await fetch(GITHUB_API_URL);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    latestRelease.value = await res.json();
+  } catch (e: any) {
+    error.value = e.message || "请求失败";
   } finally {
     loading.value = false;
   }
 };
 
-const windowsDownloads = computed(() => {
-  if (!latestRelease.value) return [];
-  return latestRelease.value.assets.filter((a) => {
-    const n = a.name.toLowerCase();
-    return n.endsWith(".exe") || n.endsWith(".msi");
-  });
-});
-
-const macosDownloads = computed(() => {
-  if (!latestRelease.value) return [];
-  return latestRelease.value.assets.filter((a) => {
-    const n = a.name.toLowerCase();
-    return (
-      n.endsWith(".dmg") || (n.endsWith(".zip") && (n.includes("mac") || n.includes("darwin")))
-    );
-  });
-});
-
-const linuxDownloads = computed(() => {
-  if (!latestRelease.value) return [];
-  return latestRelease.value.assets.filter((a) => {
-    const n = a.name.toLowerCase();
-    return (
-      n.endsWith(".appimage") || n.endsWith(".deb") || n.endsWith(".rpm") || n.endsWith(".tar.gz")
-    );
-  });
-});
-
-const recommendedPlatform = computed(() => {
-  if (platform.value === "windows" && windowsDownloads.value.length > 0) return "windows";
-  if (platform.value === "macos" && macosDownloads.value.length > 0) return "macos";
-  if (platform.value === "linux" && linuxDownloads.value.length > 0) return "linux";
-  return windowsDownloads.value.length > 0
-    ? "windows"
-    : macosDownloads.value.length > 0
-      ? "macos"
-      : "linux";
-});
-
-const recommendedAssets = computed(() => {
-  if (!latestRelease.value) return [];
-  let assets: GitHubAsset[] = [];
-  if (recommendedPlatform.value === "windows") assets = windowsDownloads.value;
-  else if (recommendedPlatform.value === "macos") assets = macosDownloads.value;
-  else if (recommendedPlatform.value === "linux") assets = linuxDownloads.value;
-
-  if (assets.length === 0) return [];
-
-  const targetArch = arch.value.toLowerCase();
-  const matchedArch = assets.filter((a) => a.name.toLowerCase().includes(targetArch));
-  const pool = matchedArch.length > 0 ? matchedArch : assets;
-
-  const results: GitHubAsset[] = [];
-
-  // 对于 Windows，尝试同时推荐安装版和便携版
-  if (recommendedPlatform.value === "windows") {
-    const setup = pool.find((a) => a.name.toLowerCase().includes("setup"));
-    const portable = pool.find((a) => a.name.toLowerCase().includes("portable"));
-
-    if (setup) results.push(setup);
-    if (portable) results.push(portable);
-
-    // 如果都没找到，至少返回第一个
-    if (results.length === 0 && pool.length > 0) results.push(pool[0]);
-  } else {
-    // 其他系统默认推荐第一个匹配架构的
-    results.push(pool[0]);
-  }
-
-  return results;
-});
-
-const getAssetVersionDesc = (name: string): string => {
+// --- 工具逻辑 ---
+const isPortable = (name: string) => {
   const n = name.toLowerCase();
-  const pName = platformNames[recommendedPlatform.value];
-  if (n.includes("portable")) return `适用于 ${pName} - 免安装便携版`;
-  if (n.includes("setup")) return `适用于 ${pName} - 官方安装版`;
-  return `适用于 ${pName}`;
+  return n.includes("portable") && !n.endsWith(".blockmap");
 };
 
-const getSimpleFileName = (name: string): string => {
+const getExtensionName = (name: string) => {
+  const ext = name.split(".").pop()?.toUpperCase() || "FILE";
+  if (name.endsWith(".tar.gz")) return "TAR.GZ";
+  return ext;
+};
+
+// 架构显示文案
+const getArchDisplay = (name: string, platformId: string) => {
+  const n = name.toLowerCase();
+  if (n.includes("arm64") || n.includes("aarch64")) return "ARM64";
+  if (n.includes("x64") || n.includes("amd64")) return "x64";
+  if (n.includes("ia32") || n.includes("x86")) return "32位 (x86)";
+
+  if (platformId === "windows") return "x86 / x64 兼容";
+  if (platformId === "macos") return "macOS 通用";
+  return "标准架构 (x64)";
+};
+
+const getSimpleFileName = (name: string) => {
   if (!latestRelease.value) return name;
   const version = latestRelease.value.tag_name.replace(/^v/, "");
   return name.replace(new RegExp(`^SPlayer[_-]?v?${version}[_-]?`, "i"), "") || name;
 };
 
-// 后缀类型说明
-const getFileTypeDesc = (name: string): string => {
-  const n = name.toLowerCase();
-  let archInfo = "";
-  if (n.includes("arm64")) archInfo = "ARM64 ";
-  else if (n.includes("x64")) archInfo = "x64 ";
-
-  if (n.endsWith(".exe")) return `${archInfo}Windows`;
-  if (n.endsWith(".msi")) return `${archInfo}Windows MSI 镜像`;
-  if (n.endsWith(".dmg")) return `${archInfo}macOS 磁盘镜像`;
-  if (n.endsWith(".appimage")) return `${archInfo}Linux 通用运行包`;
-  if (n.endsWith(".deb")) return `${archInfo}Debian / Ubuntu`;
-  if (n.endsWith(".rpm")) return `${archInfo}RedHat / Fedora`;
-  if (n.endsWith(".tar.gz")) return `${archInfo}Linux 压缩包`;
-  if (n.endsWith(".zip")) return `${archInfo}便携式压缩包`;
-  return "安装程序";
-};
-
-const formatFileSize = (bytes: number) => {
-  if (!bytes) return "";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-};
-
-const formatDate = (s: string) => {
-  if (!s) return "";
-  return new Date(s).toLocaleDateString("zh-CN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+const sortAssets = (assets: GitHubAsset[]) => {
+  return assets.sort((a, b) => {
+    const nA = a.name.toLowerCase();
+    const nB = b.name.toLowerCase();
+    const isX64A = nA.includes("x64") || nA.includes("amd64");
+    const isX64B = nB.includes("x64") || nB.includes("amd64");
+    if (isX64A && !isX64B) return -1;
+    if (!isX64A && isX64B) return 1;
+    return 0;
   });
 };
 
-const renderMarkdown = (text: string) => {
-  return marked.parse(text);
+const isArchCompatible = (name: string, targetArch: string) => {
+  const n = name.toLowerCase();
+  const isArmAsset = n.includes("arm64") || n.includes("aarch64");
+  const is32BitAsset = n.includes("ia32") || n.includes("x86");
+
+  if (targetArch === "arm64") {
+    return isArmAsset;
+  } else {
+    return !isArmAsset && !is32BitAsset;
+  }
+};
+
+const recommendedAssets = computed(() => {
+  if (!latestRelease.value) return [];
+  const assets = latestRelease.value.assets;
+  const p = userPlatform.value;
+  const arch = userArch.value;
+
+  let result: GitHubAsset[] = [];
+
+  if (p === "windows") {
+    const setupCandidates = assets.filter((f) => {
+      const n = f.name.toLowerCase();
+      const isSetup =
+        (n.endsWith(".exe") || n.endsWith(".msi")) &&
+        !n.includes("portable") &&
+        !n.includes("blockmap");
+      return isSetup && isArchCompatible(f.name, arch);
+    });
+
+    const portableCandidates = assets.filter((f) => {
+      const n = f.name.toLowerCase();
+      const isPort = isPortable(f.name);
+      return isPort && isArchCompatible(f.name, arch);
+    });
+
+    let setup: GitHubAsset | undefined;
+    let portable: GitHubAsset | undefined;
+
+    if (arch === "x64") {
+      setup =
+        setupCandidates.find((f) => f.name.toLowerCase().includes("x64")) || setupCandidates[0];
+      portable =
+        portableCandidates.find((f) => f.name.toLowerCase().includes("x64")) ||
+        portableCandidates[0];
+    } else {
+      setup = setupCandidates[0];
+      portable = portableCandidates[0];
+    }
+
+    if (setup) result.push(setup);
+    if (portable) result.push(portable);
+  } else if (p === "macos") {
+    const dmg = assets.find(
+      (f) =>
+        f.name.endsWith(".dmg") &&
+        !f.name.includes("blockmap") &&
+        (arch === "arm64" ? true : !f.name.includes("arm64")),
+    );
+    if (dmg) result.push(dmg);
+  } else if (p === "linux") {
+    const appImage = assets.find(
+      (f) => f.name.toLowerCase().endsWith(".appimage") && isArchCompatible(f.name, arch),
+    );
+    const deb = assets.find((f) => f.name.endsWith(".deb") && isArchCompatible(f.name, arch));
+
+    if (appImage) result.push(appImage);
+    else if (deb) result.push(deb);
+  }
+
+  if (result.length === 0 && p === "windows") {
+    const fallback = assets.find(
+      (f) => f.name.endsWith(".exe") && !f.name.includes("arm64") && !isPortable(f.name),
+    );
+    if (fallback) result.push(fallback);
+  }
+
+  return result;
+});
+
+const classifiedAssets = computed<PlatformGroup[]>(() => {
+  if (!latestRelease.value) return [];
+  const rawAssets = latestRelease.value.assets;
+
+  const groups: PlatformGroup[] = [
+    {
+      id: "windows",
+      name: "Windows",
+      icon: "🪟",
+      groups: [
+        {
+          title: "安装程序",
+          desc: "推荐 · 自动更新",
+          assets: sortAssets(
+            rawAssets.filter(
+              (f) =>
+                /\.(exe|msi)$/i.test(f.name) && !isPortable(f.name) && !f.name.includes("blockmap"),
+            ),
+          ),
+        },
+        {
+          title: "绿色便携版",
+          desc: "解压即用 · 数据随身",
+          assets: sortAssets(
+            rawAssets.filter(
+              (f) => isPortable(f.name) || (f.name.endsWith(".zip") && !f.name.includes("mac")),
+            ),
+          ),
+        },
+      ],
+    },
+    {
+      id: "macos",
+      name: "macOS",
+      icon: "🍎",
+      groups: [
+        {
+          title: "磁盘镜像",
+          desc: "推荐 · 拖拽安装",
+          assets: rawAssets.filter((f) => f.name.endsWith(".dmg") && !f.name.includes("blockmap")),
+        },
+        {
+          title: "压缩归档",
+          desc: "手动安装",
+          assets: rawAssets.filter(
+            (f) => f.name.endsWith(".zip") && (f.name.includes("mac") || f.name.includes("darwin")),
+          ),
+        },
+      ],
+    },
+    {
+      id: "linux",
+      name: "Linux",
+      icon: "🐧",
+      groups: [
+        {
+          title: "通用运行包",
+          desc: "AppImage",
+          assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".appimage"))),
+        },
+        {
+          title: "Debian / Ubuntu / Linux Mint...",
+          desc: "DEB 安装包",
+          assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".deb"))),
+        },
+        {
+          title: "RedHat / Fedora / AlmaLinux...",
+          desc: "RPM 安装包",
+          assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".rpm"))),
+        },
+        {
+          title: "Arch Linux / Manjaro...",
+          desc: "Pacman 安装包",
+          assets: sortAssets(rawAssets.filter((f) => f.name.endsWith(".pacman"))),
+        },
+        {
+          title: "其他格式",
+          desc: "归档包",
+          assets: sortAssets(rawAssets.filter((f) => /\.(tar\.gz)$/i.test(f.name))),
+        },
+      ],
+    },
+  ];
+
+  return groups
+    .map((p) => ({
+      ...p,
+      groups: p.groups.filter((g) => g.assets.length > 0),
+    }))
+    .filter((p) => p.groups.length > 0);
+});
+
+const platformName = computed(
+  () => ({ windows: "Windows", macos: "macOS", linux: "Linux" })[userPlatform.value] || "未知系统",
+);
+const archName = computed(() => (userArch.value === "arm64" ? "ARM64" : "x64"));
+const getAssetRecommendDesc = (name: string) =>
+  isPortable(name) ? "适合随身携带，数据隔离" : "包含自动更新，推荐使用";
+const formatFileSize = (bytes: number) =>
+  bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : "未知";
+const formatDate = (s: string) =>
+  new Date(s).toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric" });
+const renderMarkdown = (t: string) => marked.parse(t);
+
+const getMirrorUrl = (originalUrl: string): string => {
+  if (selectedMirror.value === "official" || !originalUrl) {
+    return originalUrl;
+  }
+  const mirror = mirrors.find((m) => m.id === selectedMirror.value);
+  if (!mirror || !mirror.url) {
+    return originalUrl;
+  }
+  return mirror.url + originalUrl;
 };
 
 onMounted(() => {
-  platform.value = detectPlatform();
-  arch.value = detectArch();
-  fetchLatestRelease();
+  detectEnvironment();
+  fetchRelease();
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
+/* --- 全局变量与基础设定 --- */
 .download-page {
-  margin: 0 auto;
-  color: var(--vp-c-text-1);
+  --card-bg: var(--vp-c-bg-soft);
+  --card-border: var(--vp-c-divider);
+  --card-radius: 12px;
+  --primary: var(--vp-c-brand-1);
+  --primary-bg: var(--vp-c-brand-soft);
+  --text-main: var(--vp-c-text-1);
+  --text-sub: var(--vp-c-text-2);
+  --text-mute: var(--vp-c-text-3);
+
+  margin: 30px auto 0;
+  color: var(--text-main);
 }
 
-.content-fade-in {
-  animation: fadeIn 0.5s cubic-bezier(0.2, 0, 0.4, 1) forwards;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 加载中 */
-.loading {
-  padding: 5rem 0;
+/* --- 状态容器 --- */
+.state-container {
+  padding: 80px 0;
   text-align: center;
+
+  &.error {
+    color: var(--vp-c-danger-1);
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--card-border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    margin: 0 auto 16px;
+    animation: spin 0.8s linear infinite;
+  }
 }
-.spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--vp-c-divider);
-  border-top-color: var(--vp-c-brand);
-  border-radius: 50%;
-  margin: 0 auto 1.5rem;
-  animation: spin 0.8s linear infinite;
+
+.link-btn {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+  }
 }
+
+.content-animate {
+  animation: fadeUp 0.5s ease-out forwards;
+}
+
+/* --- 1. Hero 区域 --- */
+.version-hero {
+  margin-bottom: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.mirror-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--text-sub);
+
+  label {
+    font-weight: 500;
+  }
+
+  .mirror-select {
+    padding: 6px 12px;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    background: var(--vp-c-bg);
+    color: var(--text-main);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: var(--primary);
+    }
+
+    &:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px var(--primary-bg);
+    }
+  }
+}
+
+.version-badges {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.v-tag {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--primary);
+  background: var(--primary-bg);
+  padding: 4px 16px;
+  border-radius: 99px;
+}
+
+.v-date {
+  color: var(--text-sub);
+  font-size: 0.95rem;
+}
+
+/* --- 2. 推荐卡片 --- */
+.recommend-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  padding: 2rem;
+  margin-bottom: 4rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    font-size: 1.05rem;
+  }
+
+  .header-text {
+    display: inline-flex;
+    align-items: center;
+
+    strong {
+      color: var(--primary);
+    }
+
+    .spacer {
+      width: 6px;
+      display: inline-block;
+    }
+  }
+
+  .action-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 16px;
+    margin-bottom: 1.5rem;
+  }
+
+  .action-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    background: var(--vp-c-bg);
+    border: 1.5px solid var(--primary);
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.25s ease;
+
+    &:hover {
+      background: var(--primary-bg);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(var(--vp-c-brand-rgb), 0.1);
+    }
+  }
+
+  .btn-main {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .btn-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--primary);
+  }
+
+  .btn-desc {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+  }
+
+  .size-badge {
+    font-size: 0.8rem;
+    background: var(--vp-c-bg-soft);
+    padding: 4px 8px;
+    border-radius: 6px;
+    color: var(--text-sub);
+  }
+
+  .changelog-section {
+    display: flex;
+
+    summary {
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text-sub);
+      margin-bottom: 1rem;
+
+      &:hover {
+        color: var(--primary);
+      }
+    }
+  }
+}
+
+/* --- 3. 全平台列表 --- */
+.section-divider {
+  margin-bottom: 3rem;
+  text-align: center;
+
+  h2 {
+    border-top: none;
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+}
+
+.arch-guide {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--text-sub);
+
+  .guide-item {
+    strong {
+      color: var(--primary);
+    }
+  }
+
+  .guide-divider {
+    color: var(--vp-c-divider);
+    font-size: 0.8rem;
+  }
+}
+
+.platform-block {
+  margin-bottom: 3rem;
+
+  .block-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--card-border);
+
+    .platform-icon {
+      font-size: 1.6rem;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 1.4rem;
+      font-weight: 700;
+    }
+  }
+
+  .sub-groups-container {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .sub-header {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .sub-title {
+    font-weight: 600;
+    font-size: 1.05rem;
+    position: relative;
+    padding-left: 12px;
+
+    &::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 4px;
+      bottom: 4px;
+      width: 3px;
+      background: var(--primary);
+      border-radius: 2px;
+    }
+  }
+
+  .sub-desc {
+    font-size: 0.85rem;
+    color: var(--text-sub);
+    opacity: 0.8;
+  }
+
+  .files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+
+  .file-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--card-bg);
+    border: 1px solid transparent;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: var(--primary);
+      background: var(--vp-c-bg-alt);
+    }
+  }
+
+  .file-content {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow: hidden;
+    margin-right: 12px;
+  }
+
+  .file-name {
+    font-weight: 500;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .file-tags {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .file-size {
+    font-size: 0.75rem;
+    color: var(--text-mute);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+}
+
+/* --- Tag 样式系统 (统一主题色) --- */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+
+  &.tag-theme {
+    background: var(--primary-bg);
+    color: var(--primary);
+  }
+}
+
+/* --- Markdown --- */
+.markdown-body {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  padding: 10px;
+
+  :deep(h2) {
+    margin: 16px 0;
+    border-top: none;
+    padding-top: 0;
+  }
+}
+
+/* --- 响应式设计 --- */
+@media (max-width: 640px) {
+  .version-hero {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .version-badges {
+    width: 100%;
+  }
+
+  .mirror-selector {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+
+    label {
+      font-size: 0.85rem;
+    }
+
+    .mirror-select {
+      width: 100%;
+      padding: 8px 12px;
+      font-size: 0.9rem;
+    }
+  }
+
+  .recommend-card {
+    padding: 1.5rem;
+
+    .action-list {
+      grid-template-columns: 1fr;
+    }
+
+    .action-btn {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .btn-side {
+      width: 100%;
+      display: flex;
+      justify-content: flex-end;
+    }
+  }
+
+  .platform-block {
+    .files-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .sub-title::before {
+      height: 100%;
+      top: 0;
+      bottom: 0;
+    }
+  }
+
+  .arch-guide {
+    .guide-divider {
+      display: none;
+    }
+  }
+}
+
+/* --- 动画定义 --- */
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-/* Hero 区域 */
-.version-hero {
-  margin: 2.5rem 0;
-}
-.version-meta {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-.version-tag {
-  font-size: 1.4rem;
-  font-weight: 800;
-  color: var(--vp-c-brand-1);
-  padding: 0.2rem 1rem;
-  background: var(--vp-c-brand-soft);
-  border-radius: 20px;
-}
-.release-date {
-  font-size: 1rem;
-  color: var(--vp-c-text-3);
-}
-
-/* 推荐卡片优化 */
-.recommended-card {
-  padding: 2rem;
-  background: var(--vp-c-bg-soft);
-  border-radius: 12px;
-  border: 1px solid var(--vp-c-divider);
-}
-.smart-info {
-  margin-bottom: 2rem;
-  font-size: 1rem;
-  color: var(--vp-c-text-2);
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-.magic-icon {
-  font-size: 1.2rem;
-}
-
-/* 按钮容器 */
-.recommended-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-/* 核心按钮重构：无底色边框样式 */
-.cta-button {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
-  background: transparent;
-  border: 1.5px solid var(--vp-c-brand-1);
-  color: var(--vp-c-brand-1) !important;
-  border-radius: 10px;
-  text-decoration: none !important;
-  transition: all 0.25s ease;
-}
-.cta-button:hover {
-  background: var(--vp-c-brand-soft);
-  border-color: var(--vp-c-brand-2);
-}
-
-.main-text-row {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.portable-tag {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 0.1rem 0.5rem;
-  background: var(--vp-c-brand-1);
-  color: #ffffff !important;
-  border-radius: 4px;
-  line-height: 1.4;
-}
-
-.portable-tag.mini {
-  padding: 0 0.4rem;
-  font-size: 0.7rem;
-  background: var(--vp-c-brand-soft);
-  color: var(--vp-c-brand-1);
-}
-
-.btn-content {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  text-align: left;
-}
-.main-text {
-  font-size: 1.15rem;
-  font-weight: 700;
-}
-.sub-text {
-  font-size: 0.85rem;
-  opacity: 0.8;
-}
-.btn-badge {
-  padding: 0.4rem 0.8rem;
-  background: var(--vp-c-brand-soft);
-  color: var(--vp-c-brand-1);
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-/* 更新日志 */
-.changelog-compact {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--vp-c-divider);
-}
-.changelog-compact summary {
-  cursor: pointer;
-  color: var(--vp-c-brand-1);
-  font-weight: 600;
-  font-size: 0.95rem;
-  user-select: none;
-}
-.markdown-body {
-  margin-top: 1rem;
-  padding: 1rem;
-  background: var(--vp-c-bg);
-  border-radius: 8px;
-  font-size: 0.9rem;
-  line-height: 1.6;
-}
-
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3) {
-  margin-top: 1rem;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.markdown-body :deep(h1) {
-  font-size: 1.5rem;
-}
-.markdown-body :deep(h2) {
-  font-size: 1.25rem;
-}
-.markdown-body :deep(h3) {
-  font-size: 1.1rem;
-}
-
-.markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  padding-left: 2rem;
-  margin-top: 0;
-  margin-bottom: 1rem;
-}
-
-.markdown-body :deep(li) {
-  margin-top: 0.25rem;
-}
-
-.markdown-body :deep(a) {
-  color: var(--vp-c-brand);
-  text-decoration: none;
-}
-
-.markdown-body :deep(a:hover) {
-  text-decoration: underline;
-}
-
-.markdown-body :deep(code) {
-  padding: 0.2rem 0.4rem;
-  margin: 0;
-  font-size: 85%;
-  background-color: var(--vp-c-bg-soft);
-  border-radius: 6px;
-  font-family: var(--vp-font-family-mono);
-}
-
-.markdown-body :deep(pre) {
-  padding: 1rem;
-  overflow: auto;
-  font-size: 85%;
-  line-height: 1.45;
-  background-color: var(--vp-c-bg-soft);
-  border-radius: 6px;
-  margin-bottom: 1rem;
-}
-
-.markdown-body :deep(blockquote) {
-  padding: 0 1rem;
-  color: var(--vp-c-text-2);
-  border-left: 0.25rem solid var(--vp-c-divider);
-  margin: 0 0 1rem 0;
-}
-
-.markdown-body :deep(table) {
-  display: block;
-  width: 100%;
-  overflow: auto;
-  border-spacing: 0;
-  border-collapse: collapse;
-  margin-bottom: 1rem;
-}
-
-.markdown-body :deep(table th),
-.markdown-body :deep(table td) {
-  padding: 6px 13px;
-  border: 1px solid var(--vp-c-divider);
-}
-
-.markdown-body :deep(table tr) {
-  background-color: var(--vp-c-bg);
-  border-top: 1px solid var(--vp-c-divider);
-}
-
-.markdown-body :deep(table tr:nth-child(2n)) {
-  background-color: var(--vp-c-bg-soft);
-}
-
-.markdown-body :deep(hr) {
-  height: 0.25em;
-  padding: 0;
-  margin: 24px 0;
-  background-color: var(--vp-c-divider);
-  border: 0;
-}
-
-/* 全平台部分 */
-.platforms-section {
-  margin-top: 5rem;
-}
-.section-header {
-  margin-bottom: 3rem;
-  text-align: center;
-}
-.section-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-.section-desc {
-  color: var(--vp-c-text-3);
-  font-size: 1rem;
-}
-
-.platform-block {
-  margin-bottom: 4rem;
-}
-.block-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--vp-c-divider);
-}
-.platform-icon {
-  font-size: 1.5rem;
-}
-.block-header h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
-}
-
-.download-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1rem;
-}
-.download-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.25rem;
-  background: var(--vp-c-bg-soft);
-  border: 1px solid var(--vp-c-divider);
-  border-radius: 10px;
-  text-decoration: none !important;
-  transition: all 0.2s ease;
-}
-.download-card:hover {
-  border-color: var(--vp-c-brand-1);
-  background: var(--vp-c-bg-alt);
-  transform: translateX(4px);
-}
-
-.file-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow: hidden;
-}
-
-.file-label-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.file-label {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--vp-c-text-1);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  overflow: hidden;
-}
-.file-type-tag {
-  font-size: 0.8rem;
-  color: var(--vp-c-text-3);
-}
-.file-size-tag {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--vp-c-text-2);
-  padding: 0.25rem 0.6rem;
-  background: var(--vp-c-bg);
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-
-/* 页脚 */
-.download-footer {
-  margin: 6rem 0 4rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--vp-c-divider);
-  text-align: center;
-  color: var(--vp-c-text-3);
-  font-size: 0.9rem;
-}
-.download-footer a {
-  color: var(--vp-c-brand-1);
-  text-decoration: none;
-}
-
-@media (max-width: 640px) {
-  .recommended-card {
-    padding: 1.5rem;
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  .cta-button {
-    flex-direction: column;
-    gap: 1rem;
-    padding: 1.25rem 1rem;
-    text-align: center;
-  }
-  .btn-badge {
-    width: 100%;
-  }
-  .download-grid {
-    grid-template-columns: 1fr;
-  }
-  .section-title {
-    font-size: 1.5rem;
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 </style>

@@ -3,7 +3,7 @@
 <h2>SPlayer</h2>
 <p>一个简约的音乐播放器</p>
 
-[API Docs](./docs/API.md) | [交流群](https://qm.qq.com/cgi-bin/qm/qr?k=2-cVSf1bE0AvAehCib00qFEFdUvPaJ_k&jump_from=webapi&authKey=1NEhib9+GsmsXVo2rCc0IbRaVHeeRXJJ0gbsyKDcIwDdAzYySOubkFCvkV32+7Cw) | [开发版](https://github.com/imsyy/SPlayer/actions) | [发行版](https://github.com/imsyy/SPlayer/releases)
+[API Docs](https://splayer.imsyy.top/api.html) | [交流群](https://qm.qq.com/cgi-bin/qm/qr?k=2-cVSf1bE0AvAehCib00qFEFdUvPaJ_k&jump_from=webapi&authKey=1NEhib9+GsmsXVo2rCc0IbRaVHeeRXJJ0gbsyKDcIwDdAzYySOubkFCvkV32+7Cw) | [开发版](https://github.com/imsyy/SPlayer/actions) | [发行版](https://splayer.imsyy.top/download.html)
 
 <br />
 
@@ -129,6 +129,8 @@
 ### 稳定版
 
 通常情况下，可以在 [Releases](https://github.com/imsyy/SPlayer/releases) 中获取稳定版
+
+也可前往 [SPlayer 官网](https://splayer.imsyy.top/) 获取稳定版
 
 ### 开发版
 
