@@ -14,13 +14,17 @@
         </span>
       </template>
       <n-flex vertical size="small" style="width: 180px">
-        <n-text depth="3" style="font-size: 12px">歌词偏移 (秒)</n-text>
+        <n-text style="font-size: 14px"> 歌词偏移 </n-text>
+        <n-text depth="3" style="font-size: 12px"> 正值为歌词提前 </n-text>
         <n-input-number
           v-model:value="offsetSeconds"
-          :step="0.5"
+          :step="0.1"
           size="small"
-          placeholder="0.0"
-        />
+          placeholder="0.00"
+          :precision="2"
+        >
+          <template #suffix>秒</template>
+        </n-input-number>
         <n-button
           size="small"
           block
