@@ -20,7 +20,8 @@ interface LyricResult {
 
 class DownloadManager {
   private queue: DownloadTask[] = [];
-  private isProcessing: boolean = false;
+  private activeDownloads: Set<number> = new Set();
+  private maxConcurrent: number = 3;
   private initialized: boolean = false;
 
   constructor() {
@@ -37,27 +38,28 @@ class DownloadManager {
     if (!isElectron) return;
     const dataStore = useDataStore();
 
-    // 恢复状态
+    // 1. 重置下载中状态为等待中 (应用重启后的恢复)
     dataStore.downloadingSongs.forEach((item) => {
-      // 将下载中的重置为等待中，以便重新开始
       if (item.status === "downloading") {
         dataStore.updateDownloadStatus(item.song.id, "waiting");
-        // 重置进度
         dataStore.updateDownloadProgress(item.song.id, 0, "0MB", "0MB");
       }
+    });
 
-      // 将等待中或被重置为等待中的任务加入队列
-      if (item.status === "waiting" || item.status === "downloading") {
-        if (!this.queue.some((t) => t.song.id === item.song.id)) {
+    // 2. 将等待中的任务加入队列
+    dataStore.downloadingSongs.forEach((item) => {
+      if (item.status === "waiting") {
+        const isQueued = this.queue.some((t) => t.song.id === item.song.id);
+        const isActive = this.activeDownloads.has(item.song.id);
+
+        if (!isQueued && !isActive) {
           this.queue.push({ song: item.song, quality: item.quality });
         }
       }
     });
 
-    // 开始处理
-    if (this.queue.length > 0) {
-      this.processQueue();
-    }
+    // 3. 开始处理
+    this.processQueue();
   }
 
   /**
@@ -105,6 +107,9 @@ class DownloadManager {
     this.init();
     const dataStore = useDataStore();
 
+    const isQueued = this.queue.some((t) => t.song.id === song.id);
+    const isActive = this.activeDownloads.has(song.id);
+
     // 检查是否已存在
     const existing = dataStore.downloadingSongs.find((item) => item.song.id === song.id);
 
@@ -115,7 +120,14 @@ class DownloadManager {
         return;
       }
       // 如果已经在队列或下载中，忽略
-      return;
+      if (
+        isQueued ||
+        isActive ||
+        existing.status === "waiting" ||
+        existing.status === "downloading"
+      ) {
+        return;
+      }
     }
 
     // 添加到正在下载列表 (UI显示)
@@ -131,29 +143,32 @@ class DownloadManager {
   /**
    * 处理下载队列
    */
-  private async processQueue() {
-    if (this.isProcessing || this.queue.length === 0) {
-      return;
-    }
-
-    this.isProcessing = true;
-
-    while (this.queue.length > 0) {
-      const task = this.queue[0];
+  private processQueue() {
+    // 当活动任务数小于最大并发数，且队列不为空时，继续启动任务
+    while (this.activeDownloads.size < this.maxConcurrent && this.queue.length > 0) {
+      const task = this.queue.shift();
       if (task) {
-        try {
-          await this.executeDownload(task.song, task.quality);
-        } catch (error) {
-          console.error(`Error processing task for song ${task.song.id}:`, error);
-        }
-        // Remove the processed task
-        this.queue.shift();
-      } else {
-        this.queue.shift();
+        this.startTask(task);
       }
     }
+  }
 
-    this.isProcessing = false;
+  /**
+   * 启动单个任务
+   */
+  private async startTask(task: DownloadTask) {
+    this.activeDownloads.add(task.song.id);
+
+    try {
+      await this.executeDownload(task.song, task.quality);
+    } catch (error) {
+      console.error(`Error processing task for song ${task.song.id}:`, error);
+    } finally {
+      // 任务结束（无论成功失败取消），移除活动状态
+      this.activeDownloads.delete(task.song.id);
+      // 触发下一个任务
+      this.processQueue();
+    }
   }
 
   /**
@@ -185,7 +200,7 @@ class DownloadManager {
         if (result.status === "cancelled") return;
 
         // 检查任务是否已被用户移除，如果移除则不再报错
-        const currentTask = dataStore.downloadingSongs.find(s => s.song.id === song.id);
+        const currentTask = dataStore.downloadingSongs.find((s) => s.song.id === song.id);
         if (!currentTask) return;
 
         // 下载失败，保留在列表中并标记失败
@@ -472,24 +487,17 @@ class DownloadManager {
     this.init();
     const dataStore = useDataStore();
 
-    // 如果任务正在进行中，尝试取消后台下载
-    const task = this.queue.find((t) => t.song.id === songId);
-    if (task && isElectron) {
-      window.electron.ipcRenderer.invoke("cancel-download", songId);
-    }
-
-    // 如果任务已经在下载中（但不在队列中，因为队列执行时会移除队首）
-    // 或者任务状态是下载中
-    const downloadingTask = dataStore.downloadingSongs.find(
-      (item) => item.song.id === songId && item.status === "downloading",
-    );
-    if (downloadingTask && isElectron) {
-      window.electron.ipcRenderer.invoke("cancel-download", songId);
-    }
-
-    dataStore.removeDownloadingSong(songId);
-    // 移除队列中的任务
+    // 1. 从队列中移除
     this.queue = this.queue.filter((task) => task.song.id !== songId);
+
+    // 2. 如果正在下载，尝试取消
+    if (this.activeDownloads.has(songId) && isElectron) {
+      window.electron.ipcRenderer.invoke("cancel-download", songId);
+      // executeDownload 的 finally 块会处理 activeDownloads 的清理和队列的继续
+    }
+
+    // 3. 移除 Store 状态
+    dataStore.removeDownloadingSong(songId);
   }
 
   /**
@@ -506,13 +514,14 @@ class DownloadManager {
     dataStore.updateDownloadStatus(songId, "waiting");
     dataStore.updateDownloadProgress(songId, 0, "0MB", "0MB");
 
-    // 重新加入队列 (避免重复)
-    if (!this.queue.some((t) => t.song.id === songId)) {
-      this.queue.push({ song: task.song, quality: task.quality });
-    }
+    const isQueued = this.queue.some((t) => t.song.id === songId);
+    const isActive = this.activeDownloads.has(songId);
 
-    // 继续处理队列
-    this.processQueue();
+    // 重新加入队列 (避免重复)
+    if (!isQueued && !isActive) {
+      this.queue.push({ song: task.song, quality: task.quality });
+      this.processQueue();
+    }
   }
 
   /**
