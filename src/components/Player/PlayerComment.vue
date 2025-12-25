@@ -243,6 +243,13 @@ onMounted(() => {
   }
   .comment-list {
     margin: 0 auto;
+    :deep(.comments) {
+      .text {
+        &::selection {
+          background-color: rgba(var(--main-cover-color));
+        }
+      }
+    }
   }
   .placeholder {
     width: 100%;

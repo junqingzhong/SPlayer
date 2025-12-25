@@ -487,16 +487,13 @@ class DownloadManager {
     this.init();
     const dataStore = useDataStore();
 
-    // 1. 从队列中移除
+    // 从队列中移除
     this.queue = this.queue.filter((task) => task.song.id !== songId);
 
-    // 2. 如果正在下载，尝试取消
+    // 如果正在下载，尝试取消
     if (this.activeDownloads.has(songId) && isElectron) {
       window.electron.ipcRenderer.invoke("cancel-download", songId);
-      // executeDownload 的 finally 块会处理 activeDownloads 的清理和队列的继续
     }
-
-    // 3. 移除 Store 状态
     dataStore.removeDownloadingSong(songId);
   }
 
