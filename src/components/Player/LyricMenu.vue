@@ -7,7 +7,7 @@
     <div class="menu-icon" @click="changeOffset(-settingStore.lyricOffsetStep)">
       <SvgIcon name="Replay5" />
     </div>
-    <span class="time" @click="resetOffset()">
+    <span class="time" @click="showOffsetModal = true">
       {{ currentTimeOffsetValue }}
     </span>
     <div class="menu-icon" @click="changeOffset(settingStore.lyricOffsetStep)">
@@ -18,6 +18,26 @@
       <SvgIcon name="Settings" />
     </div>
   </n-flex>
+  <n-modal
+    v-model:show="showOffsetModal"
+    preset="card"
+    title="歌词调整"
+    style="width: 300px"
+    :bordered="false"
+  >
+    <n-flex vertical>
+      <n-text depth="3">歌词提前/延后（秒）</n-text>
+      <n-input-number
+        v-model:value="offsetSeconds"
+        :step="0.1"
+        placeholder="输入延迟时间"
+      />
+      <n-flex justify="end">
+        <n-button @click="resetOffset">清零</n-button>
+        <n-button type="primary" @click="showOffsetModal = false">完成</n-button>
+      </n-flex>
+    </n-flex>
+  </n-modal>
 </template>
 
 <script setup lang="ts">
@@ -27,6 +47,9 @@ import { openSetting, openCopyLyrics } from "@/utils/modal";
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
+
+const showOffsetModal = ref(false);
+
 
 /**
  * 当前歌曲 id
@@ -41,6 +64,15 @@ const currentTimeOffsetValue = computed(() => {
   // 将毫秒转换为秒显示（保留2位小数）
   const offsetSeconds = (currentTimeOffset / 1000).toFixed(2);
   return currentTimeOffset > 0 ? `+${offsetSeconds}` : offsetSeconds;
+});
+
+const offsetSeconds = computed({
+  get: () => {
+    return statusStore.getSongOffset(currentSongId.value) / 1000;
+  },
+  set: (val: number | null) => {
+    statusStore.setSongOffset(currentSongId.value, (val || 0) * 1000);
+  },
 });
 
 /**

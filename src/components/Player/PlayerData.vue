@@ -377,7 +377,7 @@ const jumpPage = debounce(
         cursor: pointer;
         transition: all 0.2s ease;
         &:hover {
-          background-color: rgba(var(--main-cover-color), 0.15);
+          background-color: rgba(var(--main-cover-color), 0.08);
           border-color: rgb(var(--main-cover-color));
         }
         &.loading {
@@ -435,7 +435,7 @@ const jumpPage = debounce(
 }
 // 音质选项当前选中的高亮样式
 :deep(.active-quality) {
-  background-color: rgba(var(--primary), 0.15) !important;
+  background-color: rgba(var(--primary), 0.1) !important;
   &::after {
     content: " ✓";
   }
