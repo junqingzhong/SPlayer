@@ -73,6 +73,7 @@
             <!-- 操作 -->
             <n-flex align="center" justify="center" class="actions">
               <n-button
+                v-if="item.status !== 'downloading'"
                 type="primary"
                 secondary
                 strong
@@ -86,7 +87,7 @@
                 type="error"
                 secondary
                 strong
-                @click="downloadManager.removeDownload(item.song.id)"
+                @click="handleRemoveDownload(item.song.id)"
               >
                 <template #icon>
                   <SvgIcon name="Close" />
@@ -118,6 +119,11 @@ const sortedDownloadingSongs = computed(() => {
     return getPriority(a.status) - getPriority(b.status);
   });
 });
+
+const handleRemoveDownload = (id: number) => {
+  downloadManager.removeDownload(id);
+  window.$message.success("已删除下载任务");
+};
 </script>
 
 <style lang="scss" scoped>

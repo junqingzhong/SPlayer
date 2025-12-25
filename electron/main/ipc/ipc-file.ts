@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
+import { type DownloadItem, app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "path";
 import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
 import { parseFile } from "music-metadata";
@@ -11,6 +11,9 @@ import { LocalMusicService } from "../services/LocalMusicService";
 import { useStore } from "../store";
 import FastGlob from "fast-glob";
 import pLimit from "p-limit";
+
+// 下载项
+const downloadItems = new Map<number, DownloadItem>();
 
 /**
  * 文件相关 IPC
@@ -119,10 +122,10 @@ const initFileIpc = (): void => {
         "aac",
         "webm",
         "m4a",
-        "mp4",
         "ogg",
         "aiff",
         "aif",
+        "aifc",
       ];
       // 查找指定目录下的所有音乐文件
       const musicFiles = await FastGlob(`**/*.{${musicExtensions.join(",")}}`, globOpt(filePath));
@@ -467,7 +470,7 @@ const initFileIpc = (): void => {
         fileType: "mp3",
         path: app.getPath("downloads"),
       },
-    ): Promise<{ status: "success" | "skipped" | "error"; message?: string }> => {
+    ): Promise<{ status: "success" | "skipped" | "error" | "cancelled"; message?: string }> => {
       try {
         // 获取窗口
         const win = BrowserWindow.fromWebContents(event.sender);
@@ -505,16 +508,57 @@ const initFileIpc = (): void => {
           }
         }
 
+        // 尝试删除可能存在的临时文件
+        const tempPath = join(downloadPath, `${fileName}.${fileType}.tmp`);
+        try {
+          await unlink(tempPath);
+        } catch {
+          // 忽略错误
+        }
+
         // 下载文件
-        const songDownload = await download(win, url, {
-          directory: downloadPath,
-          filename: `${fileName}.${fileType}`,
-          showProgressBar: false,
-          onProgress: (progress) => {
-            win.webContents.send("download-progress", { ...progress, id: songData?.id });
-          },
-        });
+        let songDownload: DownloadItem;
+        try {
+          songDownload = await download(win, url, {
+            directory: downloadPath,
+            filename: `${fileName}.${fileType}`,
+            showProgressBar: false,
+            onProgress: (progress) => {
+              win.webContents.send("download-progress", { ...progress, id: songData?.id });
+            },
+            onStarted: (item) => {
+              if (songData?.id) {
+                downloadItems.set(songData.id, item);
+              }
+            },
+          });
+        } catch (error: any) {
+          if (error.message === "The download was cancelled") {
+            return { status: "cancelled", message: "下载已取消" };
+          }
+          throw error;
+        } finally {
+          if (songData?.id) {
+            downloadItems.delete(songData.id);
+          }
+        }
+
         if (!downloadMeta || !songData?.cover) return { status: "success" };
+
+        // 验证文件是否存在
+        const savedPath = songDownload.getSavePath();
+        try {
+          await access(savedPath);
+        } catch (e) {
+          // 等待一小段时间再次检查（解决某些情况下文件系统延迟）
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          try {
+            await access(savedPath);
+          } catch {
+            throw new Error(`File not found at ${savedPath}`);
+          }
+        }
+
         // 下载封面
         const coverUrl = songData?.coverSize?.l || songData.cover;
         const coverDownload = await download(win, coverUrl, {
@@ -523,7 +567,7 @@ const initFileIpc = (): void => {
           showProgressBar: false,
         });
         // 读取歌曲文件
-        let songFile = File.createFromPath(songDownload.getSavePath());
+        let songFile = File.createFromPath(savedPath);
         // 清除原有标签，防止脏数据（如模拟播放下载时的乱码歌词）
         songFile.removeTags(TagTypes.AllTags);
         songFile.save();
@@ -564,6 +608,17 @@ const initFileIpc = (): void => {
       }
     },
   );
+
+  // 取消下载
+  ipcMain.handle("cancel-download", async (_, songId: number) => {
+    const item = downloadItems.get(songId);
+    if (item) {
+      item.cancel();
+      downloadItems.delete(songId);
+      return true;
+    }
+    return false;
+  });
 
   // 检查是否是相同的路径（规范化后比较）
   ipcMain.handle("check-if-same-path", (_, localFilesPath: string[], selectedDir: string) => {
