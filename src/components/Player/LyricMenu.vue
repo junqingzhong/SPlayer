@@ -173,9 +173,14 @@ const resetOffset = () => {
     opacity: 0.6;
   }
   :deep(.n-input) {
+    --n-caret-color: rgb(var(--main-cover-color));
     --n-color: rgba(var(--main-cover-color), 0.1);
+    --n-color-focus: rgba(var(--main-cover-color), 0.1);
     --n-text-color: rgb(var(--main-cover-color));
+    --n-border-hover: 1px solid rgba(var(--main-cover-color), 0.28);
+    --n-border-focus: 1px solid rgba(var(--main-cover-color), 0.28);
     --n-suffix-text-color: rgb(var(--main-cover-color));
+    --n-box-shadow-focus: 0 0 8px 0 rgba(var(--main-cover-color), 0.3);
     .n-button {
       --n-text-color: rgb(var(--main-cover-color));
     }
