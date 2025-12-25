@@ -4,13 +4,13 @@
       <SvgIcon name="Copy" />
     </div>
     <div class="divider" />
-    <div class="menu-icon" @click="changeOffset(-500)">
+    <div class="menu-icon" @click="changeOffset(-settingStore.lyricOffsetStep)">
       <SvgIcon name="Replay5" />
     </div>
     <span class="time" @click="resetOffset()">
       {{ currentTimeOffsetValue }}
     </span>
-    <div class="menu-icon" @click="changeOffset(500)">
+    <div class="menu-icon" @click="changeOffset(settingStore.lyricOffsetStep)">
       <SvgIcon name="Forward5" />
     </div>
     <div class="divider" />
@@ -21,10 +21,11 @@
 </template>
 
 <script setup lang="ts">
-import { useMusicStore, useStatusStore } from "@/stores";
+import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { openSetting, openCopyLyrics } from "@/utils/modal";
 
 const musicStore = useMusicStore();
+const settingStore = useSettingStore();
 const statusStore = useStatusStore();
 
 /**
@@ -37,8 +38,8 @@ const currentSongId = computed(() => musicStore.playSong?.id as number | undefin
  */
 const currentTimeOffsetValue = computed(() => {
   const currentTimeOffset = statusStore.getSongOffset(currentSongId.value);
-  // 将毫秒转换为秒显示（保留1位小数）
-  const offsetSeconds = (currentTimeOffset / 1000).toFixed(1);
+  // 将毫秒转换为秒显示（保留2位小数）
+  const offsetSeconds = (currentTimeOffset / 1000).toFixed(2);
   return currentTimeOffset > 0 ? `+${offsetSeconds}` : offsetSeconds;
 });
 

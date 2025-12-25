@@ -290,6 +290,36 @@
         </div>
         <n-switch v-model:value="settingStore.lyricsBlur" class="set" :round="false" />
       </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">歌词时延调节步长</n-text>
+          <n-text class="tip" :depth="3">单位毫秒，每次点击调节的时延大小</n-text>
+        </div>
+        <n-flex>
+          <Transition name="fade" mode="out-in">
+            <n-button
+              v-if="settingStore.lyricOffsetStep !== 500"
+              type="primary"
+              strong
+              secondary
+              @click="settingStore.lyricOffsetStep = 500"
+            >
+              恢复默认
+            </n-button>
+          </Transition>
+          <n-input-number
+            v-model:value="settingStore.lyricOffsetStep"
+            :min="10"
+            :max="10000"
+            :step="10"
+            class="set"
+            placeholder="请输入时延步长"
+            @blur="settingStore.lyricOffsetStep === null ? (settingStore.lyricOffsetStep = 500) : null"
+          >
+            <template #suffix> ms </template>
+          </n-input-number>
+        </n-flex>
+      </n-card>
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> 歌词内容 </n-h3>
