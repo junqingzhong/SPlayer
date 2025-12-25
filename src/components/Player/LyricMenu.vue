@@ -181,6 +181,12 @@ const resetOffset = () => {
     --n-border-focus: 1px solid rgba(var(--main-cover-color), 0.28);
     --n-suffix-text-color: rgb(var(--main-cover-color));
     --n-box-shadow-focus: 0 0 8px 0 rgba(var(--main-cover-color), 0.3);
+    // 文本选中颜色
+    input {
+      &::selection {
+        background-color: rgba(var(--main-cover-color));
+      }
+    }
     .n-button {
       --n-text-color: rgb(var(--main-cover-color));
     }
