@@ -7,9 +7,30 @@
     <div class="menu-icon" @click="changeOffset(-settingStore.lyricOffsetStep)">
       <SvgIcon name="Replay5" />
     </div>
-    <span class="time" @click="showOffsetModal = true">
-      {{ currentTimeOffsetValue }}
-    </span>
+    <n-popover trigger="click" placement="left" style="padding: 8px">
+      <template #trigger>
+        <span class="time">
+          {{ currentTimeOffsetValue }}
+        </span>
+      </template>
+      <n-flex vertical size="small" style="width: 180px">
+        <n-text depth="3" style="font-size: 12px">歌词偏移 (秒)</n-text>
+        <n-input-number
+          v-model:value="offsetSeconds"
+          :step="0.5"
+          size="small"
+          placeholder="0.0"
+        />
+        <n-button
+          size="small"
+          block
+          @click="resetOffset"
+          :disabled="offsetSeconds == 0"
+        >
+          清零
+        </n-button>
+      </n-flex>
+    </n-popover>
     <div class="menu-icon" @click="changeOffset(settingStore.lyricOffsetStep)">
       <SvgIcon name="Forward5" />
     </div>
@@ -18,26 +39,6 @@
       <SvgIcon name="Settings" />
     </div>
   </n-flex>
-  <n-modal
-    v-model:show="showOffsetModal"
-    preset="card"
-    title="歌词调整"
-    style="width: 300px"
-    :bordered="false"
-  >
-    <n-flex vertical>
-      <n-text depth="3">歌词提前/延后（秒）</n-text>
-      <n-input-number
-        v-model:value="offsetSeconds"
-        :step="0.1"
-        placeholder="输入延迟时间"
-      />
-      <n-flex justify="end">
-        <n-button @click="resetOffset">清零</n-button>
-        <n-button type="primary" @click="showOffsetModal = false">完成</n-button>
-      </n-flex>
-    </n-flex>
-  </n-modal>
 </template>
 
 <script setup lang="ts">
@@ -47,9 +48,6 @@ import { openSetting, openCopyLyrics } from "@/utils/modal";
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
-
-const showOffsetModal = ref(false);
-
 
 /**
  * 当前歌曲 id
