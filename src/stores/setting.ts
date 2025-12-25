@@ -372,7 +372,7 @@ export const useSettingStore = defineStore("setting", {
     proxyPort: 80,
     useRealIP: false,
     realIP: "",
-    showPlayMeta: false,
+    showPlayMeta: true,
     showSongQuality: true,
     showSongPrivilegeTag: true,
     showSongOriginalTag: true,

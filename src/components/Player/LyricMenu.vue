@@ -7,29 +7,32 @@
     <div class="menu-icon" @click="changeOffset(-settingStore.lyricOffsetStep)">
       <SvgIcon name="Replay5" />
     </div>
-    <n-popover trigger="click" placement="left" style="padding: 8px">
+    <n-popover class="player" trigger="click" placement="left" style="padding: 8px">
       <template #trigger>
         <span class="time">
           {{ currentTimeOffsetValue }}
         </span>
       </template>
-      <n-flex vertical size="small" style="width: 180px">
-        <n-text style="font-size: 14px"> 歌词偏移 </n-text>
-        <n-text depth="3" style="font-size: 12px"> 正值为歌词提前 </n-text>
+      <n-flex class="offset-menu" :size="4" vertical>
+        <span class="title"> 歌词偏移 </span>
+        <span class="tip"> 正值为歌词提前，单位毫秒 </span>
         <n-input-number
-          v-model:value="offsetSeconds"
-          :step="0.1"
+          v-model:value="offsetMilliseconds"
+          class="offset-input"
+          :precision="0"
+          :step="100"
+          placeholder="0"
           size="small"
-          placeholder="0.00"
-          :precision="2"
         >
-          <template #suffix>秒</template>
+          <template #suffix>ms</template>
         </n-input-number>
         <n-button
+          class="player"
           size="small"
-          block
+          secondary
+          strong
           @click="resetOffset"
-          :disabled="offsetSeconds == 0"
+          :disabled="offsetMilliseconds == 0"
         >
           清零
         </n-button>
@@ -59,21 +62,22 @@ const statusStore = useStatusStore();
 const currentSongId = computed(() => musicStore.playSong?.id as number | undefined);
 
 /**
- * 当前进度偏移值（显示为秒，保留1位小数）
+ * 当前进度偏移值
  */
 const currentTimeOffsetValue = computed(() => {
   const currentTimeOffset = statusStore.getSongOffset(currentSongId.value);
-  // 将毫秒转换为秒显示（保留2位小数）
-  const offsetSeconds = (currentTimeOffset / 1000).toFixed(2);
-  return currentTimeOffset > 0 ? `+${offsetSeconds}` : offsetSeconds;
+  if (currentTimeOffset === 0) return "0";
+  // 将毫秒转换为秒显示
+  const offsetSeconds = parseFloat((currentTimeOffset / 1000).toFixed(2));
+  return currentTimeOffset > 0 ? `+${offsetSeconds}` : `${offsetSeconds}`;
 });
 
-const offsetSeconds = computed({
+const offsetMilliseconds = computed({
   get: () => {
-    return statusStore.getSongOffset(currentSongId.value) / 1000;
+    return statusStore.getSongOffset(currentSongId.value);
   },
   set: (val: number | null) => {
-    statusStore.setSongOffset(currentSongId.value, (val || 0) * 1000);
+    statusStore.setSongOffset(currentSongId.value, val || 0);
   },
 });
 
@@ -158,6 +162,25 @@ const resetOffset = () => {
   }
 }
 
+.offset-menu {
+  width: 180px;
+  .title {
+    font-size: 14px;
+    line-height: normal;
+  }
+  .tip {
+    font-size: 12px;
+    opacity: 0.6;
+  }
+  :deep(.n-input) {
+    --n-color: rgba(var(--main-cover-color), 0.1);
+    --n-text-color: rgb(var(--main-cover-color));
+    --n-suffix-text-color: rgb(var(--main-cover-color));
+    .n-button {
+      --n-text-color: rgb(var(--main-cover-color));
+    }
+  }
+}
 .lyric,
 .lyric-am {
   &:hover {
