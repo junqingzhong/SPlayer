@@ -33,22 +33,28 @@
     <!-- 客户端控制 -->
     <n-flex v-if="isElectron" align="center" class="client-control">
       <n-divider class="divider" vertical />
-      <n-button :focusable="false" title="最小化" tertiary circle @click="min">
-        <template #icon>
-          <SvgIcon name="WindowMinimize" />
-        </template>
-      </n-button>
-      <n-button
-        :focusable="false"
-        :title="isMax ? '还原' : '最大化'"
-        tertiary
-        circle
-        @click="maxOrRes"
-      >
-        <template #icon>
-          <SvgIcon :name="isMax ? 'WindowRestore' : 'WindowMaximize'" />
-        </template>
-      </n-button>
+      <div class="min-button-wrapper" @click="min" title="最小化">
+        <n-button :focusable="false" title="最小化" tertiary circle @click.stop="min">
+          <template #icon>
+            <SvgIcon name="WindowMinimize" />
+          </template>
+        </n-button>
+        <div class="min-expanded-area"></div>
+      </div>
+      <div class="max-button-wrapper" @click="maxOrRes" :title="isMax ? '还原' : '最大化'">
+        <n-button
+          :focusable="false"
+          :title="isMax ? '还原' : '最大化'"
+          tertiary
+          circle
+          @click.stop="maxOrRes"
+        >
+          <template #icon>
+            <SvgIcon :name="isMax ? 'WindowRestore' : 'WindowMaximize'" />
+          </template>
+        </n-button>
+        <div class="max-expanded-area"></div>
+      </div>
       <div class="close-button-wrapper" @click="tryClose" title="关闭">
         <n-button :focusable="false" title="关闭" tertiary circle @click.stop="tryClose">
           <template #icon>
@@ -239,20 +245,32 @@ onMounted(() => {
     .divider {
       margin: 0 0 0 12px;
     }
+    .min-button-wrapper,
+    .max-button-wrapper,
     .close-button-wrapper {
       position: relative;
       cursor: pointer;
-      .close-expanded-area {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 60px;
-        height: 70px;
-        background-color: transparent;
-        cursor: pointer;
-        -webkit-app-region: no-drag;
-        z-index: 1000;
-      }
+    }
+    .min-expanded-area,
+    .max-expanded-area,
+    .close-expanded-area {
+      position: fixed;
+      top: 0;
+      width: 50px;
+      height: 70px;
+      background-color: transparent;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+      z-index: 1000;
+    }
+    .close-expanded-area {
+      right: 0;
+    }
+    .max-expanded-area {
+      right: 50px;
+    }
+    .min-expanded-area {
+      right: 100px;
     }
   }
 }

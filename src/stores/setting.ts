@@ -167,6 +167,8 @@ export interface SettingState {
   hidePassedLines: boolean;
   /** 文字动画的渐变宽度 */
   wordFadeWidth: number;
+  /** 歌词时延调节步长（毫秒） */
+  lyricOffsetStep: number;
   /** 是否启用在线 TTML 歌词 */
   enableTTMLLyric: boolean;
   /** AMLL DB 服务地址 */
@@ -332,6 +334,7 @@ export const useSettingStore = defineStore("setting", {
     useAMSpring: false,
     hidePassedLines: false,
     wordFadeWidth: 0.5,
+    lyricOffsetStep: 500,
     enableTTMLLyric: false,
     amllDbServer: defaultAMLLDbServer,
     showYrc: true,
@@ -369,7 +372,7 @@ export const useSettingStore = defineStore("setting", {
     proxyPort: 80,
     useRealIP: false,
     realIP: "",
-    showPlayMeta: false,
+    showPlayMeta: true,
     showSongQuality: true,
     showSongPrivilegeTag: true,
     showSongOriginalTag: true,

@@ -5,6 +5,7 @@
       :class="['lyric-am', { pure: statusStore.pureLyricMode }]"
       :style="{
         '--amll-lp-color': 'rgb(var(--main-cover-color, 239 239 239))',
+        '--amll-lp-hover-bg-color': 'rgba(var(--main-cover-color), 0.08)',
       }"
     >
       <div v-if="statusStore.lyricLoading" class="lyric-loading">歌词正在加载中...</div>

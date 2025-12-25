@@ -22,8 +22,14 @@ export type CoverSize = {
 
 /** 音质 */
 export enum QualityType {
-  /** 杜比 */
+  /** 超清母带 */
+  Master = "Master", // jymaster
+  /** 杜比全景声 */
   Dolby = "Dolby", // db
+  /** 沉浸环绕声 */
+  Spatial = "Spatial", // sky
+  /** 高清环绕声 */
+  Surround = "Surround", // jyeffect
   /** Hi-Res */
   HiRes = "Hi-Res", // hr
   /** 无损 */
