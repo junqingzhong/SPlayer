@@ -41,7 +41,7 @@
       >
         <!-- 音质 -->
         <n-popselect
-          :value="settingStore.songLevel"
+          :value="currentPlayingLevel"
           :options="qualityOptions"
           :disabled="!!musicStore.playSong.path || statusStore.playUblock"
           class="player"
@@ -132,7 +132,7 @@ import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
 import { songQuality } from "@/api/song";
 import { songLevelData, getSongLevelsData } from "@/utils/meta";
-import { formatFileSize } from "@/utils/helper";
+import { formatFileSize, handleSongQuality } from "@/utils/helper";
 import { usePlayerController } from "@/core/player/PlayerController";
 
 defineProps<{
@@ -150,33 +150,49 @@ const settingStore = useSettingStore();
 const qualityLoading = ref(false);
 const availableQualities = ref<SongLevelDataType[]>([]);
 
+// 当前实际播放的音质级别
+const currentPlayingLevel = computed(() => {
+  const current = statusStore.songQuality;
+  if (!current || !availableQualities.value.length) return settingStore.songLevel;
+  // 在可用列表中找到与当前播放音质名称匹配的级别
+  const found = availableQualities.value.find((q) => handleSongQuality(q) === current);
+  return found ? found.level : settingStore.songLevel;
+});
+
 // 音质选项
 const qualityOptions = computed<DropdownOption[]>(() => {
-  return availableQualities.value.map((item) => ({
-    label: () =>
-      h(
-        "div",
-        {
-          style: {
-            display: "flex",
-            alignItems: "center",
-            width: "100%",
-            minWidth: "150px",
+  return availableQualities.value.map((item) => {
+    // 是否为当前设置的音质
+    const isDefaultQuality = settingStore.songLevel === item.level;
+    // 是否为当前实际播放的音质
+    const isPlayingQuality = currentPlayingLevel.value === item.level;
+    return {
+      label: () =>
+        h(
+          "div",
+          {
+            style: {
+              display: "flex",
+              alignItems: "center",
+              width: "100%",
+              minWidth: "150px",
+              fontWeight: isDefaultQuality ? "bold" : "normal",
+              color: isPlayingQuality ? "rgb(var(--main-cover-color))" : undefined,
+            },
           },
-        },
-        [
-          h("span", item.name),
-          item.size
-            ? h(
-                "span",
-                { style: { opacity: 0.6, fontSize: "12px", marginLeft: "6px" } },
-                formatFileSize(item.size),
-              )
-            : null,
-        ],
-      ),
-    value: item.level,
-  }));
+          [
+            h("span", item.name),
+
+            h(
+              "span",
+              { style: { opacity: 0.6, fontSize: "12px", marginLeft: "6px" } },
+              isDefaultQuality ? "当前配置" : item.size ? formatFileSize(item.size) : "",
+            ),
+          ],
+        ),
+      value: item.level,
+    };
+  });
 });
 
 // 当前歌词模式

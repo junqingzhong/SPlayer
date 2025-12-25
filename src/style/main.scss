@@ -143,6 +143,7 @@ audio {
     color: var(--primary-hex);
   }
   &.player {
+    color: rgb(var(--main-cover-color));
     --n-color: rgba(var(--main-cover-color), 0.14);
     .volume-change {
       .slider-num {
@@ -304,7 +305,9 @@ audio {
     --n-action-divider-color: rgba(var(--main-cover-color), 0.09) !important;
     --n-action-text-color: rgba(var(--main-cover-color), 0.82) !important;
     --n-border-radius: 8px !important;
-    --n-color: transparent !important;
+    // --n-color: transparent !important;
+    // 这样更好看
+    --n-color: rgba(24, 24, 28, 0.55) !important;
     --n-group-header-text-color: rgba(var(--main-cover-color), 0.52) !important;
     --n-option-check-color: rgb(var(--main-cover-color)) !important;
     --n-option-color-pending: rgba(var(--main-cover-color), 0.09);
@@ -314,17 +317,17 @@ audio {
     --n-option-text-color-pressed: rgba(var(--main-cover-color), 0.26) !important;
     --n-option-color-pending: rgba(var(--main-cover-color), 0.09) !important;
     backdrop-filter: blur(20px);
-    &::after {
-      content: "";
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      inset: 0;
-      border-radius: 8px;
-      background: color-mix(in srgb, rgb(18, 18, 22) 50%, rgb(var(--main-cover-color)) 40%);
-      opacity: 0.75;
-      z-index: -1;
-    }
+    // &::after {
+    //   content: "";
+    //   position: absolute;
+    //   width: 100%;
+    //   height: 100%;
+    //   inset: 0;
+    //   border-radius: 8px;
+    //   background: color-mix(in srgb, rgb(18, 18, 22) 50%, rgb(var(--main-cover-color)) 40%);
+    //   opacity: 0.75;
+    //   z-index: -1;
+    // }
   }
 }
 
