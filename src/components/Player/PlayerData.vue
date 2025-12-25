@@ -40,9 +40,25 @@
         align="center"
       >
         <!-- 音质 -->
-        <span class="meta-item">{{
-          statusStore.playUblock || !statusStore.songQuality ? "未知音质" : statusStore.songQuality
-        }}</span>
+        <n-dropdown
+          :options="qualityOptions"
+          :show-arrow="false"
+          :class="{ player: statusStore.showFullPlayer }"
+          :disabled="qualityLoading || !!musicStore.playSong.path || statusStore.playUblock"
+          @select="handleQualitySelect"
+        >
+          <span
+            class="meta-item clickable"
+            :class="{ loading: qualityLoading }"
+            @mouseenter="handleQualityHover"
+            @click="handleQualityHover"
+          >
+            <template v-if="qualityLoading">加载中...</template>
+            <template v-else>
+              {{ statusStore.playUblock || !statusStore.songQuality ? "未知音质" : statusStore.songQuality }}
+            </template>
+          </span>
+        </n-dropdown>
         <!-- 歌词模式 -->
         <span class="meta-item">{{ lyricMode }}</span>
         <!-- 是否在线 -->
@@ -102,8 +118,14 @@
 
 <script setup lang="ts">
 import type { RouteLocationRaw } from "vue-router";
+import type { DropdownOption } from "naive-ui";
+import type { SongLevelDataType } from "@/types/main";
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
+import { songQuality } from "@/api/song";
+import { songLevelData, getSongLevelsData } from "@/utils/meta";
+import { formatFileSize } from "@/utils/helper";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 defineProps<{
   center?: boolean;
@@ -116,6 +138,42 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
+// 音质选择菜单状态
+const qualityLoading = ref(false);
+const availableQualities = ref<SongLevelDataType[]>([]);
+
+// 音质选项（用于 n-dropdown）
+const qualityOptions = computed<DropdownOption[]>(() => {
+  if (availableQualities.value.length === 0) {
+    return [{ label: "点击加载音质列表", key: "load", disabled: true }];
+  }
+  return availableQualities.value.map((item) => ({
+    label: () =>
+      h(
+        "div",
+        {
+          style: {
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            width: "100%",
+            minWidth: "180px",
+          },
+        },
+        [
+          h("span", item.name),
+          item.size
+            ? h("span", { style: { opacity: 0.6, marginLeft: "16px" } }, formatFileSize(item.size))
+            : null,
+        ],
+      ),
+    key: item.level,
+    props: {
+      class: settingStore.songLevel === item.level ? "active-quality" : "",
+    },
+  }));
+});
+
 // 当前歌词模式
 const lyricMode = computed(() => {
   if (settingStore.showYrc) {
@@ -123,6 +181,95 @@ const lyricMode = computed(() => {
     if (musicStore.isHasYrc) return "YRC";
   }
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
+});
+
+// 鼠标悬浮音质标签 - 自动加载可用音质
+const handleQualityHover = async () => {
+  // 本地歌曲或解锁歌曲不支持切换
+  if (musicStore.playSong.path || statusStore.playUblock) {
+    return;
+  }
+
+  // 如果已经加载过，不重复加载
+  if (availableQualities.value.length > 0) return;
+
+  const songId = musicStore.playSong.id;
+  if (!songId) return;
+
+  qualityLoading.value = true;
+  try {
+    // 获取歌曲音质详情
+    const res = await songQuality(songId);
+    if (res.data) {
+      // 使用 getSongLevelsData 格式化可用音质
+      const levels = getSongLevelsData(songLevelData, res.data);
+      availableQualities.value = levels;
+    } else {
+      window.$message.warning("获取音质信息失败");
+    }
+  } catch (error) {
+    console.error("获取音质详情失败:", error);
+    window.$message.error("获取音质信息失败");
+  } finally {
+    qualityLoading.value = false;
+  }
+};
+
+// 选择音质
+const handleQualitySelect = async (key: string) => {
+  // 如果选择的和当前一样，不处理
+  if (settingStore.songLevel === key) {
+    return;
+  }
+
+  const item = availableQualities.value.find((q) => q.level === key);
+  if (!item) return;
+
+  // 更新设置中的音质
+  settingStore.songLevel = key as typeof settingStore.songLevel;
+
+  // 切换音质，保持当前进度，不重新加载歌词
+  const playerController = usePlayerController();
+  const currentTime = statusStore.currentTime;
+
+  // 使用 switchQuality 切换，不触发歌词加载
+  await playerController.switchQuality(currentTime);
+
+  // 切换成功提示
+  window.$message.success(`已切换至${item.name}`);
+};
+
+// 预加载音质列表（静默加载，无错误提示）
+const preloadQualities = async () => {
+  // 本地歌曲或解锁歌曲不支持切换
+  if (musicStore.playSong.path || statusStore.playUblock) return;
+  // 如果已经加载过，不重复加载
+  if (availableQualities.value.length > 0) return;
+
+  const songId = musicStore.playSong.id;
+  if (!songId) return;
+
+  try {
+    const res = await songQuality(songId);
+    if (res.data) {
+      const levels = getSongLevelsData(songLevelData, res.data);
+      availableQualities.value = levels;
+    }
+  } catch (error) {
+    console.error("预加载音质列表失败:", error);
+  }
+};
+
+// 当切换歌曲时清空已加载的音质列表
+watch(() => musicStore.playSong.id, () => {
+  availableQualities.value = [];
+});
+
+// 打开全屏播放器时预加载音质列表
+watch(() => statusStore.showFullPlayer, (show) => {
+  if (show) {
+    preloadQualities();
+  }
 });
 
 const jumpPage = debounce(
@@ -236,6 +383,18 @@ const jumpPage = debounce(
       border-radius: 8px;
       padding: 2px 6px;
       border: 1px solid rgba(var(--main-cover-color), 0.6);
+      &.clickable {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        &:hover {
+          background-color: rgba(var(--main-cover-color), 0.15);
+          border-color: rgb(var(--main-cover-color));
+        }
+        &.loading {
+          opacity: 0.6;
+          cursor: wait;
+        }
+      }
     }
   }
   &.record {
@@ -284,4 +443,12 @@ const jumpPage = debounce(
   background-color: rgba(var(--main-cover-color), 0.18);
   backdrop-filter: blur(10px);
 }
+// 音质选项当前选中的高亮样式
+:deep(.active-quality) {
+  background-color: rgba(var(--primary), 0.15) !important;
+  &::after {
+    content: " ✓";
+  }
+}
 </style>
+

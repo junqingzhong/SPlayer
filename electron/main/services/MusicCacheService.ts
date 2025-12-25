@@ -1,5 +1,5 @@
 import { existsSync, createWriteStream } from "fs";
-import { unlink, rename } from "fs/promises";
+import { unlink, rename, stat } from "fs/promises";
 import { pipeline } from "stream/promises";
 import { CacheService } from "./CacheService";
 import { useStore } from "../store";
@@ -104,6 +104,18 @@ export class MusicCacheService {
       const fileStream = createWriteStream(tempPath);
 
       await pipeline(downloadStream, fileStream);
+
+      // 检查临时文件是否存在且有内容
+      if (!existsSync(tempPath)) {
+        throw new Error("下载的临时文件不存在");
+      }
+
+      // 检查文件大小，避免空文件
+      const stats = await stat(tempPath);
+      if (stats.size === 0) {
+        await unlink(tempPath).catch(() => {});
+        throw new Error("下载的文件为空");
+      }
 
       // 下载成功后，将临时文件重命名为正式缓存文件
       await rename(tempPath, filePath);

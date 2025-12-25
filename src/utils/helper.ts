@@ -389,9 +389,11 @@ export const handleSongQuality = (
   }
   // 含有 level 特殊处理
   if (typeof song === "object" && "level" in song) {
-    if (song.level === "dolby" || song.level === "jymaster") return QualityType.Dolby;
-    if (song.level === "hires" || song.level === "jyeffect" || song.level === "sky")
-      return QualityType.HiRes;
+    if (song.level === "jymaster") return QualityType.Master;
+    if (song.level === "dolby") return QualityType.Dolby;
+    if (song.level === "sky") return QualityType.Spatial;
+    if (song.level === "jyeffect") return QualityType.Surround;
+    if (song.level === "hires") return QualityType.HiRes;
     if (song.level === "lossless") return QualityType.SQ;
     if (song.level === "exhigh") return QualityType.HQ;
     if (song.level === "higher") return QualityType.MQ;
@@ -399,7 +401,10 @@ export const handleSongQuality = (
     return undefined;
   }
   const order = [
+    { key: "jm", type: QualityType.Master },
     { key: "db", type: QualityType.Dolby },
+    { key: "sk", type: QualityType.Spatial },
+    { key: "je", type: QualityType.Surround },
     { key: "hr", type: QualityType.HiRes },
     { key: "sq", type: QualityType.SQ },
     { key: "h", type: QualityType.HQ },

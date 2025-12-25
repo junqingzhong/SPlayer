@@ -81,14 +81,14 @@ audio {
 .n-dropdown {
   --n-border-radius: 8px !important;
   &.player {
-    --n-color: rgba(var(--main-cover-color), 0.14);
+    --n-color: rgba(30, 30, 30, 0.85);
     --n-prefix-color: rgb(var(--main-cover-color));
-    --n-option-text-color: rgb(var(--main-cover-color));
-    --n-option-text-color-hover: rgb(var(--main-cover-color));
-    --n-option-color-hover: rgba(var(--main-cover-color), 0.14);
-    --n-option-color-active: rgba(var(--main-cover-color), 0.14);
-    box-shadow: 0 0 0 -4px rgba(var(--main-cover-color), 0.24);
-    backdrop-filter: blur(10px);
+    --n-option-text-color: rgba(255, 255, 255, 0.9);
+    --n-option-text-color-hover: #fff;
+    --n-option-color-hover: rgba(255, 255, 255, 0.12);
+    --n-option-color-active: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(20px);
   }
 }
 

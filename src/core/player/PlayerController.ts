@@ -174,6 +174,45 @@ class PlayerController {
   }
 
   /**
+   * 切换音质（仅切换音频源，不重新加载歌词）
+   * @param seek 当前播放进度（毫秒）
+   */
+  async switchQuality(seek: number = 0) {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+    const songManager = useSongManager();
+    const audioManager = useAudioManager();
+
+    const playSongData = getPlaySongData();
+    if (!playSongData || playSongData.path) return;
+
+    try {
+      statusStore.playLoading = true;
+      // 清除预取缓存，强制重新获取
+      songManager.clearPrefetch();
+      // 获取新音频源
+      const audioSource = await songManager.getAudioSource(playSongData);
+      if (!audioSource.url) {
+        window.$message.error("切换音质失败");
+        return;
+      }
+      console.log(`🔄 [${playSongData.id}] 切换音质:`, audioSource);
+      // 更新音质和解锁状态
+      statusStore.songQuality = audioSource.quality;
+      statusStore.playUblock = audioSource.isUnlocked ?? false;
+      // 停止当前播放
+      audioManager.stop();
+      // 执行底层播放，保持进度
+      await this.loadAndPlay(audioSource.url, true, seek);
+    } catch (error) {
+      console.error("❌ 切换音质失败:", error);
+      window.$message.error("切换音质失败");
+    } finally {
+      statusStore.playLoading = false;
+    }
+  }
+
+  /**
    * 加载音频流并播放
    */
   private async loadAndPlay(url: string, autoPlay: boolean, seek: number) {
