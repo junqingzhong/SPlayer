@@ -124,7 +124,7 @@ import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
 import { songQuality } from "@/api/song";
 import { songLevelData, getSongLevelsData } from "@/utils/meta";
-import { formatFileSize } from "@/utils/helper";
+import { formatFileSize, handleSongQuality } from "@/utils/helper";
 import { usePlayerController } from "@/core/player/PlayerController";
 
 defineProps<{
@@ -147,9 +147,14 @@ const qualityOptions = computed<DropdownOption[]>(() => {
   if (availableQualities.value.length === 0) {
     return [{ label: "点击加载音质列表", key: "load", disabled: true }];
   }
-  return availableQualities.value.map((item) => ({
-    label: () =>
-      h(
+  return availableQualities.value.map((item) => {
+    // 是当前播放的音质
+    const isPlayingQuality = statusStore.songQuality === handleSongQuality(item);
+    // 是当前设置的音质
+    const isDefaultQuality = settingStore.songLevel === item.level;
+    // 选项
+    return {
+      label: () => h(
         "div",
         {
           style: {
@@ -158,6 +163,8 @@ const qualityOptions = computed<DropdownOption[]>(() => {
             alignItems: "center",
             width: "100%",
             minWidth: "180px",
+            fontWeight: isDefaultQuality ? "bold" : "normal",
+            color: isPlayingQuality ? "rgb(var(--primary))" : undefined,
           },
         },
         [
@@ -167,11 +174,8 @@ const qualityOptions = computed<DropdownOption[]>(() => {
             : null,
         ],
       ),
-    key: item.level,
-    props: {
-      class: settingStore.songLevel === item.level ? "active-quality" : "",
-    },
-  }));
+      key: item.level,
+  }});
 });
 
 // 当前歌词模式
@@ -433,12 +437,4 @@ const jumpPage = debounce(
   background-color: rgba(var(--main-cover-color), 0.18);
   backdrop-filter: blur(10px);
 }
-// 音质选项当前选中的高亮样式
-:deep(.active-quality) {
-  background-color: rgba(var(--primary), 0.1) !important;
-  &::after {
-    content: " ✓";
-  }
-}
 </style>
-
