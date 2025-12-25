@@ -1,4 +1,4 @@
-import axios, { AxiosInstance } from "axios";
+import axios, { AxiosError, AxiosInstance } from "axios";
 import md5 from "md5";
 import { useSettingStore } from "@/stores";
 
@@ -14,6 +14,56 @@ const lastfmClient: AxiosInstance = axios.create({
   baseURL: LASTFM_API_URL,
   timeout: 15000,
 });
+
+// 响应拦截器，显示错误提示
+lastfmClient.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    const response = error.response
+    if (!response) {
+      window.$message.error("Last.fm 请求失败，请检查网络连接");
+      return Promise.reject(error);
+    }
+
+    const status = response.status;
+    switch (status) {
+      case 403:
+        const code = (response.data as any)?.error;
+        if (code === 9 || code === 4 || code === 26) {
+          window.$message.error("Last.fm 认证失败，需要重新授权，已断开与 Last.fm 的连接！");
+          disconnect();
+        } else {
+          window.$message.error("Last.fm 认证失败，可能需要重新授权");
+        }
+        break;
+      case 401:
+        window.$message.error("Last.fm 未授权，已断开与 Last.fm 的连接！");
+        disconnect();
+        break;
+      case 429:
+        window.$message.error("Last.fm 请求过于频繁，请稍后再试");
+        break;
+      case 500:
+      case 502:
+      case 503:
+        window.$message.error("Last.fm 服务暂时不可用，请稍后再试");
+        break;
+      default:
+        window.$message.error("Last.fm 请求失败");
+        break;
+    }
+    return Promise.reject(error);
+  }
+)
+
+/**
+ * 断开与 Last.fm 的连接
+ */
+export const disconnect = () => {
+  const settingStore = useSettingStore();
+  settingStore.lastfm.sessionKey = "";
+  settingStore.lastfm.username = "";
+}
 
 /**
  * 获取 API 配置
@@ -125,7 +175,7 @@ export const getAuthToken = async () => {
  */
 export const getAuthUrl = (token: string): string => {
   const { apiKey } = getApiConfig();
-  return `https://www.last.fm/api/auth/?api_key=${apiKey}&token=${token}`;
+  return `https://www.last.fm/zh/api/auth/?api_key=${apiKey}&token=${token}`;
 };
 
 /**
