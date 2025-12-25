@@ -183,37 +183,48 @@ const lyricMode = computed(() => {
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
 });
 
-// 鼠标悬浮音质标签 - 自动加载可用音质
-const handleQualityHover = async () => {
+/**
+ * 加载可用音质列表
+ * @param isPreload 是否为预加载模式（静默加载，无错误提示）
+ */
+const loadQualities = async (isPreload = false) => {
   // 本地歌曲或解锁歌曲不支持切换
-  if (musicStore.playSong.path || statusStore.playUblock) {
-    return;
-  }
-
+  if (musicStore.playSong.path || statusStore.playUblock) return;
   // 如果已经加载过，不重复加载
   if (availableQualities.value.length > 0) return;
 
   const songId = musicStore.playSong.id;
   if (!songId) return;
 
-  qualityLoading.value = true;
+  if (!isPreload) {
+    qualityLoading.value = true;
+  }
+
   try {
-    // 获取歌曲音质详情
     const res = await songQuality(songId);
     if (res.data) {
-      // 使用 getSongLevelsData 格式化可用音质
       const levels = getSongLevelsData(songLevelData, res.data);
       availableQualities.value = levels;
-    } else {
+    } else if (!isPreload) {
       window.$message.warning("获取音质信息失败");
     }
   } catch (error) {
-    console.error("获取音质详情失败:", error);
-    window.$message.error("获取音质信息失败");
+    console.error(`获取音质详情失败${isPreload ? " (预加载)" : ""}:`, error);
+    if (!isPreload) {
+      window.$message.error("获取音质信息失败");
+    }
   } finally {
-    qualityLoading.value = false;
+    if (!isPreload) {
+      qualityLoading.value = false;
+    }
   }
 };
+
+// 鼠标悬浮音质标签 - 自动加载可用音质
+const handleQualityHover = () => loadQualities(false);
+
+// 预加载音质列表（静默加载，无错误提示）
+const preloadQualities = () => loadQualities(true);
 
 // 选择音质
 const handleQualitySelect = async (key: string) => {
@@ -237,27 +248,6 @@ const handleQualitySelect = async (key: string) => {
 
   // 切换成功提示
   window.$message.success(`已切换至${item.name}`);
-};
-
-// 预加载音质列表（静默加载，无错误提示）
-const preloadQualities = async () => {
-  // 本地歌曲或解锁歌曲不支持切换
-  if (musicStore.playSong.path || statusStore.playUblock) return;
-  // 如果已经加载过，不重复加载
-  if (availableQualities.value.length > 0) return;
-
-  const songId = musicStore.playSong.id;
-  if (!songId) return;
-
-  try {
-    const res = await songQuality(songId);
-    if (res.data) {
-      const levels = getSongLevelsData(songLevelData, res.data);
-      availableQualities.value = levels;
-    }
-  } catch (error) {
-    console.error("预加载音质列表失败:", error);
-  }
 };
 
 // 当切换歌曲时清空已加载的音质列表

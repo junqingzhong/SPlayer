@@ -176,15 +176,18 @@ class PlayerController {
   /**
    * 切换音质（仅切换音频源，不重新加载歌词）
    * @param seek 当前播放进度（毫秒）
+   * @param autoPlay 是否自动播放（默认保持当前状态）
    */
-  async switchQuality(seek: number = 0) {
-    const musicStore = useMusicStore();
+  async switchQuality(seek: number = 0, autoPlay?: boolean) {
     const statusStore = useStatusStore();
     const songManager = useSongManager();
     const audioManager = useAudioManager();
 
     const playSongData = getPlaySongData();
     if (!playSongData || playSongData.path) return;
+
+    // 如果未指定 autoPlay，则保持当前播放状态
+    const shouldAutoPlay = autoPlay ?? statusStore.playStatus;
 
     try {
       statusStore.playLoading = true;
@@ -202,8 +205,8 @@ class PlayerController {
       statusStore.playUblock = audioSource.isUnlocked ?? false;
       // 停止当前播放
       audioManager.stop();
-      // 执行底层播放，保持进度
-      await this.loadAndPlay(audioSource.url, true, seek);
+      // 执行底层播放，保持进度，保持原播放状态
+      await this.loadAndPlay(audioSource.url, shouldAutoPlay, seek);
     } catch (error) {
       console.error("❌ 切换音质失败:", error);
       window.$message.error("切换音质失败");
