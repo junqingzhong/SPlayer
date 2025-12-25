@@ -186,7 +186,11 @@ const qualityOptions = computed<DropdownOption[]>(() => {
             h(
               "span",
               { style: { opacity: 0.6, fontSize: "12px", marginLeft: "6px" } },
-              isDefaultQuality ? "当前配置" : item.size ? formatFileSize(item.size) : "",
+              isDefaultQuality && !isPlayingQuality
+                ? "当前配置"
+                : item.size
+                  ? formatFileSize(item.size)
+                  : "",
             ),
           ],
         ),
@@ -266,13 +270,15 @@ const handleQualitySelect = async (key: string) => {
 
   // 切换音质，保持当前进度，不重新加载歌词
   const playerController = usePlayerController();
-  const currentTime = statusStore.currentTime;
+  await playerController.switchQuality(statusStore.currentTime);
 
-  // 使用 switchQuality 切换，不触发歌词加载
-  await playerController.switchQuality(currentTime);
+  // 获取实际切换后的音质项
+  const actualItem = availableQualities.value.find(
+    (q) => handleSongQuality(q) === statusStore.songQuality,
+  );
 
   // 切换成功提示
-  window.$message.success(`已切换至${item.name}`);
+  window.$message.success(`已切换至${actualItem?.name || statusStore.songQuality}`);
 };
 
 // 当切换歌曲时清空已加载的音质列表并预加载
