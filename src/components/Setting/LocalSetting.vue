@@ -26,7 +26,7 @@
             <template #icon>
               <SvgIcon name="Folder" />
             </template>
-            更改
+            添加
           </n-button>
         </n-flex>
         <n-collapse-transition :show="settingStore.localFilesPath.length > 0">
@@ -34,6 +34,7 @@
             v-for="(item, index) in settingStore.localFilesPath"
             :key="index"
             class="set-item"
+            content-style="padding: 4px 16px"
           >
             <div class="label">
               <n-text class="name">{{ item }}</n-text>
@@ -61,7 +62,7 @@
             <template #icon>
               <SvgIcon name="Folder" />
             </template>
-            更改
+            添加
           </n-button>
         </n-flex>
         <n-collapse-transition :show="settingStore.localLyricPath.length > 0">
@@ -69,6 +70,7 @@
             v-for="(item, index) in settingStore.localLyricPath"
             :key="index"
             class="set-item"
+            content-style="padding: 4px 16px"
           >
             <div class="label">
               <n-text class="name">{{ item }}</n-text>
