@@ -43,7 +43,7 @@
         <n-popselect
           :value="currentPlayingLevel"
           :options="qualityOptions"
-          :disabled="!!musicStore.playSong.path || statusStore.playUblock"
+          :disabled="!!musicStore.playSong.path || statusStore.playUblock || !!musicStore.playSong.pc"
           class="player"
           trigger="click"
           placement="top"
