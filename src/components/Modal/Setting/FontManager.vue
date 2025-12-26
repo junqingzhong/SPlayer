@@ -26,9 +26,10 @@
               恢复默认
             </n-button>
           </Transition>
-          <n-input
+          <s-input
             v-if="settingStore.useCustomFont"
             v-model:value="settingStore.globalFont"
+            :update-value-on-input="false"
             placeholder="输入字体名称，例如: 'Microsoft YaHei'"
             class="set"
           />
@@ -62,9 +63,10 @@
               恢复默认
             </n-button>
           </Transition>
-          <n-input
+          <s-input
             v-if="settingStore.useCustomFont"
             v-model:value="settingStore[font.key]"
+            :update-value-on-input="false"
             placeholder="输入字体名称"
             class="set"
           />
