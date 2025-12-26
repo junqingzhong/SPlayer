@@ -123,7 +123,7 @@
             <SvgIcon :size="20" name="Folder" />
           </template>
           <template #suffix>
-            <n-button quaternary @click="changeLocalMusicPath(index)">
+            <n-button :focusable="false" quaternary @click="changeLocalMusicPath(index)">
               <template #icon>
                 <SvgIcon :size="20" name="Delete" />
               </template>
