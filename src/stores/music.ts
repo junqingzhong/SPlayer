@@ -84,7 +84,7 @@ export const useMusicStore = defineStore("music", {
       this.playPlaylistId = 0;
       this.setSongLyric({ lrcData: [], yrcData: [] }, true);
       if (isElectron) {
-        window.electron.ipcRenderer.send("play-song-change", undefined);
+        window.electron.ipcRenderer.send("play-song-change", null);
       }
     },
     /**
