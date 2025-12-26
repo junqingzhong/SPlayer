@@ -46,7 +46,7 @@
 
     <div class="set-list">
       <n-h3 prefix="bar">歌词字体</n-h3>
-      <n-card v-for="font in lyricFontConfigs" :key="font.key" class="set-item">
+      <n-card v-for="font in lyricFontConfigs" :key="font.keySetting" class="set-item">
         <div class="label">
           <n-text class="name">{{ font.name }}</n-text>
           <n-text class="tip" :depth="3">{{ font.tip }}</n-text>
@@ -54,26 +54,26 @@
         <n-flex align="center">
           <Transition name="fade" mode="out-in">
             <n-button
-              v-if="settingStore[font.key] !== font.default"
+              v-if="settingStore[font.keySetting] !== font.default"
               type="primary"
               strong
               secondary
-              @click="settingStore[font.key] = font.default"
+              @click="settingStore[font.keySetting] = font.default"
             >
               恢复默认
             </n-button>
           </Transition>
           <s-input
             v-if="settingStore.useCustomFont || !isElectron"
-            v-model:value="settingStore[font.key]"
+            v-model:value="settingStore[font.keySetting]"
             :update-value-on-input="false"
             placeholder="输入字体名称"
             class="set"
           />
           <n-select
             v-else
-            v-model:value="settingStore[font.key]"
-            :options="getOptions(font.key)"
+            v-model:value="settingStore[font.keySetting]"
+            :options="getOptions(font.keySetting)"
             class="set"
             filterable
           />
@@ -87,42 +87,9 @@
 import { useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import type { SelectOption } from "naive-ui";
+import { lyricFontConfigs } from "@/utils/lyricFontConfig";
 
 const settingStore = useSettingStore();
-
-interface FontConfig {
-  name: string;
-  key: "globalFont" | "LyricFont" | "japaneseLyricFont" | "englishLyricFont" | "koreanLyricFont";
-  default: string;
-  tip: string;
-}
-
-const lyricFontConfigs: FontConfig[] = [
-  {
-    name: "歌词区域字体",
-    key: "LyricFont",
-    default: "follow",
-    tip: "主歌词区域的基础字体",
-  },
-  {
-    name: "英语歌词字体",
-    key: "englishLyricFont",
-    default: "follow",
-    tip: "当歌词包含英语时使用的特定字体",
-  },
-  {
-    name: "日语歌词字体",
-    key: "japaneseLyricFont",
-    default: "follow",
-    tip: "当歌词包含日语时使用的特定字体",
-  },
-  {
-    name: "韩语歌词字体",
-    key: "koreanLyricFont",
-    default: "follow",
-    tip: "当歌词包含韩语时使用的特定字体",
-  },
-];
 
 // 系统字体选项
 const systemFonts = ref<SelectOption[]>([]);

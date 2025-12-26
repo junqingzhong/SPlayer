@@ -23,14 +23,9 @@
         :wordFadeWidth="settingStore.wordFadeWidth"
         :style="{
           '--amll-lp-font-size': settingStore.lyricFontSize + 'px',
-          '--ja-font-family':
-            settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
-          '--en-font-family':
-            settingStore.englishLyricFont !== 'follow' ? settingStore.englishLyricFont : '',
-          '--ko-font-family':
-            settingStore.koreanLyricFont !== 'follow' ? settingStore.koreanLyricFont : '',
           'font-weight': settingStore.lyricFontBold ? 'bold' : 'normal',
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
+          ...lyricLangFontStyle(settingStore),
         }"
         class="am-lyric"
         @line-click="jumpSeek"
@@ -49,6 +44,7 @@ import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { cloneDeep } from "lodash-es";
 import "@applemusic-like-lyrics/core/style.css";
+import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();

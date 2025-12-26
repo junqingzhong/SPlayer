@@ -6,14 +6,9 @@
       '--lrc-tran-size': settingStore.lyricTranFontSize + 'px',
       '--lrc-roma-size': settingStore.lyricRomaFontSize + 'px',
       '--lrc-bold': settingStore.lyricFontBold ? 'bold' : 'normal',
-      '--ja-font-family':
-        settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
-      '--en-font-family':
-        settingStore.englishLyricFont !== 'follow' ? settingStore.englishLyricFont : '',
-      '--ko-font-family':
-        settingStore.koreanLyricFont !== 'follow' ? settingStore.koreanLyricFont : '',
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
       cursor: statusStore.playerMetaShow ? 'auto' : 'none',
+      ...lyricLangFontStyle(settingStore),
     }"
     :class="[
       'lyric',
@@ -169,6 +164,7 @@ import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { getLyricLanguage } from "@/utils/format";
 import { isElectron } from "@/utils/env";
+import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
