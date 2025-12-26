@@ -491,6 +491,14 @@ class PlayerController {
       this.retryInfo.count = 0;
       this.failSkipCount++;
 
+      // 连续跳过 3 首直接暂停
+      if (this.failSkipCount >= 3) {
+        window.$message.error("播放失败次数过多，已停止播放");
+        this.pause(true);
+        this.failSkipCount = 0;
+        return;
+      }
+
       // 列表只有一首，或连续跳过所有歌曲
       if (dataStore.playList.length <= 1 || this.failSkipCount >= dataStore.playList.length) {
         window.$message.error("当前已无可播放歌曲");
@@ -944,11 +952,11 @@ class PlayerController {
           ? song.album.name
           : String(song.album),
       artwork: [
-        { src: musicStore.getSongCover("s"), sizes: "100x100", type: "image/jpeg" },
-        { src: musicStore.getSongCover("m"), sizes: "300x300", type: "image/jpeg" },
-        { src: musicStore.getSongCover("cover"), sizes: "512x512", type: "image/jpeg" },
-        { src: musicStore.getSongCover("l"), sizes: "1024x1024", type: "image/jpeg" },
-        { src: musicStore.getSongCover("xl"), sizes: "1920x1920", type: "image/jpeg" },
+        { src: musicStore.getSongCover("s") || musicStore.playSong.cover || "", sizes: "100x100", type: "image/jpeg" },
+        { src: musicStore.getSongCover("m") || musicStore.playSong.cover || "", sizes: "300x300", type: "image/jpeg" },
+        { src: musicStore.getSongCover("cover") || musicStore.playSong.cover || "", sizes: "512x512", type: "image/jpeg" },
+        { src: musicStore.getSongCover("l") || musicStore.playSong.cover || "", sizes: "1024x1024", type: "image/jpeg" },
+        { src: musicStore.getSongCover("xl") || musicStore.playSong.cover || "", sizes: "1920x1920", type: "image/jpeg" },
       ],
     });
   }

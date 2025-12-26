@@ -142,6 +142,7 @@ export const useDataStore = defineStore("data", {
                 "historyList",
                 "cloudPlayList",
                 "localPlayList",
+                "downloadingSongs",
               ].includes(key)
             ) {
               this[key] = data ? markRaw(data) : [];

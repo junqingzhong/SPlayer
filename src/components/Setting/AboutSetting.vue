@@ -57,6 +57,55 @@
       </n-flex>
     </div>
     <div class="set-list">
+      <n-h3 prefix="bar"> 开发人员 </n-h3>
+      <n-flex :size="12" class="link">
+        <n-card
+          v-for="(item, index) in developers"
+          :key="index"
+          class="link-item"
+          hoverable
+          @click="openLink(item.url)"
+        >
+          <n-flex align="center">
+            <n-avatar round :size="40" :src="item.avatar" fallback-src="/images/avatar.jpg?asset" />
+            <n-flex vertical :gap="4">
+              <n-text class="name" strong> {{ item.name }} </n-text>
+              <n-text class="tip" :depth="3" style="font-size: 12px">
+                {{ item.role }}
+              </n-text>
+            </n-flex>
+          </n-flex>
+        </n-card>
+      </n-flex>
+    </div>
+    <Transition name="fade" mode="out-in">
+      <div v-if="allContributors.length > 0" class="set-list">
+        <n-collapse arrow-placement="right">
+          <n-collapse-item title="更多贡献者" name="1">
+            <n-flex :size="12" class="link">
+              <n-card
+                v-for="(item, index) in allContributors"
+                :key="index"
+                class="link-item"
+                hoverable
+                @click="openLink(item.url)"
+              >
+                <n-flex align="center">
+                  <n-avatar round :size="40" :src="item.avatar" fallback-src="/images/avatar.jpg?asset" />
+                  <n-flex vertical :gap="4">
+                    <n-text class="name" strong> {{ item.name }} </n-text>
+                    <n-text class="tip" :depth="3" style="font-size: 12px">
+                      {{ item.role }}
+                    </n-text>
+                  </n-flex>
+                </n-flex>
+              </n-card>
+            </n-flex>
+          </n-collapse-item>
+        </n-collapse>
+      </div>
+    </Transition>
+    <div class="set-list">
       <n-h3 prefix="bar"> 社区与资讯 </n-h3>
       <n-flex :size="12" class="link">
         <n-card
@@ -109,6 +158,42 @@ const statusStore = useStatusStore();
 
 // 开发者模式点击次数
 const developerModeClickCount = ref(0);
+
+// 开发人员
+type DeveloperType = {
+  name: string;
+  role: string;
+  url: string;
+  avatar: string;
+};
+
+const developers = ref<DeveloperType[]>([]);
+const allContributors = ref<DeveloperType[]>([]);
+
+// 获取贡献者
+const getContributors = async () => {
+  try {
+    const response = await fetch(
+      "https://api.github.com/repos/imsyy/SPlayer/contributors?per_page=100&anon=true",
+    );
+    const data = await response.json();
+    if (Array.isArray(data)) {
+      const list = data
+        .filter((item: any) => item.login !== "type-bot" && item.type !== "Bot")
+        .map((item: any) => ({
+          name: item.login || item.name,
+          role: item.login === "imsyy" ? "Owner / Full Stack" : "Contributor",
+          url: item.html_url || "",
+          avatar: item.avatar_url || "/images/avatar.jpg?asset",
+        }));
+      developers.value = list.slice(0, 6);
+      allContributors.value = list.slice(6);
+    }
+  } catch (error) {
+    console.error("Failed to fetch contributors:", error);
+    // Fallback or empty state handling if needed, currently just empty
+  }
+};
 
 // 特别鸣谢
 const contributors = [
@@ -215,7 +300,10 @@ const openDeveloperMode = useThrottleFn(() => {
   }
 }, 100);
 
-onMounted(getUpdateData);
+onMounted(() => {
+  getUpdateData();
+  getContributors();
+});
 </script>
 
 <style lang="scss" scoped>

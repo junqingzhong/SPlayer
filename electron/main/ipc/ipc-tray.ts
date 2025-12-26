@@ -19,7 +19,7 @@ const initTrayIpc = (): void => {
 
   // 音乐名称更改
   ipcMain.on("play-song-change", (_, options) => {
-    let { title } = options;
+    let title = options?.title;
     if (!title) title = appName;
     // 更改标题
     tray?.setTitle(title);
