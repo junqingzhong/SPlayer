@@ -491,6 +491,14 @@ class PlayerController {
       this.retryInfo.count = 0;
       this.failSkipCount++;
 
+      // 连续跳过 3 首直接暂停
+      if (this.failSkipCount >= 3) {
+        window.$message.error("播放失败次数过多，已停止播放");
+        this.pause(true);
+        this.failSkipCount = 0;
+        return;
+      }
+
       // 列表只有一首，或连续跳过所有歌曲
       if (dataStore.playList.length <= 1 || this.failSkipCount >= dataStore.playList.length) {
         window.$message.error("当前已无可播放歌曲");
