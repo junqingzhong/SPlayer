@@ -532,11 +532,11 @@ const initFileIpc = (): void => {
               }
             },
           });
-        } catch (error: any) {
-          if (error.message === "The download was cancelled") {
-            return { status: "cancelled", message: "下载已取消" };
-          }
-          throw error;
+} catch (error: unknown) {
+  if (error instanceof Error && error.message === "The download was cancelled") {
+    return { status: "cancelled", message: "下载已取消" };
+  }
+  throw error;
         } finally {
           if (songData?.id) {
             downloadItems.delete(songData.id);
