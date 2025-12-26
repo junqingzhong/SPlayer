@@ -27,6 +27,7 @@ import SidebarHideManager from "@/components/Modal/Setting/SidebarHideManager.vu
 import HomePageSectionManager from "@/components/Modal/Setting/HomePageSectionManager.vue";
 import CopyLyrics from "@/components/Modal/CopyLyrics.vue";
 import AMLLServer from "@/components/Modal/Setting/AMLLServer.vue";
+import FontManager from "@/components/Modal/Setting/FontManager.vue";
 
 export const openUserAgreement = () => {
   const settingStore = useSettingStore();
@@ -428,6 +429,20 @@ export const openAMLLServer = () => {
       return h(AMLLServer, {
         onClose: () => modal.destroy(),
       });
+    },
+  });
+};
+
+/** 打开字体管理弹窗 */
+export const openFontManager = () => {
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "700px" },
+    title: "字体设置",
+    content: () => {
+      return h(FontManager);
     },
   });
 };

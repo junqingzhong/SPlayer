@@ -272,6 +272,8 @@ export interface SettingState {
   playerFollowCoverColor: boolean;
   /** 进度条悬浮时显示歌词 */
   progressLyricShow: boolean;
+  /** 是否使用自定义字体输入 */
+  useCustomFont: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -414,6 +416,7 @@ export const useSettingStore = defineStore("setting", {
     },
     playerFollowCoverColor: true,
     progressLyricShow: true,
+    useCustomFont: false,
   }),
   getters: {
     /**

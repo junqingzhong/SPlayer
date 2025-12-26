@@ -28,6 +28,7 @@ declare module 'vue' {
     DownloadModal: typeof import('./src/components/Modal/DownloadModal.vue')['default']
     Equalizer: typeof import('./src/components/Modal/Equalizer.vue')['default']
     ExcludeLyrics: typeof import('./src/components/Modal/Setting/ExcludeLyrics.vue')['default']
+    FontManager: typeof import('./src/components/Modal/Setting/FontManager.vue')['default']
     FullPlayer: typeof import('./src/components/Player/FullPlayer.vue')['default']
     GeneralSetting: typeof import('./src/components/Setting/GeneralSetting.vue')['default']
     HomePageSectionManager: typeof import('./src/components/Modal/Setting/HomePageSectionManager.vue')['default']

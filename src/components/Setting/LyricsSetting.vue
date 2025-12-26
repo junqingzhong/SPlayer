@@ -121,62 +121,11 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">歌词区域字体</n-text>
-          <n-text class="tip" :depth="3"> 是否独立更改歌词区域字体 </n-text>
+          <n-text class="name">歌词字体设置</n-text>
+          <n-text class="tip" :depth="3"> 统一配置各语种歌词区域的字体 </n-text>
         </div>
-        <n-flex>
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="settingStore.LyricFont !== 'follow'"
-              type="primary"
-              strong
-              secondary
-              @click="settingStore.LyricFont = 'follow'"
-            >
-              恢复默认
-            </n-button>
-          </Transition>
-          <n-select
-            v-model:value="settingStore.LyricFont"
-            :options="[
-              { label: '跟随全局', value: 'follow' },
-              ...allFontsData.filter((v) => v.value !== 'default'),
-            ]"
-            class="set"
-            filterable
-          />
-        </n-flex>
+        <n-button type="primary" strong secondary @click="openFontManager"> 配置 </n-button>
       </n-card>
-      <n-collapse-transition :show="settingStore.LyricFont !== 'follow'">
-        <n-card v-for="item in languageFontSettings" :key="item.key" class="set-item">
-          <div class="label">
-            <n-text class="name">{{ item.name }}歌词字体</n-text>
-            <n-text class="tip" :depth="3"> {{ item.tip }} </n-text>
-          </div>
-          <n-flex>
-            <Transition name="fade" mode="out-in">
-              <n-button
-                v-if="settingStore[item.key] !== 'follow'"
-                type="primary"
-                strong
-                secondary
-                @click="settingStore[item.key] = 'follow'"
-              >
-                恢复默认
-              </n-button>
-            </Transition>
-            <n-select
-              v-model:value="settingStore[item.key]"
-              :options="[
-                { label: '跟随全局', value: 'follow' },
-                ...allFontsData.filter((v) => v.value !== 'default'),
-              ]"
-              class="set"
-              filterable
-            />
-          </n-flex>
-        </n-card>
-      </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">歌词字体加粗</n-text>
@@ -314,7 +263,9 @@
             :step="10"
             class="set"
             placeholder="请输入时延步长"
-            @blur="settingStore.lyricOffsetStep === null ? (settingStore.lyricOffsetStep = 500) : null"
+            @blur="
+              settingStore.lyricOffsetStep === null ? (settingStore.lyricOffsetStep = 500) : null
+            "
           >
             <template #suffix> ms </template>
           </n-input-number>
@@ -677,7 +628,7 @@ import { NFlex, NText } from "naive-ui";
 import { useSettingStore, useStatusStore } from "@/stores";
 import { cloneDeep, isEqual } from "lodash-es";
 import { isElectron } from "@/utils/env";
-import { openLyricExclude, openAMLLServer } from "@/utils/modal";
+import { openLyricExclude, openAMLLServer, openFontManager } from "@/utils/modal";
 import { LyricConfig } from "@/types/desktop-lyric";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { SelectOption } from "naive-ui";
@@ -754,53 +705,9 @@ const restoreDesktopLyricConfig = () => {
   }
 };
 
-// 语言字体配置
-const languageFontSettings = [
-  {
-    name: "英语",
-    key: "englishLyricFont" as const,
-    tip: "是否在歌词为英语时单独设置字体",
-  },
-  {
-    name: "日语",
-    key: "japaneseLyricFont" as const,
-    tip: "是否在歌词为日语时单独设置字体",
-  },
-  {
-    name: "韩语",
-    key: "koreanLyricFont" as const,
-    tip: "是否在歌词为韩语时单独设置字体",
-  },
-];
-
-// 获取全部系统字体
-const getAllSystemFonts = async () => {
-  const allFonts = await window.electron.ipcRenderer.invoke("get-all-fonts");
-  allFonts.map((v: string) => {
-    // 去除前后的引号
-    v = v.replace(/^['"]+|['"]+$/g, "");
-    allFontsData.value.push({
-      label: v,
-      value: v,
-      style: {
-        fontFamily: v,
-      },
-    });
-  });
-  // 添加默认选项
-  allFontsData.value.unshift({
-    label: "系统默认",
-    value: "system-ui",
-    style: {
-      fontFamily: "system-ui",
-    },
-  });
-};
-
 onMounted(async () => {
   if (isElectron) {
     getDesktopLyricConfig();
-    getAllSystemFonts();
     // 恢复地址
     await window.api.store.set("amllDbServer", settingStore.amllDbServer);
   }

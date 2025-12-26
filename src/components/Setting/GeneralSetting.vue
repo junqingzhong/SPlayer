@@ -190,28 +190,10 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">自定义字体</n-text>
-          <n-text class="tip" :depth="3"> 更改软件内全局字体 </n-text>
+          <n-text class="name">字体设置</n-text>
+          <n-text class="tip" :depth="3"> 统一配置全局及歌词区域的字体 </n-text>
         </div>
-        <n-flex>
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="settingStore.globalFont !== 'default'"
-              type="primary"
-              strong
-              secondary
-              @click="settingStore.globalFont = 'default'"
-            >
-              恢复默认
-            </n-button>
-          </Transition>
-          <n-select
-            v-model:value="settingStore.globalFont"
-            :options="allFontsData"
-            class="set"
-            filterable
-          />
-        </n-flex>
+        <n-button type="primary" strong secondary @click="openFontManager"> 配置 </n-button>
       </n-card>
       <n-card class="set-item">
         <div class="label">
@@ -290,7 +272,7 @@ import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/
 import { isDev, isElectron } from "@/utils/env";
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";
-import { openSidebarHideManager, openHomePageSectionManager } from "@/utils/modal";
+import { openSidebarHideManager, openHomePageSectionManager, openFontManager } from "@/utils/modal";
 import { sendRegisterProtocol } from "@/utils/protocol";
 import { getCoverColor } from "@/utils/color";
 
@@ -298,9 +280,6 @@ const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
-
-// 全部字体
-const allFontsData = ref<SelectOption[]>([]);
 
 // 是否开启在线服务
 const useOnlineService = ref(settingStore.useOnlineService);
@@ -320,31 +299,6 @@ const themeColorOptions: SelectOption[] = [
 // 关闭任务栏进度
 const closeTaskbarProgress = (val: boolean) => {
   if (!val) window.electron.ipcRenderer.send("set-bar", "none");
-};
-
-// 获取全部系统字体
-const getAllSystemFonts = async () => {
-  const allFonts = await window.electron.ipcRenderer.invoke("get-all-fonts");
-  allFonts.map((v: string) => {
-    // 去除前后的引号
-    v = v.replace(/^['"]+|['"]+$/g, "");
-    allFontsData.value.push({
-      label: v,
-      value: v,
-      style: {
-        fontFamily: v,
-      },
-    });
-  });
-  // 添加默认选项
-  allFontsData.value.unshift({
-    label: "系统默认",
-    value: "default",
-    style: {
-      fontFamily:
-        "v-sans, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol'",
-    },
-  });
 };
 
 // 在线模式切换
@@ -404,10 +358,4 @@ const themeGlobalColorChange = (val: boolean) => {
 const orpheusChange = async (isRegistry: boolean) => {
   sendRegisterProtocol("orpheus", isRegistry);
 };
-
-onMounted(() => {
-  if (isElectron) {
-    getAllSystemFonts();
-  }
-});
 </script>
