@@ -3,7 +3,7 @@ import { songLyric, songLyricTTML } from "@/api/song";
 import { type SongLyric } from "@/types/lyric";
 import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
 import { isElectron } from "@/utils/env";
-import { isEmpty } from "lodash-es";
+import { isEmpty, max } from "lodash-es";
 import { useCacheManager } from "@/core/resource/CacheManager";
 
 class LyricManager {
@@ -101,13 +101,14 @@ class LyricManager {
 
   /**
    * 对齐本地歌词
-   * @param lyrics 本地歌词数据
-   * @param otherLyrics 其他歌词数据
+   * @param lyricData 本地歌词数据
    * @returns 对齐后的本地歌词数据
    */
   private alignLocalLyrics(lyricData: SongLyric): SongLyric {
     // 同一时间的两/三行分别作为主句、翻译、音译
     const toTime = (line: LyricLine) => Number(line?.startTime ?? line?.words?.[0]?.startTime ?? 0);
+    // 获取结束时间
+    const toEndTime = (line: LyricLine) => Number(line?.endTime ?? line?.words?.[line?.words?.length - 1]?.endTime ?? 0);
     // 取内容
     const toText = (line: LyricLine) => String(line?.words?.[0]?.word || "").trim();
     const lrc = lyricData.lrcData || [];
@@ -124,10 +125,16 @@ class LyricManager {
     // 组装：第 1 行主句；第 2 行翻译；第 3 行音译；不调整时长
     const aligned = groups.map((group) => {
       const base = { ...group[0] } as LyricLine;
-      const tran = group[1] ? toText(group[1]) : "";
-      const roma = group[2] ? toText(group[2]) : "";
-      if (!base.translatedLyric) base.translatedLyric = tran;
-      if (!base.romanLyric) base.romanLyric = roma;
+      const tran = group[1];
+      const roma = group[2];
+      if (!base.translatedLyric && tran) {
+        base.translatedLyric = toText(tran);
+        base.endTime = max([toEndTime(base), toEndTime(tran)]);
+      }
+      if (!base.romanLyric && roma) {
+        base.romanLyric = toText(roma);
+        base.endTime = max([toEndTime(base), toEndTime(roma)]);
+      }
       return base;
     });
     return { lrcData: aligned, yrcData: lyricData.yrcData };
