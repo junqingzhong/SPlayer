@@ -79,6 +79,13 @@
           :round="false"
         />
       </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">字体设置</n-text>
+          <n-text class="tip" :depth="3"> 统一配置全局及歌词区域的字体 </n-text>
+        </div>
+        <n-button type="primary" strong secondary @click="openFontManager"> 配置 </n-button>
+      </n-card>
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> 杂项设置 </n-h3>
@@ -187,13 +194,6 @@
           <n-text class="tip" :depth="3">是否开启软件的在线服务</n-text>
         </div>
         <n-switch class="set" :value="useOnlineService" :round="false" @update:value="modeChange" />
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">字体设置</n-text>
-          <n-text class="tip" :depth="3"> 统一配置全局及歌词区域的字体 </n-text>
-        </div>
-        <n-button type="primary" strong secondary @click="openFontManager"> 配置 </n-button>
       </n-card>
       <n-card class="set-item">
         <div class="label">

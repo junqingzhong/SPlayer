@@ -25,31 +25,30 @@ const emit = defineEmits<{
 }>();
 
 const input = ref(props.value); // 内部值
-const value = ref(props.value); // 外部值
+const committedValue = ref(props.value); // 外部值
 
 // 监听父组件 value 变化，同步到内部值
 watch(
   () => props.value,
   (newValue) => {
-    value.value = newValue;
+    committedValue.value = newValue;
     input.value = newValue;
   },
   { immediate: true },
 );
 
 const handleInput = (newValue: string) => {
+  input.value = newValue;
   if (props.updateValueOnInput) {
-    value.value = newValue;
+    committedValue.value = newValue;
     emit("update:value", newValue);
-  } else {
-    input.value = newValue;
   }
 };
 
 const handleConfirm = () => {
-  if (!props.updateValueOnInput && input.value !== value.value) {
-    value.value = input.value;
-    emit("update:value", value.value);
+  if (!props.updateValueOnInput && input.value !== committedValue.value) {
+    committedValue.value = input.value;
+    emit("update:value", committedValue.value);
   }
-}
+};
 </script>

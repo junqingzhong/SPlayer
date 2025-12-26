@@ -2,7 +2,7 @@
   <div class="font-manager">
     <div class="set-list">
       <n-h3 prefix="bar">通用字体</n-h3>
-      <n-card class="set-item">
+      <n-card v-if="isElectron" class="set-item">
         <div class="label">
           <n-text class="name">自定义 CSS 字体</n-text>
           <n-text class="tip" :depth="3"> 开启后可手动输入字体名称，支持 CSS 字体族 </n-text>
@@ -27,10 +27,10 @@
             </n-button>
           </Transition>
           <s-input
-            v-if="settingStore.useCustomFont"
+            v-if="settingStore.useCustomFont || !isElectron"
             v-model:value="settingStore.globalFont"
             :update-value-on-input="false"
-            placeholder="输入字体名称，例如: 'Microsoft YaHei'"
+            placeholder="输入字体名称"
             class="set"
           />
           <n-select
@@ -64,7 +64,7 @@
             </n-button>
           </Transition>
           <s-input
-            v-if="settingStore.useCustomFont"
+            v-if="settingStore.useCustomFont || !isElectron"
             v-model:value="settingStore[font.key]"
             :update-value-on-input="false"
             placeholder="输入字体名称"
@@ -163,7 +163,6 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .font-manager {
-  padding: 4px;
   .set-list {
     margin-bottom: 24px;
     &:last-child {
