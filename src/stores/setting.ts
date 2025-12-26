@@ -189,6 +189,8 @@ export interface SettingState {
   showLocalCover: boolean;
   /** 路由动画 */
   routeAnimation: "none" | "fade" | "zoom" | "slide" | "up";
+  /** 播放器展开动画 */
+  playerExpandAnimation: "up" | "smooth";
   /** 是否使用真实 IP */
   useRealIP: boolean;
   /** 真实 IP 地址 */
@@ -290,6 +292,7 @@ export const useSettingStore = defineStore("setting", {
     menuShowCover: true,
     menuExpandedKeys: [],
     routeAnimation: "slide",
+    playerExpandAnimation: "up",
     useOnlineService: true,
     showCloseAppTip: true,
     closeAppMethod: "hide",
