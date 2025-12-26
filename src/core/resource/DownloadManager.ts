@@ -21,7 +21,7 @@ interface LyricResult {
 class DownloadManager {
   private queue: DownloadTask[] = [];
   private activeDownloads: Set<number> = new Set();
-  private maxConcurrent: number = 3;
+  private maxConcurrent: number = 1;
   private initialized: boolean = false;
 
   constructor() {
