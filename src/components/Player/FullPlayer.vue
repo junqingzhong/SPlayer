@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <Transition name="up" mode="out-in">
+    <Transition name="smooth" mode="out-in">
       <div
         v-if="statusStore.showFullPlayer"
         :style="{

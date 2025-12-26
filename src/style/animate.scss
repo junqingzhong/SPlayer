@@ -220,3 +220,16 @@
     transform: scale(0.95);
   }
 }
+
+// smooth
+.smooth-enter-active,
+.smooth-leave-active {
+  transition:
+    opacity 0.4s cubic-bezier(0.25, 0.8, 0.25, 1),
+    transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.smooth-enter-from,
+.smooth-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.96);
+}
