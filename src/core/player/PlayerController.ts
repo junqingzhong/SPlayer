@@ -1,9 +1,10 @@
+import axios from "axios";
 import { PlayModeType, type SongType } from "@/types/main";
 import { useAudioManager } from "./AudioManager";
 import { useSongManager } from "./SongManager";
 import { useLyricManager } from "./LyricManager";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
-import { isElectron } from "@/utils/env";
+import { isElectron, isWin } from "@/utils/env";
 import { throttle } from "lodash-es";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { calculateProgress, msToS } from "@/utils/time";
@@ -16,6 +17,9 @@ import { formatSongsList, getPlayerInfoObj, getPlaySongData } from "@/utils/form
 import { calculateLyricIndex } from "@/utils/calc";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
+
+import { type SmtcEvent, type MetadataParam } from "@native";
+import { RepeatMode, PlaybackStatus, SmtcEventType } from "@/types/smtc";
 
 /**
  * 播放器 IPC 服务
@@ -92,6 +96,44 @@ const ipcService = {
    */
   sendPlayMode: (mode: string) => {
     if (isElectron) window.electron.ipcRenderer.send("play-mode-change", mode);
+  },
+
+  /**
+   * 通过原生插件更新 SMTC 元数据
+   * @param payload - 参见 {@link MetadataParam}
+   */
+  sendSmtcMetadata: (payload: MetadataParam) => {
+    if (isElectron && isWin) window.electron.ipcRenderer.send("smtc-update-metadata", payload);
+  },
+
+  /**
+   * 通过原生插件更新 SMTC 播放状态
+   * @param status - 参见 {@link PlaybackStatus}
+   */
+  sendSmtcPlayState: (status: PlaybackStatus) => {
+    if (isElectron && isWin) window.electron.ipcRenderer.send("smtc-update-play-state", { status });
+  },
+
+  /**
+   * 通过原生插件更新 SMTC 进度信息
+   * @param currentTime - 当前的播放进度，单位是毫秒
+   * @param totalTime - 总时长，单位是毫秒
+   */
+  sendSmtcTimeline: (currentTime: number, totalTime: number) => {
+    if (isElectron && isWin)
+      window.electron.ipcRenderer.send("smtc-update-timeline", { currentTime, totalTime });
+  },
+
+  /**
+   * 通过原生插件更新 SMTC 播放模式
+   *
+   * 注意: SPlayer 的随机和循环按钮和网易云是一样合在一起的，需要特殊的逻辑来分开
+   * @param isShuffling - 当前是否是随机播放模式
+   * @param repeatMode - 当前的循环播放模式，参见 {@link RepeatMode}
+   */
+  sendSmtcPlayMode: (isShuffling: boolean, repeatMode: RepeatMode) => {
+    if (isElectron && isWin)
+      window.electron.ipcRenderer.send("smtc-update-play-mode", { isShuffling, repeatMode });
   },
 };
 
@@ -377,6 +419,7 @@ class PlayerController {
       const playTitle = `${name} - ${artist}`;
       // 更新状态
       statusStore.playStatus = true;
+      ipcService.sendSmtcPlayState(PlaybackStatus.Playing);
       window.document.title = `${playTitle} | SPlayer`;
       // 只有真正播放了才重置重试计数
       if (this.retryInfo.count > 0) this.retryInfo.count = 0;
@@ -392,6 +435,7 @@ class PlayerController {
     // 暂停
     audioManager.on("pause", () => {
       statusStore.playStatus = false;
+      ipcService.sendSmtcPlayState(PlaybackStatus.Paused);
       if (!isElectron) window.document.title = "SPlayer";
       ipcService.sendPlayStatus(false);
       lastfmScrobbler.pause();
@@ -933,57 +977,157 @@ class PlayerController {
   /** MediaSession: 初始化 */
   public initMediaSession() {
     const settingStore = useSettingStore();
-    if (!settingStore.smtcOpen || !("mediaSession" in navigator)) return;
-    const nav = navigator.mediaSession;
-    nav.setActionHandler("play", () => this.play());
-    nav.setActionHandler("pause", () => this.pause());
-    nav.setActionHandler("previoustrack", () => this.nextOrPrev("prev"));
-    nav.setActionHandler("nexttrack", () => this.nextOrPrev("next"));
-    nav.setActionHandler("seekto", (e) => {
-      if (e.seekTime) this.setSeek(e.seekTime * 1000);
-    });
+    if (!settingStore.smtcOpen) return;
+
+    if (isElectron && isWin) {
+      window.electron.ipcRenderer.removeAllListeners("smtc-event");
+
+      window.electron.ipcRenderer.on("smtc-event", (_, event: SmtcEvent) => {
+        switch (event.type) {
+          case SmtcEventType.Play:
+            this.play();
+            break;
+          case SmtcEventType.Pause:
+            this.pause();
+            break;
+          case SmtcEventType.NextSong:
+            this.nextOrPrev("next");
+            break;
+          case SmtcEventType.PreviousSong:
+            this.nextOrPrev("prev");
+            break;
+          case SmtcEventType.Stop:
+            this.pause();
+            break;
+          case SmtcEventType.Seek:
+            if (event.positionMs !== undefined) {
+              this.setSeek(event.positionMs);
+            }
+            break;
+          // 简化实现，需要特殊的逻辑分开
+          case SmtcEventType.ToggleShuffle:
+            this.togglePlayMode("shuffle");
+            break;
+          case SmtcEventType.ToggleRepeat:
+            this.togglePlayMode(false);
+            break;
+        }
+      });
+      return;
+    }
+
+    if ("mediaSession" in navigator) {
+      const nav = navigator.mediaSession;
+      nav.setActionHandler("play", () => this.play());
+      nav.setActionHandler("pause", () => this.pause());
+      nav.setActionHandler("previoustrack", () => this.nextOrPrev("prev"));
+      nav.setActionHandler("nexttrack", () => this.nextOrPrev("next"));
+      nav.setActionHandler("seekto", (e) => {
+        if (e.seekTime) this.setSeek(e.seekTime * 1000);
+      });
+    }
   }
 
   /** MediaSession: 更新元数据 */
-  private updateMediaSession() {
+  private async updateMediaSession() {
     if (!("mediaSession" in navigator)) return;
     const musicStore = useMusicStore();
 
     // 获取播放数据
     const song = getPlaySongData();
     if (!song) return;
+
     const isRadio = song.type === "radio";
+    const title = song.name;
+    const artist = isRadio
+      ? "播客电台"
+      : Array.isArray(song.artists)
+        ? song.artists.map((a) => a.name).join("/")
+        : String(song.artists);
+    const album = isRadio
+      ? "播客电台"
+      : typeof song.album === "object"
+        ? song.album.name
+        : String(song.album);
+    const coverUrl = musicStore.getSongCover("xl") || musicStore.playSong.cover || "";
+
     // 更新元数据
-    navigator.mediaSession.metadata = new window.MediaMetadata({
-      title: song.name,
-      artist: isRadio
-        ? "播客电台"
-        : Array.isArray(song.artists)
-          ? song.artists.map((a) => a.name).join("/")
-          : String(song.artists),
-      album: isRadio
-        ? "播客电台"
-        : typeof song.album === "object"
-          ? song.album.name
-          : String(song.album),
-      artwork: [
-        { src: musicStore.getSongCover("s") || musicStore.playSong.cover || "", sizes: "100x100", type: "image/jpeg" },
-        { src: musicStore.getSongCover("m") || musicStore.playSong.cover || "", sizes: "300x300", type: "image/jpeg" },
-        { src: musicStore.getSongCover("cover") || musicStore.playSong.cover || "", sizes: "512x512", type: "image/jpeg" },
-        { src: musicStore.getSongCover("l") || musicStore.playSong.cover || "", sizes: "1024x1024", type: "image/jpeg" },
-        { src: musicStore.getSongCover("xl") || musicStore.playSong.cover || "", sizes: "1920x1920", type: "image/jpeg" },
-      ],
-    });
+    if (isElectron && isWin) {
+      try {
+        let coverBuffer: Uint8Array | undefined;
+
+        if (coverUrl && coverUrl.startsWith("http")) {
+          const resp = await axios.get(coverUrl, { responseType: "arraybuffer" });
+          coverBuffer = new Uint8Array(resp.data);
+        }
+
+        ipcService.sendSmtcMetadata({
+          songName: title,
+          authorName: artist,
+          albumName: album,
+          coverData: coverBuffer as Buffer, // Electron 会帮我们处理转换的
+          originalCoverUrl: coverUrl.startsWith("http") ? coverUrl : undefined, // Discord 需要 URL
+          duration: song.duration,
+          ncmId: song.id, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲，不过可能意义不大
+        });
+      } catch (e) {
+        console.error("[SMTC] 更新元数据失败", e);
+      }
+      return;
+    }
+
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title,
+        artist,
+        album,
+        artwork: [
+          {
+            src: musicStore.getSongCover("s") || musicStore.playSong.cover || "",
+            sizes: "100x100",
+            type: "image/jpeg",
+          },
+          {
+            src: musicStore.getSongCover("m") || musicStore.playSong.cover || "",
+            sizes: "300x300",
+            type: "image/jpeg",
+          },
+          {
+            src: musicStore.getSongCover("cover") || musicStore.playSong.cover || "",
+            sizes: "512x512",
+            type: "image/jpeg",
+          },
+          {
+            src: musicStore.getSongCover("l") || musicStore.playSong.cover || "",
+            sizes: "1024x1024",
+            type: "image/jpeg",
+          },
+          {
+            src: musicStore.getSongCover("xl") || musicStore.playSong.cover || "",
+            sizes: "1920x1920",
+            type: "image/jpeg",
+          },
+        ],
+      });
+    }
   }
 
   /** MediaSession: 更新状态 */
   private updateMediaSessionState(duration: number, position: number) {
     const settingStore = useSettingStore();
-    if (!settingStore.smtcOpen || !("mediaSession" in navigator)) return;
-    navigator.mediaSession.setPositionState({
-      duration: msToS(duration),
-      position: msToS(position),
-    });
+    if (!settingStore.smtcOpen) return;
+
+    if (isElectron && isWin) {
+      ipcService.sendSmtcTimeline(position, duration);
+      return;
+    }
+
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.setPositionState({
+        duration: msToS(duration),
+        position: msToS(position),
+      });
+    }
   }
 
   /**
@@ -1092,6 +1236,22 @@ class PlayerController {
     }
     statusStore.playSongMode = targetMode;
     ipcService.sendPlayMode(targetMode);
+
+    if (isElectron && isWin) {
+      let smtcRepeat = RepeatMode.None;
+      let smtcShuffle = false;
+
+      if (targetMode === "shuffle") {
+        smtcShuffle = true;
+        smtcRepeat = RepeatMode.List;
+      } else if (targetMode === "repeat") {
+        smtcRepeat = RepeatMode.List;
+      } else if (targetMode === "repeat-once") {
+        smtcRepeat = RepeatMode.Track;
+      }
+
+      ipcService.sendSmtcPlayMode(smtcShuffle, smtcRepeat);
+    }
   }
 
   /**

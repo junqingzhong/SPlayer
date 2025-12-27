@@ -7,7 +7,7 @@
     "binaryName": "smtc-for-splayer"
   },
   "scripts": {
-    "build": "napi build --release",
-    "build:debug": "napi build"
+    "build": "napi build --release --no-const-enum",
+    "build:debug": "napi build --no-const-enum"
   }
 }

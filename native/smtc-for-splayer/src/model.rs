@@ -1,7 +1,9 @@
+use std::fmt;
+
 use napi::bindgen_prelude::Buffer;
 use napi_derive::napi;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct MetadataPayload {
     pub song_name: String,
     pub author_name: String,
@@ -14,6 +16,26 @@ pub struct MetadataPayload {
     pub ncm_id: Option<i64>,
 
     pub duration: Option<f64>,
+}
+
+impl fmt::Debug for MetadataPayload {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("MetadataPayload")
+            .field("song_name", &self.song_name)
+            .field("author_name", &self.author_name)
+            .field("album_name", &self.album_name)
+            .field(
+                "cover_data",
+                &self.cover_data.as_ref().map_or_else(
+                    || "None".to_string(),
+                    |bytes| format!("Some({} bytes)", bytes.len()),
+                ),
+            )
+            .field("original_cover_url", &self.original_cover_url)
+            .field("ncm_id", &self.ncm_id)
+            .field("duration", &self.duration)
+            .finish()
+    }
 }
 
 #[napi(object)]

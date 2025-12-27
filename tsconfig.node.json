@@ -3,6 +3,7 @@
   "include": [
     "electron.vite.config.*",
     "electron/**/*",
+    "electron/main/**/*.d.ts",
     "electron/main/index.ts",
     "electron/main/logger/index.ts",
     "electron/main/store/index.ts",
@@ -14,6 +15,9 @@
   ],
   "compilerOptions": {
     "composite": true,
-    "types": ["electron-vite/node"]
+    "types": ["electron-vite/node"],
+    "paths": {
+      "@native": ["./native/smtc-for-splayer"]
+    }
   }
 }

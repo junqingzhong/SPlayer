@@ -29,7 +29,7 @@ const HNS_PER_MILLISECOND: f64 = 10_000.0;
 static TOKIO_RUNTIME: LazyLock<Runtime> =
     LazyLock::new(|| Runtime::new().expect("创建 Tokio 运行时失败"));
 
-#[napi(string_enum)]
+#[napi]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SmtcEventType {
     Play,

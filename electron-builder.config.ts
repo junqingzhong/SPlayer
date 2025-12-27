@@ -23,6 +23,14 @@ const config: Configuration = {
   ],
   // 哪些文件将不会被压缩，而是解压到构建目录
   asarUnpack: ["public/**"],
+  // 将原生插件作为外部资源复制
+  extraResources: [
+    {
+      from: "native/smtc-for-splayer",
+      to: "native",
+      filter: ["*.node"],
+    },
+  ],
   win: {
     // 可执行文件名
     executableName: "SPlayer",

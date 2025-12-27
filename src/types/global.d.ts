@@ -1,5 +1,20 @@
 import { MessageApi, DialogApi, NotificationApi, LoadingBarApi, ModalApi } from "naive-ui";
 
+import type {
+  MetadataParam,
+  PlayStatePayload,
+  TimelinePayload,
+  PlayModePayload,
+  SmtcEvent,
+} from "@native";
+
+interface IpcChannelMap {
+  "smtc-update-metadata": MetadataParam;
+  "smtc-update-play-state": PlayStatePayload;
+  "smtc-update-timeline": TimelinePayload;
+  "smtc-update-play-mode": PlayModePayload;
+}
+
 declare global {
   interface Window {
     // naiveui
@@ -18,6 +33,29 @@ declare global {
         reset: (keys?: string[]) => Promise<boolean>;
         export: (data: any) => Promise<boolean>;
         import: () => Promise<any>;
+      };
+    };
+    electron: {
+      ipcRenderer: {
+        send<K extends keyof IpcChannelMap>(channel: K, payload: IpcChannelMap[K]): void;
+
+        on(
+          channel: "smtc-event",
+          listener: (event: Electron.IpcRendererEvent, payload: SmtcEvent) => void,
+        ): void;
+
+        // TODO: 这些类型定义不怎么安全
+        send(channel: string, ...args: any[]): void;
+        on(
+          channel: string,
+          listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void,
+        ): void;
+        once(
+          channel: string,
+          listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void,
+        ): void;
+        invoke(channel: string, ...args: any[]): Promise<any>;
+        removeAllListeners(channel: string): void;
       };
     };
   }

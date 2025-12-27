@@ -13,6 +13,7 @@ import initAppServer from "../server";
 import loadWindow from "./windows/load-window";
 import mainWindow from "./windows/main-window";
 import initIpc from "./ipc";
+import { shutdownSmtc } from "./ipc/ipc-smtc";
 
 // 屏蔽报错
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -39,6 +40,13 @@ class MainProcess {
   isQuit: boolean = false;
   constructor() {
     processLog.info("🚀 Main process startup");
+    // 在 Windows 上禁用自带的媒体控件功能，因为我们已经通过原生插件实现 SMTC 的集成了
+    if (process.platform === "win32") {
+      app.commandLine.appendSwitch(
+        "disable-features",
+        "HardwareMediaKeyHandling,MediaSessionService",
+      );
+    }
     // 程序单例锁
     initSingleLock();
     // 监听应用事件
@@ -89,6 +97,9 @@ class MainProcess {
     app.on("will-quit", () => {
       // 注销全部快捷键
       unregisterShortcuts();
+
+      // 清理 SMTC 相关资源
+      shutdownSmtc();
     });
 
     // 退出前
