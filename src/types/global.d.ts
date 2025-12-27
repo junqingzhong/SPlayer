@@ -56,6 +56,7 @@ declare global {
         ): void;
         invoke(channel: string, ...args: any[]): Promise<any>;
         removeAllListeners(channel: string): void;
+        sendSync(channel: string, ...args: any[]): any;
       };
     };
   }
