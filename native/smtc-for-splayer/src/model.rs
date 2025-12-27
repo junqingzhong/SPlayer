@@ -31,6 +31,8 @@ pub struct MetadataParam {
     /// 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段
     pub ncm_id: Option<i64>,
 
+    /// 单位是毫秒
+    ///
     /// 只用于 Discord RPC，因为 Discord RPC 不太支持只更新元数据而不更新进度信息
     pub duration: Option<f64>,
 }
@@ -73,7 +75,10 @@ pub struct PlayStatePayload {
 #[napi(object)]
 #[derive(Debug, Clone, Copy)]
 pub struct TimelinePayload {
+    /// 单位是毫秒
     pub current_time: f64,
+
+    /// 单位是毫秒
     pub total_time: f64,
 }
 
