@@ -34,6 +34,23 @@ const initLyricIpc = (): void => {
     lyricWin.setIgnoreMouseEvents(true, enableForward ? { forward: true } : undefined);
   };
 
+  // 主窗口移动/调整大小中：立即禁用 forward，并启动防抖恢复
+  const onMoveOrResize = () => {
+    if (!isLocked) return;
+    // 立即禁用 forward
+    setLyricMouseEvents(false);
+    // 防抖恢复：300ms 内无新事件则恢复
+    restoreTimer && clearTimeout(restoreTimer);
+    restoreTimer = setTimeout(() => setLyricMouseEvents(true), 300);
+  };
+
+  // 主窗口移动/调整大小结束：立即恢复 forward（仅 Windows/macOS 支持）
+  const onMoveOrResizeEnd = () => {
+    if (!isLocked) return;
+    restoreTimer && clearTimeout(restoreTimer);
+    setLyricMouseEvents(true);
+  };
+
   /**
    * 绑定主窗口事件监听
    * 监听 move 和 resize 事件，在操作时禁用 forward
@@ -41,23 +58,6 @@ const initLyricIpc = (): void => {
   const bindMainWinEvents = () => {
     const mainWin = mainWindow.getWin();
     if (!mainWin) return;
-
-    // 主窗口移动/调整大小中：立即禁用 forward，并启动防抖恢复
-    const onMoveOrResize = () => {
-      if (!isLocked) return;
-      // 立即禁用 forward
-      setLyricMouseEvents(false);
-      // 防抖恢复：300ms 内无新事件则恢复
-      restoreTimer && clearTimeout(restoreTimer);
-      restoreTimer = setTimeout(() => setLyricMouseEvents(true), 300);
-    };
-
-    // 主窗口移动/调整大小结束：立即恢复 forward（仅 Windows/macOS 支持）
-    const onMoveOrResizeEnd = () => {
-      if (!isLocked) return;
-      restoreTimer && clearTimeout(restoreTimer);
-      setLyricMouseEvents(true);
-    };
 
     // 监听 move（移动中，所有平台）
     mainWin.on("move", onMoveOrResize);
@@ -80,14 +80,14 @@ const initLyricIpc = (): void => {
     const mainWin = mainWindow.getWin();
     if (!mainWin) return;
 
-    // 移除所有平台的事件
-    mainWin.removeAllListeners("move");
-    mainWin.removeAllListeners("resize");
+    // 移除此模块添加的事件
+    mainWin.removeListener("move", onMoveOrResize);
+    mainWin.removeListener("resize", onMoveOrResize);
 
     // Linux 不支持 moved/resized 事件，仅在 Windows/macOS 上移除
     if (!isLinux) {
-      mainWin.removeAllListeners("moved");
-      mainWin.removeAllListeners("resized");
+      mainWin.removeListener("moved", onMoveOrResizeEnd);
+      mainWin.removeListener("resized", onMoveOrResizeEnd);
     }
 
     // 清理定时器
