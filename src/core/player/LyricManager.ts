@@ -3,7 +3,7 @@ import { songLyric, songLyricTTML } from "@/api/song";
 import { type SongLyric } from "@/types/lyric";
 import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
 import { isElectron } from "@/utils/env";
-import { isEmpty, max } from "lodash-es";
+import { isEmpty } from "lodash-es";
 import { useCacheManager } from "@/core/resource/CacheManager";
 
 class LyricManager {
@@ -129,11 +129,11 @@ class LyricManager {
       const roma = group[2];
       if (!base.translatedLyric && tran) {
         base.translatedLyric = toText(tran);
-        base.endTime = max([toEndTime(base), toEndTime(tran)]);
+        base.endTime = Math.max(toEndTime(base), toEndTime(tran));
       }
       if (!base.romanLyric && roma) {
         base.romanLyric = toText(roma);
-        base.endTime = max([toEndTime(base), toEndTime(roma)]);
+        base.endTime = Math.max(toEndTime(base), toEndTime(roma));
       }
       return base;
     });
