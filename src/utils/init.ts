@@ -4,6 +4,7 @@ import { openUserAgreement } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import { isElectron } from "./env";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { mediaSessionManager } from "@/core/player/MediaSessionManager";
 import { useDownloadManager } from "@/core/resource/DownloadManager";
 import packageJson from "@/../package.json";
 import log from "./log";
@@ -34,7 +35,7 @@ const init = async () => {
   await dataStore.loadData();
 
   // 初始化 MediaSession
-  player.initMediaSession();
+  mediaSessionManager.init();
 
   // 初始化播放器
   player.playSong({
