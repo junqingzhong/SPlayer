@@ -207,6 +207,8 @@ class AudioManager {
     if (this.audioElement) {
       this.pause();
       this.audioElement.currentTime = 0;
+      this.audioElement.removeAttribute("src");
+      this.audioElement.load();
     }
   }
 

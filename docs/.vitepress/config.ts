@@ -33,7 +33,10 @@ export default defineConfig({
       },
       {
         text: "API",
-        items: [{ text: "API 接口文档", link: "/api" }],
+        items: [
+          { text: "API 接口文档", link: "/api" },
+          { text: "WebSocket API", link: "/socket" },
+        ],
       },
     ],
 

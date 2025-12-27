@@ -101,6 +101,16 @@ const initSocketIpc = (): void => {
       data: { ...options, timestamp: Date.now() },
     });
   });
+  ipcMain.on("set-progress", (_, options) => {
+    // 解析参数
+    const { currentTime, duration } = options;
+    // 检查参数
+    if (currentTime === undefined || duration === undefined) return;
+    socketService.broadcast({
+      type: "progress-change",
+      data: { currentTime, duration, timestamp: Date.now() },
+    });
+  });
 };
 
 export default initSocketIpc;

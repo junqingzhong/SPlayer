@@ -49,10 +49,22 @@ const ipcService = {
   /**
    * 发送进度
    * @param progress 进度
+   * @param currentTime 当前时间
+   * @param duration 总时长
    */
-  sendProgress: throttle((progress: number | "none") => {
-    if (isElectron) window.electron.ipcRenderer.send("set-bar", progress);
+  sendTaskbarProgress: throttle((progress: number | "none") => {
+    if (isElectron) {
+      window.electron.ipcRenderer.send("set-bar", progress);
+    }
   }, 1000),
+  /**
+   * 发送 Socket 实时进度
+   */
+  sendSocketProgress: throttle((currentTime: number, duration: number) => {
+    if (isElectron) {
+      window.electron.ipcRenderer.send("set-progress", { currentTime, duration });
+    }
+  }, 500),
   /**
    * 发送歌词
    * @param data 歌词数据
@@ -166,10 +178,6 @@ class PlayerController {
         console.error("❌ 播放初始化失败:", error);
         await this.handlePlaybackError(error?.code || 0, options.seek || 0);
       }
-    } finally {
-      if (requestToken === this.currentRequestToken) {
-        statusStore.playLoading = false;
-      }
     }
   }
 
@@ -197,6 +205,7 @@ class PlayerController {
       const audioSource = await songManager.getAudioSource(playSongData);
       if (!audioSource.url) {
         window.$message.error("切换音质失败");
+        statusStore.playLoading = false;
         return;
       }
       console.log(`🔄 [${playSongData.id}] 切换音质:`, audioSource);
@@ -209,9 +218,8 @@ class PlayerController {
       await this.loadAndPlay(audioSource.url, shouldAutoPlay, seek);
     } catch (error) {
       console.error("❌ 切换音质失败:", error);
-      window.$message.error("切换音质失败");
-    } finally {
       statusStore.playLoading = false;
+      window.$message.error("切换音质失败");
     }
   }
 
@@ -365,7 +373,7 @@ class PlayerController {
 
     // 播放开始
     audioManager.on("play", () => {
-      const { name, artist, album } = getPlayerInfoObj() || {};
+      const { name, artist } = getPlayerInfoObj() || {};
       const playTitle = `${name} - ${artist}`;
       // 更新状态
       statusStore.playStatus = true;
@@ -377,7 +385,7 @@ class PlayerController {
       lastfmScrobbler.resume();
       // IPC 通知
       ipcService.sendPlayStatus(true);
-      ipcService.sendSongChange(playTitle, name || "", artist || "", album || "");
+      // ipcService.sendSongChange(playTitle, name || "", artist || "", album || "");
       console.log(`▶️ [${musicStore.playSong?.id}] 歌曲播放:`, name);
     });
 
@@ -431,10 +439,14 @@ class PlayerController {
         songId: musicStore.playSong?.id,
         songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
       });
-      // 进度条
+      // 任务栏进度
       if (settingStore.showTaskbarProgress) {
-        ipcService.sendProgress(statusStore.progress);
+        ipcService.sendTaskbarProgress(statusStore.progress);
+      } else {
+        ipcService.sendTaskbarProgress("none");
       }
+      // Socket 进度
+      ipcService.sendSocketProgress(currentTime, duration);
     }, 200);
     audioManager.on("timeupdate", handleTimeUpdate);
 
@@ -468,6 +480,7 @@ class PlayerController {
     if (isLocalSong) {
       console.error("❌ 本地文件加载失败，停止重试");
       window.$message.error("本地文件无法播放");
+      statusStore.playLoading = false;
       this.retryInfo.count = 0;
       await this.nextOrPrev("next");
       return;
@@ -480,6 +493,7 @@ class PlayerController {
 
     // 用户主动中止 (Code 1) 或 AbortError (Code 20) - 不重试
     if (errCode === 1 || errCode === 20) {
+      statusStore.playLoading = false;
       this.retryInfo.count = 0;
       return;
     }
@@ -494,6 +508,7 @@ class PlayerController {
       // 连续跳过 3 首直接暂停
       if (this.failSkipCount >= 3) {
         window.$message.error("播放失败次数过多，已停止播放");
+        statusStore.playLoading = false;
         this.pause(true);
         this.failSkipCount = 0;
         return;
@@ -790,7 +805,7 @@ class PlayerController {
     // 清空播放列表
     await dataStore.setPlayList([]);
     await dataStore.clearOriginalPlayList();
-    ipcService.sendProgress("none");
+    ipcService.sendTaskbarProgress("none");
   }
 
   /**
