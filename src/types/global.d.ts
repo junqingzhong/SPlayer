@@ -8,7 +8,7 @@ import type {
   SmtcEvent,
 } from "@native";
 
-interface IpcChannelMap {
+export interface IpcChannelMap {
   "smtc-update-metadata": MetadataParam;
   "smtc-update-play-state": PlayStatePayload;
   "smtc-update-timeline": TimelinePayload;

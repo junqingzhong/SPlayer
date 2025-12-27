@@ -2,16 +2,26 @@ import { ipcMain, BrowserWindow, app } from "electron";
 import { join } from "path";
 import { loadNativeModule } from "../utils/native-loader";
 import { processLog } from "../logger";
-import {
-  type MetadataParam,
-  type PlayStatePayload,
-  type TimelinePayload,
-  type PlayModePayload,
-} from "@native";
+import { IpcChannelMap } from "../../../src/types/global";
 
 type NativeModule = typeof import("@native");
 
 let nativeSmtc: NativeModule | null = null;
+
+function registerSmtcHandler<K extends keyof IpcChannelMap>(
+  channel: K,
+  handler: (module: NativeModule, payload: IpcChannelMap[K]) => void,
+) {
+  ipcMain.on(channel, (_, payload: IpcChannelMap[K]) => {
+    if (!nativeSmtc) return;
+
+    try {
+      handler(nativeSmtc, payload);
+    } catch (e) {
+      processLog.error(`[SMTC] 在 ${channel} 中的错误`, e);
+    }
+  });
+}
 
 export default function initSmtcIpc() {
   if (process.platform !== "win32") {
@@ -46,36 +56,24 @@ export default function initSmtcIpc() {
     processLog.error("[SMTC] 初始化时失败", e);
   }
 
-  ipcMain.on("smtc-update-metadata", (_, payload: MetadataParam) => {
-    try {
-      if (nativeSmtc) nativeSmtc.updateMetadata(payload);
-    } catch (e) {
-      processLog.error("[SMTC] 更新元数据失败", e);
-    }
+  // 元数据
+  registerSmtcHandler("smtc-update-metadata", (mod, payload) => {
+    mod.updateMetadata(payload);
   });
 
-  ipcMain.on("smtc-update-play-state", (_, payload: PlayStatePayload) => {
-    try {
-      if (nativeSmtc) nativeSmtc.updatePlayState(payload);
-    } catch (e) {
-      processLog.error("[SMTC] 更新播放状态失败", e);
-    }
+  // 播放状态
+  registerSmtcHandler("smtc-update-play-state", (mod, payload) => {
+    mod.updatePlayState(payload);
   });
 
-  ipcMain.on("smtc-update-timeline", (_, payload: TimelinePayload) => {
-    try {
-      if (nativeSmtc) nativeSmtc.updateTimeline(payload);
-    } catch (e) {
-      processLog.error("[SMTC] 更新时间信息失败", e);
-    }
+  // 进度信息
+  registerSmtcHandler("smtc-update-timeline", (mod, payload) => {
+    mod.updateTimeline(payload);
   });
 
-  ipcMain.on("smtc-update-play-mode", (_, payload: PlayModePayload) => {
-    try {
-      if (nativeSmtc) nativeSmtc.updatePlayMode(payload);
-    } catch (e) {
-      processLog.error("[SMTC] 更新播放模式失败", e);
-    }
+  // 播放模式
+  registerSmtcHandler("smtc-update-play-mode", (mod, payload) => {
+    mod.updatePlayMode(payload);
   });
 }
 
