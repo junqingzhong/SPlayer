@@ -7,6 +7,12 @@ import { useSettingStore } from "@/stores";
  * API 文档: https://www.last.fm/api
  */
 
+// 错误响应接口
+interface LastfmErrorResponse {
+  error: number;
+  message: string;
+}
+
 const LASTFM_API_URL = "https://ws.audioscrobbler.com/2.0/";
 
 // Last.fm API 客户端
@@ -18,17 +24,18 @@ const lastfmClient: AxiosInstance = axios.create({
 // 响应拦截器，显示错误提示
 lastfmClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError) => {
-    const response = error.response
+  (error: AxiosError<LastfmErrorResponse>) => {
+    const response = error.response;
     if (!response) {
       window.$message.error("Last.fm 请求失败，请检查网络连接");
       return Promise.reject(error);
     }
 
-    const status = response.status;
+    const { status, data } = response;
+
     switch (status) {
       case 403:
-        const code = (response.data as any)?.error;
+        const code = data?.error;
         if (code === 9 || code === 4 || code === 26) {
           window.$message.error("Last.fm 认证失败，需要重新授权，已断开与 Last.fm 的连接！");
           disconnect();
@@ -53,8 +60,8 @@ lastfmClient.interceptors.response.use(
         break;
     }
     return Promise.reject(error);
-  }
-)
+  },
+);
 
 /**
  * 断开与 Last.fm 的连接
@@ -63,7 +70,7 @@ export const disconnect = () => {
   const settingStore = useSettingStore();
   settingStore.lastfm.sessionKey = "";
   settingStore.lastfm.username = "";
-}
+};
 
 /**
  * 获取 API 配置

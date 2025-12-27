@@ -94,23 +94,16 @@ server.interceptors.response.use(
         // 处理其他状态码或错误条件
         console.error("未处理的错误：", error.message);
     }
-    // window.$notification.error({
-    //   title: "请求错误",
-    //   description: `状态码: ${response?.status || ""}`,
-    //   content: (response && (response.data as { message?: string }).message) || error.message,
-    //   meta: "若持续发生，可尝试软件热重载",
-    //   duration: 5000,
-    // });
     // 返回错误
     return Promise.reject(error);
   },
 );
 
 // 请求
-const request = async (config: AxiosRequestConfig): Promise<any> => {
+const request = async <T = any>(config: AxiosRequestConfig): Promise<T> => {
   // 返回请求数据
   const { data } = await server.request(config);
-  return data as any;
+  return data as T;
 };
 
 export default request;
