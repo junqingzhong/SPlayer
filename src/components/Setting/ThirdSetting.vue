@@ -16,8 +16,13 @@
             <n-text class="name">API Key</n-text>
             <n-text class="tip" :depth="3">
               在
-              <n-a href="https://www.last.fm/api/account/create" target="_blank">Last.fm API</n-a>
-              创建应用获取
+              <n-a href="https://www.last.fm/zh/api/account/create" target="_blank">Last.fm 创建应用</n-a>
+              获取，只有「程序名称」是必要的
+            </n-text>
+            <n-text class="tip" :depth="3">
+              如果已经创建过，则可以在
+              <n-a href="https://www.last.fm/zh/api/accounts" target="_blank">Last.fm API 应用程序</n-a>
+              处查看
             </n-text>
           </div>
           <n-input
