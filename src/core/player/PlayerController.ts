@@ -20,6 +20,7 @@ import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { RepeatMode, PlaybackStatus } from "@/types/smtc";
 import * as playerIpc from "./PlayerIpc";
 import { mediaSessionManager } from "./MediaSessionManager";
+import { PlayModeController } from "./playModeController";
 
 /**
  * 播放器核心类
@@ -36,6 +37,8 @@ class PlayerController {
   private currentRequestToken = 0;
   /** 连续跳过计数 */
   private failSkipCount = 0;
+  /** 用来管理 SMTC 播放模式和 SPlayer 使用的播放模式之间的转换 */
+  private modeController = new PlayModeController();
 
   constructor() {
     this.bindAudioEvents();
@@ -813,6 +816,24 @@ class PlayerController {
       statusStore.playLoading = false;
       throw error;
     }
+  }
+
+  /**
+   * 专门处理 SMTC 的随机按钮事件
+   */
+  public handleSmtcShuffle() {
+    const statusStore = useStatusStore();
+    const nextMode = this.modeController.getNextShuffleMode(statusStore.playSongMode);
+    this.togglePlayMode(nextMode);
+  }
+
+  /**
+   * 专门处理 SMTC 的循环按钮事件
+   */
+  public handleSmtcRepeat() {
+    const statusStore = useStatusStore();
+    const nextMode = this.modeController.getNextRepeatMode(statusStore.playSongMode);
+    this.togglePlayMode(nextMode);
   }
 
   /**

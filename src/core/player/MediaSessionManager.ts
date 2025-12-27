@@ -48,12 +48,11 @@ class MediaSessionManager {
               player.setSeek(event.positionMs);
             }
             break;
-          // 简化实现，需要特殊的逻辑分开
           case SmtcEventType.ToggleShuffle:
-            player.togglePlayMode("shuffle");
+            player.handleSmtcShuffle();
             break;
           case SmtcEventType.ToggleRepeat:
-            player.togglePlayMode(false);
+            player.handleSmtcRepeat();
             break;
         }
       });
