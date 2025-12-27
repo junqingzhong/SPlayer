@@ -15,6 +15,11 @@ import { sendSmtcMetadata, sendSmtcTimeline, sendSmtcPlayState } from "./PlayerI
  */
 class MediaSessionManager {
   /**
+   * 用来管理封面请求
+   */
+  private metadataAbortController: AbortController | null = null;
+
+  /**
    * 初始化 MediaSession
    */
   public init() {
@@ -86,6 +91,12 @@ class MediaSessionManager {
     const song = getPlaySongData();
     if (!song) return;
 
+    if (this.metadataAbortController) {
+      this.metadataAbortController.abort();
+    }
+    this.metadataAbortController = new AbortController();
+    const { signal } = this.metadataAbortController;
+
     const isRadio = song.type === "radio";
     const title = song.name;
     const artist = isRadio
@@ -106,7 +117,10 @@ class MediaSessionManager {
         let coverBuffer: Uint8Array | undefined;
 
         if (coverUrl && coverUrl.startsWith("http")) {
-          const resp = await axios.get(coverUrl, { responseType: "arraybuffer" });
+          const resp = await axios.get(coverUrl, {
+            responseType: "arraybuffer",
+            signal: signal,
+          });
           coverBuffer = new Uint8Array(resp.data);
         }
 
@@ -120,7 +134,13 @@ class MediaSessionManager {
           ncmId: song.id, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲，不过可能意义不大
         });
       } catch (e) {
-        console.error("[SMTC] 更新元数据失败", e);
+        if (!axios.isCancel(e)) {
+          console.error("[SMTC] 更新元数据失败", e);
+        }
+      } finally {
+        if (this.metadataAbortController?.signal === signal) {
+          this.metadataAbortController = null;
+        }
       }
       return;
     }
