@@ -1053,6 +1053,30 @@ class PlayerController {
   }
 
   /**
+   * 同步当前的播放模式到 SMTC
+   */
+  public syncSmtcPlayMode() {
+    const statusStore = useStatusStore();
+
+    if (isElectron && isWin) {
+      const mode = statusStore.playSongMode;
+      let smtcRepeat = RepeatMode.None;
+      let smtcShuffle = false;
+
+      if (mode === "shuffle") {
+        smtcShuffle = true;
+        smtcRepeat = RepeatMode.List;
+      } else if (mode === "repeat") {
+        smtcRepeat = RepeatMode.List;
+      } else if (mode === "repeat-once") {
+        smtcRepeat = RepeatMode.Track;
+      }
+
+      playerIpc.sendSmtcPlayMode(smtcShuffle, smtcRepeat);
+    }
+  }
+
+  /**
    * 获取频谱数据
    */
   public getSpectrumData(): Uint8Array | null {

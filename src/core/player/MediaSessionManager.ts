@@ -4,9 +4,9 @@ import { getPlaySongData } from "@/utils/format";
 import { isElectron, isWin } from "@/utils/env";
 import { msToS } from "@/utils/time";
 import { type SmtcEvent } from "@native";
-import { SmtcEventType } from "@/types/smtc";
 import { usePlayerController } from "./PlayerController";
-import { sendSmtcMetadata, sendSmtcTimeline } from "./PlayerIpc";
+import { SmtcEventType, PlaybackStatus } from "@/types/smtc";
+import { sendSmtcMetadata, sendSmtcTimeline, sendSmtcPlayState } from "./PlayerIpc";
 
 /**
  * 媒体会话管理器，负责控制媒体控件相关功能
@@ -32,6 +32,8 @@ class MediaSessionManager {
             player.play();
             break;
           case SmtcEventType.Pause:
+            // 乐观更新以避免淡出延迟
+            sendSmtcPlayState(PlaybackStatus.Paused);
             player.pause();
             break;
           case SmtcEventType.NextSong:
@@ -56,6 +58,8 @@ class MediaSessionManager {
             break;
         }
       });
+
+      player.syncSmtcPlayMode();
       return;
     }
 
