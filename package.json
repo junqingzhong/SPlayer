@@ -22,7 +22,7 @@
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
-    "build:native": "cd native/smtc-for-splayer && pnpm install && pnpm run build",
+    "build:native": "node scripts/build-native.mjs",
     "start": "electron-vite preview",
     "dev": "npm run build:native && node scripts/dev.mjs",
     "build": "npx rimraf dist && npm run build:native && npm run typecheck && electron-vite build",

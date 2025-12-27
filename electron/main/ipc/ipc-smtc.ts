@@ -14,6 +14,10 @@ type NativeModule = typeof import("@native");
 let nativeSmtc: NativeModule | null = null;
 
 export default function initSmtcIpc() {
+  if (process.platform !== "win32") {
+    return;
+  }
+
   nativeSmtc = loadNativeModule("smtc-for-splayer.node", "smtc-for-splayer");
 
   if (!nativeSmtc) {

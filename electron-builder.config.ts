@@ -25,11 +25,16 @@ const config: Configuration = {
   asarUnpack: ["public/**"],
   // 将原生插件作为外部资源复制
   extraResources: [
-    {
-      from: "native/smtc-for-splayer",
-      to: "native",
-      filter: ["*.node"],
-    },
+    // 原生插件目前只有 Windows 版本，其他平台返回空数组
+    ...(process.platform === "win32"
+      ? [
+          {
+            from: "native/smtc-for-splayer",
+            to: "native",
+            filter: ["*.node"],
+          },
+        ]
+      : []),
   ],
   win: {
     // 可执行文件名
