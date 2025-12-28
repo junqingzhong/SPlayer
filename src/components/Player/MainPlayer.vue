@@ -89,7 +89,7 @@
                   v-for="(item, index) in musicStore.playSong.artists"
                   :key="index"
                   class="ar-item"
-                  @click="openJumpArtist(musicStore.playSong.artists)"
+                  @click="openJumpArtist(musicStore.playSong.artists, item.id)"
                 >
                   {{ item.name }}
                 </n-text>

@@ -70,16 +70,20 @@
                 <div
                   v-if="config.showArtist && Array.isArray(detailData.artists)"
                   class="artists text-hidden"
-                  @click="handleArtistClick(detailData.artists)"
                 >
-                  <n-text v-for="(ar, arIndex) in detailData.artists" :key="arIndex" class="ar">
+                  <n-text
+                    v-for="(ar, arIndex) in detailData.artists"
+                    :key="arIndex"
+                    class="ar"
+                    @click="openJumpArtist(detailData.artists, ar.id)"
+                  >
                     {{ ar.name || "未知艺术家" }}
                   </n-text>
                 </div>
                 <div
                   v-else-if="config.showArtist"
                   class="artists text-hidden"
-                  @click="handleArtistClick(detailData.artists || '')"
+                  @click="openJumpArtist(detailData.artists || '')"
                 >
                   <n-text class="ar"> {{ detailData.artists || "未知艺术家" }} </n-text>
                 </div>
@@ -263,11 +267,6 @@ const handlePlayAll = () => {
 const handleSearch = (val: string) => {
   if ((!val || !val.trim()) && !props.searchValue) return;
   emit("update:searchValue", val);
-};
-
-// 处理艺术家点击
-const handleArtistClick = (artists: any) => {
-  openJumpArtist(artists);
 };
 
 // 处理标签点击

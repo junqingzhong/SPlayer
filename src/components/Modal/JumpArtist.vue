@@ -99,7 +99,7 @@ const getArtistData = async () => {
         return {
           id: ar.id,
           name: ar.name,
-          cover: artist?.cover || artist?.img1v1Url || artist?.picUrl,
+          cover: artist?.avatar || artist?.img1v1Url || artist?.picUrl,
         };
       } catch (error) {
         console.error(`获取歌手 ${ar.name} (${ar.id}) 的详情失败:`, error);

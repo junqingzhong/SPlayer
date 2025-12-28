@@ -28,7 +28,7 @@
           @update:show="localCover"
         />
         <!-- 信息 -->
-        <n-flex size="small" class="info" vertical >
+        <n-flex size="small" class="info" vertical>
           <!-- 名称 -->
           <div class="name">
             <n-ellipsis
@@ -95,7 +95,7 @@
                 v-for="ar in song.artists"
                 :key="ar.id"
                 class="ar"
-                @click="openJumpArtist(song.artists)"
+                @click="openJumpArtist(song.artists, ar.id)"
               >
                 {{ ar.name }}
               </n-text>

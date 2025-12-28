@@ -76,11 +76,15 @@ export const openUserLogin = (showTip: boolean = false) => {
   });
 };
 
-// 跳转到歌手
-export const openJumpArtist = (data: SongType["artists"]) => {
+/**
+ * 跳转到歌手
+ * @param data 歌手信息
+ * @param id 歌手 id
+ * @returns
+ */
+export const openJumpArtist = (data: SongType["artists"], id?: number) => {
   // 若 data 为数组且只有一个元素，则直接跳转
-  if (isArray(data) && data.length === 1) {
-    const id = data[0].id;
+  if (isArray(data) && data.length <= 2 && id) {
     router.push({ name: "artist", query: { id } });
     return;
   }
