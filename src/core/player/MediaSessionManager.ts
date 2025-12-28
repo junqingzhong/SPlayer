@@ -34,43 +34,44 @@ class MediaSessionManager {
 
     const player = usePlayerController();
 
-    if (isElectron && isWin) {
-      window.electron.ipcRenderer.removeAllListeners("smtc-event");
+    if (isElectron) {
+      if (isWin) {
+        window.electron.ipcRenderer.removeAllListeners("smtc-event");
 
-      window.electron.ipcRenderer.on("smtc-event", (_, event: SmtcEvent) => {
-        switch (event.type) {
-          case SmtcEventType.Play:
-            player.play();
-            break;
-          case SmtcEventType.Pause:
-            // 乐观更新以避免淡出延迟
-            sendSmtcPlayState(PlaybackStatus.Paused);
-            player.pause();
-            break;
-          case SmtcEventType.NextSong:
-            player.nextOrPrev("next");
-            break;
-          case SmtcEventType.PreviousSong:
-            player.nextOrPrev("prev");
-            break;
-          case SmtcEventType.Stop:
-            player.pause();
-            break;
-          case SmtcEventType.Seek:
-            if (event.positionMs !== undefined) {
-              player.setSeek(event.positionMs);
-            }
-            break;
-          case SmtcEventType.ToggleShuffle:
-            player.handleSmtcShuffle();
-            break;
-          case SmtcEventType.ToggleRepeat:
-            player.handleSmtcRepeat();
-            break;
-        }
-      });
-
-      player.syncSmtcPlayMode();
+        window.electron.ipcRenderer.on("smtc-event", (_, event: SmtcEvent) => {
+          switch (event.type) {
+            case SmtcEventType.Play:
+              player.play();
+              break;
+            case SmtcEventType.Pause:
+              // 乐观更新以避免淡出延迟
+              sendSmtcPlayState(PlaybackStatus.Paused);
+              player.pause();
+              break;
+            case SmtcEventType.NextSong:
+              player.nextOrPrev("next");
+              break;
+            case SmtcEventType.PreviousSong:
+              player.nextOrPrev("prev");
+              break;
+            case SmtcEventType.Stop:
+              player.pause();
+              break;
+            case SmtcEventType.Seek:
+              if (event.positionMs !== undefined) {
+                player.setSeek(event.positionMs);
+              }
+              break;
+            case SmtcEventType.ToggleShuffle:
+              player.handleSmtcShuffle();
+              break;
+            case SmtcEventType.ToggleRepeat:
+              player.handleSmtcRepeat();
+              break;
+          }
+        });
+        player.syncSmtcPlayMode();
+      }
 
       // 初始化 Discord RPC
       if (settingStore.discordRpc.enabled) {
@@ -127,7 +128,7 @@ class MediaSessionManager {
     const coverUrl = musicStore.getSongCover("xl") || musicStore.playSong.cover || "";
 
     // 更新元数据
-    if (isElectron && isWin) {
+    if (isElectron) {
       try {
         let coverBuffer: Uint8Array | undefined;
 
@@ -205,7 +206,7 @@ class MediaSessionManager {
     const settingStore = useSettingStore();
     if (!settingStore.smtcOpen) return;
 
-    if (isElectron && isWin) {
+    if (isElectron) {
       sendSmtcTimeline(position, duration);
       return;
     }

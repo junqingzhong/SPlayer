@@ -96,7 +96,7 @@
         </n-card>
       </n-collapse-transition>
     </div>
-    <div v-if="isElectron && isWin" class="set-list">
+    <div v-if="isElectron" class="set-list">
       <n-h3 prefix="bar"> Discord RPC </n-h3>
       <n-card class="set-item">
         <div class="label">
@@ -191,7 +191,7 @@
 <script setup lang="ts">
 import { useSettingStore } from "@/stores";
 import { getAuthToken, getAuthUrl, getSession } from "@/api/lastfm";
-import { isElectron, isWin } from "@/utils/env";
+import { isElectron } from "@/utils/env";
 import { enableDiscordRpc, disableDiscordRpc, updateDiscordConfig } from "@/core/player/PlayerIpc";
 
 const settingStore = useSettingStore();

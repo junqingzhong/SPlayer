@@ -24,9 +24,9 @@ function registerSmtcHandler<K extends keyof IpcChannelMap>(
 }
 
 export default function initSmtcIpc() {
-  if (process.platform !== "win32") {
-    return;
-  }
+  // if (process.platform !== "win32") {
+  //   return;
+  // }
 
   nativeSmtc = loadNativeModule("smtc-for-splayer.node", "smtc-for-splayer");
 

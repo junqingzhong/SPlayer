@@ -15,7 +15,7 @@ use crate::model::{
 };
 
 const APP_ID: &str = "1454403710162698293";
-const NCM_ICON_ASSET_KEY: &str = "logo-icon";
+const SP_ICON_ASSET_KEY: &str = "logo-icon";
 
 // 主要用来应对跳转进度的更新
 const TIMESTAMP_UPDATE_THRESHOLD_MS: i64 = 100;
@@ -63,7 +63,7 @@ impl ActivityData {
 
     fn process_cover_url(original_url: Option<&str>) -> String {
         original_url.map_or_else(
-            || NCM_ICON_ASSET_KEY.to_string(),
+            || SP_ICON_ASSET_KEY.to_string(),
             |url| {
                 let url = url.replace("http://", "https://");
                 let base_url = url.split('?').next().unwrap_or(&url);
@@ -228,8 +228,8 @@ impl RpcWorker {
         let assets = Assets::new()
             .large_image(&data.cached_cover_url)
             .large_text(&data.metadata.album_name)
-            .small_image(NCM_ICON_ASSET_KEY)
-            .small_text("NetEase CloudMusic");
+            .small_image(SP_ICON_ASSET_KEY)
+            .small_text("SPlayer");
 
         let buttons = vec![Button::new("🎧 Listen", &data.cached_song_url)];
 
@@ -316,7 +316,7 @@ impl RpcWorker {
                             Assets::new()
                                 .large_image(&data.cached_cover_url)
                                 .large_text(&data.metadata.album_name)
-                                .small_image(NCM_ICON_ASSET_KEY)
+                                .small_image(SP_ICON_ASSET_KEY)
                                 .small_text("Paused"),
                         );
                 }
