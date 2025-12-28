@@ -38,6 +38,10 @@ export default defineConfig({
           { text: "WebSocket API", link: "/socket" },
         ],
       },
+      {
+        text: "开发指南",
+        items: [{ text: "原生插件", link: "/native" }],
+      },
     ],
 
     outline: {

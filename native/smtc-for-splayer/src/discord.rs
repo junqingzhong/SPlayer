@@ -14,8 +14,8 @@ use crate::model::{
     TimelinePayload,
 };
 
-const APP_ID: &str = "1427186361827594375";
-const NCM_ICON_ASSET_KEY: &str = "ncm_icon";
+const APP_ID: &str = "1454403710162698293";
+const NCM_ICON_ASSET_KEY: &str = "logo-icon";
 
 // 主要用来应对跳转进度的更新
 const TIMESTAMP_UPDATE_THRESHOLD_MS: i64 = 100;

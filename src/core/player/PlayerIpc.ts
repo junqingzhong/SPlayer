@@ -2,7 +2,7 @@ import { throttle } from "lodash-es";
 import { isElectron, isWin } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
 import { type MetadataParam } from "@native";
-import { RepeatMode, PlaybackStatus } from "@/types/smtc";
+import { RepeatMode, PlaybackStatus, DiscordDisplayMode } from "@/types/smtc";
 
 /**
  * 发送播放状态
@@ -130,4 +130,40 @@ export const sendSmtcTimeline = throttle((currentTime: number, totalTime: number
 export const sendSmtcPlayMode = (isShuffling: boolean, repeatMode: RepeatMode) => {
   if (isElectron && isWin)
     window.electron.ipcRenderer.send("smtc-update-play-mode", { isShuffling, repeatMode });
+};
+
+/**
+ * @description 启用 Discord RPC
+ */
+export const enableDiscordRpc = () => {
+  if (isElectron && isWin) window.electron.ipcRenderer.send("smtc-enable-discord");
+};
+
+/**
+ * @description 禁用 Discord RPC
+ */
+export const disableDiscordRpc = () => {
+  if (isElectron && isWin) window.electron.ipcRenderer.send("smtc-disable-discord");
+};
+
+/**
+ * @description 更新 Discord RPC 配置
+ * @param payload 配置信息
+ */
+export const updateDiscordConfig = (payload: {
+  showWhenPaused: boolean;
+  displayMode: "name" | "state" | "details";
+}) => {
+  if (isElectron && isWin) {
+    const modeMap: Record<string, DiscordDisplayMode> = {
+      name: DiscordDisplayMode.Name,
+      state: DiscordDisplayMode.State,
+      details: DiscordDisplayMode.Details,
+    };
+
+    window.electron.ipcRenderer.send("smtc-update-discord-config", {
+      showWhenPaused: payload.showWhenPaused,
+      displayMode: modeMap[payload.displayMode] ?? DiscordDisplayMode.Name,
+    });
+  }
 };

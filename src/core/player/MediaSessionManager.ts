@@ -6,7 +6,13 @@ import { msToS } from "@/utils/time";
 import { type SmtcEvent } from "@native";
 import { usePlayerController } from "./PlayerController";
 import { SmtcEventType, PlaybackStatus } from "@/types/smtc";
-import { sendSmtcMetadata, sendSmtcTimeline, sendSmtcPlayState } from "./PlayerIpc";
+import {
+  sendSmtcMetadata,
+  sendSmtcTimeline,
+  sendSmtcPlayState,
+  enableDiscordRpc,
+  updateDiscordConfig,
+} from "./PlayerIpc";
 
 /**
  * 媒体会话管理器，负责控制媒体控件相关功能
@@ -65,6 +71,15 @@ class MediaSessionManager {
       });
 
       player.syncSmtcPlayMode();
+
+      // 初始化 Discord RPC
+      if (settingStore.discordRpc.enabled) {
+        enableDiscordRpc();
+        updateDiscordConfig({
+          showWhenPaused: settingStore.discordRpc.showWhenPaused,
+          displayMode: settingStore.discordRpc.displayMode,
+        });
+      }
       return;
     }
 

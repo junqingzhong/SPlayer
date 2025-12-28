@@ -6,6 +6,7 @@ import type {
   TimelinePayload,
   PlayModePayload,
   SmtcEvent,
+  DiscordConfigPayload,
 } from "@native";
 
 export interface IpcChannelMap {
@@ -13,6 +14,9 @@ export interface IpcChannelMap {
   "smtc-update-play-state": PlayStatePayload;
   "smtc-update-timeline": TimelinePayload;
   "smtc-update-play-mode": PlayModePayload;
+  "smtc-enable-discord": void;
+  "smtc-disable-discord": void;
+  "smtc-update-discord-config": DiscordConfigPayload;
 }
 
 declare global {

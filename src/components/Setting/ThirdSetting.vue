@@ -16,12 +16,16 @@
             <n-text class="name">API Key</n-text>
             <n-text class="tip" :depth="3">
               在
-              <n-a href="https://www.last.fm/zh/api/account/create" target="_blank">Last.fm 创建应用</n-a>
+              <n-a href="https://www.last.fm/zh/api/account/create" target="_blank">
+                Last.fm 创建应用
+              </n-a>
               获取，只有「程序名称」是必要的
             </n-text>
             <n-text class="tip" :depth="3">
               如果已经创建过，则可以在
-              <n-a href="https://www.last.fm/zh/api/accounts" target="_blank">Last.fm API 应用程序</n-a>
+              <n-a href="https://www.last.fm/zh/api/accounts" target="_blank">
+                Last.fm API 应用程序
+              </n-a>
               处查看
             </n-text>
           </div>
@@ -92,7 +96,51 @@
         </n-card>
       </n-collapse-transition>
     </div>
-
+    <div v-if="isElectron && isWin" class="set-list">
+      <n-h3 prefix="bar"> Discord RPC </n-h3>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">启用 Discord RPC</n-text>
+          <n-text class="tip" :depth="3"> 在 Discord 状态中显示正在播放的歌曲 </n-text>
+        </div>
+        <n-switch
+          class="set"
+          v-model:value="settingStore.discordRpc.enabled"
+          :round="false"
+          @update:value="handleDiscordEnabledUpdate"
+        />
+      </n-card>
+      <n-collapse-transition :show="settingStore.discordRpc.enabled">
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">暂停时显示</n-text>
+            <n-text class="tip" :depth="3">暂停播放时是否保留 Discord 状态</n-text>
+          </div>
+          <n-switch
+            class="set"
+            v-model:value="settingStore.discordRpc.showWhenPaused"
+            :round="false"
+            @update:value="handleDiscordConfigUpdate"
+          />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">显示模式</n-text>
+            <n-text class="tip" :depth="3">选择在 Discord 状态中展示的内容层级</n-text>
+          </div>
+          <n-select
+            class="set"
+            v-model:value="settingStore.discordRpc.displayMode"
+            :options="[
+              { label: '完整信息 (歌曲名/歌手)', value: 'details' },
+              { label: '仅歌曲名', value: 'name' },
+              { label: '仅播放状态', value: 'state' },
+            ]"
+            @update:value="handleDiscordConfigUpdate"
+          />
+        </n-card>
+      </n-collapse-transition>
+    </div>
     <div v-if="isElectron" class="set-list">
       <n-h3 prefix="bar"> WebSocket 配置 </n-h3>
       <n-card class="set-item">
@@ -143,7 +191,8 @@
 <script setup lang="ts">
 import { useSettingStore } from "@/stores";
 import { getAuthToken, getAuthUrl, getSession } from "@/api/lastfm";
-import { isElectron } from "@/utils/env";
+import { isElectron, isWin } from "@/utils/env";
+import { enableDiscordRpc, disableDiscordRpc, updateDiscordConfig } from "@/core/player/PlayerIpc";
 
 const settingStore = useSettingStore();
 
@@ -235,6 +284,25 @@ const disconnectLastfm = () => {
       settingStore.lastfm.username = "";
       window.$message.success("已断开与 Last.fm 的连接");
     },
+  });
+};
+
+// Discord RPC
+const handleDiscordEnabledUpdate = (val: boolean) => {
+  if (val) {
+    enableDiscordRpc();
+    // 启用时同步一次配置
+    handleDiscordConfigUpdate();
+  } else {
+    disableDiscordRpc();
+  }
+};
+
+const handleDiscordConfigUpdate = () => {
+  if (!settingStore.discordRpc.enabled) return;
+  updateDiscordConfig({
+    showWhenPaused: settingStore.discordRpc.showWhenPaused,
+    displayMode: settingStore.discordRpc.displayMode,
   });
 };
 

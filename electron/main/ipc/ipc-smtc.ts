@@ -75,6 +75,33 @@ export default function initSmtcIpc() {
   registerSmtcHandler("smtc-update-play-mode", (mod, payload) => {
     mod.updatePlayMode(payload);
   });
+
+  // Discord - 开启
+  ipcMain.on("smtc-enable-discord", () => {
+    if (nativeSmtc) {
+      try {
+        nativeSmtc.enableDiscordRpc();
+      } catch (e) {
+        processLog.error("[SMTC] 启用 Discord RPC 失败", e);
+      }
+    }
+  });
+
+  // Discord - 关闭
+  ipcMain.on("smtc-disable-discord", () => {
+    if (nativeSmtc) {
+      try {
+        nativeSmtc.disableDiscordRpc();
+      } catch (e) {
+        processLog.error("[SMTC] 禁用 Discord RPC 失败", e);
+      }
+    }
+  });
+
+  // Discord - 更新配置
+  registerSmtcHandler("smtc-update-discord-config", (mod, payload) => {
+    mod.updateDiscordConfig(payload);
+  });
 }
 
 export function shutdownSmtc() {
