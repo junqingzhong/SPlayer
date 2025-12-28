@@ -114,10 +114,10 @@ export const sendSmtcPlayState = (status: PlaybackStatus) => {
  * @param totalTime - 总时长，单位是毫秒
  * @see {@link NativeModule.updateTimeline 原生模块的 `updateTimeline` 方法}
  */
-export const sendSmtcTimeline = (currentTime: number, totalTime: number) => {
+export const sendSmtcTimeline = throttle((currentTime: number, totalTime: number) => {
   if (isElectron && isWin)
     window.electron.ipcRenderer.send("smtc-update-timeline", { currentTime, totalTime });
-};
+}, 1000);
 
 /**
  * @description 通过原生插件更新 SMTC 播放模式

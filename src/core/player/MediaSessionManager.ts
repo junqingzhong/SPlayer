@@ -116,7 +116,7 @@ class MediaSessionManager {
       try {
         let coverBuffer: Uint8Array | undefined;
 
-        if (coverUrl && coverUrl.startsWith("http")) {
+        if (coverUrl && (coverUrl.startsWith("http") || coverUrl.startsWith("blob:"))) {
           const resp = await axios.get(coverUrl, {
             responseType: "arraybuffer",
             signal: signal,
@@ -131,7 +131,7 @@ class MediaSessionManager {
           coverData: coverBuffer as Buffer, // Electron 会帮我们处理转换的
           originalCoverUrl: coverUrl.startsWith("http") ? coverUrl : undefined, // Discord 需要 URL
           duration: song.duration,
-          ncmId: song.id, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲，不过可能意义不大
+          ncmId: typeof song.id === "number" ? song.id : 0, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲，不过可能意义不大
         });
       } catch (e) {
         if (!axios.isCancel(e)) {
