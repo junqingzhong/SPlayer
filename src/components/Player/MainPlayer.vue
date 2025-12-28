@@ -160,10 +160,9 @@
             class="time-container"
             vertical
           >
-            <div class="time" @click="showCountDown = !showCountDown">
-              <n-text v-if="showCountDown" depth="2">-{{ msToTime(statusStore.duration - statusStore.currentTime) }}</n-text>
-              <n-text v-else depth="2">{{ msToTime(statusStore.currentTime) }}</n-text>
-              <n-text depth="2">{{ msToTime(statusStore.duration) }}</n-text>
+            <div class="time" @click="toggleTimeFormat">
+              <n-text depth="2">{{ timeDisplay0 }}</n-text>
+              <n-text depth="2">{{ timeDisplay1 }}</n-text>
             </div>
             <!-- 定时关闭 -->
             <n-tag
@@ -190,7 +189,7 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { msToTime, convertSecondsToTime } from "@/utils/time";
+import { convertSecondsToTime } from "@/utils/time";
 import { renderIcon, coverLoaded, copyData } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
 import {
@@ -202,6 +201,7 @@ import {
 } from "@/utils/modal";
 import { useSongManager } from "@/core/player/SongManager";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { getTimeDisplay, TIME_FORMATS } from "@/utils/format";
 
 const router = useRouter();
 const dataStore = useDataStore();
@@ -212,7 +212,14 @@ const settingStore = useSettingStore();
 const player = usePlayerController();
 const songManager = useSongManager();
 
-const showCountDown = ref(false);
+const timeDisplay = getTimeDisplay(() => settingStore.timeFormatMainPlayer, statusStore);
+const timeDisplay0 = timeDisplay(0);
+const timeDisplay1 = timeDisplay(1);
+
+const toggleTimeFormat = () => {
+  const currentIndex = TIME_FORMATS.indexOf(settingStore.timeFormatMainPlayer)
+  settingStore.timeFormatMainPlayer = TIME_FORMATS[(currentIndex + 1) % TIME_FORMATS.length];
+};
 
 // 歌曲更多操作
 const songMoreOptions = computed<DropdownOption[]>(() => {

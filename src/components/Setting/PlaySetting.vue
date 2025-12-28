@@ -238,6 +238,17 @@
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">播放器时间样式</n-text>
+          <n-text class="tip" :depth="3">播放页面底部的时间如何显示（单击底部时间可以快速切换）</n-text>
+        </div>
+        <n-select
+          v-model:value="settingStore.timeFormatFullPlayer"
+          :options="timeFormatOptions"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">播放器主色跟随封面</n-text>
           <n-text class="tip" :depth="3">播放器主颜色是否跟随封面主色，下一曲生效</n-text>
         </div>
@@ -252,13 +263,6 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">底栏歌词显示</n-text>
-          <n-text class="tip" :depth="3">在播放时将歌手信息更改为歌词</n-text>
-        </div>
-        <n-switch v-model:value="settingStore.barLyricShow" class="set" :round="false" />
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
           <n-text class="name">播放器元素自动隐藏</n-text>
           <n-text class="tip" :depth="3">鼠标静止一段时间或者离开播放器时自动隐藏控制元素</n-text>
         </div>
@@ -270,12 +274,6 @@
           <n-text class="tip" :depth="3">展示当前歌曲及歌词的状态信息</n-text>
         </div>
         <n-switch v-model:value="settingStore.showPlayMeta" class="set" :round="false" />
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">播放列表歌曲数量</n-text>
-        </div>
-        <n-switch v-model:value="settingStore.showPlaylistCount" class="set" :round="false" />
       </n-card>
       <n-card class="set-item">
         <div class="label">
@@ -302,6 +300,35 @@
           :round="false"
           @update:value="showSpectrumsChange"
         />
+      </n-card>
+    </div>
+    <div class="set-list">
+      <n-h3 prefix="bar"> 全局播放器 </n-h3>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">底栏时间样式</n-text>
+          <n-text class="tip" :depth="3">
+            全局播放器右侧的时间如何显示（单击底栏时间可以快速切换）
+          </n-text>
+        </div>
+        <n-select
+          v-model:value="settingStore.timeFormatMainPlayer"
+          :options="timeFormatOptions"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">播放列表歌曲数量</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.showPlaylistCount" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">底栏歌词显示</n-text>
+          <n-text class="tip" :depth="3">在播放时将歌手信息更改为歌词</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.barLyricShow" class="set" :round="false" />
       </n-card>
     </div>
     <div class="set-list">
@@ -389,6 +416,21 @@ const songLevelData = {
     value: "dolby",
   },
 };
+
+const timeFormatOptions = [
+  {
+    label: "播放时间 / 总时长",
+    value: "current-total",
+  },
+  {
+    label: "剩余时间 / 总时长",
+    value: "remaining-total",
+  },
+  {
+    label: "播放时间 / 剩余时间",
+    value: "current-remaining",
+  },
+];
 
 // 获取全部输出设备
 const getOutputDevices = async () => {

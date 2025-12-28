@@ -4,6 +4,7 @@ import { SongUnlockServer } from "@/core/player/SongManager";
 import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
+import { TimeFormat } from "@/utils/format";
 
 export interface SettingState {
   /** Schema 版本号（可选，用于数据迁移） */
@@ -129,6 +130,10 @@ export interface SettingState {
   countDownShow: boolean;
   /** 显示歌词条 */
   barLyricShow: boolean;
+  /** 全局播放器时间格式 **/
+  timeFormatMainPlayer: TimeFormat;
+  /** 播放页面时间格式 */
+  timeFormatFullPlayer: TimeFormat;
   /** 播放器类型 */
   playerType: "cover" | "record";
   /** 背景类型 */
@@ -317,6 +322,8 @@ export const useSettingStore = defineStore("setting", {
     ],
     countDownShow: true,
     barLyricShow: true,
+    timeFormatMainPlayer: "current-total",
+    timeFormatFullPlayer: "current-total",
     playerType: "cover",
     playerBackgroundType: "blur",
     playerBackgroundFps: 30,
