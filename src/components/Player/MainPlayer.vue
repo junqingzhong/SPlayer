@@ -160,8 +160,9 @@
             class="time-container"
             vertical
           >
-            <div class="time">
-              <n-text depth="2">{{ msToTime(statusStore.currentTime) }}</n-text>
+            <div class="time" @click="showCountDown = !showCountDown">
+              <n-text v-if="showCountDown" depth="2">-{{ msToTime(statusStore.duration - statusStore.currentTime) }}</n-text>
+              <n-text v-else depth="2">{{ msToTime(statusStore.currentTime) }}</n-text>
               <n-text depth="2">{{ msToTime(statusStore.duration) }}</n-text>
             </div>
             <!-- 定时关闭 -->
@@ -210,6 +211,8 @@ const settingStore = useSettingStore();
 
 const player = usePlayerController();
 const songManager = useSongManager();
+
+const showCountDown = ref(false);
 
 // 歌曲更多操作
 const songMoreOptions = computed<DropdownOption[]>(() => {
@@ -550,6 +553,7 @@ const instantLyrics = computed(() => {
       }
     }
     .time {
+      cursor: pointer;
       display: flex;
       align-items: center;
       font-size: 12px;
@@ -562,6 +566,10 @@ const instantLyrics = computed(() => {
             margin: 0 4px;
           }
         }
+      }
+      &:hover {
+        text-decoration: underline;
+        text-decoration-color: var(--primary-hex);
       }
     }
   }
