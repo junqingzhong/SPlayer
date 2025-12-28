@@ -23,6 +23,19 @@ const config: Configuration = {
   ],
   // 哪些文件将不会被压缩，而是解压到构建目录
   asarUnpack: ["public/**"],
+  // 将原生插件作为外部资源复制
+  extraResources: [
+    // 原生插件目前只有 Windows 版本，其他平台返回空数组
+    ...(process.platform === "win32"
+      ? [
+          {
+            from: "native/smtc-for-splayer",
+            to: "native",
+            filter: ["*.node"],
+          },
+        ]
+      : []),
+  ],
   win: {
     // 可执行文件名
     executableName: "SPlayer",

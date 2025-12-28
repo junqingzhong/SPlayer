@@ -69,6 +69,7 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           "@": resolve(__dirname, "src/"),
+          "@native": resolve(__dirname, "native/smtc-for-splayer"),
         },
       },
       css: {
@@ -100,6 +101,7 @@ export default defineConfig(({ mode }) => {
             index: resolve(__dirname, "index.html"),
             loading: resolve(__dirname, "web/loading/index.html"),
           },
+          external: ["smtc-for-splayer.node"],
           output: {
             manualChunks: {
               stores: ["src/stores/data.ts", "src/stores/index.ts"],
