@@ -9,17 +9,23 @@
           'align-items': settingStore.lyricsPosition,
           '--font-weight': settingStore.lyricFontBold ? 'bold' : 'normal',
           '--font-size': settingStore.lyricFontSize,
-          '--font-tran-size': settingStore.lyricTranFontSize,
-          '--font-roma-size': settingStore.lyricRomaFontSize,
+          '--font-tran-size': tranFontSize,
+          '--font-roma-size': romaFontSize,
           '--transform-origin':
             settingStore.lyricsPosition === 'center'
               ? 'center'
               : settingStore.lyricsPosition === 'flex-start'
                 ? 'left'
                 : 'right',
+          '--font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
         }"
         class="set-item"
       >
+        <n-card class="warning" v-if="settingStore.useAMLyrics">
+          <n-text>
+            你已使用 Apple-Music-like Lyrics，实际显示效果可能与此处的预览有较大差别
+          </n-text>
+        </n-card>
         <div v-for="item in 2" :key="item" :class="['lrc-item', { on: item === 2 }]">
           <n-text>我是一句歌词</n-text>
           <n-text v-if="settingStore.showTran">I'm the lyric</n-text>
@@ -73,12 +79,13 @@
             </n-button>
           </Transition>
           <n-input-number
-            v-model:value="settingStore.lyricTranFontSize"
+            v-model:value="tranFontSize"
             :min="5"
             :max="40"
             :disabled="settingStore.useAMLyrics"
             class="set"
             placeholder="请输入翻译歌词字体大小"
+            :title="tranFontSizeTitle"
             @blur="
               settingStore.lyricTranFontSize === null ? (settingStore.lyricTranFontSize = 22) : null
             "
@@ -105,12 +112,13 @@
             </n-button>
           </Transition>
           <n-input-number
-            v-model:value="settingStore.lyricRomaFontSize"
+            v-model:value="romaFontSize"
             :min="5"
             :max="40"
             :disabled="settingStore.useAMLyrics"
             class="set"
             placeholder="请输入歌词字体大小"
+            :title="tranFontSizeTitle"
             @blur="
               settingStore.lyricRomaFontSize === null ? (settingStore.lyricRomaFontSize = 18) : null
             "
@@ -646,6 +654,28 @@ const desktopLyricRef = ref<HTMLElement | null>(null);
 // 全部字体
 const allFontsData = ref<SelectOption[]>([]);
 
+/**
+ * 创建响应式字体大小计算属性
+ * 当启用 AMLL 时，翻译和音译的字体大小会根据主歌词大小自动调整
+ */
+const fontSizeComputed = (key: string) => computed({
+  get: () => settingStore.useAMLyrics ?
+    // AMLL 会为翻译和音译设置 `font-size: max(.5em, 10px);`
+    Math.max(0.5 * settingStore.lyricFontSize, 10) :
+    settingStore[key],
+  set: (value) => settingStore[key] = value,
+});
+
+// 真实显示的翻译歌词字体大小
+const tranFontSize = fontSizeComputed("lyricTranFontSize");
+
+// 真实显示的音译歌词字体大小
+const romaFontSize = fontSizeComputed("lyricRomaFontSize");
+
+// 显示翻译和音译歌词字体大小被禁用的原因
+const tranFontSizeTitle = computed(() => settingStore.useAMLyrics ?
+  "翻译和音译歌词大小由 Apple Music-like Lyrics 自动设置" : "")
+
 // 桌面歌词配置
 const desktopLyricConfig = reactive<LyricConfig>({ ...defaultDesktopLyricConfig });
 
@@ -734,6 +764,8 @@ onMounted(async () => {
       transform: scale(1);
     }
     .n-text {
+      font-family: var(--font-family);
+
       &:nth-of-type(1) {
         font-weight: var(--font-weight);
         font-size: calc(var(--font-size) * 1px);
@@ -747,6 +779,12 @@ onMounted(async () => {
         font-size: calc(var(--font-roma-size) * 1px);
       }
     }
+  }
+  .warning {
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: rgba(255, 255, 255, 0.1);
+    margin-bottom: 4px;
   }
 }
 </style>
