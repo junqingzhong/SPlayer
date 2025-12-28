@@ -569,7 +569,7 @@ const instantLyrics = computed(() => {
       }
       &:hover {
         text-decoration: underline;
-        text-decoration-color: var(--primary-hex);;
+        text-decoration-color: var(--primary-hex);
       }
     }
   }
