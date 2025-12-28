@@ -45,7 +45,7 @@ pub fn init(log_dir_str: String) -> Result<()> {
         .pretty();
 
     tracing_subscriber::registry()
-        .with(LevelFilter::TRACE)
+        .with(LevelFilter::INFO)
         .with(file_layer)
         .with(stdout_layer)
         .try_init()

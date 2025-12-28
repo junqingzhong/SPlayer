@@ -402,7 +402,7 @@ pub fn update_metadata(payload: MetadataPayload) {
         old_handle.abort();
     }
 
-    info!(
+    debug!(
         title = %payload.song_name,
         artist = %payload.author_name,
         album = %payload.album_name,
