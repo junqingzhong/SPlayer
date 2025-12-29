@@ -34,7 +34,7 @@ export const sendSongChange = (title: string, name: string, artist: string, albu
  * 发送进度
  * @param progress 进度
  */
-export const sendTaskbarProgress = throttle((progress: number | "none") => {
+export const sendTaskbarProgress: (progress: number | "none") => void = throttle((progress: number | "none") => {
   if (isElectron) {
     window.electron.ipcRenderer.send("set-bar", progress);
   }
@@ -43,7 +43,7 @@ export const sendTaskbarProgress = throttle((progress: number | "none") => {
 /**
  * 发送 Socket 实时进度
  */
-export const sendSocketProgress = throttle((currentTime: number, duration: number) => {
+export const sendSocketProgress: (currentTime: number, duration: number) => void = throttle((currentTime: number, duration: number) => {
   if (isElectron) {
     window.electron.ipcRenderer.send("set-progress", { currentTime, duration });
   }
@@ -53,7 +53,7 @@ export const sendSocketProgress = throttle((currentTime: number, duration: numbe
  * 发送歌词
  * @param data 歌词数据
  */
-export const sendLyric = throttle((data: unknown) => {
+export const sendLyric: (data: unknown) => void = throttle((data: unknown) => {
   if (isElectron) window.electron.ipcRenderer.send("play-lyric-change", data);
 }, 500);
 
@@ -100,6 +100,14 @@ export const sendSmtcMetadata = (payload: MetadataParam) => {
 };
 
 /**
+ * @description 更新 Discord 元数据
+ * @param payload - 参见 {@link MetadataParam}
+ */
+export const sendDiscordMetadata = (payload: MetadataParam) => {
+  if (isElectron) window.electron.ipcRenderer.send("discord-update-metadata", payload);
+};
+
+/**
  * @description 通过原生插件更新 SMTC 播放状态
  * @param status - 参见 {@link PlaybackStatus}
  * @see {@link NativeModule.updatePlayState 原生模块的 `updatePlayState` 方法}
@@ -109,14 +117,32 @@ export const sendSmtcPlayState = (status: PlaybackStatus) => {
 };
 
 /**
+ * @description 更新 Discord 播放状态
+ * @param status - 参见 {@link PlaybackStatus}
+ */
+export const sendDiscordPlayState = (status: PlaybackStatus) => {
+  if (isElectron) window.electron.ipcRenderer.send("discord-update-play-state", { status });
+};
+
+/**
  * @description 通过原生插件更新 SMTC 进度信息
  * @param currentTime - 当前的播放进度，单位是毫秒
  * @param totalTime - 总时长，单位是毫秒
  * @see {@link NativeModule.updateTimeline 原生模块的 `updateTimeline` 方法}
  */
-export const sendSmtcTimeline = throttle((currentTime: number, totalTime: number) => {
+export const sendSmtcTimeline: (currentTime: number, totalTime: number) => void = throttle((currentTime: number, totalTime: number) => {
   if (isElectron)
     window.electron.ipcRenderer.send("smtc-update-timeline", { currentTime, totalTime });
+}, 1000);
+
+/**
+ * @description 更新 Discord 进度信息
+ * @param currentTime - 当前的播放进度，单位是毫秒
+ * @param totalTime - 总时长，单位是毫秒
+ */
+export const sendDiscordTimeline: (currentTime: number, totalTime: number) => void = throttle((currentTime: number, totalTime: number) => {
+  if (isElectron)
+    window.electron.ipcRenderer.send("discord-update-timeline", { currentTime, totalTime });
 }, 1000);
 
 /**

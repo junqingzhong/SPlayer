@@ -17,6 +17,9 @@ export interface IpcChannelMap {
   "smtc-enable-discord": void;
   "smtc-disable-discord": void;
   "smtc-update-discord-config": DiscordConfigPayload;
+  "discord-update-metadata": MetadataParam;
+  "discord-update-play-state": PlayStatePayload;
+  "discord-update-timeline": TimelinePayload;
 }
 
 declare global {

@@ -22,7 +22,7 @@ tracing-appender = "0.2"
 windows = { version = "0.62", features = ["Media_Playback", "Storage_Streams"] }
 
 tokio = { version = "1", features = ["full"] }
-discord-rich-presence = "1.0.0"
+
 
 [build-dependencies]
 napi-build = "2.3"
