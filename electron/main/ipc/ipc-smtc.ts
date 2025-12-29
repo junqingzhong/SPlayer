@@ -3,7 +3,8 @@ import { join } from "path";
 import { loadNativeModule } from "../utils/native-loader";
 import { processLog } from "../logger";
 import { IpcChannelMap } from "../../../src/types/global";
-import { discordRpcManager, DiscordDisplayMode } from "../utils/discord-rpc";
+import { discordRpcManager } from "../utils/discord-rpc";
+import { DiscordDisplayMode } from "../../../src/types/smtc";
 
 type NativeModule = typeof import("@native");
 

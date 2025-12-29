@@ -1,6 +1,7 @@
 import { Client } from "discord-rpc";
 import { processLog } from "../logger";
 import { DiscordMetadataParam, DiscordTimelineParam } from "../../../src/types/global";
+import { DiscordDisplayMode } from "../../../src/types/smtc";
 
 // 扩展 discord-rpc Client 类型定义
 interface ExtendedClient extends Client {
@@ -10,12 +11,6 @@ interface ExtendedClient extends Client {
 const APP_ID = "1454403710162698293";
 const SP_ICON_ASSET_KEY = "logo-icon";
 const RECONNECT_COOLDOWN_SECONDS = 5;
-
-export enum DiscordDisplayMode {
-  Name = "name",
-  State = "state",
-  Details = "details",
-}
 
 /** Discord RPC 配置接口 */
 interface DiscordConfig {

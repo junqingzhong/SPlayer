@@ -194,15 +194,9 @@ export const updateDiscordConfig = (payload: {
   displayMode: "name" | "state" | "details";
 }) => {
   if (isElectron) {
-    const modeMap: Record<string, DiscordDisplayMode> = {
-      name: DiscordDisplayMode.Name,
-      state: DiscordDisplayMode.State,
-      details: DiscordDisplayMode.Details,
-    };
-
     window.electron.ipcRenderer.send("smtc-update-discord-config", {
       showWhenPaused: payload.showWhenPaused,
-      displayMode: modeMap[payload.displayMode] ?? DiscordDisplayMode.Name,
+      displayMode: payload.displayMode as DiscordDisplayMode,
     });
   }
 };

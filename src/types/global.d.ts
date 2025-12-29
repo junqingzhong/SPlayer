@@ -6,8 +6,13 @@ import type {
   TimelinePayload,
   PlayModePayload,
   SmtcEvent,
-  DiscordConfigPayload,
 } from "@native";
+import { DiscordDisplayMode } from "./smtc";
+
+export interface DiscordConfigPayload {
+  showWhenPaused: boolean;
+  displayMode: DiscordDisplayMode;
+}
 
 export interface DiscordMetadataParam {
   songName: string;

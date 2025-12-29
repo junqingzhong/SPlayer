@@ -167,9 +167,7 @@ class MediaSessionManager {
             authorName: artist,
             albumName: album,
             coverData: coverBuffer as Buffer, // Electron 会帮我们处理转换的
-            originalCoverUrl: coverUrl.startsWith("http") ? coverUrl : undefined, // Discord 需要 URL
-            duration: song.duration,
-            ncmId: typeof song.id === "number" ? song.id : 0, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲，不过可能意义不大
+            ncmId: typeof song.id === "number" ? song.id : 0, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲
           });
         } catch (e) {
           if (!axios.isCancel(e)) {

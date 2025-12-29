@@ -41,16 +41,8 @@ export interface MetadataParam {
   albumName: string
   /** 只用于 SMTC 更新 */
   coverData?: Buffer
-  /** 只用于 Discord RPC 更新，因为 Discord RPC 只能上传封面链接 */
-  originalCoverUrl?: string
   /** 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段 */
   ncmId?: number
-  /**
-   * 单位是毫秒
-   *
-   * 只用于 Discord RPC，因为 Discord RPC 不太支持只更新元数据而不更新进度信息
-   */
-  duration?: number
 }
 
 export declare enum PlaybackStatus {

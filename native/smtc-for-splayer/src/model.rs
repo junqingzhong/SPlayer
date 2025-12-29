@@ -11,11 +11,7 @@ pub struct MetadataPayload {
 
     pub cover_data: Option<Vec<u8>>,
 
-    pub original_cover_url: Option<String>,
-
     pub ncm_id: Option<i64>,
-
-    pub duration: Option<f64>,
 }
 
 impl fmt::Debug for MetadataPayload {
@@ -31,9 +27,7 @@ impl fmt::Debug for MetadataPayload {
                     |bytes| format!("Some({} bytes)", bytes.len()),
                 ),
             )
-            .field("original_cover_url", &self.original_cover_url)
             .field("ncm_id", &self.ncm_id)
-            .field("duration", &self.duration)
             .finish()
     }
 }
@@ -47,16 +41,8 @@ pub struct MetadataParam {
     /// 只用于 SMTC 更新
     pub cover_data: Option<Buffer>,
 
-    /// 只用于 Discord RPC 更新，因为 Discord RPC 只能上传封面链接
-    pub original_cover_url: Option<String>,
-
     /// 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段
     pub ncm_id: Option<i64>,
-
-    /// 单位是毫秒
-    ///
-    /// 只用于 Discord RPC，因为 Discord RPC 不太支持只更新元数据而不更新进度信息
-    pub duration: Option<f64>,
 }
 
 impl From<MetadataParam> for MetadataPayload {
@@ -66,9 +52,7 @@ impl From<MetadataParam> for MetadataPayload {
             author_name: param.author_name,
             album_name: param.album_name,
             cover_data: param.cover_data.map(|b| b.to_vec()),
-            original_cover_url: param.original_cover_url,
             ncm_id: param.ncm_id,
-            duration: param.duration,
         }
     }
 }
