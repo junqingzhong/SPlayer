@@ -7,14 +7,11 @@ use napi::bindgen_prelude::{Function, Unknown};
 use napi::threadsafe_function::UnknownReturnValue;
 use napi_derive::napi;
 
-mod discord;
 mod logger;
 mod model;
 mod smtc_core;
 
-use model::{
-    DiscordConfigPayload, MetadataPayload, PlayModePayload, PlayStatePayload, TimelinePayload,
-};
+use model::{MetadataPayload, PlayModePayload, PlayStatePayload, TimelinePayload};
 use smtc_core::SmtcEvent;
 
 use crate::model::MetadataParam;
@@ -36,9 +33,6 @@ use crate::model::MetadataParam;
 pub fn initialize(log_dir: String) -> Result<()> {
     logger::init(log_dir).map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
-    // 只初始化线程，不立即连接，除非收到 enable 信号
-    discord::init();
-
     smtc_core::initialize().map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
     Ok(())
@@ -47,7 +41,6 @@ pub fn initialize(log_dir: String) -> Result<()> {
 /// 关闭插件，清理资源
 #[napi]
 pub fn shutdown() {
-    discord::disable();
     smtc_core::shutdown();
 }
 
@@ -104,7 +97,6 @@ pub fn register_event_handler(
 pub fn update_metadata(payload: MetadataParam) {
     let internal_payload = MetadataPayload::from(payload);
 
-    discord::update_metadata(internal_payload.clone());
     smtc_core::update_metadata(internal_payload);
 }
 
@@ -113,7 +105,6 @@ pub fn update_metadata(payload: MetadataParam) {
 /// 同时也会更新 Discord 的播放状态 (如果启用了 Discord RPC)
 #[napi]
 pub fn update_play_state(payload: PlayStatePayload) {
-    discord::update_play_state(payload);
     smtc_core::update_play_state(payload.status);
 }
 
@@ -126,7 +117,6 @@ pub fn update_play_state(payload: PlayStatePayload) {
 /// Discord RPC 实现的进度更新有节流，调用此函数无需担心 Discord RPC 的速率限制
 #[napi]
 pub fn update_timeline(payload: TimelinePayload) {
-    discord::update_timeline(payload);
     smtc_core::update_timeline(payload.current_time, payload.total_time);
 }
 
@@ -138,30 +128,4 @@ pub fn update_timeline(payload: TimelinePayload) {
 #[napi]
 pub fn update_play_mode(payload: PlayModePayload) {
     smtc_core::update_play_mode(payload.is_shuffling, payload.repeat_mode);
-}
-
-/// 启用 Discord RPC
-///
-/// ### 备注
-///
-/// 启用后会立刻尝试连接，如果 Discord 未启动，或因为其他未知原因连接失败，会每 5 秒尝试连接一次
-#[napi]
-pub fn enable_discord_rpc() {
-    discord::enable();
-}
-
-/// 关闭 Discord RPC
-#[napi]
-pub fn disable_discord_rpc() {
-    discord::disable();
-}
-
-/// 更新 Discord RPC 的配置
-///
-/// ### 参数
-///
-/// * `payload` - 配置信息，可以配置是否在暂停后也显示 Discord Activity 和 状态显示风格。详情请查看 [`DiscordConfigPayload`]
-#[napi]
-pub fn update_discord_config(payload: DiscordConfigPayload) {
-    discord::update_config(payload);
 }

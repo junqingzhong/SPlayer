@@ -6,7 +6,16 @@ import { msToS } from "@/utils/time";
 import { type SmtcEvent } from "@native";
 import { usePlayerController } from "./PlayerController";
 import { SmtcEventType, PlaybackStatus } from "@/types/smtc";
-import { sendSmtcMetadata, sendSmtcTimeline, sendSmtcPlayState } from "./PlayerIpc";
+import {
+  sendSmtcMetadata,
+  sendSmtcTimeline,
+  sendSmtcPlayState,
+  sendDiscordMetadata,
+  sendDiscordTimeline,
+  sendDiscordPlayState,
+  enableDiscordRpc,
+  updateDiscordConfig,
+} from "./PlayerIpc";
 
 /**
  * 媒体会话管理器，负责控制媒体控件相关功能
@@ -28,44 +37,58 @@ class MediaSessionManager {
 
     const player = usePlayerController();
 
-    if (isElectron && isWin) {
-      window.electron.ipcRenderer.removeAllListeners("smtc-event");
+    if (isElectron) {
+      if (isWin) {
+        window.electron.ipcRenderer.removeAllListeners("smtc-event");
 
-      window.electron.ipcRenderer.on("smtc-event", (_, event: SmtcEvent) => {
-        switch (event.type) {
-          case SmtcEventType.Play:
-            player.play();
-            break;
-          case SmtcEventType.Pause:
-            // 乐观更新以避免淡出延迟
-            sendSmtcPlayState(PlaybackStatus.Paused);
-            player.pause();
-            break;
-          case SmtcEventType.NextSong:
-            player.nextOrPrev("next");
-            break;
-          case SmtcEventType.PreviousSong:
-            player.nextOrPrev("prev");
-            break;
-          case SmtcEventType.Stop:
-            player.pause();
-            break;
-          case SmtcEventType.Seek:
-            if (event.positionMs !== undefined) {
-              player.setSeek(event.positionMs);
-            }
-            break;
-          case SmtcEventType.ToggleShuffle:
-            player.handleSmtcShuffle();
-            break;
-          case SmtcEventType.ToggleRepeat:
-            player.handleSmtcRepeat();
-            break;
-        }
-      });
+        window.electron.ipcRenderer.on("smtc-event", (_, event: SmtcEvent) => {
+          switch (event.type) {
+            case SmtcEventType.Play:
+              player.play();
+              break;
+            case SmtcEventType.Pause:
+              // 乐观更新以避免淡出延迟
+              sendSmtcPlayState(PlaybackStatus.Paused);
+              if (settingStore.discordRpc.enabled) {
+                sendDiscordPlayState(PlaybackStatus.Paused);
+              }
+              player.pause();
+              break;
+            case SmtcEventType.NextSong:
+              player.nextOrPrev("next");
+              break;
+            case SmtcEventType.PreviousSong:
+              player.nextOrPrev("prev");
+              break;
+            case SmtcEventType.Stop:
+              player.pause();
+              break;
+            case SmtcEventType.Seek:
+              if (event.positionMs !== undefined) {
+                player.setSeek(event.positionMs);
+              }
+              break;
+            case SmtcEventType.ToggleShuffle:
+              player.handleSmtcShuffle();
+              break;
+            case SmtcEventType.ToggleRepeat:
+              player.handleSmtcRepeat();
+              break;
+          }
+        });
+        player.syncSmtcPlayMode();
+      }
 
-      player.syncSmtcPlayMode();
-      return;
+      // 初始化 Discord RPC
+      if (settingStore.discordRpc.enabled) {
+        enableDiscordRpc();
+        updateDiscordConfig({
+          showWhenPaused: settingStore.discordRpc.showWhenPaused,
+          displayMode: settingStore.discordRpc.displayMode,
+        });
+      }
+
+      if (isWin && settingStore.enableNativeSmtc) return;
     }
 
     if ("mediaSession" in navigator) {
@@ -86,6 +109,7 @@ class MediaSessionManager {
   public async updateMetadata() {
     if (!("mediaSession" in navigator)) return;
     const musicStore = useMusicStore();
+    const settingStore = useSettingStore();
 
     // 获取播放数据
     const song = getPlaySongData();
@@ -112,37 +136,50 @@ class MediaSessionManager {
     const coverUrl = musicStore.getSongCover("xl") || musicStore.playSong.cover || "";
 
     // 更新元数据
-    if (isElectron && isWin) {
-      try {
-        let coverBuffer: Uint8Array | undefined;
-
-        if (coverUrl && (coverUrl.startsWith("http") || coverUrl.startsWith("blob:"))) {
-          const resp = await axios.get(coverUrl, {
-            responseType: "arraybuffer",
-            signal: signal,
-          });
-          coverBuffer = new Uint8Array(resp.data);
-        }
-
-        sendSmtcMetadata({
+    if (isElectron) {
+      // 立即更新 Discord
+      if (settingStore.discordRpc.enabled) {
+        sendDiscordMetadata({
           songName: title,
           authorName: artist,
           albumName: album,
-          coverData: coverBuffer as Buffer, // Electron 会帮我们处理转换的
-          originalCoverUrl: coverUrl.startsWith("http") ? coverUrl : undefined, // Discord 需要 URL
+          originalCoverUrl: coverUrl.startsWith("http") ? coverUrl : undefined,
           duration: song.duration,
-          ncmId: typeof song.id === "number" ? song.id : 0, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲，不过可能意义不大
+          ncmId: typeof song.id === "number" ? song.id : 0,
         });
-      } catch (e) {
-        if (!axios.isCancel(e)) {
-          console.error("[SMTC] 更新元数据失败", e);
-        }
-      } finally {
-        if (this.metadataAbortController?.signal === signal) {
-          this.metadataAbortController = null;
-        }
       }
-      return;
+
+      // 原生 SMTC 支持 (Windows)，下载封面并更新
+      if (isWin && settingStore.enableNativeSmtc) {
+        try {
+          let coverBuffer: Uint8Array | undefined;
+
+          if (coverUrl && (coverUrl.startsWith("http") || coverUrl.startsWith("blob:"))) {
+            const resp = await axios.get(coverUrl, {
+              responseType: "arraybuffer",
+              signal: signal,
+            });
+            coverBuffer = new Uint8Array(resp.data);
+          }
+
+          sendSmtcMetadata({
+            songName: title,
+            authorName: artist,
+            albumName: album,
+            coverData: coverBuffer as Buffer, // Electron 会帮我们处理转换的
+            ncmId: typeof song.id === "number" ? song.id : 0, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲
+          });
+        } catch (e) {
+          if (!axios.isCancel(e)) {
+            console.error("[SMTC] 更新元数据失败", e);
+          }
+        } finally {
+          if (this.metadataAbortController?.signal === signal) {
+            this.metadataAbortController = null;
+          }
+        }
+        return; // Windows 且开启了原生 SMTC，则不执行后续的 navigator.mediaSession
+      }
     }
 
     if ("mediaSession" in navigator) {
@@ -190,9 +227,14 @@ class MediaSessionManager {
     const settingStore = useSettingStore();
     if (!settingStore.smtcOpen) return;
 
-    if (isElectron && isWin) {
-      sendSmtcTimeline(position, duration);
-      return;
+    if (isElectron) {
+      if (settingStore.discordRpc.enabled) {
+        sendDiscordTimeline(position, duration);
+      }
+      if (isWin && settingStore.enableNativeSmtc) {
+        sendSmtcTimeline(position, duration);
+        return;
+      }
     }
 
     if ("mediaSession" in navigator) {

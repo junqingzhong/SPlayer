@@ -331,16 +331,6 @@
         <n-switch v-model:value="settingStore.barLyricShow" class="set" :round="false" />
       </n-card>
     </div>
-    <div class="set-list">
-      <n-h3 prefix="bar"> 系统集成 </n-h3>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">开启 SMTC</n-text>
-          <n-text class="tip" :depth="3">与系统集成以显示媒体元数据</n-text>
-        </div>
-        <n-switch v-model:value="settingStore.smtcOpen" class="set" :round="false" />
-      </n-card>
-    </div>
   </div>
 </template>
 

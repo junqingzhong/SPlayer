@@ -34,3 +34,15 @@ export enum SmtcEventType {
   ToggleRepeat = 6,
   Seek = 7,
 }
+
+/**
+ * Discord 显示模式枚举
+ */
+export enum DiscordDisplayMode {
+  /** 显示为 "Listening to Spotify" */
+  Name = "name",
+  /** 显示为 "Listening to Rick Astley" */
+  State = "state",
+  /** 显示为 "Listening to Never Gonna Give You Up" */
+  Details = "details",
+}

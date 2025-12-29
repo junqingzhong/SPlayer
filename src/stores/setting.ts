@@ -156,6 +156,8 @@ export interface SettingState {
   showSpectrums: boolean;
   /** 是否开启 SMTC */
   smtcOpen: boolean;
+  /** 是否开启原生 SMTC 支持 (Windows) */
+  enableNativeSmtc: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
   /** 鼠标悬停暂停 */
@@ -279,6 +281,15 @@ export interface SettingState {
   progressLyricShow: boolean;
   /** 是否使用自定义字体输入 */
   useCustomFont: boolean;
+  /** Discord RPC 配置 */
+  discordRpc: {
+    /** 是否启用 Discord RPC */
+    enabled: boolean;
+    /** 暂停时显示 */
+    showWhenPaused: boolean;
+    /** 显示模式 */
+    displayMode: "name" | "state" | "details";
+  };
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -335,6 +346,7 @@ export const useSettingStore = defineStore("setting", {
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
+    enableNativeSmtc: true,
     playSongDemo: false,
     scrobbleSong: false,
     dynamicCover: false,
@@ -424,6 +436,11 @@ export const useSettingStore = defineStore("setting", {
     playerFollowCoverColor: true,
     progressLyricShow: true,
     useCustomFont: false,
+    discordRpc: {
+      enabled: false,
+      showWhenPaused: true,
+      displayMode: "details",
+    },
   }),
   getters: {
     /**

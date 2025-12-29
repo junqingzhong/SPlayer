@@ -139,6 +139,9 @@
       "electron-winstaller",
       "esbuild",
       "vue-demi"
+    ],
+    "ignoredBuiltDependencies": [
+      "register-scheme"
     ]
   }
 }
