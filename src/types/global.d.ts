@@ -9,6 +9,24 @@ import type {
   DiscordConfigPayload,
 } from "@native";
 
+export interface DiscordMetadataParam {
+  songName: string;
+  authorName: string;
+  albumName: string;
+  originalCoverUrl?: string;
+  duration?: number;
+  ncmId?: number;
+}
+
+export interface DiscordPlayStateParam {
+  status: 0 | 1; // 0: Playing, 1: Paused
+}
+
+export interface DiscordTimelineParam {
+  currentTime: number;
+  totalTime: number;
+}
+
 export interface IpcChannelMap {
   "smtc-update-metadata": MetadataParam;
   "smtc-update-play-state": PlayStatePayload;
@@ -17,9 +35,9 @@ export interface IpcChannelMap {
   "smtc-enable-discord": void;
   "smtc-disable-discord": void;
   "smtc-update-discord-config": DiscordConfigPayload;
-  "discord-update-metadata": MetadataParam;
-  "discord-update-play-state": PlayStatePayload;
-  "discord-update-timeline": TimelinePayload;
+  "discord-update-metadata": DiscordMetadataParam;
+  "discord-update-play-state": DiscordPlayStateParam;
+  "discord-update-timeline": DiscordTimelineParam;
 }
 
 declare global {

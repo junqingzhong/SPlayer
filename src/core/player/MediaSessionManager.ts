@@ -88,7 +88,7 @@ class MediaSessionManager {
         });
       }
 
-      if (isWin) return;
+      if (isWin && settingStore.enableNativeSmtc) return;
     }
 
     if ("mediaSession" in navigator) {
@@ -182,8 +182,6 @@ class MediaSessionManager {
         }
         return; // Windows 且开启了原生 SMTC，则不执行后续的 navigator.mediaSession
       }
-
-
     }
 
     if ("mediaSession" in navigator) {

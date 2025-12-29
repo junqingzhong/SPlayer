@@ -37,37 +37,49 @@ export default function initSmtcIpc() {
     }
   }
 
+  // 注册原生 SMTC 事件处理器
+  const registerNativeSmtcHandler = <K extends keyof IpcChannelMap>(
+    channel: K,
+    handler: (module: NativeModule, payload: IpcChannelMap[K]) => void,
+    errorContext: string,
+  ) => {
+    ipcMain.on(channel, (_, payload: IpcChannelMap[K]) => {
+      if (nativeSmtc) {
+        try {
+          handler(nativeSmtc, payload);
+        } catch (e) {
+          processLog.error(`[SMTC] ${errorContext} 失败`, e);
+        }
+      }
+    });
+  };
+
   // 元数据 - Discord
   ipcMain.on("discord-update-metadata", (_, payload: IpcChannelMap["discord-update-metadata"]) => {
     discordRpcManager.updateMetadata(payload);
   });
 
   // 元数据 - Native SMTC
-  ipcMain.on("smtc-update-metadata", (_, payload: IpcChannelMap["smtc-update-metadata"]) => {
-    if (nativeSmtc) {
-      try {
-        nativeSmtc.updateMetadata(payload);
-      } catch (e) {
-        processLog.error("[SMTC] updateMetadata 失败", e);
-      }
-    }
-  });
+  registerNativeSmtcHandler(
+    "smtc-update-metadata",
+    (mod, payload) => mod.updateMetadata(payload),
+    "updateMetadata",
+  );
 
   // 播放状态 - Discord
-  ipcMain.on("discord-update-play-state", (_, payload: IpcChannelMap["discord-update-play-state"]) => {
-    discordRpcManager.updatePlayState(payload.status === 0 ? "playing" : "paused"); // PlaybackStatus.Playing = 0
-  });
+  ipcMain.on(
+    "discord-update-play-state",
+    (_, payload: IpcChannelMap["discord-update-play-state"]) => {
+      discordRpcManager.updatePlayState(payload.status === 0 ? "playing" : "paused"); // PlaybackStatus.Playing = 0
+    },
+  );
 
   // 播放状态 - Native SMTC
-  ipcMain.on("smtc-update-play-state", (_, payload: IpcChannelMap["smtc-update-play-state"]) => {
-    if (nativeSmtc) {
-      try {
-        nativeSmtc.updatePlayState(payload);
-      } catch (e) {
-        processLog.error("[SMTC] updatePlayState 失败", e);
-      }
-    }
-  });
+  registerNativeSmtcHandler(
+    "smtc-update-play-state",
+    (mod, payload) => mod.updatePlayState(payload),
+    "updatePlayState",
+  );
 
   // 进度信息 - Discord
   ipcMain.on("discord-update-timeline", (_, payload: IpcChannelMap["discord-update-timeline"]) => {
@@ -78,26 +90,18 @@ export default function initSmtcIpc() {
   });
 
   // 进度信息 - Native SMTC
-  ipcMain.on("smtc-update-timeline", (_, payload: IpcChannelMap["smtc-update-timeline"]) => {
-    if (nativeSmtc) {
-      try {
-        nativeSmtc.updateTimeline(payload);
-      } catch (e) {
-        processLog.error("[SMTC] updateTimeline 失败", e);
-      }
-    }
-  });
+  registerNativeSmtcHandler(
+    "smtc-update-timeline",
+    (mod, payload) => mod.updateTimeline(payload),
+    "updateTimeline",
+  );
 
   // 播放模式
-  ipcMain.on("smtc-update-play-mode", (_, payload: IpcChannelMap["smtc-update-play-mode"]) => {
-    if (nativeSmtc) {
-      try {
-        nativeSmtc.updatePlayMode(payload);
-      } catch (e) {
-        processLog.error("[SMTC] updatePlayMode 失败", e);
-      }
-    }
-  });
+  registerNativeSmtcHandler(
+    "smtc-update-play-mode",
+    (mod, payload) => mod.updatePlayMode(payload),
+    "updatePlayMode",
+  );
 
   // Discord - 开启
   ipcMain.on("smtc-enable-discord", () => {
@@ -110,12 +114,15 @@ export default function initSmtcIpc() {
   });
 
   // Discord - 更新配置
-  ipcMain.on("smtc-update-discord-config", (_, payload: IpcChannelMap["smtc-update-discord-config"]) => {
-    discordRpcManager.updateConfig({
-      showWhenPaused: payload.showWhenPaused,
-      displayMode: payload.displayMode as DiscordDisplayMode,
-    });
-  });
+  ipcMain.on(
+    "smtc-update-discord-config",
+    (_, payload: IpcChannelMap["smtc-update-discord-config"]) => {
+      discordRpcManager.updateConfig({
+        showWhenPaused: payload.showWhenPaused,
+        displayMode: payload.displayMode as DiscordDisplayMode,
+      });
+    },
+  );
 }
 
 export function shutdownSmtc() {
