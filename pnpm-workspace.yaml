@@ -1,3 +1,4 @@
 packages:
-  - '.'
-  - 'native/smtc-for-splayer'
+  - "."
+  - "native/smtc-for-splayer"
+  - "native/discord-rpc-for-splayer"

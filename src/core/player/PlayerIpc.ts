@@ -1,9 +1,10 @@
 import { throttle } from "lodash-es";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
+import { useSettingStore } from "@/stores/setting";
 import { type MetadataParam } from "@native";
 import { type DiscordMetadataParam } from "@/types/global";
-import { RepeatMode, PlaybackStatus, DiscordDisplayMode } from "@/types/smtc";
+import { RepeatMode, PlaybackStatus } from "@/types/smtc";
 
 /**
  * 发送播放状态
@@ -175,7 +176,17 @@ export const sendSmtcPlayMode = (isShuffling: boolean, repeatMode: RepeatMode) =
  * @description 启用 Discord RPC
  */
 export const enableDiscordRpc = () => {
-  if (isElectron) window.electron.ipcRenderer.send("smtc-enable-discord");
+  if (isElectron) {
+    window.electron.ipcRenderer.send("smtc-enable-discord");
+    // 立即发送当前配置，确保 Rust 模块使用正确的设置
+    const settingStore = useSettingStore();
+    // 转换字符串 displayMode 为数字枚举
+    const displayModeMap = { name: 0, state: 1, details: 2 } as const;
+    window.electron.ipcRenderer.send("smtc-update-discord-config", {
+      showWhenPaused: settingStore.discordRpc.showWhenPaused,
+      displayMode: displayModeMap[settingStore.discordRpc.displayMode],
+    });
+  }
 };
 
 /**
@@ -194,9 +205,11 @@ export const updateDiscordConfig = (payload: {
   displayMode: "name" | "state" | "details";
 }) => {
   if (isElectron) {
+    // 转换字符串 displayMode 为数字枚举
+    const displayModeMap = { name: 0, state: 1, details: 2 } as const;
     window.electron.ipcRenderer.send("smtc-update-discord-config", {
       showWhenPaused: payload.showWhenPaused,
-      displayMode: payload.displayMode as DiscordDisplayMode,
+      displayMode: displayModeMap[payload.displayMode],
     });
   }
 };

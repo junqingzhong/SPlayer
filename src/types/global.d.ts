@@ -8,11 +8,9 @@ import type {
   SmtcEvent,
 } from "@native";
 import { DiscordDisplayMode } from "./smtc";
+import type { DiscordConfigPayload } from "@discord-rpc";
 
-export interface DiscordConfigPayload {
-  showWhenPaused: boolean;
-  displayMode: DiscordDisplayMode;
-}
+export { DiscordConfigPayload };
 
 export interface DiscordMetadataParam {
   songName: string;
