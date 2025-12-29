@@ -8,6 +8,8 @@ import { isElectron, isWin } from "@/utils/env";
 import { formatSongsList } from "@/utils/format";
 import { shuffleArray } from "@/utils/helper";
 import { openUserLogin } from "@/utils/modal";
+import axios from "axios";
+import { MessageReactive } from "naive-ui";
 import * as playerIpc from "./PlayerIpc";
 
 /**
@@ -16,6 +18,26 @@ import * as playerIpc from "./PlayerIpc";
  * 负责循环模式、随机模式的切换逻辑及状态同步
  */
 export class PlayModeManager {
+  /**
+   * 用来管理 AbortController 实例
+   */
+  private currentAbortController: AbortController | null = null;
+
+  /**
+   * 存储当前加载消息的实例
+   */
+  private loadingMessage: MessageReactive | null = null;
+
+  /**
+   * 清除当前的加载消息
+   */
+  private clearLoadingMessage() {
+    if (this.loadingMessage) {
+      this.loadingMessage.destroy();
+      this.loadingMessage = null;
+    }
+  }
+
   /**
    * 切换循环模式
    * @param mode 可选，直接设置目标模式。如果不传，则按 List -> One -> Off 顺序轮转
@@ -50,6 +72,13 @@ export class PlayModeManager {
     const statusStore = useStatusStore();
     const musicStore = useMusicStore();
 
+    if (this.currentAbortController) {
+      this.currentAbortController.abort();
+    }
+    this.clearLoadingMessage();
+    this.currentAbortController = new AbortController();
+    const { signal } = this.currentAbortController;
+
     const currentMode = statusStore.shuffleMode;
     let nextMode: ShuffleModeType;
 
@@ -69,11 +98,13 @@ export class PlayModeManager {
 
     // 将耗时的数据处理扔到 UI 图标更新后再进行，避免打乱庞大列表导致点击延迟
     setTimeout(async () => {
+      if (signal.aborted) return;
       try {
         if (nextMode === "on") {
           const currentList = [...dataStore.playList];
           // 备份原始列表
           await dataStore.setOriginalPlayList(currentList);
+          if (signal.aborted) return;
           // 打乱列表
           const shuffled = shuffleArray(currentList);
           await dataStore.setPlayList(shuffled);
@@ -98,7 +129,9 @@ export class PlayModeManager {
             return;
           }
 
-          window.$message.loading("心动模式开启中...");
+          this.loadingMessage = window.$message.loading("心动模式开启中...", {
+            duration: 0, // 不自动关闭，必须手动 destroy
+          });
 
           try {
             const pid =
@@ -107,7 +140,7 @@ export class PlayModeManager {
 
             if (!currentSongId) throw new Error("无播放歌曲");
 
-            const res = await heartRateList(currentSongId, pid);
+            const res = await heartRateList(currentSongId, pid, undefined, signal);
             if (res.code !== 200) throw new Error("获取推荐失败");
 
             const recList = formatSongsList(res.data);
@@ -121,8 +154,15 @@ export class PlayModeManager {
             const idx = mixedList.findIndex((s) => s.id === currentSongId);
             if (idx !== -1) statusStore.playIndex = idx;
 
+            this.clearLoadingMessage();
             window.$message.success("心动模式已开启");
           } catch (e) {
+            this.clearLoadingMessage();
+
+            if (signal.aborted || axios.isCancel(e)) {
+              return;
+            }
+
             console.error(e);
             window.$message.error("心动模式开启失败");
             // 失败回滚
@@ -143,6 +183,8 @@ export class PlayModeManager {
           }
         }
       } catch (e) {
+        if (signal.aborted) return;
+        this.clearLoadingMessage();
         console.error("切换模式时发生错误:", e);
         // 失败回滚
         statusStore.shuffleMode = previousMode;
