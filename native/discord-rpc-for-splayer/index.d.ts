@@ -43,8 +43,8 @@ export interface DiscordMetadataParam {
 
 /** Discord 播放状态参数 */
 export interface DiscordPlayStateParam {
-  /** 0 = Playing, 1 = Paused */
-  status: number
+  /** "Playing" or "Paused" */
+  status: string
 }
 
 /** Discord 时间轴参数 */
@@ -66,6 +66,9 @@ export declare function enable(): void
  * 初始化 Discord RPC 模块
  *
  * 启动后台线程处理 Discord IPC 通信
+ * # Errors
+ *
+ * Returns an error if the background thread cannot be spawned.
  */
 export declare function initialize(): void
 
@@ -99,7 +102,7 @@ export declare function updateMetadata(payload: DiscordMetadataParam): void
  *
  * ### 参数
  *
- * * `payload` - 包含播放状态的参数 (0 = Playing, 1 = Paused)
+ * * `payload` - 包含播放状态的参数 ("Playing" or "Paused")
  */
 export declare function updatePlayState(payload: DiscordPlayStateParam): void
 

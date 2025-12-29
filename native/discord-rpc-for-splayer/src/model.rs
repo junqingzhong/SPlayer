@@ -32,10 +32,10 @@ pub struct DiscordMetadataParam {
 
 /// Discord 播放状态参数
 #[napi(object)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct DiscordPlayStateParam {
-    /// 0 = Playing, 1 = Paused
-    pub status: u8,
+    /// "Playing" or "Paused"
+    pub status: String,
 }
 
 /// Discord 时间轴参数
@@ -60,7 +60,7 @@ pub struct DiscordConfigPayload {
 
 /// 内部使用的元数据载荷
 #[derive(Debug, Clone)]
-pub(crate) struct MetadataPayload {
+pub struct MetadataPayload {
     /// 歌曲名称
     pub song_name: String,
     /// 艺术家/作者名称  
@@ -90,15 +90,15 @@ impl From<DiscordMetadataParam> for MetadataPayload {
 
 /// 内部使用的播放状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PlaybackStatus {
+pub enum PlaybackStatus {
     Playing,
     Paused,
 }
 
-impl From<u8> for PlaybackStatus {
-    fn from(status: u8) -> Self {
-        match status {
-            0 => Self::Playing,
+impl From<String> for PlaybackStatus {
+    fn from(status: String) -> Self {
+        match status.as_str() {
+            "Playing" => Self::Playing,
             _ => Self::Paused,
         }
     }
@@ -107,7 +107,7 @@ impl From<u8> for PlaybackStatus {
 /// 内部使用的时间轴载荷
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
-pub(crate) struct TimelinePayload {
+pub struct TimelinePayload {
     /// 当前播放时间（毫秒）
     pub current_time: f64,
     /// 总时长（毫秒）

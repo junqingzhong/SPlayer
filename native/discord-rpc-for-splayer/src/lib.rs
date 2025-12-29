@@ -18,6 +18,9 @@ pub use model::{
 /// 初始化 Discord RPC 模块
 ///
 /// 启动后台线程处理 Discord IPC 通信
+/// # Errors
+///
+/// Returns an error if the background thread cannot be spawned.
 #[napi]
 pub fn initialize() -> Result<()> {
     discord_core::init();
@@ -63,7 +66,7 @@ pub fn update_metadata(payload: DiscordMetadataParam) {
 ///
 /// ### 参数
 ///
-/// * `payload` - 包含播放状态的参数 (0 = Playing, 1 = Paused)
+/// * `payload` - 包含播放状态的参数 ("Playing" or "Paused")
 #[napi]
 pub fn update_play_state(payload: DiscordPlayStateParam) {
     let status = model::PlaybackStatus::from(payload.status);

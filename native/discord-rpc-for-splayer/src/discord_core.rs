@@ -3,9 +3,7 @@ use std::sync::{LazyLock, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use discord_rich_presence::activity::{
-    Activity, ActivityType, Assets, Button, Timestamps,
-};
+use discord_rich_presence::activity::{Activity, ActivityType, Assets, Button, Timestamps};
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
 use tracing::{debug, info, warn};
 
@@ -20,7 +18,7 @@ const SP_ICON_ASSET_KEY: &str = "logo-icon";
 const TIMESTAMP_UPDATE_THRESHOLD_MS: i64 = 100;
 const RECONNECT_COOLDOWN_SECONDS: u8 = 5;
 
-pub(crate) enum RpcMessage {
+pub enum RpcMessage {
     Metadata(MetadataPayload),
     PlayState(PlaybackStatus),
     Timeline(TimelinePayload),
@@ -69,14 +67,15 @@ impl ActivityData {
                 }
                 let url = url.replace("http://", "https://");
                 let base_url = url.split('?').next().unwrap_or(&url);
-                
+
                 // 如果是网易云音乐封面，添加参数
-                if let Ok(url_obj) = url::Url::parse(&url) {
-                    if let Some(host) = url_obj.host_str() {
-                        if host == "music.126.net" || host.ends_with(".music.126.net") {
-                            return format!("{base_url}?imageView&enlarge=1&type=jpeg&quality=90&thumbnail=150y150");
-                        }
-                    }
+                if let Ok(url_obj) = url::Url::parse(&url)
+                    && let Some(host) = url_obj.host_str()
+                    && (host == "music.126.net" || host.ends_with(".music.126.net"))
+                {
+                    return format!(
+                        "{base_url}?imageView&enlarge=1&type=jpeg&quality=90&thumbnail=150y150"
+                    );
                 }
                 base_url.to_string()
             },
@@ -309,22 +308,22 @@ impl RpcWorker {
                     return true;
                 }
 
-                if let Some(duration) = data.metadata.duration {
-                    if duration > 0.0 {
-                        let (start, end) = Self::calc_paused_timestamps(data.current_time, duration);
+                if let Some(duration) = data.metadata.duration
+                    && duration > 0.0
+                {
+                    let (start, end) = Self::calc_paused_timestamps(data.current_time, duration);
 
-                        debug!(future_start = start, future_end = end, "应用 hack 时间戳");
+                    debug!(future_start = start, future_end = end, "应用 hack 时间戳");
 
-                        activity = activity
-                            .timestamps(Timestamps::new().start(start).end(end))
-                            .assets(
-                                Assets::new()
-                                    .large_image(&data.cached_cover_url)
-                                    .large_text(&data.metadata.album_name)
-                                    .small_image(SP_ICON_ASSET_KEY)
-                                    .small_text("Paused"),
-                            );
-                    }
+                    activity = activity
+                        .timestamps(Timestamps::new().start(start).end(end))
+                        .assets(
+                            Assets::new()
+                                .large_image(&data.cached_cover_url)
+                                .large_text(&data.metadata.album_name)
+                                .small_image(SP_ICON_ASSET_KEY)
+                                .small_text("Paused"),
+                        );
                 }
 
                 should_send = true;
@@ -333,7 +332,8 @@ impl RpcWorker {
             PlaybackStatus::Playing => {
                 if let Some(duration) = data.metadata.duration {
                     if duration > 0.0 {
-                        let (start, end) = Self::calc_playing_timestamps(data.current_time, duration);
+                        let (start, end) =
+                            Self::calc_playing_timestamps(data.current_time, duration);
 
                         if let Some(last_end) = last_sent_end_timestamp {
                             let diff = (*last_end - end).abs();
@@ -408,7 +408,7 @@ fn background_loop(rx: &Receiver<RpcMessage>) {
     }
 }
 
-pub(crate) fn init() {
+pub fn init() {
     let (tx, rx) = mpsc::channel();
     if let Ok(mut guard) = SENDER.lock() {
         *guard = Some(tx);
@@ -419,35 +419,34 @@ pub(crate) fn init() {
 }
 
 fn send(msg: RpcMessage) {
-    if let Ok(guard) = SENDER.lock() {
-        if let Some(tx) = guard.as_ref() {
-            if let Err(e) = tx.send(msg) {
-                warn!("向 Discord RPC 线程发送消息失败: {e}");
-            }
-        }
+    if let Ok(guard) = SENDER.lock()
+        && let Some(tx) = guard.as_ref()
+        && let Err(e) = tx.send(msg)
+    {
+        warn!("向 Discord RPC 线程发送消息失败: {e}");
     }
 }
 
-pub(crate) fn enable() {
+pub fn enable() {
     send(RpcMessage::Enable);
 }
 
-pub(crate) fn disable() {
+pub fn disable() {
     send(RpcMessage::Disable);
 }
 
-pub(crate) fn update_config(payload: DiscordConfigPayload) {
+pub fn update_config(payload: DiscordConfigPayload) {
     send(RpcMessage::Config(payload));
 }
 
-pub(crate) fn update_metadata(payload: MetadataPayload) {
+pub fn update_metadata(payload: MetadataPayload) {
     send(RpcMessage::Metadata(payload));
 }
 
-pub(crate) fn update_play_state(status: PlaybackStatus) {
+pub fn update_play_state(status: PlaybackStatus) {
     send(RpcMessage::PlayState(status));
 }
 
-pub(crate) fn update_timeline(payload: TimelinePayload) {
+pub fn update_timeline(payload: TimelinePayload) {
     send(RpcMessage::Timeline(payload));
 }

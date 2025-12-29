@@ -129,7 +129,11 @@ export const sendSmtcPlayState = (status: PlaybackStatus) => {
  * @param status - 参见 {@link PlaybackStatus}
  */
 export const sendDiscordPlayState = (status: PlaybackStatus) => {
-  if (isElectron) window.electron.ipcRenderer.send("discord-update-play-state", { status });
+  if (isElectron) {
+    window.electron.ipcRenderer.send("discord-update-play-state", {
+      status: status === PlaybackStatus.Playing ? "Playing" : "Paused",
+    });
+  }
 };
 
 /**

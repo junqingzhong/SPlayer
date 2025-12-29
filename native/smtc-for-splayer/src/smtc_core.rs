@@ -57,7 +57,16 @@ pub type SmtcThreadsafeFunction =
 
 #[cfg(windows)]
 mod windows_impl {
-    use super::*;
+    use super::{
+        Arc, DataWriter, HSTRING, InMemoryRandomAccessStream, JoinHandle, LazyLock,
+        MediaPlaybackAutoRepeatMode, MediaPlaybackStatus, MediaPlaybackType, MediaPlayer,
+        MetadataPayload, Mutex, PlaybackPositionChangeRequestedEventArgs, PlaybackStatus,
+        RandomAccessStreamReference, Ref, RepeatMode, Result, Runtime, SmtcEvent, SmtcEventType,
+        SmtcThreadsafeFunction, SystemMediaTransportControls, SystemMediaTransportControlsButton,
+        SystemMediaTransportControlsButtonPressedEventArgs,
+        SystemMediaTransportControlsTimelineProperties, ThreadsafeFunctionCallMode, TimeSpan,
+        TypedEventHandler, debug, error, info, instrument, warn,
+    };
 
     const HNS_PER_MILLISECOND: f64 = 10_000.0;
 
@@ -370,7 +379,9 @@ mod windows_impl {
         });
     }
 
-    async fn get_cover_stream_ref(cover_data: Option<Vec<u8>>) -> Option<RandomAccessStreamReference> {
+    async fn get_cover_stream_ref(
+        cover_data: Option<Vec<u8>>,
+    ) -> Option<RandomAccessStreamReference> {
         let bytes = cover_data?;
 
         let stream_result: windows::core::Result<RandomAccessStreamReference> = (async {
@@ -540,7 +551,7 @@ mod non_windows_impl {
 }
 
 // Re-export implementations
-#[cfg(windows)]
-pub use windows_impl::*;
 #[cfg(not(windows))]
 pub use non_windows_impl::*;
+#[cfg(windows)]
+pub use windows_impl::*;
