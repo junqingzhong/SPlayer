@@ -1,6 +1,11 @@
 import { Client } from "discord-rpc";
 import { processLog } from "../logger";
 
+// 扩展 discord-rpc Client 类型定义
+interface ExtendedClient extends Client {
+    request(cmd: string, args: unknown): Promise<unknown>;
+}
+
 const APP_ID = "1454403710162698293";
 const SP_ICON_ASSET_KEY = "logo-icon";
 const RECONNECT_COOLDOWN_SECONDS = 5;
@@ -11,25 +16,39 @@ export enum DiscordDisplayMode {
     Details = "details",
 }
 
+/** Discord RPC 配置接口 */
 interface DiscordConfig {
+    /** 暂停时是否显示 */
     showWhenPaused: boolean;
+    /** 显示模式 */
     displayMode: DiscordDisplayMode;
 }
 
+/** 媒体元数据接口 */
 interface MetadataParam {
+    /** 歌曲名称 */
     songName: string;
+    /** 歌手名称 */
     authorName: string;
+    /** 专辑名称 */
     albumName: string;
+    /** 原始封面 URL */
     originalCoverUrl?: string;
+    /** 网易云音乐 ID */
     ncmId?: number;
+    /** 歌曲时长 (ms) */
     duration?: number;
 }
 
+/** 时间轴接口 */
 interface TimelineParam {
+    /** 当前播放时间 (ms) */
     currentTime: number;
+    /** 总时长 (ms) */
     totalTime: number;
 }
 
+/** Discord Activity 接口 (包含 type 字段) */
 interface DiscordActivity {
     details?: string;
     state?: string;
@@ -45,6 +64,7 @@ interface DiscordActivity {
     };
     buttons?: Array<{ label: string; url: string }>;
     instance?: boolean;
+    /** 活动类型: 0 = Playing, 2 = Listening */
     type?: number;
 }
 
@@ -55,7 +75,7 @@ class DiscordRpcManager {
 
     private config: DiscordConfig = {
         showWhenPaused: false,
-        displayMode: DiscordDisplayMode.Name,
+        displayMode: DiscordDisplayMode.Details,
     };
 
     private currentMetadata: MetadataParam | null = null;
@@ -198,6 +218,21 @@ class DiscordRpcManager {
         let details = songName;
         let state = authorName;
 
+        switch (this.config.displayMode) {
+            case DiscordDisplayMode.Name:
+                details = songName;
+                state = authorName;
+                break;
+            case DiscordDisplayMode.State:
+                details = this.currentStatus === "playing" ? "Playing" : "Paused";
+                state = `${songName} - ${authorName}`;
+                break;
+            case DiscordDisplayMode.Details:
+                details = songName;
+                state = `${authorName} | ${albumName}`;
+                break;
+        }
+
         let startTimestamp: number | undefined;
         let endTimestamp: number | undefined;
 
@@ -250,7 +285,8 @@ class DiscordRpcManager {
         }
 
         // 使用内部 request 方法绕过验证/剥离
-        (this.client as any).request('SET_ACTIVITY', {
+        // 使用内部 request 方法绕过验证/剥离
+        (this.client as ExtendedClient).request('SET_ACTIVITY', {
             pid: process.pid,
             activity,
         }).catch((e: unknown) => {

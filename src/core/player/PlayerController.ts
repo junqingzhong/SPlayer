@@ -307,6 +307,9 @@ class PlayerController {
       // 更新状态
       statusStore.playStatus = true;
       playerIpc.sendSmtcPlayState(PlaybackStatus.Playing);
+      if (settingStore.discordRpc.enabled) {
+        playerIpc.sendDiscordPlayState(PlaybackStatus.Playing);
+      }
       window.document.title = `${playTitle} | SPlayer`;
       // 只有真正播放了才重置重试计数
       if (this.retryInfo.count > 0) this.retryInfo.count = 0;
@@ -323,6 +326,9 @@ class PlayerController {
     audioManager.on("pause", () => {
       statusStore.playStatus = false;
       playerIpc.sendSmtcPlayState(PlaybackStatus.Paused);
+      if (settingStore.discordRpc.enabled) {
+        playerIpc.sendDiscordPlayState(PlaybackStatus.Paused);
+      }
       if (!isElectron) window.document.title = "SPlayer";
       playerIpc.sendPlayStatus(false);
       lastfmScrobbler.pause();

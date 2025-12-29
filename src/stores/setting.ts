@@ -432,7 +432,7 @@ export const useSettingStore = defineStore("setting", {
     discordRpc: {
       enabled: false,
       showWhenPaused: true,
-      displayMode: "name",
+      displayMode: "details",
     },
   }),
   getters: {
