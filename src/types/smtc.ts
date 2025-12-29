@@ -40,9 +40,9 @@ export enum SmtcEventType {
  */
 export enum DiscordDisplayMode {
   /** 显示为 "Listening to Spotify" */
-  Name = 0,
+  Name = "name",
   /** 显示为 "Listening to Rick Astley" */
-  State = 1,
+  State = "state",
   /** 显示为 "Listening to Never Gonna Give You Up" */
-  Details = 2,
+  Details = "details",
 }

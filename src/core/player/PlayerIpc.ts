@@ -1,8 +1,10 @@
 import { throttle } from "lodash-es";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
+import { useSettingStore } from "@/stores/setting";
 import { type MetadataParam } from "@native";
-import { RepeatMode, PlaybackStatus, DiscordDisplayMode } from "@/types/smtc";
+import { type DiscordMetadataParam } from "@/types/global";
+import { RepeatMode, PlaybackStatus } from "@/types/smtc";
 
 /**
  * 发送播放状态
@@ -34,26 +36,32 @@ export const sendSongChange = (title: string, name: string, artist: string, albu
  * 发送进度
  * @param progress 进度
  */
-export const sendTaskbarProgress = throttle((progress: number | "none") => {
-  if (isElectron) {
-    window.electron.ipcRenderer.send("set-bar", progress);
-  }
-}, 1000);
+export const sendTaskbarProgress: (progress: number | "none") => void = throttle(
+  (progress: number | "none") => {
+    if (isElectron) {
+      window.electron.ipcRenderer.send("set-bar", progress);
+    }
+  },
+  1000,
+);
 
 /**
  * 发送 Socket 实时进度
  */
-export const sendSocketProgress = throttle((currentTime: number, duration: number) => {
-  if (isElectron) {
-    window.electron.ipcRenderer.send("set-progress", { currentTime, duration });
-  }
-}, 500);
+export const sendSocketProgress: (currentTime: number, duration: number) => void = throttle(
+  (currentTime: number, duration: number) => {
+    if (isElectron) {
+      window.electron.ipcRenderer.send("set-progress", { currentTime, duration });
+    }
+  },
+  500,
+);
 
 /**
  * 发送歌词
  * @param data 歌词数据
  */
-export const sendLyric = throttle((data: unknown) => {
+export const sendLyric: (data: unknown) => void = throttle((data: unknown) => {
   if (isElectron) window.electron.ipcRenderer.send("play-lyric-change", data);
 }, 500);
 
@@ -100,6 +108,14 @@ export const sendSmtcMetadata = (payload: MetadataParam) => {
 };
 
 /**
+ * @description 更新 Discord 元数据
+ * @param payload - 参见 {@link DiscordMetadataParam}
+ */
+export const sendDiscordMetadata = (payload: DiscordMetadataParam) => {
+  if (isElectron) window.electron.ipcRenderer.send("discord-update-metadata", payload);
+};
+
+/**
  * @description 通过原生插件更新 SMTC 播放状态
  * @param status - 参见 {@link PlaybackStatus}
  * @see {@link NativeModule.updatePlayState 原生模块的 `updatePlayState` 方法}
@@ -109,15 +125,43 @@ export const sendSmtcPlayState = (status: PlaybackStatus) => {
 };
 
 /**
+ * @description 更新 Discord 播放状态
+ * @param status - 参见 {@link PlaybackStatus}
+ */
+export const sendDiscordPlayState = (status: PlaybackStatus) => {
+  if (isElectron) {
+    window.electron.ipcRenderer.send("discord-update-play-state", {
+      status: status === PlaybackStatus.Playing ? "Playing" : "Paused",
+    });
+  }
+};
+
+/**
  * @description 通过原生插件更新 SMTC 进度信息
  * @param currentTime - 当前的播放进度，单位是毫秒
  * @param totalTime - 总时长，单位是毫秒
  * @see {@link NativeModule.updateTimeline 原生模块的 `updateTimeline` 方法}
  */
-export const sendSmtcTimeline = throttle((currentTime: number, totalTime: number) => {
-  if (isElectron)
-    window.electron.ipcRenderer.send("smtc-update-timeline", { currentTime, totalTime });
-}, 1000);
+export const sendSmtcTimeline: (currentTime: number, totalTime: number) => void = throttle(
+  (currentTime: number, totalTime: number) => {
+    if (isElectron)
+      window.electron.ipcRenderer.send("smtc-update-timeline", { currentTime, totalTime });
+  },
+  1000,
+);
+
+/**
+ * @description 更新 Discord 进度信息
+ * @param currentTime - 当前的播放进度，单位是毫秒
+ * @param totalTime - 总时长，单位是毫秒
+ */
+export const sendDiscordTimeline: (currentTime: number, totalTime: number) => void = throttle(
+  (currentTime: number, totalTime: number) => {
+    if (isElectron)
+      window.electron.ipcRenderer.send("discord-update-timeline", { currentTime, totalTime });
+  },
+  1000,
+);
 
 /**
  * @description 通过原生插件更新 SMTC 播放模式
@@ -136,14 +180,24 @@ export const sendSmtcPlayMode = (isShuffling: boolean, repeatMode: RepeatMode) =
  * @description 启用 Discord RPC
  */
 export const enableDiscordRpc = () => {
-  if (isElectron) window.electron.ipcRenderer.send("smtc-enable-discord");
+  if (isElectron) {
+    window.electron.ipcRenderer.send("discord-enable");
+    // 立即发送当前配置，确保 Rust 模块使用正确的设置
+    const settingStore = useSettingStore();
+    // 转换字符串 displayMode 为数字枚举
+    const displayModeMap = { name: 0, state: 1, details: 2 } as const;
+    window.electron.ipcRenderer.send("discord-update-config", {
+      showWhenPaused: settingStore.discordRpc.showWhenPaused,
+      displayMode: displayModeMap[settingStore.discordRpc.displayMode],
+    });
+  }
 };
 
 /**
  * @description 禁用 Discord RPC
  */
 export const disableDiscordRpc = () => {
-  if (isElectron) window.electron.ipcRenderer.send("smtc-disable-discord");
+  if (isElectron) window.electron.ipcRenderer.send("discord-disable");
 };
 
 /**
@@ -155,15 +209,11 @@ export const updateDiscordConfig = (payload: {
   displayMode: "name" | "state" | "details";
 }) => {
   if (isElectron) {
-    const modeMap: Record<string, DiscordDisplayMode> = {
-      name: DiscordDisplayMode.Name,
-      state: DiscordDisplayMode.State,
-      details: DiscordDisplayMode.Details,
-    };
-
-    window.electron.ipcRenderer.send("smtc-update-discord-config", {
+    // 转换字符串 displayMode 为数字枚举
+    const displayModeMap = { name: 0, state: 1, details: 2 } as const;
+    window.electron.ipcRenderer.send("discord-update-config", {
       showWhenPaused: payload.showWhenPaused,
-      displayMode: modeMap[payload.displayMode] ?? DiscordDisplayMode.Name,
+      displayMode: displayModeMap[payload.displayMode],
     });
   }
 };

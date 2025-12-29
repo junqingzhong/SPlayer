@@ -6,17 +6,41 @@ import type {
   TimelinePayload,
   PlayModePayload,
   SmtcEvent,
-  DiscordConfigPayload,
 } from "@native";
+import { DiscordDisplayMode } from "./smtc";
+import type { DiscordConfigPayload } from "@discord-rpc";
+
+export { DiscordConfigPayload };
+
+export interface DiscordMetadataParam {
+  songName: string;
+  authorName: string;
+  albumName: string;
+  originalCoverUrl?: string;
+  duration?: number;
+  ncmId?: number;
+}
+
+export interface DiscordPlayStateParam {
+  status: "Playing" | "Paused";
+}
+
+export interface DiscordTimelineParam {
+  currentTime: number;
+  totalTime: number;
+}
 
 export interface IpcChannelMap {
   "smtc-update-metadata": MetadataParam;
   "smtc-update-play-state": PlayStatePayload;
   "smtc-update-timeline": TimelinePayload;
   "smtc-update-play-mode": PlayModePayload;
-  "smtc-enable-discord": void;
-  "smtc-disable-discord": void;
-  "smtc-update-discord-config": DiscordConfigPayload;
+  "discord-enable": void;
+  "discord-disable": void;
+  "discord-update-config": DiscordConfigPayload;
+  "discord-update-metadata": DiscordMetadataParam;
+  "discord-update-play-state": DiscordPlayStateParam;
+  "discord-update-timeline": DiscordTimelineParam;
 }
 
 declare global {

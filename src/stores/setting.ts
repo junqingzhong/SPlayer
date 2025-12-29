@@ -151,6 +151,8 @@ export interface SettingState {
   showSpectrums: boolean;
   /** 是否开启 SMTC */
   smtcOpen: boolean;
+  /** 是否开启原生 SMTC 支持 (Windows) */
+  enableNativeSmtc: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
   /** 鼠标悬停暂停 */
@@ -337,6 +339,7 @@ export const useSettingStore = defineStore("setting", {
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
+    enableNativeSmtc: true,
     playSongDemo: false,
     scrobbleSong: false,
     dynamicCover: false,
@@ -429,7 +432,7 @@ export const useSettingStore = defineStore("setting", {
     discordRpc: {
       enabled: false,
       showWhenPaused: true,
-      displayMode: "name",
+      displayMode: "details",
     },
   }),
   getters: {

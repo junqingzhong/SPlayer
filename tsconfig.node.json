@@ -17,7 +17,8 @@
     "composite": true,
     "types": ["electron-vite/node"],
     "paths": {
-      "@native": ["./native/smtc-for-splayer"]
+      "@native": ["./native/smtc-for-splayer"],
+      "@discord-rpc": ["./native/discord-rpc-for-splayer"]
     }
   }
 }

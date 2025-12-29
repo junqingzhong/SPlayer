@@ -10,6 +10,9 @@ import {
   sendSmtcMetadata,
   sendSmtcTimeline,
   sendSmtcPlayState,
+  sendDiscordMetadata,
+  sendDiscordTimeline,
+  sendDiscordPlayState,
   enableDiscordRpc,
   updateDiscordConfig,
 } from "./PlayerIpc";
@@ -46,6 +49,9 @@ class MediaSessionManager {
             case SmtcEventType.Pause:
               // 乐观更新以避免淡出延迟
               sendSmtcPlayState(PlaybackStatus.Paused);
+              if (settingStore.discordRpc.enabled) {
+                sendDiscordPlayState(PlaybackStatus.Paused);
+              }
               player.pause();
               break;
             case SmtcEventType.NextSong:
@@ -81,7 +87,8 @@ class MediaSessionManager {
           displayMode: settingStore.discordRpc.displayMode,
         });
       }
-      return;
+
+      if (isWin && settingStore.enableNativeSmtc) return;
     }
 
     if ("mediaSession" in navigator) {
@@ -102,6 +109,7 @@ class MediaSessionManager {
   public async updateMetadata() {
     if (!("mediaSession" in navigator)) return;
     const musicStore = useMusicStore();
+    const settingStore = useSettingStore();
 
     // 获取播放数据
     const song = getPlaySongData();
@@ -129,36 +137,49 @@ class MediaSessionManager {
 
     // 更新元数据
     if (isElectron) {
-      try {
-        let coverBuffer: Uint8Array | undefined;
-
-        if (coverUrl && (coverUrl.startsWith("http") || coverUrl.startsWith("blob:"))) {
-          const resp = await axios.get(coverUrl, {
-            responseType: "arraybuffer",
-            signal: signal,
-          });
-          coverBuffer = new Uint8Array(resp.data);
-        }
-
-        sendSmtcMetadata({
+      // 立即更新 Discord
+      if (settingStore.discordRpc.enabled) {
+        sendDiscordMetadata({
           songName: title,
           authorName: artist,
           albumName: album,
-          coverData: coverBuffer as Buffer, // Electron 会帮我们处理转换的
-          originalCoverUrl: coverUrl.startsWith("http") ? coverUrl : undefined, // Discord 需要 URL
+          originalCoverUrl: coverUrl.startsWith("http") ? coverUrl : undefined,
           duration: song.duration,
-          ncmId: typeof song.id === "number" ? song.id : 0, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲，不过可能意义不大
+          ncmId: typeof song.id === "number" ? song.id : 0,
         });
-      } catch (e) {
-        if (!axios.isCancel(e)) {
-          console.error("[SMTC] 更新元数据失败", e);
-        }
-      } finally {
-        if (this.metadataAbortController?.signal === signal) {
-          this.metadataAbortController = null;
-        }
       }
-      return;
+
+      // 原生 SMTC 支持 (Windows)，下载封面并更新
+      if (isWin && settingStore.enableNativeSmtc) {
+        try {
+          let coverBuffer: Uint8Array | undefined;
+
+          if (coverUrl && (coverUrl.startsWith("http") || coverUrl.startsWith("blob:"))) {
+            const resp = await axios.get(coverUrl, {
+              responseType: "arraybuffer",
+              signal: signal,
+            });
+            coverBuffer = new Uint8Array(resp.data);
+          }
+
+          sendSmtcMetadata({
+            songName: title,
+            authorName: artist,
+            albumName: album,
+            coverData: coverBuffer as Buffer, // Electron 会帮我们处理转换的
+            ncmId: typeof song.id === "number" ? song.id : 0, // 上传到 SMTC 的流派字段以便其他应用可以通过 ID 精确检测当前播放的歌曲
+          });
+        } catch (e) {
+          if (!axios.isCancel(e)) {
+            console.error("[SMTC] 更新元数据失败", e);
+          }
+        } finally {
+          if (this.metadataAbortController?.signal === signal) {
+            this.metadataAbortController = null;
+          }
+        }
+        return; // Windows 且开启了原生 SMTC，则不执行后续的 navigator.mediaSession
+      }
     }
 
     if ("mediaSession" in navigator) {
@@ -207,8 +228,13 @@ class MediaSessionManager {
     if (!settingStore.smtcOpen) return;
 
     if (isElectron) {
-      sendSmtcTimeline(position, duration);
-      return;
+      if (settingStore.discordRpc.enabled) {
+        sendDiscordTimeline(position, duration);
+      }
+      if (isWin && settingStore.enableNativeSmtc) {
+        sendSmtcTimeline(position, duration);
+        return;
+      }
     }
 
     if ("mediaSession" in navigator) {

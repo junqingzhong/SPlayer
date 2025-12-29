@@ -1,5 +1,5 @@
 {
-  "package": "smtc-for-splayer",
+  "name": "smtc-for-splayer",
   "devDependencies": {
     "@napi-rs/cli": "^3.5.0"
   },
