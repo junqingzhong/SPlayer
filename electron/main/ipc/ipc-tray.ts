@@ -1,7 +1,7 @@
 import { ipcMain } from "electron";
 import { getMainTray } from "../tray";
-import lyricWindow from "../windows/lyric-window";
 import { appName } from "../utils/config";
+import lyricWindow from "../windows/lyric-window";
 
 /**
  * 托盘 IPC
@@ -27,8 +27,8 @@ const initTrayIpc = (): void => {
   });
 
   // 播放模式切换
-  ipcMain.on("play-mode-change", (_, mode) => {
-    tray?.setPlayMode(mode);
+  ipcMain.on("play-mode-change", (_, data: { repeatMode: any; shuffleMode: any }) => {
+    tray?.setPlayMode(data.repeatMode, data.shuffleMode);
   });
 
   // 喜欢状态切换

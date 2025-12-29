@@ -1,26 +1,25 @@
-import { PlayModeType, type SongType } from "@/types/main";
-import { useAudioManager } from "./AudioManager";
-import { useSongManager } from "./SongManager";
-import { useLyricManager } from "./LyricManager";
-import { useBlobURLManager } from "@/core/resource/BlobURLManager";
-import { isElectron, isWin } from "@/utils/env";
-import { throttle } from "lodash-es";
-import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import { calculateProgress } from "@/utils/time";
-import { handleSongQuality, shuffleArray } from "@/utils/helper";
-import { getCoverColor } from "@/utils/color";
-import { isLogin } from "@/utils/auth";
-import { openUserLogin } from "@/utils/modal";
 import { heartRateList } from "@/api/playlist";
-import { formatSongsList, getPlayerInfoObj, getPlaySongData } from "@/utils/format";
+import { useBlobURLManager } from "@/core/resource/BlobURLManager";
+import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { RepeatModeType, ShuffleModeType, type SongType } from "@/types/main";
+import { isLogin } from "@/utils/auth";
 import { calculateLyricIndex } from "@/utils/calc";
-import { LyricLine } from "@applemusic-like-lyrics/lyric";
+import { getCoverColor } from "@/utils/color";
+import { isElectron, isWin } from "@/utils/env";
+import { formatSongsList, getPlayerInfoObj, getPlaySongData } from "@/utils/format";
+import { handleSongQuality, shuffleArray } from "@/utils/helper";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
+import { calculateProgress } from "@/utils/time";
+import { LyricLine } from "@applemusic-like-lyrics/lyric";
+import { throttle } from "lodash-es";
+import { useAudioManager } from "./AudioManager";
+import { useLyricManager } from "./LyricManager";
+import { useSongManager } from "./SongManager";
 
-import { RepeatMode, PlaybackStatus } from "@/types/smtc";
-import * as playerIpc from "./PlayerIpc";
+import { PlaybackStatus, RepeatMode } from "@/types/smtc";
+import { openUserLogin } from "@/utils/modal";
 import { mediaSessionManager } from "./MediaSessionManager";
-import { PlayModeController } from "./playModeController";
+import * as playerIpc from "./PlayerIpc";
 
 /**
  * 播放器核心类
@@ -37,8 +36,6 @@ class PlayerController {
   private currentRequestToken = 0;
   /** 连续跳过计数 */
   private failSkipCount = 0;
-  /** 用来管理 SMTC 播放模式和 SPlayer 使用的播放模式之间的转换 */
-  private modeController = new PlayModeController();
 
   constructor() {
     this.bindAudioEvents();
@@ -561,7 +558,7 @@ class PlayerController {
 
     // 单曲循环
     // 如果是自动结束触发的单曲循环，则重播当前歌曲
-    if (statusStore.playSongMode === "repeat-once" && autoEnd && !statusStore.playHeartbeatMode) {
+    if (statusStore.repeatMode === "one" && autoEnd) {
       await this.playSong({ autoPlay: play, seek: 0 });
       return;
     }
@@ -692,15 +689,15 @@ class PlayerController {
 
     // 处理随机模式
     let processedData = [...data]; // 浅拷贝
-    if (statusStore.playSongMode === "shuffle") {
+    if (statusStore.shuffleMode === "on") {
       await dataStore.setOriginalPlayList([...data]);
       processedData = shuffleArray(processedData);
     }
     // 更新列表
     await dataStore.setPlayList(processedData);
-    // 关闭特殊模式
-    if (!options.keepHeartbeatMode && statusStore.playHeartbeatMode) {
-      this.toggleHeartMode(false);
+    // 关闭心动模式
+    if (!options.keepHeartbeatMode && statusStore.shuffleMode === "heartbeat") {
+      statusStore.shuffleMode = "off";
     }
     if (statusStore.personalFmMode) statusStore.personalFmMode = false;
     // 确定播放索引
@@ -829,17 +826,17 @@ class PlayerController {
    */
   public handleSmtcShuffle() {
     const statusStore = useStatusStore();
-    const nextMode = this.modeController.getNextShuffleMode(statusStore.playSongMode);
-    this.togglePlayMode(nextMode);
+
+    const nextMode = statusStore.shuffleMode === "off" ? "on" : "off";
+
+    this.toggleShuffle(nextMode);
   }
 
   /**
    * 专门处理 SMTC 的循环按钮事件
    */
   public handleSmtcRepeat() {
-    const statusStore = useStatusStore();
-    const nextMode = this.modeController.getNextRepeatMode(statusStore.playSongMode);
-    this.togglePlayMode(nextMode);
+    this.toggleRepeat();
   }
 
   /**
@@ -948,114 +945,127 @@ class PlayerController {
   }
 
   /**
-   * 切换播放模式
-   * @param mode 播放模式
+   * 切换循环模式
+   * @param mode 可选，直接设置目标模式。如果不传，则按 List -> One -> Off 顺序轮转
    */
-  public async togglePlayMode(mode: PlayModeType | false) {
-    const dataStore = useDataStore();
-    const musicStore = useMusicStore();
+  public toggleRepeat(mode?: RepeatModeType) {
     const statusStore = useStatusStore();
-    // 退出心动模式
-    if (statusStore.playHeartbeatMode) this.toggleHeartMode(false);
-    // 计算目标模式
-    let targetMode: PlayModeType;
+
     if (mode) {
-      targetMode = mode;
+      if (statusStore.repeatMode === mode) return;
+      statusStore.repeatMode = mode;
     } else {
-      const modes: PlayModeType[] = ["repeat", "repeat-once", "shuffle"];
-      const nextIdx = (modes.indexOf(statusStore.playSongMode) + 1) % modes.length;
-      targetMode = modes[nextIdx];
+      statusStore.toggleRepeat();
     }
-    // 随机模式逻辑
-    if (targetMode === "shuffle" && statusStore.playSongMode !== "shuffle") {
-      const currentList = dataStore.playList;
-      if (currentList.length > 1) {
-        await dataStore.setOriginalPlayList([...currentList]);
-        const shuffled = shuffleArray([...currentList]);
-        await dataStore.setPlayList(shuffled);
-        // 修正当前索引
-        const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
-        if (idx !== -1) statusStore.playIndex = idx;
+
+    this.syncSmtcPlayMode();
+
+    const modeText: Record<RepeatModeType, string> = {
+      list: "列表循环",
+      one: "单曲循环",
+      off: "不循环",
+    };
+    window.$message.success(`已切换至：${modeText[statusStore.repeatMode]}`);
+  }
+
+  /**
+   * 切换随机模式
+   * @param mode 可选，直接设置目标模式。如果不传则按 Off -> On -> Heartbeat -> Off 顺序轮转
+   */
+  public async toggleShuffle(mode?: ShuffleModeType) {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+    const musicStore = useMusicStore();
+
+    const currentMode = statusStore.shuffleMode;
+    let nextMode: ShuffleModeType;
+
+    if (mode) {
+      nextMode = mode;
+    } else {
+      if (currentMode === "off") nextMode = "on";
+      else if (currentMode === "on") nextMode = "heartbeat";
+      else nextMode = "off";
+    }
+
+    if (nextMode === currentMode) return;
+
+    if (nextMode === "on") {
+      const currentList = [...dataStore.playList];
+      // 备份原始列表
+      await dataStore.setOriginalPlayList(currentList);
+      // 打乱列表
+      const shuffled = shuffleArray(currentList);
+      await dataStore.setPlayList(shuffled);
+      // 修正当前播放索引
+      const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
+      if (idx !== -1) statusStore.playIndex = idx;
+
+      statusStore.shuffleMode = "on";
+    } else if (nextMode === "heartbeat") {
+      if (isLogin() !== 1) {
+        if (isLogin() === 0) {
+          openUserLogin(true);
+        } else {
+          window.$message.warning("该登录模式暂不支持该操作");
+        }
+        return;
       }
-    }
-    // 离开随机模式：恢复到原顺序
-    else if (statusStore.playSongMode === "shuffle" && targetMode !== "shuffle") {
-      // 恢复列表
+
+      if (statusStore.shuffleMode === "heartbeat") {
+        await this.play();
+        statusStore.showFullPlayer = true;
+        return;
+      }
+
+      window.$message.loading("心动模式开启中...");
+
+      try {
+        const pid =
+          musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
+        const currentSongId = musicStore.playSong?.id || 0;
+
+        if (!currentSongId) throw new Error("无播放歌曲");
+
+        const res = await heartRateList(currentSongId, pid);
+        if (res.code !== 200) throw new Error("获取推荐失败");
+
+        const recList = formatSongsList(res.data);
+
+        // 混合列表
+        const currentList = [...dataStore.playList];
+        const mixedList = interleaveLists(currentList, recList);
+
+        await dataStore.setPlayList(mixedList);
+
+        const idx = mixedList.findIndex((s) => s.id === currentSongId);
+        if (idx !== -1) statusStore.playIndex = idx;
+
+        statusStore.shuffleMode = "heartbeat";
+        window.$message.success("心动模式已开启");
+      } catch (e) {
+        console.error(e);
+        window.$message.error("心动模式开启失败");
+        return;
+      }
+    } else {
+      // 恢复原始列表
       const original = await dataStore.getOriginalPlayList();
-      if (original?.length) {
+
+      if (original && original.length > 0) {
         await dataStore.setPlayList(original);
         const idx = original.findIndex((s) => s.id === musicStore.playSong?.id);
         statusStore.playIndex = idx !== -1 ? idx : 0;
         await dataStore.clearOriginalPlayList();
-      }
-    }
-    statusStore.playSongMode = targetMode;
-    playerIpc.sendPlayMode(targetMode);
-
-    if (isElectron && isWin) {
-      let smtcRepeat = RepeatMode.None;
-      let smtcShuffle = false;
-
-      if (targetMode === "shuffle") {
-        smtcShuffle = true;
-        smtcRepeat = RepeatMode.List;
-      } else if (targetMode === "repeat") {
-        smtcRepeat = RepeatMode.List;
-      } else if (targetMode === "repeat-once") {
-        smtcRepeat = RepeatMode.Track;
-      }
-
-      playerIpc.sendSmtcPlayMode(smtcShuffle, smtcRepeat);
-    }
-  }
-
-  /**
-   * 切换心动模式
-   * @param open 是否开启
-   */
-  public async toggleHeartMode(open: boolean = true) {
-    const statusStore = useStatusStore();
-    const musicStore = useMusicStore();
-    const dataStore = useDataStore();
-
-    if (!open && statusStore.playHeartbeatMode) {
-      statusStore.playHeartbeatMode = false;
-      window.$message.success("已退出心动模式");
-      return;
-    }
-
-    if (isLogin() !== 1) {
-      if (isLogin() === 0) {
-        openUserLogin(true);
       } else {
-        window.$message.warning("该登录模式暂不支持该操作");
+        const cleaned = cleanRecommendations(dataStore.playList);
+        await dataStore.setPlayList(cleaned);
       }
-      return;
+
+      statusStore.shuffleMode = "off";
     }
 
-    if (statusStore.playHeartbeatMode) {
-      await this.play();
-      statusStore.showFullPlayer = true;
-      return;
-    }
-
-    window.$message.loading("心动模式开启中...");
-
-    try {
-      const pid =
-        musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
-      const res = await heartRateList(musicStore.playSong?.id || 0, pid);
-
-      if (res.code === 200) {
-        const list = formatSongsList(res.data);
-        statusStore.playIndex = 0;
-        await this.updatePlayList(list, list[0], undefined, { keepHeartbeatMode: true });
-        statusStore.playHeartbeatMode = true;
-      }
-    } catch (e) {
-      console.error(e);
-      window.$message.error("心动模式开启失败");
-    }
+    this.syncSmtcPlayMode();
   }
 
   /**
@@ -1065,18 +1075,11 @@ class PlayerController {
     const statusStore = useStatusStore();
 
     if (isElectron && isWin) {
-      const mode = statusStore.playSongMode;
-      let smtcRepeat = RepeatMode.None;
-      let smtcShuffle = false;
+      const smtcShuffle = statusStore.shuffleMode !== "off";
 
-      if (mode === "shuffle") {
-        smtcShuffle = true;
-        smtcRepeat = RepeatMode.List;
-      } else if (mode === "repeat") {
-        smtcRepeat = RepeatMode.List;
-      } else if (mode === "repeat-once") {
-        smtcRepeat = RepeatMode.Track;
-      }
+      let smtcRepeat = RepeatMode.None;
+      if (statusStore.repeatMode === "list") smtcRepeat = RepeatMode.List;
+      if (statusStore.repeatMode === "one") smtcRepeat = RepeatMode.Track;
 
       playerIpc.sendSmtcPlayMode(smtcShuffle, smtcRepeat);
     }
@@ -1145,10 +1148,52 @@ class PlayerController {
   public playModeSyncIpc() {
     const statusStore = useStatusStore();
     if (isElectron) {
-      playerIpc.sendPlayMode(statusStore.playSongMode);
+      playerIpc.sendPlayMode(statusStore.repeatMode, statusStore.shuffleMode);
     }
   }
 }
+
+/**
+ * 混合列表算法 (用于心动模式)
+ *
+ * 保持 sourceList 顺序不变，每隔 interval 首插入一个 recommendation
+ * @param sourceList 原始用户列表
+ * @param recommendationList 推荐歌曲列表
+ * @param interval 插入间隔 (例如 2 表示：用户, 用户, 推荐, 用户, 用户, 推荐...)
+ */
+export const interleaveLists = (
+  sourceList: SongType[],
+  recommendationList: SongType[],
+  interval: number = 2,
+): SongType[] => {
+  const result: SongType[] = [];
+  let recIndex = 0;
+
+  // 标记推荐歌曲
+  const taggedRecs = recommendationList.map((song) => ({
+    ...song,
+    isRecommendation: true,
+  }));
+
+  sourceList.forEach((song, index) => {
+    result.push(song);
+    // 每隔 interval 首，且还有推荐歌时，插入一首
+    if ((index + 1) % interval === 0 && recIndex < taggedRecs.length) {
+      result.push(taggedRecs[recIndex]);
+      recIndex++;
+    }
+  });
+
+  return result;
+};
+
+/**
+ * 清理推荐歌曲，
+ * 用于退出心动模式时，恢复纯净列表
+ */
+export const cleanRecommendations = (list: SongType[]): SongType[] => {
+  return list.filter((s) => !s.isRecommendation);
+};
 
 let instance: PlayerController | null = null;
 

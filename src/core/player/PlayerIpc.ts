@@ -1,10 +1,10 @@
-import { throttle } from "lodash-es";
+import { useSettingStore } from "@/stores/setting";
+import { type DiscordMetadataParam } from "@/types/global";
+import { PlaybackStatus, RepeatMode } from "@/types/smtc";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
-import { useSettingStore } from "@/stores/setting";
 import { type MetadataParam } from "@native";
-import { type DiscordMetadataParam } from "@/types/global";
-import { RepeatMode, PlaybackStatus } from "@/types/smtc";
+import { throttle } from "lodash-es";
 
 /**
  * 发送播放状态
@@ -83,10 +83,13 @@ export const toggleDesktopLyric = (show: boolean) => {
 
 /**
  * 发送播放模式
- * @param mode 播放模式
+ * @param repeatMode 循环模式 ('off' | 'list' | 'one')
+ * @param shuffleMode 随机/心动模式 ('off' | 'on' | 'heartbeat')
  */
-export const sendPlayMode = (mode: string) => {
-  if (isElectron) window.electron.ipcRenderer.send("play-mode-change", mode);
+export const sendPlayMode = (repeatMode: string, shuffleMode: string) => {
+  if (isElectron) {
+    window.electron.ipcRenderer.send("play-mode-change", { repeatMode, shuffleMode });
+  }
 };
 
 ///////////////////////////////////////////
