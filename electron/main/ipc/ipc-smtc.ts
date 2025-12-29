@@ -10,6 +10,32 @@ type DiscordRpcModule = typeof import("@discord-rpc");
 let nativeSmtc: NativeSmtcModule | null = null;
 let discordRpcNative: DiscordRpcModule | null = null;
 
+/**
+ * 注册 IPC 处理函数
+ * @param module 模块
+ * @param moduleName 模块名称
+ * @param channel 信道
+ * @param handler 处理函数
+ * @param errorContext 错误上下文
+ */
+const registerHandler = <M, K extends keyof IpcChannelMap>(
+  module: M | null,
+  moduleName: string,
+  channel: K,
+  handler: (module: M, payload: IpcChannelMap[K]) => void,
+  errorContext: string,
+) => {
+  ipcMain.on(channel, (_, payload: IpcChannelMap[K]) => {
+    if (module) {
+      try {
+        handler(module, payload);
+      } catch (e) {
+        processLog.error(`[${moduleName}] ${errorContext} 失败`, e);
+      }
+    }
+  });
+};
+
 export default function initSmtcIpc() {
   // 加载 SMTC 原生模块（仅 Windows）
   nativeSmtc = loadNativeModule("smtc-for-splayer.node", "smtc-for-splayer");
@@ -53,91 +79,71 @@ export default function initSmtcIpc() {
     }
   }
 
-  // 注册原生 SMTC 事件处理器
-  const registerNativeSmtcHandler = <K extends keyof IpcChannelMap>(
-    channel: K,
-    handler: (module: NativeSmtcModule, payload: IpcChannelMap[K]) => void,
-    errorContext: string,
-  ) => {
-    ipcMain.on(channel, (_, payload: IpcChannelMap[K]) => {
-      if (nativeSmtc) {
-        try {
-          handler(nativeSmtc, payload);
-        } catch (e) {
-          processLog.error(`[SMTC] ${errorContext} 失败`, e);
-        }
-      }
-    });
-  };
-
-  // 注册 Discord RPC 事件处理器
-  const registerDiscordRpcHandler = <K extends keyof IpcChannelMap>(
-    channel: K,
-    handler: (module: DiscordRpcModule, payload: IpcChannelMap[K]) => void,
-    errorContext: string,
-  ) => {
-    ipcMain.on(channel, (_, payload: IpcChannelMap[K]) => {
-      if (discordRpcNative) {
-        try {
-          handler(discordRpcNative, payload);
-        } catch (e) {
-          processLog.error(`[Discord RPC] ${errorContext} 失败`, e);
-        }
-      }
-    });
-  };
-
   // 元数据 - Discord
-  registerDiscordRpcHandler(
+  registerHandler(
+    discordRpcNative,
+    "Discord RPC",
     "discord-update-metadata",
     (mod, payload) => mod.updateMetadata(payload),
     "updateMetadata",
   );
 
   // 元数据 - Native SMTC
-  registerNativeSmtcHandler(
+  registerHandler(
+    nativeSmtc,
+    "SMTC",
     "smtc-update-metadata",
     (mod, payload) => mod.updateMetadata(payload),
     "updateMetadata",
   );
 
   // 播放状态 - Discord
-  registerDiscordRpcHandler(
+  registerHandler(
+    discordRpcNative,
+    "Discord RPC",
     "discord-update-play-state",
     (mod, payload) => mod.updatePlayState(payload),
     "updatePlayState",
   );
 
   // 播放状态 - Native SMTC
-  registerNativeSmtcHandler(
+  registerHandler(
+    nativeSmtc,
+    "SMTC",
     "smtc-update-play-state",
     (mod, payload) => mod.updatePlayState(payload),
     "updatePlayState",
   );
 
   // 进度信息 - Discord
-  registerDiscordRpcHandler(
+  registerHandler(
+    discordRpcNative,
+    "Discord RPC",
     "discord-update-timeline",
     (mod, payload) => mod.updateTimeline(payload),
     "updateTimeline",
   );
 
   // 进度信息 - Native SMTC
-  registerNativeSmtcHandler(
+  registerHandler(
+    nativeSmtc,
+    "SMTC",
     "smtc-update-timeline",
     (mod, payload) => mod.updateTimeline(payload),
     "updateTimeline",
   );
 
   // 播放模式 - Native SMTC
-  registerNativeSmtcHandler(
+  registerHandler(
+    nativeSmtc,
+    "SMTC",
     "smtc-update-play-mode",
     (mod, payload) => mod.updatePlayMode(payload),
     "updatePlayMode",
   );
 
   // Discord - 开启
-  ipcMain.on("smtc-enable-discord", () => {
+  ipcMain.on("discord-enable", () => {
     if (discordRpcNative) {
       try {
         discordRpcNative.enable();
@@ -148,7 +154,7 @@ export default function initSmtcIpc() {
   });
 
   // Discord - 关闭
-  ipcMain.on("smtc-disable-discord", () => {
+  ipcMain.on("discord-disable", () => {
     if (discordRpcNative) {
       try {
         discordRpcNative.disable();
@@ -159,8 +165,10 @@ export default function initSmtcIpc() {
   });
 
   // Discord - 更新配置
-  registerDiscordRpcHandler(
-    "smtc-update-discord-config",
+  registerHandler(
+    discordRpcNative,
+    "Discord RPC",
+    "discord-update-config",
     (mod, payload) => mod.updateConfig(payload),
     "updateConfig",
   );

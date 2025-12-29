@@ -10,19 +10,13 @@
         </div>
         <n-switch v-model:value="settingStore.smtcOpen" class="set" :round="false" />
       </n-card>
-      <n-collapse-transition :show="settingStore.smtcOpen && isWin">
+      <n-collapse-transition :show="settingStore.smtcOpen && isElectron && isWin">
         <n-card class="set-item">
           <div class="label">
             <n-text class="name">原生 SMTC 支持</n-text>
-            <n-text class="tip" :depth="3">
-              使用原生插件与系统交互，支持高清封面显示
-            </n-text>
+            <n-text class="tip" :depth="3"> 使用原生插件与系统交互，支持高清封面显示 </n-text>
           </div>
-          <n-switch
-            v-model:value="settingStore.enableNativeSmtc"
-            class="set"
-            :round="false"
-          />
+          <n-switch v-model:value="settingStore.enableNativeSmtc" class="set" :round="false" />
         </n-card>
       </n-collapse-transition>
     </div>

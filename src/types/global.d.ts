@@ -22,7 +22,7 @@ export interface DiscordMetadataParam {
 }
 
 export interface DiscordPlayStateParam {
-  status: 0 | 1; // 0: Playing, 1: Paused
+  status: "Playing" | "Paused";
 }
 
 export interface DiscordTimelineParam {
@@ -35,9 +35,9 @@ export interface IpcChannelMap {
   "smtc-update-play-state": PlayStatePayload;
   "smtc-update-timeline": TimelinePayload;
   "smtc-update-play-mode": PlayModePayload;
-  "smtc-enable-discord": void;
-  "smtc-disable-discord": void;
-  "smtc-update-discord-config": DiscordConfigPayload;
+  "discord-enable": void;
+  "discord-disable": void;
+  "discord-update-config": DiscordConfigPayload;
   "discord-update-metadata": DiscordMetadataParam;
   "discord-update-play-state": DiscordPlayStateParam;
   "discord-update-timeline": DiscordTimelineParam;

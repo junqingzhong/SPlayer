@@ -181,12 +181,12 @@ export const sendSmtcPlayMode = (isShuffling: boolean, repeatMode: RepeatMode) =
  */
 export const enableDiscordRpc = () => {
   if (isElectron) {
-    window.electron.ipcRenderer.send("smtc-enable-discord");
+    window.electron.ipcRenderer.send("discord-enable");
     // 立即发送当前配置，确保 Rust 模块使用正确的设置
     const settingStore = useSettingStore();
     // 转换字符串 displayMode 为数字枚举
     const displayModeMap = { name: 0, state: 1, details: 2 } as const;
-    window.electron.ipcRenderer.send("smtc-update-discord-config", {
+    window.electron.ipcRenderer.send("discord-update-config", {
       showWhenPaused: settingStore.discordRpc.showWhenPaused,
       displayMode: displayModeMap[settingStore.discordRpc.displayMode],
     });
@@ -197,7 +197,7 @@ export const enableDiscordRpc = () => {
  * @description 禁用 Discord RPC
  */
 export const disableDiscordRpc = () => {
-  if (isElectron) window.electron.ipcRenderer.send("smtc-disable-discord");
+  if (isElectron) window.electron.ipcRenderer.send("discord-disable");
 };
 
 /**
@@ -211,7 +211,7 @@ export const updateDiscordConfig = (payload: {
   if (isElectron) {
     // 转换字符串 displayMode 为数字枚举
     const displayModeMap = { name: 0, state: 1, details: 2 } as const;
-    window.electron.ipcRenderer.send("smtc-update-discord-config", {
+    window.electron.ipcRenderer.send("discord-update-config", {
       showWhenPaused: payload.showWhenPaused,
       displayMode: displayModeMap[payload.displayMode],
     });
