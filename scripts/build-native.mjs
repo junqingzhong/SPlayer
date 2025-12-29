@@ -5,7 +5,7 @@ console.log(`[BuildNative] 当前构建目标: ${process.platform}`);
 
 if (process.platform === "win32") {
   try {
-    execSync("cd native/smtc-for-splayer && pnpm install && pnpm run build", {
+    execSync("pnpm --filter smtc-for-splayer build", {
       stdio: "inherit",
     });
     console.log("[BuildNative] 构建成功");

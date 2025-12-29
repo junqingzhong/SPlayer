@@ -113,7 +113,7 @@ export default function initSmtcIpc() {
   ipcMain.on("smtc-update-discord-config", (_, payload: IpcChannelMap["smtc-update-discord-config"]) => {
     discordRpcManager.updateConfig({
       showWhenPaused: payload.showWhenPaused,
-      displayMode: payload.displayMode as unknown as DiscordDisplayMode,
+      displayMode: payload.displayMode as DiscordDisplayMode,
     });
   });
 }

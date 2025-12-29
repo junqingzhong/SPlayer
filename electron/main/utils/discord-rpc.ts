@@ -69,7 +69,7 @@ interface DiscordActivity {
 }
 
 class DiscordRpcManager {
-    private client: Client | null = null;
+    private client: ExtendedClient | null = null;
     private isEnabled = false;
     private reconnectTimeout: NodeJS.Timeout | null = null;
 
@@ -155,7 +155,7 @@ class DiscordRpcManager {
 
             client.on("ready", () => {
                 processLog.info(`[Discord RPC] Connected as ${client.user?.username}`);
-                this.client = client;
+                this.client = client as ExtendedClient;
                 this.updateActivity();
             });
 
@@ -285,8 +285,7 @@ class DiscordRpcManager {
         }
 
         // 使用内部 request 方法绕过验证/剥离
-        // 使用内部 request 方法绕过验证/剥离
-        (this.client as ExtendedClient).request('SET_ACTIVITY', {
+        this.client.request('SET_ACTIVITY', {
             pid: process.pid,
             activity,
         }).catch((e: unknown) => {
