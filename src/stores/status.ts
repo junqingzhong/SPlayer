@@ -1,5 +1,6 @@
-import type { ColorScheme, RepeatModeType, RGB, ShuffleModeType } from "@/types/main";
+import type { ColorScheme, RGB } from "@/types/main";
 import { QualityType, type SortType } from "@/types/main";
+import { RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isDevBuild } from "@/utils/env";
 import { defineStore } from "pinia";
 

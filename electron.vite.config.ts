@@ -1,11 +1,11 @@
-import { resolve } from "path";
-import { MainEnv } from "./env";
-import { defineConfig, loadEnv } from "electron-vite";
-import { NaiveUiResolver } from "unplugin-vue-components/resolvers";
 import vue from "@vitejs/plugin-vue";
+import { defineConfig, loadEnv } from "electron-vite";
+import { resolve } from "path";
 import AutoImport from "unplugin-auto-import/vite";
+import { NaiveUiResolver } from "unplugin-vue-components/resolvers";
 import Components from "unplugin-vue-components/vite";
 import viteCompression from "vite-plugin-compression";
+import { MainEnv } from "./env";
 // import VueDevTools from "vite-plugin-vue-devtools";
 import wasm from "vite-plugin-wasm";
 
@@ -70,6 +70,7 @@ export default defineConfig(({ mode }) => {
         alias: {
           "@": resolve(__dirname, "src/"),
           "@native": resolve(__dirname, "native/smtc-for-splayer"),
+          "@shared": resolve(__dirname, "src/types/shared.ts"),
         },
       },
       css: {

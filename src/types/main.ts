@@ -171,17 +171,6 @@ export type CommentType = {
 };
 
 /**
- * 播放模式
- * - repeat: 重复播放
- * - repeat-once: 重复播放当前歌曲
- * - shuffle: 随机播放
- */
-export type PlayModeType = "repeat" | "repeat-once" | "shuffle";
-
-export type RepeatModeType = "off" | "list" | "one";
-export type ShuffleModeType = "off" | "on" | "heartbeat";
-
-/**
  * 歌词内容类型
  */
 export type LyricContentType = {

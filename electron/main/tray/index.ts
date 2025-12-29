@@ -1,3 +1,4 @@
+import { RepeatModeType, ShuffleModeType } from "@shared";
 import {
   app,
   BrowserWindow,
@@ -14,12 +15,10 @@ import { appName, isWin } from "../utils/config";
 import lyricWindow from "../windows/lyric-window";
 
 // 播放模式
-type RepeatMode = "off" | "list" | "one";
-type ShuffleMode = "off" | "on" | "heartbeat";
 type PlayState = "play" | "pause" | "loading";
 
-let repeatMode: RepeatMode = "list";
-let shuffleMode: ShuffleMode = "off";
+let repeatMode: RepeatModeType = "list";
+let shuffleMode: ShuffleModeType = "off";
 
 // 全局数据
 let playState: PlayState = "pause";
@@ -30,7 +29,7 @@ let desktopLyricLock: boolean = false;
 
 export interface MainTray {
   setTitle(title: string): void;
-  setPlayMode(repeat: RepeatMode, shuffle: ShuffleMode): void;
+  setPlayMode(repeat: RepeatModeType, shuffle: ShuffleModeType): void;
   setLikeState(like: boolean): void;
   setPlayState(state: PlayState): void;
   setPlayName(name: string): void;
@@ -269,7 +268,7 @@ class CreateTray implements MainTray {
    * @param repeat 当前的重复播放模式
    * @param shuffle 当前的随机播放模式
    */
-  setPlayMode(repeat: RepeatMode, shuffle: ShuffleMode) {
+  setPlayMode(repeat: RepeatModeType, shuffle: ShuffleModeType) {
     repeatMode = repeat;
     shuffleMode = shuffle;
     // 更新菜单

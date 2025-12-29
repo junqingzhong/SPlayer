@@ -1,7 +1,9 @@
 import { heartRateList } from "@/api/playlist";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import { RepeatModeType, ShuffleModeType, type SongType } from "@/types/main";
+import { type SongType } from "@/types/main";
+import { RepeatModeType, ShuffleModeType } from "@/types/shared";
+import { PlaybackStatus, RepeatMode } from "@/types/smtc";
 import { isLogin } from "@/utils/auth";
 import { calculateLyricIndex } from "@/utils/calc";
 import { getCoverColor } from "@/utils/color";
@@ -9,17 +11,15 @@ import { isElectron, isWin } from "@/utils/env";
 import { formatSongsList, getPlayerInfoObj, getPlaySongData } from "@/utils/format";
 import { handleSongQuality, shuffleArray } from "@/utils/helper";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
+import { openUserLogin } from "@/utils/modal";
 import { calculateProgress } from "@/utils/time";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { throttle } from "lodash-es";
 import { useAudioManager } from "./AudioManager";
 import { useLyricManager } from "./LyricManager";
-import { useSongManager } from "./SongManager";
-
-import { PlaybackStatus, RepeatMode } from "@/types/smtc";
-import { openUserLogin } from "@/utils/modal";
 import { mediaSessionManager } from "./MediaSessionManager";
 import * as playerIpc from "./PlayerIpc";
+import { useSongManager } from "./SongManager";
 
 /**
  * 播放器核心类

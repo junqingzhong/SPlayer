@@ -1,5 +1,6 @@
 import { useSettingStore } from "@/stores/setting";
 import { type DiscordMetadataParam } from "@/types/global";
+import { PlayModePayload, RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { PlaybackStatus, RepeatMode } from "@/types/smtc";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
@@ -86,9 +87,10 @@ export const toggleDesktopLyric = (show: boolean) => {
  * @param repeatMode 循环模式 ('off' | 'list' | 'one')
  * @param shuffleMode 随机/心动模式 ('off' | 'on' | 'heartbeat')
  */
-export const sendPlayMode = (repeatMode: string, shuffleMode: string) => {
+export const sendPlayMode = (repeatMode: RepeatModeType, shuffleMode: ShuffleModeType) => {
   if (isElectron) {
-    window.electron.ipcRenderer.send("play-mode-change", { repeatMode, shuffleMode });
+    const payload: PlayModePayload = { repeatMode, shuffleMode };
+    window.electron.ipcRenderer.send("play-mode-change", payload);
   }
 };
 

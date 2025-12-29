@@ -1,8 +1,8 @@
-import { ipcMain, BrowserWindow, app } from "electron";
+import { BrowserWindow, app, ipcMain } from "electron";
 import { join } from "path";
-import { loadNativeModule } from "../utils/native-loader";
-import { processLog } from "../logger";
 import { IpcChannelMap } from "../../../src/types/global";
+import { processLog } from "../logger";
+import { loadNativeModule } from "../utils/native-loader";
 
 type NativeSmtcModule = typeof import("@native");
 type DiscordRpcModule = typeof import("@discord-rpc");
