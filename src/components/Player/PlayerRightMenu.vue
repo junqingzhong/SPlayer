@@ -15,22 +15,7 @@
         <SvgIcon name="Controls" />
       </div>
     </n-dropdown>
-    <!-- 播放模式 -->
-    <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
-      <div class="menu-icon" @click.stop="player.toggleShuffle()">
-        <SvgIcon
-          :name="statusStore.shuffleIcon"
-          :depth="statusStore.shuffleMode === 'off' ? 3 : 1"
-        />
-      </div>
-    </template>
 
-    <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
-      <div class="menu-icon" @click.stop="player.toggleRepeat()">
-        <SvgIcon :name="statusStore.repeatIcon" :depth="statusStore.repeatMode === 'off' ? 3 : 1" />
-      </div>
-    </template>
-    <!-- 音量调节 -->
     <n-popover
       :show-arrow="false"
       :style="{ padding: 0 }"
@@ -73,14 +58,13 @@
 
 <script setup lang="ts">
 import { usePlayerController } from "@/core/player/PlayerController";
-import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { useDataStore, useSettingStore, useStatusStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
 import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
 import type { DropdownOption } from "naive-ui";
 
 const dataStore = useDataStore();
-const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();

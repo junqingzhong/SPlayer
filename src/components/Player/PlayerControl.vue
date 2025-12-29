@@ -39,6 +39,16 @@
         </n-flex>
         <div class="center">
           <div class="btn">
+            <!-- 随机按钮 -->
+            <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
+              <div class="btn-icon mode-icon" @click.stop="player.toggleShuffle()">
+                <SvgIcon
+                  :name="statusStore.shuffleIcon"
+                  :size="20"
+                  :depth="statusStore.shuffleMode === 'off' ? 3 : 1"
+                />
+              </div>
+            </template>
             <!-- 不喜欢 -->
             <div
               v-if="statusStore.personalFmMode"
@@ -77,6 +87,16 @@
             <div class="btn-icon" v-debounce="() => player.nextOrPrev('next')">
               <SvgIcon :size="26" name="SkipNext" />
             </div>
+            <!-- 循环按钮 -->
+            <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
+              <div class="btn-icon mode-icon" @click.stop="player.toggleRepeat()">
+                <SvgIcon
+                  :name="statusStore.repeatIcon"
+                  :size="20"
+                  :depth="statusStore.repeatMode === 'off' ? 3 : 1"
+                />
+              </div>
+            </template>
           </div>
           <!-- 进度条 -->
           <div class="slider">
@@ -95,12 +115,12 @@
 </template>
 
 <script setup lang="ts">
-import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
-import { toLikeSong } from "@/utils/auth";
-import { useSongManager } from "@/core/player/SongManager";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { useSongManager } from "@/core/player/SongManager";
+import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { toLikeSong } from "@/utils/auth";
 import { getTimeDisplay, TIME_FORMATS } from "@/utils/format";
+import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
@@ -191,6 +211,8 @@ const toggleTimeFormat = () => {
           background-color 0.3s,
           transform 0.3s;
         cursor: pointer;
+        margin: 0 4px;
+
         .n-icon {
           color: rgb(var(--main-cover-color));
         }
