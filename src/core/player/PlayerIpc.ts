@@ -83,7 +83,7 @@ export const toggleDesktopLyric = (show: boolean) => {
 };
 
 /**
- * 发送播放模式
+ * 发送播放模式给托盘
  * @param repeatMode 循环模式 ('off' | 'list' | 'one')
  * @param shuffleMode 随机/心动模式 ('off' | 'on' | 'heartbeat')
  */
