@@ -14,8 +14,8 @@ use crate::model::{
 const APP_ID: &str = "1454403710162698293";
 const SP_ICON_ASSET_KEY: &str = "logo-icon";
 
-// 主要用来应对跳转进度的更新
-const TIMESTAMP_UPDATE_THRESHOLD_MS: i64 = 100;
+// 主要用来应对跳转进度的更新（单位：秒）
+const TIMESTAMP_UPDATE_THRESHOLD_S: i64 = 2;
 const RECONNECT_COOLDOWN_SECONDS: u8 = 5;
 
 pub enum RpcMessage {
@@ -235,7 +235,7 @@ impl RpcWorker {
         }
     }
 
-    fn build_base_activity(data: &ActivityData, _display_mode: DiscordDisplayMode) -> Activity<'_> {
+    fn build_base_activity(data: &ActivityData, display_mode: DiscordDisplayMode) -> Activity<'_> {
         let assets = Assets::new()
             .large_image(&data.cached_cover_url)
             .large_text(&data.metadata.album_name)
@@ -244,12 +244,30 @@ impl RpcWorker {
 
         let buttons = vec![Button::new("🎧 Listen", &data.cached_song_url)];
 
-        Activity::new()
-            .details(&data.metadata.song_name)
-            .state(&data.metadata.author_name)
+        let mut activity = Activity::new()
             .activity_type(ActivityType::Listening)
             .assets(assets)
-            .buttons(buttons)
+            .buttons(buttons);
+
+        // 根据显示模式设置 details 和 state
+        activity = match display_mode {
+            DiscordDisplayMode::Name => {
+                // 显示为 "Listening to SPlayer"
+                activity.details("SPlayer")
+            }
+            DiscordDisplayMode::State => {
+                // 显示为 "Listening to {artist}"
+                activity.details(&data.metadata.author_name)
+            }
+            DiscordDisplayMode::Details => {
+                // 显示为 "Listening to {song}" - by {artist}
+                activity
+                    .details(&data.metadata.song_name)
+                    .state(&data.metadata.author_name)
+            }
+        };
+
+        activity
     }
 
     fn calc_paused_timestamps(current_time: f64, duration: f64) -> (i64, i64) {
@@ -269,6 +287,11 @@ impl RpcWorker {
     }
 
     fn calc_playing_timestamps(current_time: f64, duration: f64) -> (i64, i64) {
+        // 边界检查：如果当前时间超过总时长，返回无效时间戳
+        if current_time >= duration {
+            return (0, 0);
+        }
+
         let now_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -335,21 +358,27 @@ impl RpcWorker {
                         let (start, end) =
                             Self::calc_playing_timestamps(data.current_time, duration);
 
-                        if let Some(last_end) = last_sent_end_timestamp {
-                            let diff = (*last_end - end).abs();
-                            if diff < TIMESTAMP_UPDATE_THRESHOLD_MS {
-                                return true;
+                        // 如果时间戳无效（边界检查失败），跳过此次更新
+                        if start == 0 && end == 0 {
+                            debug!("当前时间超过总时长，跳过时间戳更新");
+                            should_send = false;
+                        } else {
+                            if let Some(last_end) = last_sent_end_timestamp {
+                                let diff = (*last_end - end).abs();
+                                if diff < TIMESTAMP_UPDATE_THRESHOLD_S {
+                                    return true;
+                                }
+                                debug!(
+                                    diff_s = diff,
+                                    threshold_s = TIMESTAMP_UPDATE_THRESHOLD_S,
+                                    "进度变更超过阈值，触发更新"
+                                );
                             }
-                            debug!(
-                                diff_ms = diff,
-                                threshold_ms = TIMESTAMP_UPDATE_THRESHOLD_MS,
-                                "进度变更超过阈值，触发更新"
-                            );
-                        }
 
-                        activity = activity.timestamps(Timestamps::new().start(start).end(end));
-                        new_end_timestamp = Some(end);
-                        should_send = true;
+                            activity = activity.timestamps(Timestamps::new().start(start).end(end));
+                            new_end_timestamp = Some(end);
+                            should_send = true;
+                        }
                     } else {
                         should_send = last_sent_end_timestamp.is_some();
                         if should_send {
@@ -449,4 +478,12 @@ pub fn update_play_state(status: PlaybackStatus) {
 
 pub fn update_timeline(payload: TimelinePayload) {
     send(RpcMessage::Timeline(payload));
+}
+
+pub fn shutdown() {
+    if let Ok(mut guard) = SENDER.lock() {
+        if guard.take().is_some() {
+            info!("Shutting down Discord RPC thread.");
+        }
+    }
 }

@@ -32,7 +32,7 @@ pub fn initialize() -> Result<()> {
 /// 停止后台线程并断开 Discord 连接
 #[napi]
 pub fn shutdown() {
-    discord_core::disable();
+    discord_core::shutdown();
 }
 
 /// 启用 Discord RPC
