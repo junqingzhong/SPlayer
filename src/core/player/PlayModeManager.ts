@@ -32,12 +32,12 @@ export class PlayModeManager {
 
     this.syncSmtcPlayMode();
 
-    const modeText: Record<RepeatModeType, string> = {
-      list: "列表循环",
-      one: "单曲循环",
-      off: "不循环",
-    };
-    window.$message.success(`已切换至：${modeText[statusStore.repeatMode]}`);
+    // const modeText: Record<RepeatModeType, string> = {
+    //   list: "列表循环",
+    //   one: "单曲循环",
+    //   off: "不循环",
+    // };
+    // window.$message.success(`已切换至：${modeText[statusStore.repeatMode]}`);
   }
 
   /**
@@ -63,82 +63,92 @@ export class PlayModeManager {
 
     if (nextMode === currentMode) return;
 
-    if (nextMode === "on") {
-      const currentList = [...dataStore.playList];
-      // 备份原始列表
-      await dataStore.setOriginalPlayList(currentList);
-      // 打乱列表
-      const shuffled = shuffleArray(currentList);
-      await dataStore.setPlayList(shuffled);
-      // 修正当前播放索引
-      const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
-      if (idx !== -1) statusStore.playIndex = idx;
-
-      statusStore.shuffleMode = "on";
-    } else if (nextMode === "heartbeat") {
-      if (isLogin() !== 1) {
-        if (isLogin() === 0) {
-          openUserLogin(true);
-        } else {
-          window.$message.warning("该登录模式暂不支持该操作");
-        }
-        return;
-      }
-
-      if (statusStore.shuffleMode === "heartbeat") {
-        if (playAction) await playAction();
-        statusStore.showFullPlayer = true;
-        return;
-      }
-
-      window.$message.loading("心动模式开启中...");
-
-      try {
-        const pid =
-          musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
-        const currentSongId = musicStore.playSong?.id || 0;
-
-        if (!currentSongId) throw new Error("无播放歌曲");
-
-        const res = await heartRateList(currentSongId, pid);
-        if (res.code !== 200) throw new Error("获取推荐失败");
-
-        const recList = formatSongsList(res.data);
-
-        // 混合列表
-        const currentList = [...dataStore.playList];
-        const mixedList = interleaveLists(currentList, recList);
-
-        await dataStore.setPlayList(mixedList);
-
-        const idx = mixedList.findIndex((s) => s.id === currentSongId);
-        if (idx !== -1) statusStore.playIndex = idx;
-
-        statusStore.shuffleMode = "heartbeat";
-        window.$message.success("心动模式已开启");
-      } catch (e) {
-        console.error(e);
-        window.$message.error("心动模式开启失败");
-        return;
-      }
-    } else {
-      // 恢复原始列表
-      const original = await dataStore.getOriginalPlayList();
-
-      if (original && original.length > 0) {
-        await dataStore.setPlayList(original);
-        const idx = original.findIndex((s) => s.id === musicStore.playSong?.id);
-        statusStore.playIndex = idx !== -1 ? idx : 0;
-        await dataStore.clearOriginalPlayList();
-      } else {
-        const cleaned = cleanRecommendations(dataStore.playList);
-        await dataStore.setPlayList(cleaned);
-      }
-
-      statusStore.shuffleMode = "off";
-    }
-
+    const previousMode = statusStore.shuffleMode;
+    statusStore.shuffleMode = nextMode;
     this.syncSmtcPlayMode();
+
+    // 将耗时的数据处理扔到 UI 图标更新后再进行，避免打乱庞大列表导致点击延迟
+    setTimeout(async () => {
+      try {
+        if (nextMode === "on") {
+          const currentList = [...dataStore.playList];
+          // 备份原始列表
+          await dataStore.setOriginalPlayList(currentList);
+          // 打乱列表
+          const shuffled = shuffleArray(currentList);
+          await dataStore.setPlayList(shuffled);
+          // 修正当前播放索引
+          const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
+          if (idx !== -1) statusStore.playIndex = idx;
+        } else if (nextMode === "heartbeat") {
+          if (isLogin() !== 1) {
+            // 未登录，回滚状态
+            statusStore.shuffleMode = previousMode;
+            if (isLogin() === 0) {
+              openUserLogin(true);
+            } else {
+              window.$message.warning("该登录模式暂不支持该操作");
+            }
+            return;
+          }
+
+          if (previousMode === "heartbeat") {
+            if (playAction) await playAction();
+            statusStore.showFullPlayer = true;
+            return;
+          }
+
+          window.$message.loading("心动模式开启中...");
+
+          try {
+            const pid =
+              musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
+            const currentSongId = musicStore.playSong?.id || 0;
+
+            if (!currentSongId) throw new Error("无播放歌曲");
+
+            const res = await heartRateList(currentSongId, pid);
+            if (res.code !== 200) throw new Error("获取推荐失败");
+
+            const recList = formatSongsList(res.data);
+
+            // 混合列表
+            const currentList = [...dataStore.playList];
+            const mixedList = interleaveLists(currentList, recList);
+
+            await dataStore.setPlayList(mixedList);
+
+            const idx = mixedList.findIndex((s) => s.id === currentSongId);
+            if (idx !== -1) statusStore.playIndex = idx;
+
+            window.$message.success("心动模式已开启");
+          } catch (e) {
+            console.error(e);
+            window.$message.error("心动模式开启失败");
+            // 失败回滚
+            statusStore.shuffleMode = previousMode;
+          }
+        } else {
+          // 恢复原始列表
+          const original = await dataStore.getOriginalPlayList();
+
+          if (original && original.length > 0) {
+            await dataStore.setPlayList(original);
+            const idx = original.findIndex((s) => s.id === musicStore.playSong?.id);
+            statusStore.playIndex = idx !== -1 ? idx : 0;
+            await dataStore.clearOriginalPlayList();
+          } else {
+            const cleaned = cleanRecommendations(dataStore.playList);
+            await dataStore.setPlayList(cleaned);
+          }
+        }
+      } catch (e) {
+        console.error("切换模式时发生错误:", e);
+        // 失败回滚
+        statusStore.shuffleMode = previousMode;
+        window.$message.error("模式切换出错");
+      }
+    }, 10);
   }
 
   /**
