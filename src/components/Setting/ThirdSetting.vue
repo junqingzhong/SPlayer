@@ -151,8 +151,8 @@
             class="set"
             v-model:value="settingStore.discordRpc.displayMode"
             :options="[
-              { label: '完整信息 (歌曲名/歌手)', value: 'details' },
               { label: '仅歌曲名', value: 'name' },
+              { label: '完整信息 (歌曲名/歌手)', value: 'details' },
               { label: '仅播放状态', value: 'state' },
             ]"
             @update:value="handleDiscordConfigUpdate"

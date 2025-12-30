@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 napi = { version = "3.7", features = ["tokio_rt", "napi9"] }
 napi-derive = "3.4"
 
-discord-rich-presence = "0.2"
+discord-rich-presence = "1.0"
 url = "2.5"
 
 tracing = "0.1"

@@ -15,13 +15,16 @@ export interface DiscordConfigPayload {
   displayMode?: DiscordDisplayMode
 }
 
-/** Discord 显示模式枚举 */
+/**
+ * Discord 显示模式枚举
+ * 控制 Discord 左下角 "正在听 - XXX" 的显示内容
+ */
 export declare enum DiscordDisplayMode {
-  /** 显示为 "Listening to Spotify"   */
+  /** 仅歌曲名：显示为 "正在听 {歌曲名}" */
   Name = 0,
-  /** 显示为 "Listening to Rick Astley" */
+  /** 仅播放状态：显示为 "正在听 SPlayer" */
   State = 1,
-  /** 显示为 "Listening to Never Gonna Give You Up" */
+  /** 完整信息：显示为 "正在听 {歌曲名} - {歌手}" */
   Details = 2
 }
 

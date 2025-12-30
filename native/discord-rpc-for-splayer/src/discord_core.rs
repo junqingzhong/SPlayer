@@ -3,7 +3,9 @@ use std::sync::{LazyLock, Mutex};
 use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use discord_rich_presence::activity::{Activity, ActivityType, Assets, Button, Timestamps};
+use discord_rich_presence::activity::{
+    Activity, ActivityType, Assets, Button, StatusDisplayType, Timestamps,
+};
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
 use tracing::{debug, info, warn};
 
@@ -36,24 +38,29 @@ struct ActivityData {
     current_time: f64,
     cached_cover_url: String,
     cached_song_url: String,
+    /// 缓存 "歌曲名 - 歌手" 格式的完整信息
+    cached_full_info: String,
 }
 
 impl ActivityData {
     fn from_metadata(metadata: MetadataPayload) -> Self {
         let cached_cover_url = Self::process_cover_url(metadata.original_cover_url.as_deref());
         let cached_song_url = Self::process_song_url(metadata.ncm_id);
+        let cached_full_info = format!("{} - {}", metadata.song_name, metadata.author_name);
         Self {
             metadata,
             status: PlaybackStatus::Paused,
             current_time: 0.0,
             cached_cover_url,
             cached_song_url,
+            cached_full_info,
         }
     }
 
     fn update_metadata(&mut self, metadata: MetadataPayload) {
         self.cached_cover_url = Self::process_cover_url(metadata.original_cover_url.as_deref());
         self.cached_song_url = Self::process_song_url(metadata.ncm_id);
+        self.cached_full_info = format!("{} - {}", metadata.song_name, metadata.author_name);
         self.metadata = metadata;
         self.current_time = 0.0;
     }
@@ -110,7 +117,7 @@ impl Default for RpcWorker {
             connect_retry_count: 0,
             last_sent_end_timestamp: None,
             show_when_paused: false,
-            display_mode: DiscordDisplayMode::Details,
+            display_mode: DiscordDisplayMode::Name,
         }
     }
 }
@@ -182,20 +189,15 @@ impl RpcWorker {
             return;
         }
 
-        match DiscordIpcClient::new(APP_ID) {
-            Ok(mut client) => match client.connect() {
-                Ok(()) => {
-                    info!("Discord IPC 已连接");
-                    self.client = Some(client);
-                    self.last_sent_end_timestamp = None;
-                }
-                Err(e) => {
-                    info!("连接 Discord IPC 失败: {e:?}. Discord 可能未运行");
-                    self.connect_retry_count = RECONNECT_COOLDOWN_SECONDS;
-                }
-            },
+        let mut client = DiscordIpcClient::new(APP_ID);
+        match client.connect() {
+            Ok(()) => {
+                info!("Discord IPC 已连接");
+                self.client = Some(client);
+                self.last_sent_end_timestamp = None;
+            }
             Err(e) => {
-                info!("创建 Discord IPC 客户端失败: {e:?}");
+                info!("连接 Discord IPC 失败: {e:?}. Discord 可能未运行");
                 self.connect_retry_count = RECONNECT_COOLDOWN_SECONDS;
             }
         }
@@ -244,30 +246,42 @@ impl RpcWorker {
 
         let buttons = vec![Button::new("🎧 Listen", &data.cached_song_url)];
 
-        let mut activity = Activity::new()
-            .activity_type(ActivityType::Listening)
-            .assets(assets)
-            .buttons(buttons);
-
-        // 根据显示模式设置 details 和 state
-        activity = match display_mode {
+        // 根据显示模式设置左下角 "正在听 - XXX" 的显示内容
+        // StatusDisplayType::Name -> 显示应用名称 (SPlayer)
+        // StatusDisplayType::Details -> 显示 details 字段
+        // StatusDisplayType::State -> 显示 state 字段
+        match display_mode {
             DiscordDisplayMode::Name => {
-                // 显示为 "Listening to SPlayer"
-                activity.details("SPlayer")
-            }
-            DiscordDisplayMode::State => {
-                // 显示为 "Listening to {artist}"
-                activity.details(&data.metadata.author_name)
-            }
-            DiscordDisplayMode::Details => {
-                // 显示为 "Listening to {song}" - by {artist}
-                activity
+                // 仅歌曲名：左下角显示歌曲名
+                Activity::new()
                     .details(&data.metadata.song_name)
                     .state(&data.metadata.author_name)
+                    .activity_type(ActivityType::Listening)
+                    .assets(assets)
+                    .buttons(buttons)
+                    .status_display_type(StatusDisplayType::Details)
             }
-        };
-
-        activity
+            DiscordDisplayMode::State => {
+                // 仅播放状态：左下角显示 SPlayer
+                Activity::new()
+                    .details(&data.metadata.song_name)
+                    .state(&data.metadata.author_name)
+                    .activity_type(ActivityType::Listening)
+                    .assets(assets)
+                    .buttons(buttons)
+                    .status_display_type(StatusDisplayType::Name)
+            }
+            DiscordDisplayMode::Details => {
+                // 完整信息：左下角显示 "歌曲名 - 歌手"
+                Activity::new()
+                    .details(&data.cached_full_info)
+                    .state(&data.metadata.author_name)
+                    .activity_type(ActivityType::Listening)
+                    .assets(assets)
+                    .buttons(buttons)
+                    .status_display_type(StatusDisplayType::Details)
+            }
+        }
     }
 
     fn calc_paused_timestamps(current_time: f64, duration: f64) -> (i64, i64) {
