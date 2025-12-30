@@ -414,7 +414,7 @@ const loadCacheSize = async () => {
 
 // 清空所有缓存目录
 const clearCache = async () => {
-  const types: CacheResourceType[] = ["music", "lyrics", "local-data", "playlist-data"];
+  const types: CacheResourceType[] = ["music", "lyrics", "local-data", "list-data"];
   let hasError = false;
   for (const type of types) {
     const res = await cacheManager.clear(type);
