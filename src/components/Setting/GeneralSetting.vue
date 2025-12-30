@@ -104,6 +104,13 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">失焦自动清空搜索框</n-text>
+          <n-text class="tip" :depth="3">搜索框失去焦点后自动清空内容</n-text>
+        </div>
+        <n-switch class="set" v-model:value="settingStore.clearSearchOnBlur" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">侧边栏显示封面</n-text>
           <n-text class="tip" :depth="3">是否显示歌单的封面，如果有</n-text>
         </div>

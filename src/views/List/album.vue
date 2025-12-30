@@ -67,6 +67,7 @@ import { songDetail } from "@/api/song";
 import { albumDetail } from "@/api/album";
 import { formatCoverList, formatSongsList } from "@/utils/format";
 import { renderIcon, copyData } from "@/utils/helper";
+import { openBatchList } from "@/utils/modal";
 import { useDataStore } from "@/stores";
 import { toLikeAlbum } from "@/utils/auth";
 import { useListDetail } from "@/composables/List/useListDetail";
@@ -147,6 +148,19 @@ const moreOptions = computed<DropdownOption[]>(() => [
       onClick: () => getAlbumDetail(albumId.value, true),
     },
     icon: renderIcon("Refresh"),
+  {
+    label: "批量操作",
+    key: "batch",
+    props: {
+      onClick: () => {
+        openBatchList(
+          displayData.value,
+          false,
+          isLikeAlbum.value ? albumId.value : undefined,
+        );
+      },
+    },
+    icon: renderIcon("Batch"),
   },
   {
     label: "复制分享链接",
