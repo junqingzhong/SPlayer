@@ -133,7 +133,7 @@ export const formatCoverList = (data: any[]): CoverType[] => {
       likedCount: item.likedCount,
       duration: msToTime(item.duration || item.dt || item.playTime),
       createTime: item.createTime || item.publishTime,
-      updateTime: item.updateTime || item.trackNumberUpdateTime,
+      updateTime: item.updateTime || item.trackNumberUpdateTime || item.trackUpdateTime,
       // 热榜特殊数据
       tracks: item.tracks,
     };
@@ -359,23 +359,30 @@ export type TimeDisplayType = "current" | "total" | "remaining";
 
 // 歌曲播放时间显示格式
 export const TIME_FORMATS = ["current-total", "remaining-total", "current-remaining"] as const;
-export type TimeFormat = typeof TIME_FORMATS[number];
+export type TimeFormat = (typeof TIME_FORMATS)[number];
 
 export const displayTimeFormat = (format: TimeFormat): [TimeDisplayType, TimeDisplayType] => {
   switch (format) {
-    case "current-total":     return ["current",   "total"];
-    case "remaining-total":   return ["remaining", "total"];
-    case "current-remaining": return ["current",   "remaining"];
+    case "current-total":
+      return ["current", "total"];
+    case "remaining-total":
+      return ["remaining", "total"];
+    case "current-remaining":
+      return ["current", "remaining"];
   }
 };
 
-export const getTimeDisplay = (
-  format: () => TimeFormat, statusStore: { currentTime: number, duration: number }
-) => (index: number) => computed(() => {
-  const display = displayTimeFormat(format())[index];
-  switch (display) {
-    case "current":   return msToTime(statusStore.currentTime);
-    case "total":     return msToTime(statusStore.duration);
-    case "remaining": return "-" + msToTime(statusStore.duration - statusStore.currentTime);
-  }
-});
+export const getTimeDisplay =
+  (format: () => TimeFormat, statusStore: { currentTime: number; duration: number }) =>
+  (index: number) =>
+    computed(() => {
+      const display = displayTimeFormat(format())[index];
+      switch (display) {
+        case "current":
+          return msToTime(statusStore.currentTime);
+        case "total":
+          return msToTime(statusStore.duration);
+        case "remaining":
+          return "-" + msToTime(statusStore.duration - statusStore.currentTime);
+      }
+    });

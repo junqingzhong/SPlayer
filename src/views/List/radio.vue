@@ -73,6 +73,7 @@ import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
 import { toSubRadio } from "@/utils/auth";
+import { useListDataCache } from "@/composables/List/useListDataCache";
 import ListComment from "@/components/List/ListComment.vue";
 
 const router = useRouter();
@@ -92,6 +93,7 @@ const { searchValue, searchData, displayData, clearSearch, performSearch } =
   useListSearch(listData);
 const { listScrolling, handleListScroll } = useListScroll();
 const { playAllSongs: playAllSongsAction } = useListActions();
+const { saveCache, loadCache, checkNeedsUpdate } = useListDataCache();
 
 // 电台 ID
 const oldRadioId = ref<number>(0);
@@ -149,6 +151,14 @@ const playButtonText = computed(() => {
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
   {
+    label: "刷新缓存",
+    key: "refresh",
+    props: {
+      onClick: () => getRadioDetail(radioId.value, true),
+    },
+    icon: renderIcon("Refresh"),
+  },
+  {
     label: "刷新播客",
     key: "refresh",
     props: {
@@ -178,7 +188,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
 ]);
 
 // 获取播客基础信息
-const getRadioDetail = async (id: number) => {
+const getRadioDetail = async (id: number, refresh: boolean = false) => {
   if (!id) return;
   // 设置当前请求的播客 ID，用于防止竞态条件
   currentRequestId.value = id;
@@ -186,6 +196,21 @@ const getRadioDetail = async (id: number) => {
   setLoading(true);
   // 清空数据
   clearSearch();
+
+  // 1. 尝试读取缓存
+  if (!refresh) {
+    const cached = await loadCache("radio", id);
+    if (cached) {
+      setDetailData(cached.detail);
+      setListData(cached.songs);
+      setLoading(false);
+
+      // 后台检查更新
+      backgroundCheck(id, cached);
+      return;
+    }
+  }
+
   // 获取播客详情
   setDetailData(null);
   const detail = await radioDetail(id);
@@ -193,6 +218,23 @@ const getRadioDetail = async (id: number) => {
   setDetailData(formatCoverList(detail.data)[0]);
   // 获取全部节目
   await getRadioAllProgram(id, detailData.value?.count as number);
+};
+
+// 后台检查更新
+const backgroundCheck = async (id: number, cached: any) => {
+  try {
+    const detail = await radioDetail(id);
+    if (currentRequestId.value !== id) return;
+
+    const latestDetail = formatCoverList(detail.data)[0];
+
+    if (checkNeedsUpdate(cached, latestDetail)) {
+      console.log("Radio cache expired, refreshing...");
+      getRadioDetail(id, true);
+    }
+  } catch (e) {
+    console.error("Radio background check failed", e);
+  }
 };
 
 // 获取播客全部歌曲
@@ -224,6 +266,11 @@ const getRadioAllProgram = async (id: number, count: number) => {
     loadingMsgShow(false);
     return;
   }
+  // 保存缓存
+  if (detailData.value && listData.value.length > 0) {
+    saveCache("radio", id, detailData.value, listData.value);
+  }
+
   // 关闭加载
   loadingMsgShow(false);
 };

@@ -5,9 +5,9 @@ import { isElectron } from "@/utils/env";
  * - music: 音乐缓存
  * - lyrics: 歌词缓存
  * - local-data: 本地音乐数据缓存
- * - playlist-data: 歌单数据缓存
+ * - list-data: 列表数据缓存（歌单/专辑/电台）
  */
-export type CacheResourceType = "music" | "lyrics" | "local-data" | "playlist-data";
+export type CacheResourceType = "music" | "lyrics" | "local-data" | "list-data";
 
 /**
  * 缓存文件列表项信息

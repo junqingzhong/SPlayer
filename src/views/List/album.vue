@@ -73,10 +73,13 @@ import { useListDetail } from "@/composables/List/useListDetail";
 import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
+import { useListDataCache } from "@/composables/List/useListDataCache";
 import ListComment from "@/components/List/ListComment.vue";
 
 const router = useRouter();
 const dataStore = useDataStore();
+
+const { saveCache, loadCache, checkNeedsUpdate } = useListDataCache();
 
 // 是否激活
 const isActivated = ref<boolean>(false);
@@ -134,6 +137,14 @@ const playButtonText = computed(() => {
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
   {
+    label: "刷新缓存",
+    key: "refresh",
+    props: {
+      onClick: () => getAlbumDetail(albumId.value, true),
+    },
+    icon: renderIcon("Refresh"),
+  },
+  {
     label: "复制分享链接",
     key: "copy",
     props: {
@@ -159,6 +170,21 @@ const getAlbumDetail = async (id: number, refresh: boolean = false) => {
   if (!id) return;
   setLoading(true);
   clearSearch();
+
+  // 1. 尝试读取缓存
+  if (!refresh) {
+    const cached = await loadCache("album", id);
+    if (cached) {
+      setDetailData(cached.detail);
+      setListData(cached.songs);
+      setLoading(false);
+
+      // 后台检查更新
+      backgroundCheck(id, cached);
+      return;
+    }
+  }
+
   if (!refresh) {
     resetData(true);
   }
@@ -168,8 +194,31 @@ const getAlbumDetail = async (id: number, refresh: boolean = false) => {
   // 获取专辑歌曲
   const ids: number[] = detail.songs.map((song: any) => song.id as number);
   const result = await songDetail(ids);
-  setListData(formatSongsList(result.songs));
+  const songs = formatSongsList(result.songs);
+  setListData(songs);
+
+  // 保存缓存
+  saveCache("album", id, detailData.value!, songs);
+
   setLoading(false);
+};
+
+// 后台检查更新
+const backgroundCheck = async (id: number, cached: any) => {
+  try {
+    const detail = await albumDetail(id);
+    // 简单的 ID 检查
+    if (detail.album.id !== id) return;
+
+    const latestDetail = formatCoverList(detail.album)[0];
+
+    if (checkNeedsUpdate(cached, latestDetail)) {
+      console.log("Album cache expired, refreshing...");
+      getAlbumDetail(id, true);
+    }
+  } catch (e) {
+    console.error("Album background check failed", e);
+  }
 };
 
 // 处理搜索更新
