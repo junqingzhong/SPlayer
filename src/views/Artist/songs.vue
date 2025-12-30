@@ -70,7 +70,7 @@ const reachBottom = () => {
   }
 };
 
-defineExpose({ playAllSongs });
+defineExpose({ playAllSongs, songData });
 
 onMounted(getArtistAllSongs);
 </script>
