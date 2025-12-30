@@ -434,16 +434,24 @@ const initFileIpc = (): void => {
   });
 
   // 路径选择窗口
-  ipcMain.handle("choose-path", async (_, title: string) => {
+  ipcMain.handle("choose-path", async (_, title: string, multiSelect: boolean = false) => {
     try {
+      const properties: ("openDirectory" | "createDirectory" | "multiSelections")[] = [
+        "openDirectory",
+        "createDirectory",
+      ];
+      if (multiSelect) {
+        properties.push("multiSelections");
+      }
       const { filePaths } = await dialog.showOpenDialog({
         title: title ?? "选择文件夹",
         defaultPath: app.getPath("downloads"),
-        properties: ["openDirectory", "createDirectory"],
+        properties,
         buttonLabel: "选择文件夹",
       });
       if (!filePaths || filePaths.length === 0) return null;
-      return filePaths[0];
+      // 多选时返回数组，单选时返回第一个路径
+      return multiSelect ? filePaths : filePaths[0];
     } catch (error) {
       ipcLog.error("❌ Path choose error", error);
       return null;
