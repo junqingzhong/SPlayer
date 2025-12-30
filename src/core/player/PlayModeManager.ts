@@ -63,32 +63,146 @@ export class PlayModeManager {
   }
 
   /**
-   * 切换随机模式
-   * @param mode 可选，直接设置目标模式。如果不传则按 Off -> On -> Heartbeat -> Off 顺序轮转
-   * @param playAction 回调函数，用于在心动模式下触发播放。通常你应该传入 PlayerController.play，或者其他类似的方法
+   * 中止之前的请求并清除 Loading 消息
+   * @returns 新的 AbortSignal
    */
-  public async toggleShuffle(mode?: ShuffleModeType, playAction?: () => Promise<void>) {
-    const dataStore = useDataStore();
-    const statusStore = useStatusStore();
-    const musicStore = useMusicStore();
-
+  private resetCurrentTask(): AbortSignal {
     if (this.currentAbortController) {
       this.currentAbortController.abort();
     }
     this.clearLoadingMessage();
     this.currentAbortController = new AbortController();
-    const { signal } = this.currentAbortController;
+    return this.currentAbortController.signal;
+  }
+
+  /**
+   * 计算下一个随机模式
+   */
+  private calculateNextShuffleMode(
+    currentMode: ShuffleModeType,
+    targetMode?: ShuffleModeType,
+  ): ShuffleModeType {
+    if (targetMode) return targetMode;
+    if (currentMode === "off") return "on";
+    if (currentMode === "on") return "heartbeat";
+    return "off";
+  }
+
+  /**
+   * 执行开启随机模式的操作
+   */
+  private async applyShuffleOn(signal: AbortSignal) {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+    const musicStore = useMusicStore();
+
+    const currentList = [...dataStore.playList];
+    // 备份原始列表
+    await dataStore.setOriginalPlayList(currentList);
+
+    if (signal.aborted) return;
+
+    // 打乱列表
+    const shuffled = shuffleArray(currentList);
+    await dataStore.setPlayList(shuffled);
+
+    // 修正当前播放索引
+    const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
+    if (idx !== -1) statusStore.playIndex = idx;
+  }
+
+  /**
+   * 执行开启心动模式的操作
+   */
+  private async applyHeartbeatMode(
+    signal: AbortSignal,
+    previousMode: ShuffleModeType,
+    playAction?: () => Promise<void>,
+  ) {
+    const statusStore = useStatusStore();
+    const musicStore = useMusicStore();
+    const dataStore = useDataStore();
+
+    if (isLogin() !== 1) {
+      // 未登录，回滚状态
+      statusStore.shuffleMode = previousMode;
+      if (isLogin() === 0) {
+        openUserLogin(true);
+      } else {
+        window.$message.warning("该登录模式暂不支持该操作");
+      }
+      return;
+    }
+
+    if (previousMode === "heartbeat") {
+      if (playAction) await playAction();
+      statusStore.showFullPlayer = true;
+      return;
+    }
+
+    this.loadingMessage = window.$message.loading("心动模式开启中...", {
+      duration: 0, // 不自动关闭，必须手动 destroy
+    });
+
+    const pid =
+      musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
+    const currentSongId = musicStore.playSong?.id || 0;
+
+    if (!currentSongId) throw new Error("无播放歌曲");
+
+    const res = await heartRateList(currentSongId, pid, undefined, signal);
+    if (res.code !== 200) throw new Error("获取推荐失败");
+
+    const recList = formatSongsList(res.data);
+
+    // 混合列表
+    const currentList = [...dataStore.playList];
+    const mixedList = interleaveLists(currentList, recList);
+
+    await dataStore.setPlayList(mixedList);
+
+    const idx = mixedList.findIndex((s) => s.id === currentSongId);
+    if (idx !== -1) statusStore.playIndex = idx;
+
+    this.clearLoadingMessage();
+    window.$message.success("心动模式已开启");
+  }
+
+  /**
+   * 执行关闭随机模式的操作
+   *
+   * 会恢复原始列表 和/或 清理推荐歌曲
+   */
+  private async applyShuffleOff() {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+    const musicStore = useMusicStore();
+
+    // 恢复原始列表
+    const original = await dataStore.getOriginalPlayList();
+
+    if (original && original.length > 0) {
+      await dataStore.setPlayList(original);
+      const idx = original.findIndex((s) => s.id === musicStore.playSong?.id);
+      statusStore.playIndex = idx !== -1 ? idx : 0;
+      await dataStore.clearOriginalPlayList();
+    } else {
+      const cleaned = cleanRecommendations(dataStore.playList);
+      await dataStore.setPlayList(cleaned);
+    }
+  }
+
+  /**
+   * 切换随机模式
+   * @param mode 可选，直接设置目标模式。如果不传则按 Off -> On -> Heartbeat -> Off 顺序轮转
+   * @param playAction 回调函数，用于在心动模式下触发播放。通常你应该传入 PlayerController.play，或者其他类似的方法
+   */
+  public async toggleShuffle(mode?: ShuffleModeType, playAction?: () => Promise<void>) {
+    const statusStore = useStatusStore();
+    const signal = this.resetCurrentTask();
 
     const currentMode = statusStore.shuffleMode;
-    let nextMode: ShuffleModeType;
-
-    if (mode) {
-      nextMode = mode;
-    } else {
-      if (currentMode === "off") nextMode = "on";
-      else if (currentMode === "on") nextMode = "heartbeat";
-      else nextMode = "off";
-    }
+    const nextMode = this.calculateNextShuffleMode(currentMode, mode);
 
     if (nextMode === currentMode) return;
 
@@ -99,97 +213,31 @@ export class PlayModeManager {
     // 将耗时的数据处理扔到 UI 图标更新后再进行，避免打乱庞大列表导致点击延迟
     setTimeout(async () => {
       if (signal.aborted) return;
+
       try {
-        if (nextMode === "on") {
-          const currentList = [...dataStore.playList];
-          // 备份原始列表
-          await dataStore.setOriginalPlayList(currentList);
-          if (signal.aborted) return;
-          // 打乱列表
-          const shuffled = shuffleArray(currentList);
-          await dataStore.setPlayList(shuffled);
-          // 修正当前播放索引
-          const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
-          if (idx !== -1) statusStore.playIndex = idx;
-        } else if (nextMode === "heartbeat") {
-          const loginStatus = isLogin();
-          if (loginStatus !== 1) {
-            // 未登录，回滚状态
-            statusStore.shuffleMode = previousMode;
-            if (loginStatus === 0) {
-              openUserLogin(true);
-            } else {
-              window.$message.warning("该登录模式暂不支持该操作");
-            }
-            return;
-          }
-
-          if (previousMode === "heartbeat") {
-            if (playAction) await playAction();
-            statusStore.showFullPlayer = true;
-            return;
-          }
-
-          this.loadingMessage = window.$message.loading("心动模式开启中...", {
-            duration: 0, // 不自动关闭，必须手动 destroy
-          });
-
-          try {
-            const pid =
-              musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
-            const currentSongId = musicStore.playSong?.id || 0;
-
-            if (!currentSongId) throw new Error("无播放歌曲");
-
-            const res = await heartRateList(currentSongId, pid, undefined, signal);
-            if (res.code !== 200) throw new Error("获取推荐失败");
-
-            const recList = formatSongsList(res.data);
-
-            // 混合列表
-            const currentList = [...dataStore.playList];
-            const mixedList = interleaveLists(currentList, recList);
-
-            await dataStore.setPlayList(mixedList);
-
-            const idx = mixedList.findIndex((s) => s.id === currentSongId);
-            if (idx !== -1) statusStore.playIndex = idx;
-
-            this.clearLoadingMessage();
-            window.$message.success("心动模式已开启");
-          } catch (e) {
-            this.clearLoadingMessage();
-
-            if (signal.aborted || axios.isCancel(e)) {
-              return;
-            }
-
-            console.error(e);
-            window.$message.error("心动模式开启失败");
-            // 失败回滚
-            statusStore.shuffleMode = previousMode;
-          }
-        } else {
-          // 恢复原始列表
-          const original = await dataStore.getOriginalPlayList();
-
-          if (original && original.length > 0) {
-            await dataStore.setPlayList(original);
-            const idx = original.findIndex((s) => s.id === musicStore.playSong?.id);
-            statusStore.playIndex = idx !== -1 ? idx : 0;
-            await dataStore.clearOriginalPlayList();
-          } else {
-            const cleaned = cleanRecommendations(dataStore.playList);
-            await dataStore.setPlayList(cleaned);
-          }
+        switch (nextMode) {
+          case "on":
+            await this.applyShuffleOn(signal);
+            break;
+          case "heartbeat":
+            await this.applyHeartbeatMode(signal, previousMode, playAction);
+            break;
+          default:
+            await this.applyShuffleOff();
+            break;
         }
       } catch (e) {
-        if (signal.aborted) return;
+        if (signal.aborted || axios.isCancel(e)) return;
+
         this.clearLoadingMessage();
+
         console.error("切换模式时发生错误:", e);
+
         // 失败回滚
         statusStore.shuffleMode = previousMode;
-        window.$message.error("模式切换出错");
+
+        const errorMsg = (e as Error).message || "模式切换出错";
+        window.$message.error(errorMsg);
       }
     }, 10);
   }
