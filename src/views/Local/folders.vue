@@ -55,7 +55,7 @@ const folderData = computed<Record<string, SongType[]>>(() => {
   const map: Record<string, SongType[]> = {};
 
   props.data.forEach((song) => {
-    const fullPath = (song as any).path as string | undefined;
+    const fullPath = song.path;
     if (!fullPath) return;
 
     // 去掉文件名，提取目录路径

@@ -304,16 +304,18 @@ const changeLocalPath =
       if (!selectedDirs || selectedDirs.length === 0) return;
       // 转换为数组（兼容单选返回字符串的情况）
       const dirsToAdd = Array.isArray(selectedDirs) ? selectedDirs : [selectedDirs];
-      // 所有需要检查的路径
-      const allPath = [...settingStore[settingsKey]];
       // 记录成功添加的数量
       let addedCount = 0;
       let skippedCount = 0;
+      // 用于追踪本次批量添加中已添加的路径
+      const newlyAddedPaths: string[] = [];
       for (const selectedDir of dirsToAdd) {
+        // 检查时需要包含原有路径和本次已添加的路径
+        const pathsToCheck = [...settingStore[settingsKey], ...newlyAddedPaths];
         // 是否是完全相同的路径
         const isExactMatch = await window.electron.ipcRenderer.invoke(
           "check-if-same-path",
-          [...allPath, ...settingStore[settingsKey].slice(allPath.length)],
+          pathsToCheck,
           selectedDir,
         );
         if (isExactMatch) {
@@ -324,7 +326,7 @@ const changeLocalPath =
         if (includeSubFolders) {
           const isSubfolder = await window.electron.ipcRenderer.invoke(
             "check-if-subfolder",
-            [...allPath, ...settingStore[settingsKey].slice(allPath.length)],
+            pathsToCheck,
             selectedDir,
           );
           if (isSubfolder) {
@@ -334,6 +336,7 @@ const changeLocalPath =
         }
         // 通过所有检查，添加目录
         settingStore[settingsKey].push(selectedDir);
+        newlyAddedPaths.push(selectedDir);
         addedCount++;
       }
       // 显示结果提示

@@ -101,7 +101,7 @@
     <RouterView v-if="!showEmptyState" v-slot="{ Component }">
       <Transition :name="`router-${settingStore.routeAnimation}`" mode="out-in">
         <KeepAlive v-if="settingStore.useKeepAlive">
-          <component :is="Component" :data="listData" :loading="loading" class="router-view" />
+          <component :is="Component" :data="listData" :loading="loading" :list-version="listVersion" class="router-view" />
         </KeepAlive>
         <component v-else :is="Component" :data="listData" :loading="loading" class="router-view" />
       </Transition>
@@ -189,55 +189,60 @@ const localType = ref<string>((router.currentRoute.value?.name as string) || "lo
 // 选中的文件夹
 const selectedFolder = ref<string>("all");
 
-// 文件夹选项
+// 列表版本（用于触发滚动到顶部）
+const listVersion = ref<number>(0);
+
+// 文件夹选项（基于配置的目录列表）
 const folderOptions = computed(() => {
-  const map: Record<string, string> = { all: "全部文件夹" };
-  if (!localStore.localSongs.length) return [{ label: "全部文件夹", value: "all" }];
-
-  localStore.localSongs.forEach((song) => {
-    const fullPath = (song as any).path as string | undefined;
-    if (!fullPath) return;
-
-    const isWindows = fullPath.includes("\\");
+  const options: { label: string; value: string }[] = [{ label: "全部文件夹", value: "all" }];
+  
+  // 基于配置的目录列表生成选项
+  settingStore.localFilesPath.forEach((folderPath) => {
+    if (!folderPath) return;
+    const isWindows = folderPath.includes("\\");
     const sep = isWindows ? "\\" : "/";
-    // 去掉文件名，提取目录路径
-    const folderPath = fullPath.replace(/[/\\][^/\\]*$/, "") || "未知文件夹";
     const folderName = folderPath.split(sep).pop() || folderPath;
-
-    if (!map[folderPath]) map[folderPath] = folderName;
+    options.push({ label: folderName, value: folderPath });
   });
 
-  return Object.entries(map).map(([value, label]) => ({ label, value }));
+  return options;
 });
 
 // 模糊搜索数据
 const searchValue = ref<string>("");
-const searchData = ref<SongType[]>([]);
+const filteredSearchResult = ref<SongType[]>([]);
 
 // 目录管理
 const localPathShow = ref<boolean>(false);
 
-// 列表数据
-const listData = computed<SongType[]>(() => {
-  let initialData = localStore.localSongs;
-
-  // 文件夹过滤
+// 获取基于文件夹过滤后的数据
+const getFilteredData = (): SongType[] => {
+  let data = localStore.localSongs;
   if (selectedFolder.value !== "all" && settingStore.localFolderDisplayMode === "dropdown") {
-    initialData = initialData.filter((song) => {
-      const fullPath = (song as any).path as string | undefined;
-      return fullPath && fullPath.startsWith(selectedFolder.value);
+    // 标准化选中的文件夹路径（统一使用反斜杠）
+    const folderPath = selectedFolder.value.replace(/\//g, "\\");
+    data = data.filter((song) => {
+      if (!song.path) return false;
+      // 标准化歌曲路径
+      const songPath = song.path.replace(/\//g, "\\");
+      // 检查歌曲路径是否在选中的目录下
+      if (songPath === folderPath) return true;
+      if (songPath.startsWith(folderPath + "\\")) {
+        return true;
+      }
+      return false;
     });
   }
+  return data;
+};
 
-  if (searchValue.value && searchData.value.length) {
-    // 如果有搜索，在当前过滤结果中再次模糊搜索（如果 searchData 已经是经过 filter 的话）
-    // 但 searchData 原本是基于 localStore.localSongs 搜索的，所以这里要重新基于 filteredData 搜索
-    // 或者简单点，先 searchData，再 filtering
-    // 这里采取：如果有 searchValue，直接重新基于 initialData (已过滤文件夹) 进行搜索
-    return fuzzySearch(searchValue.value, initialData);
+// 列表数据
+const listData = computed<SongType[]>(() => {
+  // 如果有搜索值且有搜索结果
+  if (searchValue.value && filteredSearchResult.value.length) {
+    return filteredSearchResult.value;
   }
-
-  return initialData;
+  return getFilteredData();
 });
 
 // 是否存在配置目录与歌曲
@@ -314,7 +319,7 @@ const getAllLocalMusic = debounce(
     if (!allPath || !allPath.length) {
       // 目录列表为空，以目录为准，清空本地歌曲
       localStore.updateLocalSong([]);
-      searchData.value = [];
+      filteredSearchResult.value = [];
       loading.value = false;
       if (showTip) {
         window.$message.info("当前未配置本地目录");
@@ -381,7 +386,7 @@ const getAllLocalMusic = debounce(
       localStore.updateLocalSong(finalSongs);
       // 更新搜索数据
       if (searchValue.value) {
-        searchData.value = fuzzySearch(searchValue.value, finalSongs);
+        filteredSearchResult.value = fuzzySearch(searchValue.value, finalSongs);
       }
       // 变化统计
       const addedCount = finalSongs.length - initialSongCount;
@@ -437,16 +442,18 @@ const getAllLocalMusic = debounce(
     }
   },
   300,
-  { leading: true, trailing: false },
+  { leading: false, trailing: true },
 );
 
-// 模糊搜索
+// 模糊搜索（防抖处理）
 const listSearch = debounce((val: string) => {
   val = val.trim();
-  if (!val || val === "") return;
-  // 获取搜索结果
-  const result = fuzzySearch(val, localStore.localSongs);
-  searchData.value = result;
+  if (!val) {
+    filteredSearchResult.value = [];
+    return;
+  }
+  // 基于文件夹过滤后的数据进行搜索
+  filteredSearchResult.value = fuzzySearch(val, getFilteredData());
 }, 300);
 
 localEventBus.on(() => getAllLocalMusic());
@@ -457,6 +464,11 @@ watch(
   async () => await getAllLocalMusic(),
   { deep: true },
 );
+
+// 选中文件夹变化时更新列表版本（触发滚动到顶部）
+watch(selectedFolder, () => {
+  listVersion.value++;
+});
 
 // 处理 Tab 切换
 const handleTabUpdate = (name: string) => {
@@ -552,6 +564,7 @@ onUnmounted(() => {
         height: 40px;
         background-color: rgba(255, 255, 255, 0.04);
         border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 25px;
         .n-base-selection-label {
           height: 40px;
           line-height: 40px;
