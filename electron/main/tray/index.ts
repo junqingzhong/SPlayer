@@ -60,6 +60,22 @@ const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
       height: 16,
     });
   };
+  /**
+   * 获取 {@linkcode RepeatModeType} 对应的显示字符串
+   * @param mode 重复模式
+   * @returns 对应的显示字符串
+   */
+  const getRepeatLabel = (mode: RepeatModeType): string => {
+    switch (mode) {
+      case "one":
+        return "单曲循环";
+      case "off":
+        return "不循环";
+      case "list":
+      default:
+        return "列表循环";
+    }
+  };
   // 菜单
   const menu: MenuItemConstructorOptions[] = [
     {
@@ -90,7 +106,7 @@ const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
     },
     {
       id: "repeatMode",
-      label: repeatMode === "one" ? "单曲循环" : repeatMode === "off" ? "不循环" : "列表循环",
+      label: getRepeatLabel(repeatMode),
       icon: showIcon(repeatMode === "one" ? "repeat-once" : "repeat"),
       submenu: [
         {
