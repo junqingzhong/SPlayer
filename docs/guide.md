@@ -1,105 +1,193 @@
 # 使用指南
 
+本指南介绍如何安装和使用 SPlayer，以及如何搭建本地开发环境。
+
 ## 📦 安装方式
 
-### Docker 部署
+### 客户端下载
+
+前往 [GitHub Releases](https://github.com/imsyy/SPlayer/releases) 下载对应系统的安装包：
+
+| 系统    | 安装包格式                        |
+| ------- | --------------------------------- |
+| Windows | `.exe` (安装版) / `.zip` (便携版) |
+| macOS   | `.dmg`                            |
+| Linux   | `.AppImage` / `.deb`              |
+
+### Docker 部署 (仅 Web 版)
 
 #### 本地构建
 
-> 请尽量拉取最新分支后使用本地构建方式，在线部署的仓库可能更新不及时
+> 建议拉取最新代码后本地构建，在线镜像可能更新不及时
 
 ```bash
-# 构建
+# 构建镜像
 docker build -t splayer .
 
-# 运行
+# 运行容器
 docker run -d --name SPlayer -p 25884:25884 splayer
+
 # 或使用 Docker Compose
 docker-compose up -d
 ```
 
-#### 在线部署
+#### 在线拉取
 
 ```bash
 # 从 Docker Hub 拉取
 docker pull imsyy/splayer:latest
-# 从 GitHub ghcr 拉取
+
+# 从 GitHub Container Registry 拉取
 docker pull ghcr.io/imsyy/splayer:latest
 
-# 运行
+# 运行容器
 docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 ```
 
-以上步骤成功后，将会在本地 `localhost:25884` 启动，如需更换端口，请自行修改命令行中的端口号
+启动成功后访问 `http://localhost:25884`
 
 ### Vercel 部署
 
-> 其他部署平台大致相同，在此不做说明
-
-1. 本程序依赖 [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi) 运行，请确保您已成功部署该项目，并成功取得在线访问地址
-2. 点击本仓库右上角的 `Fork`，复制本仓库到你的 `GitHub` 账号
-3. 复制 `/.env.example` 文件并重命名为 `/.env`
-4. 将 `.env` 文件中的 `VITE_API_URL` 改为第一步得到的 API 地址
-
-   ```js
-   VITE_API_URL = "https://example.com";
+1. 先部署 [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi) 并获取 API 地址
+2. Fork 本仓库到你的 GitHub 账号
+3. 复制 `/.env.example` 为 `/.env` 并配置：
    ```
-
-5. 将 `Build and Output Settings` 中的 `Output Directory` 改为 `out/renderer`
-6. 点击 `Deploy`，即可成功部署
-
-### 服务器部署
-
-1. 重复 `Vercel 部署` 中的 1 - 4 步骤
-2. 克隆仓库
-
-   ```bash
-   git clone https://github.com/imsyy/SPlayer.git
+   VITE_API_URL = "https://your-api-url.com"
    ```
+4. 在 Vercel 导入项目
+5. 设置 `Output Directory` 为 `out/renderer`
+6. 点击 Deploy 完成部署
 
-3. 安装依赖
+## 🛠 本地开发环境
 
-   ```bash
-   pnpm install
-   # 或
-   yarn install
-   # 或
-   npm install
-   ```
+### 系统要求
 
-4. 编译打包
+- **Node.js**: v22.0.0 或更高版本 (推荐 v24 LTS)
+- **pnpm**: v8.0.0 或更高版本
+- **Git**: 最新版本
+- **操作系统**: Windows 10+, macOS 10.15+, 或 Linux
 
-   ```bash
-   pnpm build
-   # 或
-   yarn build
-   # 或
-   npm build
-   ```
+### 软件安装
 
-5. 将站点运行目录设置为 `out/renderer` 目录
+#### 1. 安装 Node.js
 
-### 本地部署
+访问 [Node.js 官网](https://nodejs.org/) 下载 LTS 版本，或使用版本管理工具：
 
-1. 本地部署需要用到 `Node.js`。可前往 [Node.js 官网](https://nodejs.org/zh-cn/) 下载安装包，请下载最新稳定版
-2. 安装 pnpm
+```bash
+# Windows (使用 winget)
+winget install OpenJS.NodeJS.LTS
 
-   ```bash
-   npm install pnpm -g
-   ```
+# macOS (使用 Homebrew)
+brew install node@24
 
-3. 克隆仓库并拉取至本地，此处不再赘述
-4. 使用 `pnpm install` 安装项目依赖（若安装过程中遇到网络错误，请使用国内镜像源替代，此处不再赘述）
-5. 复制 `/.env.example` 文件并重命名为 `/.env` 并修改配置
-6. 打包客户端，请依据你的系统类型来选择，打包成功后，会输出安装包或可执行文件在 `/dist` 目录中，可自行安装
+# Linux (使用 nvm)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+nvm install 24
+```
 
-   > 默认情况下，构建命令仅会构建当前系统架构的版本。如需构建特定架构（如 x64 + arm64），请在命令后追加参数，例如：`pnpm build:win -- --x64 --arm64`
+验证安装：
 
-   | 命令               | 系统类型 |
-   | ------------------ | -------- |
-   | `pnpm build:win`   | Windows  |
-   | `pnpm build:linux` | Linux    |
-   | `pnpm build:mac`   | MacOS    |
+```bash
+node --version   # 应显示 v22.x.x 或更高
+npm --version
+```
+
+#### 2. 安装 pnpm
+
+```bash
+npm install -g pnpm
+
+# 验证安装
+pnpm --version
+```
+
+#### 3. 安装 Git
+
+- Windows: 下载 [Git for Windows](https://git-scm.com/download/win)
+- macOS: `brew install git`
+- Linux: `sudo apt install git`
+
+#### 4. 安装 Rust (可选，仅开发原生模块时需要)
+
+访问 [rustup.rs](https://rustup.rs/) 安装 Rust 工具链：
+
+```bash
+# Windows: 下载运行 rustup-init.exe
+# macOS/Linux:
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# 验证安装
+rustc --version
+cargo --version
+```
+
+#### 5. 安装 C++ 构建工具 (Windows 原生模块开发)
+
+下载 [Visual Studio Build Tools](https://visualstudio.microsoft.com/zh-hans/visual-cpp-build-tools/)，安装时勾选：
+
+- **使用 C++ 的桌面开发**
+- MSVC v14x C++ x64/x86 build tools
+- Windows 10/11 SDK
+
+### 项目初始化
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/imsyy/SPlayer.git
+cd SPlayer
+
+# 2. 安装依赖
+pnpm install
+
+# 3. 配置环境变量
+cp .env.example .env
+# 编辑 .env 文件，配置 API 地址
+
+# 4. 构建原生模块 (Windows)
+pnpm build:native
+
+# 5. 启动开发服务器
+pnpm dev
+```
+
+### 常用开发命令
+
+| 命令                | 说明                                 |
+| ------------------- | ------------------------------------ |
+| `pnpm dev`          | 启动开发服务器 (Electron + Vite HMR) |
+| `pnpm dev:web`      | 仅启动 Web 版开发服务器              |
+| `pnpm build`        | 构建 Web 版生产包                    |
+| `pnpm build:win`    | 构建 Windows 客户端                  |
+| `pnpm build:mac`    | 构建 macOS 客户端                    |
+| `pnpm build:linux`  | 构建 Linux 客户端                    |
+| `pnpm build:native` | 构建原生插件                         |
+| `pnpm lint`         | 运行代码检查                         |
+| `pnpm format`       | 格式化代码                           |
+
+### 构建客户端
+
+```bash
+# 构建当前系统架构
+pnpm build:win
+
+# 构建指定架构
+pnpm build:win -- --x64 --arm64
+
+# 构建产物位于 dist/ 目录
+```
+
+### IDE 配置推荐
+
+#### VS Code 扩展
+
+- **Vue - Official**: Vue 3 语言支持
+- **ESLint**: 代码规范检查
+- **Prettier**: 代码格式化
+- **rust-analyzer**: Rust 语言支持 (开发原生模块时)
+
+#### 配置文件
+
+项目已配置 `.vscode/settings.json`，打开项目时 VS Code 会自动应用推荐设置。
 
 ## ⚠️ 重要提示
 
@@ -109,7 +197,7 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 
 - 请务必遵守 [GNU Affero General Public License (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html) 许可协议
 - 在您的修改、演绎、分发或派生项目中，必须同样采用 **AGPL-3.0** 许可协议，**并在适当的位置包含本项目的许可和版权信息**
-- **禁止用于售卖或其他盈利用途**，如若发现，作者保留追究法律责任的权利
+- 若您用于售卖或其他盈利用途，**必须提供本项目的源代码及原项目链接**。另外由于本项目涉及第三方，**售卖后可能遭受法律或诉讼风险**。如若发现违反许可协议，作者保留追究法律责任的权利
 - 禁止在二开项目中修改程序原版权信息（ 您可以添加二开作者信息 ）
 - 感谢您的尊重与理解
 

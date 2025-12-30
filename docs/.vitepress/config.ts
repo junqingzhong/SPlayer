@@ -40,7 +40,21 @@ export default defineConfig({
       },
       {
         text: "开发指南",
-        items: [{ text: "原生插件", link: "/native" }],
+        items: [
+          { text: "原生插件", link: "/native" },
+          { text: "贡献指南", link: "/contributing" },
+        ],
+      },
+      {
+        text: "故障排查",
+        items: [
+          { text: "调试模式和错误排查", link: "/troubleshooting/debug" },
+          { text: "macOS 常见问题", link: "/troubleshooting/macos" },
+          { text: "Mac 应用显示已损坏", link: "/troubleshooting/macos-damaged" },
+          { text: "macOS ARM 设备 API 启动失败", link: "/troubleshooting/macos-arm-api" },
+          { text: "Windows 7 系统兼容性问题", link: "/troubleshooting/windows7" },
+          { text: "Ubuntu 系统沙箱启动失败", link: "/troubleshooting/ubuntu-sandbox" },
+        ],
       },
     ],
 

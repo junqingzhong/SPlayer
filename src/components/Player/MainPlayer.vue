@@ -103,7 +103,7 @@
       </Transition>
     </div>
     <!-- 控制 -->
-    <div class="play-control">
+    <n-flex :size="8" align="center" justify="center" class="play-control">
       <!-- 随机按钮 -->
       <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
         <div class="play-icon" @click.stop="player.toggleShuffle()">
@@ -162,7 +162,7 @@
           />
         </div>
       </template>
-    </div>
+    </n-flex>
     <!-- 功能 -->
     <Transition name="fade" mode="out-in">
       <n-flex
@@ -523,15 +523,11 @@ const instantLyrics = computed(() => {
     }
   }
   .play-control {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    margin: 0 40px;
+    margin: 0 60px;
     .play-pause {
       --n-width: 44px;
       --n-height: 44px;
-      margin: 0 12px;
+      margin: 0 4px;
       transition:
         background-color 0.3s,
         transform 0.3s;

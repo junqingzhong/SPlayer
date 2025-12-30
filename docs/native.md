@@ -1,105 +1,172 @@
 # 原生插件集成指南
 
-SPlayer 使用 Rust 编写的原生插件 (`smtc-for-splayer`) 来实现更深度的系统集成，目前主要包括：
+SPlayer 使用 Rust 编写的原生插件来实现更深度的系统集成。项目包含两个独立的原生模块：
 
-- **SMTC (System Media Transport Controls)**: Windows 系统原生的媒体控制支持（系统音量浮窗、锁屏控制、任务栏缩略图控制）。
-- **Discord RPC**: 支持在 Discord 状态中展示“正在播放”的歌曲信息。
+| 模块            | 目录                             | 功能                     |
+| --------------- | -------------------------------- | ------------------------ |
+| **SMTC**        | `native/smtc-for-splayer`        | Windows 系统媒体控制集成 |
+| **Discord RPC** | `native/discord-rpc-for-splayer` | Discord 状态同步         |
 
-## 环境准备
+## SMTC 模块 (smtc-for-splayer)
 
-在开始开发或构建原生插件之前，您需要确保本地环境满足以下要求。
+### 功能介绍
 
-### 1. 安装 Rust 工具链
+SMTC (System Media Transport Controls) 是 Windows 10/11 系统原生的媒体控制接口，本模块提供以下功能：
 
-项目使用 Rust 编写，需要安装 Rust 编译器和 Cargo 包管理器。
+- **系统媒体浮窗**：在调节音量时显示当前播放歌曲信息和封面
+- **锁屏媒体控制**：在锁屏界面显示媒体控件
+- **任务栏缩略图按钮**：鼠标悬停在任务栏图标时显示播放控制按钮
+- **全局媒体键支持**：响应键盘上的媒体控制键
 
-- 访问 [Rust 官网](https://www.rust-lang.org/tools/install) 下载 `rustup-init.exe` 并安装。
-- 安装完成后，在终端运行以下命令验证安装：
-  ```bash
-  rustc --version
-  cargo --version
-  ```
+### 技术实现
 
-### 2. 安装 C++ 构建工具 (Windows)
+- 使用 `windows-rs` crate 调用 Windows Runtime API
+- 通过 N-API 导出函数供 Electron 主进程调用
+- 支持元数据更新、播放状态同步、进度条控制等
 
-Rust 在 Windows 上通常依赖 MSVC 工具链进行链接。
+### 目录结构
 
-- 安装 **Visual Studio Build Tools** (或者 Visual Studio Community)。
-- 在安装选项中，勾选 **"使用 C++ 的桌面开发" (Desktop development with C++)**。
-- 确保勾选了 **MSVC v14x ... C++ x64/x86 build tools** 和 **Windows 10/11 SDK**。
+```
+native/smtc-for-splayer/
+├── src/
+│   ├── lib.rs          # 模块入口，导出 N-API 函数
+│   ├── smtc_core.rs    # SMTC 核心实现
+│   ├── model.rs        # 数据模型定义
+│   └── logger.rs       # 日志模块
+├── Cargo.toml          # Rust 依赖配置
+└── index.d.ts          # 自动生成的 TypeScript 类型定义
+```
 
-### 3. 安装 Node.js 依赖
+### 构建命令
 
-项目使用 `@napi-rs/cli` 来构建 Node.js 扩展。通常在运行 `pnpm install` 时会自动安装所需的构建工具。
+```bash
+cd native/smtc-for-splayer
+pnpm build           # 构建 release 版本
+pnpm build:debug     # 构建 debug 版本
+```
 
----
+### 日志路径
 
-## 构建与安装
+- **开发环境**：`native/smtc-for-splayer/logs/`
+- **生产环境**：`%APPDATA%/SPlayer/logs/smtc/`
 
-项目内置了方便的脚本来处理原生插件的编译和集成。
+## Discord RPC 模块 (discord-rpc-for-splayer)
 
-### 自动构建
+### 功能介绍
 
-在项目根目录下运行以下命令，会自动编译 Rust 代码并将生成的 `.node` 文件移动到正确的位置：
+Discord RPC (Rich Presence) 模块用于在 Discord 状态中显示正在播放的歌曲信息：
+
+- **状态同步**：在 Discord 个人资料显示 "正在听 - XXX"
+- **歌曲卡片**：显示歌曲名、歌手、专辑封面
+- **进度显示**：显示播放进度条
+- **快捷按钮**：一键跳转到网易云音乐歌曲页面
+
+### 显示模式
+
+用户可以在设置中选择左下角状态栏的显示内容：
+
+| 模式       | 显示内容               | 说明         |
+| ---------- | ---------------------- | ------------ |
+| 仅歌曲名   | `正在听 歌曲名`        | 默认选项     |
+| 完整信息   | `正在听 歌曲名 - 歌手` | 显示完整信息 |
+| 仅播放状态 | `正在听 SPlayer`       | 仅显示应用名 |
+
+### 技术实现
+
+- 使用 `discord-rich-presence` crate (v1.0) 与 Discord IPC 通信
+- 实现自动重连机制，Discord 未运行时每 5 秒尝试连接
+- 暂停时使用时间戳 hack 实现进度条静止效果
+- 支持 `StatusDisplayType` 控制状态栏显示内容
+
+### 目录结构
+
+```
+native/discord-rpc-for-splayer/
+├── src/
+│   ├── lib.rs           # 模块入口，导出 N-API 函数
+│   ├── discord_core.rs  # Discord RPC 核心逻辑
+│   └── model.rs         # 数据模型和枚举定义
+├── Cargo.toml           # Rust 依赖配置
+└── index.d.ts           # 自动生成的 TypeScript 类型定义
+```
+
+### 构建命令
+
+```bash
+cd native/discord-rpc-for-splayer
+pnpm build           # 构建 release 版本
+pnpm build:debug     # 构建 debug 版本
+```
+
+## 统一构建
+
+在项目根目录运行以下命令可一次性构建所有原生模块：
 
 ```bash
 pnpm build:native
 ```
 
-此命令会执行以下操作：
+此命令会执行 `scripts/build-native.mjs` 脚本，依次构建：
 
-1.  调用 `script/build-native.mjs` 脚本。
-2.  进入 `native/smtc-for-splayer` 目录。
-3.  运行 `napi build --release` 进行优化的发布版编译。
-4.  生成的二进制文件会被放置在项目所需的位置，供 Electron 加载。
+1. Discord RPC 模块
+2. SMTC 模块
 
-### 手动构建 (调试用)
+构建产物会自动放置到各模块目录，供 Electron 加载使用。
 
-如果您需要调试 Rust 代码，可以进入插件目录手动构建：
+## 环境要求
+
+### Rust 工具链
 
 ```bash
-cd native/smtc-for-splayer
-pnpm build         # 构建 release 版本
-pnpm build:debug   # 构建 debug 版本
+# 安装 Rust (访问 https://rustup.rs/)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# 验证安装
+rustc --version
+cargo --version
 ```
 
----
+### Windows 构建工具
 
-## 常见问题排查
+SMTC 模块依赖 Windows SDK，需要安装：
 
-### 1. `Error: The specified module could not be found`
+1. 下载 [Visual Studio Build Tools](https://visualstudio.microsoft.com/zh-hans/visual-cpp-build-tools/)
+2. 安装时勾选 **"使用 C++ 的桌面开发"**
+3. 确保包含以下组件：
+   - MSVC v14x C++ x64/x86 build tools
+   - Windows 10/11 SDK
 
-如果在启动 Electron 时遇到此错误，通常是因为：
+## 常见问题
 
-- **未编译插件**：请先运行 `pnpm build:native`。
-- **架构不匹配**：确保您的 Node.js/Electron 架构（通常是 x64）与 Rust 编译目标一致。
+### 模块加载失败
 
-### 2. `LINK : fatal error LNK1181: cannot open input file ...`
+```
+Error: The specified module could not be found
+```
 
-这是缺少 Windows SDK 或 C++ 构建工具的典型错误。
+**解决方案**：
 
-- 请检查 Visual Studio Build Tools 是否正确安装了 C++ 桌面开发组件。
+- 运行 `pnpm build:native` 编译原生模块
+- 确保系统架构 (x64/arm64) 与编译目标匹配
 
-### 3. 插件功能未生效
+### 链接错误
 
-- **SMTC**: 仅在 Windows 10/11 上可用。请检查系统设置中的“系统 > 声音”或锁屏界面是否出现了媒体控件。
-- **Discord RPC**: 需要 Discord 客户端在后台运行。可以在设置中检查“显示 Discord 状态”开关是否开启。
+```
+LINK : fatal error LNK1181: cannot open input file
+```
 
-### 4. 日志查看
+**解决方案**：
 
-原生插件的日志默认记录在应用数据目录下的 `logs/smtc/` 文件夹中。
+- 检查 Visual Studio Build Tools 是否正确安装
+- 确保 Windows SDK 已安装
 
-- 开发环境日志路径参考: `native/smtc-for-splayer/smtc-for-splayer.log` (取决于具体配置)
-- 生产环境：`%APPDATA%/SPlayer/logs/smtc/`
+### SMTC 不生效
 
----
+- 仅 Windows 10/11 支持
+- 检查系统设置 → 系统 → 声音 中是否显示媒体控件
 
-## 开发指南
+### Discord RPC 不显示
 
-如果您希望贡献或修改原生插件代码，请参考以下结构：
-
-- **入口**: `native/smtc-for-splayer/src/lib.rs` (定义了导出给 JS 的函数)
-- **核心逻辑**:
-  - `smtc_core.rs`: SMTC 的核心实现，处理 Windows API 调用。
-  - `discord.rs`: Discord RPC 的连接与状态更新逻辑，包含重连机制和防抖处理。
-- **类型定义**: `native/smtc-for-splayer/index.d.ts` (自动生成，供 TypeScript 使用)
+- 确保 Discord 客户端在后台运行
+- 检查设置 → 活动隐私 → 允许其他人看到你的活动
+- 查看应用设置中 Discord 状态开关是否开启
