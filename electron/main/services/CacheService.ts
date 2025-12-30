@@ -1,17 +1,22 @@
 import { join, resolve, dirname } from "path";
 import { existsSync } from "fs";
 import { readdir, readFile, rm, stat, writeFile, mkdir, utimes } from "fs/promises";
+import { gzip, gunzip } from "zlib";
+import { promisify } from "util";
 import { useStore } from "../store";
 import { cacheLog } from "../logger";
+
+const gzipAsync = promisify(gzip);
+const gunzipAsync = promisify(gunzip);
 
 /**
  * 缓存资源类型
  * - music: 音乐缓存
  * - lyrics: 歌词缓存
  * - local-data: 本地音乐数据缓存
- * - playlist-data: 歌单数据缓存
+ * - list-data: 列表数据缓存（歌单/专辑/电台）
  */
-export type CacheResourceType = "music" | "lyrics" | "local-data" | "playlist-data";
+export type CacheResourceType = "music" | "lyrics" | "local-data" | "list-data";
 
 /**
  * 缓存列表项信息
@@ -35,7 +40,7 @@ export class CacheService {
     music: 0,
     lyrics: 0,
     "local-data": 0,
-    "playlist-data": 0,
+    "list-data": 0,
   };
 
   private isInitialized: boolean = false;
@@ -44,7 +49,7 @@ export class CacheService {
     music: "music",
     lyrics: "lyrics",
     "local-data": "local-data",
-    "playlist-data": "playlist-data",
+    "list-data": "list-data",
   };
 
   private constructor() {}
@@ -201,7 +206,6 @@ export class CacheService {
 
     const { target } = this.resolveSafePath(type, key);
     const buffer = this.toBuffer(data);
-    const newSize = buffer.length;
 
     // 检查旧文件大小
     let oldSize = 0;
@@ -220,10 +224,23 @@ export class CacheService {
       await mkdir(parentDir, { recursive: true });
     }
 
-    await writeFile(target, buffer);
+    // 如果是 list-data，进行 Gzip 压缩
+    let dataToWrite = buffer;
+    if (type === "list-data") {
+      try {
+        dataToWrite = await gzipAsync(buffer);
+      } catch (e) {
+        cacheLog.error("Gzip compression failed:", e);
+        // 降级为不压缩? 或者抛出错误?
+        // 这里选择抛出，保证数据一致性（读取时会尝试解压）
+        throw e;
+      }
+    }
+
+    await writeFile(target, dataToWrite);
 
     // 更新大小记录
-    this.sizes[type] = this.sizes[type] - oldSize + newSize;
+    this.sizes[type] = this.sizes[type] - oldSize + dataToWrite.length;
   }
 
   /**
@@ -242,7 +259,21 @@ export class CacheService {
       // 忽略 utimes 失败
     }
 
-    return await readFile(target);
+    const buffer = await readFile(target);
+
+    // 如果是 list-data，进行 Gzip 解压
+    if (type === "list-data") {
+      try {
+        return await gunzipAsync(buffer);
+      } catch (e) {
+        cacheLog.error("Gzip decompression failed:", e);
+        // 如果解压失败，可能是旧的未压缩数据？
+        // 尝试直接返回原数据（兼容旧数据）
+        return buffer;
+      }
+    }
+
+    return buffer;
   }
 
   /**

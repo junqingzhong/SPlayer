@@ -177,9 +177,17 @@ const toSearch = async (key: any, type: string = "keyword") => {
   }
 };
 
+// 监听设置变化
+watch([() => settingStore.enableSearchKeyword, () => settingStore.useOnlineService], () => {
+  updatePlaceholder();
+});
+
 onMounted(() => {
-  // 每分钟更新
-  if (settingStore.useOnlineService && settingStore.enableSearchKeyword) {
+  // 确保在线服务开启
+  if (settingStore.useOnlineService) {
+    // 立即更新一次
+    updatePlaceholder();
+    // 开启定时器
     useIntervalFn(updatePlaceholder, 60 * 1000, { immediate: true });
   }
 });

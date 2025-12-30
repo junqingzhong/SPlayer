@@ -22,7 +22,7 @@ type CoverDataType = {
 export const formatSongsList = (data: any[]): SongType[] => {
   if (!data) return [];
   data = isArray(data) ? data : [data];
-  return data.map((item) => {
+  return data.filter(Boolean).map((item) => {
     // 特殊处理
     item = item?.simpleSong ? { ...item.simpleSong, pc: true } : item?.songInfo || item;
     // 歌手数据
@@ -88,7 +88,7 @@ export const formatSongsList = (data: any[]): SongType[] => {
 export const formatCoverList = (data: any[]): CoverType[] => {
   if (!data) return [];
   data = isArray(data) ? data : [data];
-  return data.map((item) => {
+  return data.filter(Boolean).map((item) => {
     // 处理数据
     const creator = isArray(item.creator) ? item.creator[0] : item.creator;
     // 获取歌手信息
@@ -133,7 +133,7 @@ export const formatCoverList = (data: any[]): CoverType[] => {
       likedCount: item.likedCount,
       duration: msToTime(item.duration || item.dt || item.playTime),
       createTime: item.createTime || item.publishTime,
-      updateTime: item.updateTime || item.trackNumberUpdateTime,
+      updateTime: item.updateTime || item.trackNumberUpdateTime || item.trackUpdateTime,
       // 热榜特殊数据
       tracks: item.tracks,
     };
@@ -148,7 +148,7 @@ export const formatCoverList = (data: any[]): CoverType[] => {
 export const formatArtistsList = (data: any[]): ArtistType[] => {
   if (!data) return [];
   data = isArray(data) ? data : [data];
-  return data.map((item) => ({
+  return data.filter(Boolean).map((item) => ({
     id: item.id,
     name: item.name,
     ...getCoverUrl(item),
@@ -168,8 +168,9 @@ export const formatArtistsList = (data: any[]): ArtistType[] => {
  * @returns 格式化后的评论列表
  */
 export const formatCommentList = (data: any[]): CommentType[] => {
+  if (!data) return [];
   data = isArray(data) ? data : [data];
-  return data.map((item) => ({
+  return data.filter(Boolean).map((item) => ({
     id: item.commentId,
     content: item.content,
     beReplied:
@@ -210,8 +211,9 @@ export const formatCommentList = (data: any[]): CommentType[] => {
  * @returns 格式化后的分类列表
  */
 export const formatCategoryList = (data: any[]): CatType[] => {
+  if (!data) return [];
   data = isArray(data) ? data : [data];
-  return data.map((item) => ({
+  return data.filter(Boolean).map((item) => ({
     name: item.name,
     category: item.category,
     hot: item.hot,
@@ -359,23 +361,30 @@ export type TimeDisplayType = "current" | "total" | "remaining";
 
 // 歌曲播放时间显示格式
 export const TIME_FORMATS = ["current-total", "remaining-total", "current-remaining"] as const;
-export type TimeFormat = typeof TIME_FORMATS[number];
+export type TimeFormat = (typeof TIME_FORMATS)[number];
 
 export const displayTimeFormat = (format: TimeFormat): [TimeDisplayType, TimeDisplayType] => {
   switch (format) {
-    case "current-total":     return ["current",   "total"];
-    case "remaining-total":   return ["remaining", "total"];
-    case "current-remaining": return ["current",   "remaining"];
+    case "current-total":
+      return ["current", "total"];
+    case "remaining-total":
+      return ["remaining", "total"];
+    case "current-remaining":
+      return ["current", "remaining"];
   }
 };
 
-export const getTimeDisplay = (
-  format: () => TimeFormat, statusStore: { currentTime: number, duration: number }
-) => (index: number) => computed(() => {
-  const display = displayTimeFormat(format())[index];
-  switch (display) {
-    case "current":   return msToTime(statusStore.currentTime);
-    case "total":     return msToTime(statusStore.duration);
-    case "remaining": return "-" + msToTime(statusStore.duration - statusStore.currentTime);
-  }
-});
+export const getTimeDisplay =
+  (format: () => TimeFormat, statusStore: { currentTime: number; duration: number }) =>
+  (index: number) =>
+    computed(() => {
+      const display = displayTimeFormat(format())[index];
+      switch (display) {
+        case "current":
+          return msToTime(statusStore.currentTime);
+        case "total":
+          return msToTime(statusStore.duration);
+        case "remaining":
+          return "-" + msToTime(statusStore.duration - statusStore.currentTime);
+      }
+    });

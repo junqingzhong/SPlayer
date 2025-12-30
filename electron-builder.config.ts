@@ -25,7 +25,13 @@ const config: Configuration = {
   asarUnpack: ["public/**"],
   // 将原生插件作为外部资源复制
   extraResources: [
-    // 原生插件目前只有 Windows 版本，其他平台返回空数组
+    // Discord RPC
+    {
+      from: "native/discord-rpc-for-splayer",
+      to: "native",
+      filter: ["*.node"],
+    },
+    // SMTC - 仅 Windows
     ...(process.platform === "win32"
       ? [
           {
