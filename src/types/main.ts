@@ -101,6 +101,11 @@ export type SongType = {
    * song: 歌曲 | radio: 电台
    */
   type: "song" | "radio";
+  /**
+   * 是否为心动模式插入的歌曲，
+   * 用于在退出心动模式时清理这些歌曲
+   */
+  isRecommendation?: boolean;
 };
 
 // Cover
@@ -164,14 +169,6 @@ export type CommentType = {
   liked?: boolean;
   likedCount?: number;
 };
-
-/**
- * 播放模式
- * - repeat: 重复播放
- * - repeat-once: 重复播放当前歌曲
- * - shuffle: 随机播放
- */
-export type PlayModeType = "repeat" | "repeat-once" | "shuffle";
 
 /**
  * 歌词内容类型
@@ -275,7 +272,15 @@ export type SongLevelDataType = {
 };
 
 // setting
-export type SettingType = "general" | "play" | "lyrics" | "keyboard" | "local" | "third" | "other" | "about";
+export type SettingType =
+  | "general"
+  | "play"
+  | "lyrics"
+  | "keyboard"
+  | "local"
+  | "third"
+  | "other"
+  | "about";
 
 // UpdateLog
 export type UpdateLogType = {

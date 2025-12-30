@@ -1,12 +1,12 @@
-import { isElectron } from "./env";
-import { openSetting, openUpdateApp } from "./modal";
-import { useMusicStore, useDataStore, useStatusStore } from "@/stores";
-import { toLikeSong } from "./auth";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { cloneDeep } from "lodash-es";
+import { useDataStore, useMusicStore, useStatusStore } from "@/stores";
 import { SettingType } from "@/types/main";
 import { handleProtocolUrl } from "@/utils/protocol";
+import { cloneDeep } from "lodash-es";
+import { toLikeSong } from "./auth";
+import { isElectron } from "./env";
 import { getPlayerInfoObj } from "./format";
+import { openSetting, openUpdateApp } from "./modal";
 
 // 关闭更新状态
 const closeUpdateStatus = () => {
@@ -34,7 +34,8 @@ const initIpc = () => {
     // 音量减
     window.electron.ipcRenderer.on("volumeDown", () => player.setVolume("down"));
     // 播放模式切换
-    window.electron.ipcRenderer.on("changeMode", (_, mode) => player.togglePlayMode(mode));
+    window.electron.ipcRenderer.on("changeRepeat", (_, mode) => player.toggleRepeat(mode));
+    window.electron.ipcRenderer.on("toggleShuffle", (_, mode) => player.toggleShuffle(mode));
     // 喜欢歌曲
     window.electron.ipcRenderer.on("toggle-like-song", async () => {
       const dataStore = useDataStore();

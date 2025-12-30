@@ -104,6 +104,16 @@
     </div>
     <!-- 控制 -->
     <div class="play-control">
+      <!-- 随机按钮 -->
+      <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
+        <div class="play-icon" @click.stop="player.toggleShuffle()">
+          <SvgIcon
+            :name="statusStore.shuffleIcon"
+            :size="20"
+            :depth="statusStore.shuffleMode === 'off' ? 3 : 1"
+          />
+        </div>
+      </template>
       <!-- 不喜欢 -->
       <div
         v-if="statusStore.personalFmMode"
@@ -142,6 +152,16 @@
       <div class="play-icon" v-debounce="() => player.nextOrPrev('next')">
         <SvgIcon :size="26" name="SkipNext" />
       </div>
+      <!-- 循环按钮 -->
+      <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
+        <div class="play-icon" @click.stop="player.toggleRepeat()">
+          <SvgIcon
+            :name="statusStore.repeatIcon"
+            :size="20"
+            :depth="statusStore.repeatMode === 'off' ? 3 : 1"
+          />
+        </div>
+      </template>
     </div>
     <!-- 功能 -->
     <Transition name="fade" mode="out-in">
@@ -187,11 +207,12 @@
 </template>
 
 <script setup lang="ts">
-import type { DropdownOption } from "naive-ui";
-import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { convertSecondsToTime } from "@/utils/time";
-import { renderIcon, coverLoaded, copyData } from "@/utils/helper";
+import { usePlayerController } from "@/core/player/PlayerController";
+import { useSongManager } from "@/core/player/SongManager";
+import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { toLikeSong } from "@/utils/auth";
+import { getTimeDisplay, TIME_FORMATS } from "@/utils/format";
+import { copyData, coverLoaded, renderIcon } from "@/utils/helper";
 import {
   openAutoClose,
   openChangeRate,
@@ -199,9 +220,8 @@ import {
   openJumpArtist,
   openPlaylistAdd,
 } from "@/utils/modal";
-import { useSongManager } from "@/core/player/SongManager";
-import { usePlayerController } from "@/core/player/PlayerController";
-import { getTimeDisplay, TIME_FORMATS } from "@/utils/format";
+import { convertSecondsToTime } from "@/utils/time";
+import type { DropdownOption } from "naive-ui";
 
 const router = useRouter();
 const dataStore = useDataStore();
@@ -217,7 +237,7 @@ const timeDisplay0 = timeDisplay(0);
 const timeDisplay1 = timeDisplay(1);
 
 const toggleTimeFormat = () => {
-  const currentIndex = TIME_FORMATS.indexOf(settingStore.timeFormatMainPlayer)
+  const currentIndex = TIME_FORMATS.indexOf(settingStore.timeFormatMainPlayer);
   settingStore.timeFormatMainPlayer = TIME_FORMATS[(currentIndex + 1) % TIME_FORMATS.length];
 };
 
@@ -537,6 +557,7 @@ const instantLyrics = computed(() => {
         background-color 0.3s,
         transform 0.3s;
       cursor: pointer;
+      margin: 0 2px;
       .n-icon {
         color: var(--primary-hex);
       }

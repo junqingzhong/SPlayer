@@ -76,11 +76,11 @@
 </template>
 
 <script setup lang="ts">
+import { usePlayerController } from "@/core/player/PlayerController";
+import { useSongManager } from "@/core/player/SongManager";
 import { useMusicStore, useStatusStore } from "@/stores";
 import { coverLoaded } from "@/utils/helper";
 import { debounce, isObject } from "lodash-es";
-import { useSongManager } from "@/core/player/SongManager";
-import { usePlayerController } from "@/core/player/PlayerController";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
@@ -100,7 +100,7 @@ const fmPlayOrPause = () => {
   } else {
     // 更改播放模式
     statusStore.personalFmMode = true;
-    statusStore.playHeartbeatMode = false;
+    statusStore.shuffleMode = "off";
     player.playSong();
   }
 };
@@ -108,7 +108,7 @@ const fmPlayOrPause = () => {
 // 下一曲
 const fmPlayNext = debounce(() => {
   statusStore.personalFmMode = true;
-  statusStore.playHeartbeatMode = false;
+  statusStore.shuffleMode = "off";
   player.nextOrPrev("next");
 }, 300);
 

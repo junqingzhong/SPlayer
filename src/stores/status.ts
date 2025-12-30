@@ -1,7 +1,8 @@
-import { defineStore } from "pinia";
+import type { ColorScheme, RGB } from "@/types/main";
 import { QualityType, type SortType } from "@/types/main";
-import type { PlayModeType, RGB, ColorScheme } from "@/types/main";
+import { RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isDevBuild } from "@/utils/env";
+import { defineStore } from "pinia";
 
 interface StatusState {
   /** 菜单折叠状态 */
@@ -28,10 +29,18 @@ interface StatusState {
   playVolume: number;
   /** 静音前音量 */
   playVolumeMute: number;
-  /** 播放模式 */
-  playSongMode: PlayModeType;
-  /** 心动模式 */
-  playHeartbeatMode: boolean;
+  /**
+   * 循环模式
+   *
+   * off: 关闭 | list: 列表循环 | one: 单曲循环
+   */
+  repeatMode: RepeatModeType;
+  /**
+   * 随机模式
+   *
+   * off: 关闭 | on: 随机播放 | heartbeat: 心动模式
+   */
+  shuffleMode: ShuffleModeType;
   /** 封面主题 */
   songCoverTheme: {
     /** 封面主题颜色 */
@@ -122,8 +131,8 @@ export const useStatusStore = defineStore("status", {
     playRate: 1,
     playVolume: 0.7,
     playVolumeMute: 0,
-    playSongMode: "repeat",
-    playHeartbeatMode: false,
+    repeatMode: "off",
+    shuffleMode: "off",
     personalFmMode: false,
     mainContentHeight: 0,
     listSort: "default",
@@ -153,16 +162,17 @@ export const useStatusStore = defineStore("status", {
             ? "VolumeDown"
             : "VolumeUp";
     },
-    // 播放模式图标
-    playModeIcon(state) {
-      const mode = state.playSongMode;
-      return state.playHeartbeatMode
-        ? "HeartBit"
-        : mode === "repeat"
-          ? "Repeat"
-          : mode === "repeat-once"
-            ? "RepeatSong"
-            : "Shuffle";
+    shuffleIcon(state) {
+      if (state.shuffleMode === "heartbeat") {
+        return "HeartBit";
+      }
+      return "Shuffle";
+    },
+    repeatIcon(state) {
+      if (state.repeatMode === "one") {
+        return "RepeatSong";
+      }
+      return "Repeat";
     },
     // 音量百分比
     playVolumePercent(state) {
@@ -231,6 +241,32 @@ export const useStatusStore = defineStore("status", {
       }
     },
     /**
+     * 切换循环模式
+     * 顺序: List -> One -> Off -> List
+     */
+    toggleRepeat() {
+      if (this.repeatMode === "list") {
+        this.repeatMode = "one";
+      } else if (this.repeatMode === "one") {
+        this.repeatMode = "off";
+      } else {
+        this.repeatMode = "list";
+      }
+    },
+    /**
+     * 切换随机模式
+     * 顺序: Off -> On -> Heartbeat -> Off
+     */
+    toggleShuffle() {
+      if (this.shuffleMode === "off") {
+        this.shuffleMode = "on";
+      } else if (this.shuffleMode === "on") {
+        this.shuffleMode = "heartbeat";
+      } else {
+        this.shuffleMode = "off";
+      }
+    },
+    /**
      * 设置 EQ 开关
      * @param enabled 是否开启
      */
@@ -265,9 +301,10 @@ export const useStatusStore = defineStore("status", {
         playLoading: false,
         playListShow: false,
         showFullPlayer: false,
-        playHeartbeatMode: false,
         personalFmMode: false,
         playIndex: -1,
+        repeatMode: "off",
+        shuffleMode: "off",
       });
     },
   },
@@ -287,11 +324,11 @@ export const useStatusStore = defineStore("status", {
       "playVolume",
       "playVolumeMute",
       "playSongType",
-      "playSongMode",
+      "repeatMode",
+      "shuffleMode",
       "songCoverTheme",
       "listSort",
       "showDesktopLyric",
-      "playHeartbeatMode",
       "personalFmMode",
       "autoClose",
       "eqEnabled",

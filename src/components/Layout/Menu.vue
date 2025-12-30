@@ -17,25 +17,25 @@
 </template>
 
 <script setup lang="ts">
-import {
-  type MenuOption,
-  type MenuGroupOption,
-  type MenuInst,
-  NText,
-  NButton,
-  NEllipsis,
-  NAvatar,
-  NBadge,
-} from "naive-ui";
+import { usePlayerController } from "@/core/player/PlayerController";
+import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import type { CoverType } from "@/types/main";
-import { useStatusStore, useSettingStore, useDataStore, useMusicStore } from "@/stores";
-import { useRouter, RouterLink } from "vue-router";
+import { isLogin } from "@/utils/auth";
+import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
 import { openCreatePlaylist } from "@/utils/modal";
 import { debounce } from "lodash-es";
-import { isLogin } from "@/utils/auth";
-import { isElectron } from "@/utils/env";
-import { usePlayerController } from "@/core/player/PlayerController";
+import {
+  type MenuGroupOption,
+  type MenuInst,
+  type MenuOption,
+  NAvatar,
+  NBadge,
+  NButton,
+  NEllipsis,
+  NText,
+} from "naive-ui";
+import { RouterLink, useRouter } from "vue-router";
 
 const router = useRouter();
 const dataStore = useDataStore();
@@ -105,7 +105,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
               h(NText, null, () => "我喜欢的音乐"),
               !settingStore.hideHeartbeatMode
                 ? h(NButton, {
-                    type: statusStore.playHeartbeatMode ? "primary" : "default",
+                    type: statusStore.shuffleMode === "heartbeat" ? "primary" : "default",
                     round: true,
                     strong: true,
                     secondary: true,
@@ -271,7 +271,7 @@ const menuUpdate = (key: string, item: MenuOption) => {
     } else {
       // 更改播放模式
       statusStore.personalFmMode = true;
-      statusStore.playHeartbeatMode = false;
+      statusStore.shuffleMode = "off";
       player.playSong();
     }
     statusStore.showFullPlayer = true;
@@ -345,7 +345,7 @@ const checkMenuItem = () => {
 };
 
 // 开启心动模式
-const openHeartMode = debounce(() => player.toggleHeartMode(), 1000, {
+const openHeartMode = debounce(() => player.toggleShuffle("heartbeat"), 1000, {
   leading: true,
   trailing: false,
 });

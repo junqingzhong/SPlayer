@@ -15,19 +15,7 @@
         <SvgIcon name="Controls" />
       </div>
     </n-dropdown>
-    <!-- 播放模式 -->
-    <n-dropdown
-      v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode"
-      :options="playModeOptions"
-      :show-arrow="false"
-      :class="{ player: statusStore.showFullPlayer }"
-      @select="(mode) => player.togglePlayMode(mode)"
-    >
-      <div class="menu-icon" @click.stop="player.togglePlayMode(false)">
-        <SvgIcon :name="statusStore.playModeIcon" />
-      </div>
-    </n-dropdown>
-    <!-- 音量调节 -->
+
     <n-popover
       :show-arrow="false"
       :style="{ padding: 0 }"
@@ -69,39 +57,19 @@
 </template>
 
 <script setup lang="ts">
-import type { DropdownOption } from "naive-ui";
-import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
-import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
+import { usePlayerController } from "@/core/player/PlayerController";
+import { useDataStore, useSettingStore, useStatusStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
-import { usePlayerController } from "@/core/player/PlayerController";
+import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
+import type { DropdownOption } from "naive-ui";
 
 const dataStore = useDataStore();
-const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
 
-// 播放模式数据
-const playModeOptions: DropdownOption[] = [
-  {
-    label: "列表循环",
-    key: "repeat",
-    icon: renderIcon("Repeat"),
-  },
-  {
-    label: "单曲循环",
-    key: "repeat-once",
-    icon: renderIcon("RepeatSong"),
-  },
-  {
-    label: "随机播放",
-    key: "shuffle",
-    icon: renderIcon("Shuffle"),
-  },
-];
-
-// 其他控制：播放速度下拉菜单
+// 播放速度下拉菜单
 const controlsOptions = computed<DropdownOption[]>(() => [
   {
     label: "均衡器",

@@ -1,14 +1,13 @@
-import { MessageApi, DialogApi, NotificationApi, LoadingBarApi, ModalApi } from "naive-ui";
+import { DialogApi, LoadingBarApi, MessageApi, ModalApi, NotificationApi } from "naive-ui";
 
+import type { DiscordConfigPayload } from "@discord-rpc";
 import type {
   MetadataParam,
-  PlayStatePayload,
-  TimelinePayload,
   PlayModePayload,
+  PlayStatePayload,
   SmtcEvent,
+  TimelinePayload,
 } from "@native";
-import { DiscordDisplayMode } from "./smtc";
-import type { DiscordConfigPayload } from "@discord-rpc";
 
 export { DiscordConfigPayload };
 

@@ -11,14 +11,16 @@
     "electron/main/index.d.ts",
     "electron/preload/index.d.ts",
     "electron/preload/index.ts",
-    "src/assets/data/*"
+    "src/assets/data/*",
+    "src/types/shared.ts"
   ],
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"],
     "paths": {
       "@native": ["./native/smtc-for-splayer"],
-      "@discord-rpc": ["./native/discord-rpc-for-splayer"]
+      "@discord-rpc": ["./native/discord-rpc-for-splayer"],
+      "@shared": ["./src/types/shared.ts"]
     }
   }
 }
