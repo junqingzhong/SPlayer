@@ -152,7 +152,7 @@ import type { DropdownOption } from "naive-ui";
 import type { ArtistType } from "@/types/main";
 import { coverLoaded, renderIcon, copyData } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
-import { openDescModal } from "@/utils/modal";
+import { openDescModal, openBatchList } from "@/utils/modal";
 import { artistDetail } from "@/api/artist";
 import { formatArtistsList } from "@/utils/format";
 import { useDataStore, useSettingStore } from "@/stores";
@@ -181,6 +181,25 @@ const listScrolling = ref<boolean>(false);
 
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
+  {
+    label: "批量操作",
+    key: "batch",
+    show: artistType.value === "artist-songs",
+    props: {
+      onClick: () => {
+        if (componentRef.value?.songData) {
+          openBatchList(
+            componentRef.value.songData,
+            false,
+            isLikeArtist.value ? artistId.value : undefined,
+          );
+        } else {
+          window.$message.warning("暂无歌曲可操作");
+        }
+      },
+    },
+    icon: renderIcon("Batch"),
+  },
   {
     label: "复制分享链接",
     key: "copy",
