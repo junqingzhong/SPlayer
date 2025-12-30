@@ -213,6 +213,8 @@ export interface SettingState {
   excludeRegexes: string[];
   /** 显示默认本地路径 */
   showDefaultLocalPath: boolean;
+  /** 本地文件夹显示模式 */
+  localFolderDisplayMode: "tab" | "dropdown";
   /** 展示当前歌曲歌词状态信息 */
   showPlayMeta: boolean;
   /** 显示歌曲音质 */
@@ -369,6 +371,7 @@ export const useSettingStore = defineStore("setting", {
     localFilesPath: [],
     localLyricPath: [],
     showDefaultLocalPath: true,
+    localFolderDisplayMode: "dropdown",
     localSeparators: ["/", "&"],
     showLocalCover: true,
     downloadPath: "",

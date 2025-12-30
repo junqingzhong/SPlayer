@@ -135,7 +135,6 @@ const playButtonText = computed(() => {
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
   {
-  {
     label: "批量操作",
     key: "batch",
     props: {

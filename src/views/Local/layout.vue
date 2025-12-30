@@ -52,6 +52,15 @@
             </template>
           </n-button>
         </n-dropdown>
+        <!-- 文件夹选择 -->
+        <n-select
+          v-if="isLocalSongsRoute && settingStore.localFolderDisplayMode === 'dropdown'"
+          v-model:value="selectedFolder"
+          :options="folderOptions"
+          class="folder-select"
+          size="medium"
+          style="width: 200px"
+        />
       </n-flex>
       <n-flex class="right" justify="end">
         <!-- 模糊搜索 -->
@@ -78,7 +87,13 @@
           <n-tab :disabled="tabsDisabled" name="local-songs"> 单曲 </n-tab>
           <n-tab :disabled="tabsDisabled" name="local-artists"> 歌手 </n-tab>
           <n-tab :disabled="tabsDisabled" name="local-albums"> 专辑 </n-tab>
-          <n-tab :disabled="tabsDisabled" name="local-folders"> 文件夹 </n-tab>
+          <n-tab
+            v-if="settingStore.localFolderDisplayMode === 'tab'"
+            :disabled="tabsDisabled"
+            name="local-folders"
+          >
+            文件夹
+          </n-tab>
         </n-tabs>
       </n-flex>
     </n-flex>
@@ -171,6 +186,30 @@ const localEventBus = useEventBus("local");
 // 本地歌曲路由
 const localType = ref<string>((router.currentRoute.value?.name as string) || "local-songs");
 
+// 选中的文件夹
+const selectedFolder = ref<string>("all");
+
+// 文件夹选项
+const folderOptions = computed(() => {
+  const map: Record<string, string> = { all: "全部文件夹" };
+  if (!localStore.localSongs.length) return [{ label: "全部文件夹", value: "all" }];
+
+  localStore.localSongs.forEach((song) => {
+    const fullPath = (song as any).path as string | undefined;
+    if (!fullPath) return;
+
+    const isWindows = fullPath.includes("\\");
+    const sep = isWindows ? "\\" : "/";
+    // 去掉文件名，提取目录路径
+    const folderPath = fullPath.replace(/[/\\][^/\\]*$/, "") || "未知文件夹";
+    const folderName = folderPath.split(sep).pop() || folderPath;
+
+    if (!map[folderPath]) map[folderPath] = folderName;
+  });
+
+  return Object.entries(map).map(([value, label]) => ({ label, value }));
+});
+
 // 模糊搜索数据
 const searchValue = ref<string>("");
 const searchData = ref<SongType[]>([]);
@@ -180,8 +219,25 @@ const localPathShow = ref<boolean>(false);
 
 // 列表数据
 const listData = computed<SongType[]>(() => {
-  if (searchValue.value && searchData.value.length) return searchData.value;
-  return localStore.localSongs;
+  let initialData = localStore.localSongs;
+
+  // 文件夹过滤
+  if (selectedFolder.value !== "all" && settingStore.localFolderDisplayMode === "dropdown") {
+    initialData = initialData.filter((song) => {
+      const fullPath = (song as any).path as string | undefined;
+      return fullPath && fullPath.startsWith(selectedFolder.value);
+    });
+  }
+
+  if (searchValue.value && searchData.value.length) {
+    // 如果有搜索，在当前过滤结果中再次模糊搜索（如果 searchData 已经是经过 filter 的话）
+    // 但 searchData 原本是基于 localStore.localSongs 搜索的，所以这里要重新基于 filteredData 搜索
+    // 或者简单点，先 searchData，再 filtering
+    // 这里采取：如果有 searchValue，直接重新基于 initialData (已过滤文件夹) 进行搜索
+    return fuzzySearch(searchValue.value, initialData);
+  }
+
+  return initialData;
 });
 
 // 是否存在配置目录与歌曲
@@ -488,6 +544,18 @@ onUnmounted(() => {
       transition: all 0.3s var(--n-bezier);
       &.n-input--focus {
         width: 200px;
+      }
+    }
+    .folder-select {
+      height: 40px;
+      :deep(.n-base-selection) {
+        height: 40px;
+        background-color: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        .n-base-selection-label {
+          height: 40px;
+          line-height: 40px;
+        }
       }
     }
     .n-tabs {
