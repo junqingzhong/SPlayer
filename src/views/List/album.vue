@@ -73,7 +73,7 @@ import { useListDetail } from "@/composables/List/useListDetail";
 import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
-import { useListDataCache } from "@/composables/List/useListDataCache";
+import { useListDataCache, type ListCacheData } from "@/composables/List/useListDataCache";
 import ListComment from "@/components/List/ListComment.vue";
 
 const router = useRouter();
@@ -214,7 +214,7 @@ const getAlbumDetail = async (id: number, refresh: boolean = false) => {
 };
 
 // 后台检查更新
-const backgroundCheck = async (id: number, cached: any) => {
+const backgroundCheck = async (id: number, cached: ListCacheData) => {
   try {
     const detail = await albumDetail(id);
     // 检查是否仍然是当前请求的专辑

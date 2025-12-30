@@ -73,7 +73,7 @@ import { useListSearch } from "@/composables/List/useListSearch";
 import { useListScroll } from "@/composables/List/useListScroll";
 import { useListActions } from "@/composables/List/useListActions";
 import { toSubRadio } from "@/utils/auth";
-import { useListDataCache } from "@/composables/List/useListDataCache";
+import { useListDataCache, type ListCacheData } from "@/composables/List/useListDataCache";
 import ListComment from "@/components/List/ListComment.vue";
 
 const router = useRouter();
@@ -223,7 +223,7 @@ const getRadioDetail = async (id: number, refresh: boolean = false) => {
 };
 
 // 后台检查更新
-const backgroundCheck = async (id: number, cached: any) => {
+const backgroundCheck = async (id: number, cached: ListCacheData) => {
   try {
     const detail = await radioDetail(id);
     if (currentRequestId.value !== id) return;

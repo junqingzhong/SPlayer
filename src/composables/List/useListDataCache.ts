@@ -23,9 +23,6 @@ export interface ListCacheData {
   detail: CoverType;
   /** 歌曲列表 */
   songs: SongType[];
-  /** 第一页内容哈希，用于快速比较 */
-  /** 第一页内容哈希，用于快速比较（已弃用，使用 updateTime） */
-  // firstPageHash?: string;
 }
 
 /** 缓存版本号 */
