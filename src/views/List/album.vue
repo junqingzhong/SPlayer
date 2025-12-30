@@ -135,16 +135,11 @@ const playButtonText = computed(() => {
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
   {
-  {
     label: "批量操作",
     key: "batch",
     props: {
       onClick: () => {
-        openBatchList(
-          displayData.value,
-          false,
-          isLikeAlbum.value ? albumId.value : undefined,
-        );
+        openBatchList(displayData.value, false, isLikeAlbum.value ? albumId.value : undefined);
       },
     },
     icon: renderIcon("Batch"),
