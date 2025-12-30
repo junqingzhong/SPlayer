@@ -78,11 +78,7 @@ export class PlayModeManager {
   /**
    * 计算下一个随机模式
    */
-  private calculateNextShuffleMode(
-    currentMode: ShuffleModeType,
-    targetMode?: ShuffleModeType,
-  ): ShuffleModeType {
-    if (targetMode) return targetMode;
+  public calculateNextShuffleMode(currentMode: ShuffleModeType): ShuffleModeType {
     if (currentMode === "off") return "on";
     if (currentMode === "on") return "heartbeat";
     return "off";
@@ -114,11 +110,7 @@ export class PlayModeManager {
   /**
    * 执行开启心动模式的操作
    */
-  private async applyHeartbeatMode(
-    signal: AbortSignal,
-    previousMode: ShuffleModeType,
-    playAction?: () => Promise<void>,
-  ) {
+  private async applyHeartbeatMode(signal: AbortSignal, previousMode: ShuffleModeType) {
     const statusStore = useStatusStore();
     const musicStore = useMusicStore();
     const dataStore = useDataStore();
@@ -131,12 +123,6 @@ export class PlayModeManager {
       } else {
         window.$message.warning("该登录模式暂不支持该操作");
       }
-      return;
-    }
-
-    if (previousMode === "heartbeat") {
-      if (playAction) await playAction();
-      statusStore.showFullPlayer = true;
       return;
     }
 
@@ -194,15 +180,14 @@ export class PlayModeManager {
 
   /**
    * 切换随机模式
-   * @param mode 可选，直接设置目标模式。如果不传则按 Off -> On -> Heartbeat -> Off 顺序轮转
-   * @param playAction 回调函数，用于在心动模式下触发播放。通常你应该传入 PlayerController.play，或者其他类似的方法
+   * @param mode 要切换到的随机模式
    */
-  public async toggleShuffle(mode?: ShuffleModeType, playAction?: () => Promise<void>) {
+  public async toggleShuffle(mode: ShuffleModeType) {
     const statusStore = useStatusStore();
     const signal = this.resetCurrentTask();
 
+    const nextMode = mode;
     const currentMode = statusStore.shuffleMode;
-    const nextMode = this.calculateNextShuffleMode(currentMode, mode);
 
     if (nextMode === currentMode) return;
 
@@ -220,7 +205,7 @@ export class PlayModeManager {
             await this.applyShuffleOn(signal);
             break;
           case "heartbeat":
-            await this.applyHeartbeatMode(signal, previousMode, playAction);
+            await this.applyHeartbeatMode(signal, previousMode);
             break;
           default:
             await this.applyShuffleOff();
@@ -263,10 +248,10 @@ export class PlayModeManager {
    * 专门处理 SMTC 的随机按钮事件
    * @param playAction 播放回调
    */
-  public handleSmtcShuffle(playAction?: () => Promise<void>) {
+  public handleSmtcShuffle() {
     const statusStore = useStatusStore();
     const nextMode = statusStore.shuffleMode === "off" ? "on" : "off";
-    this.toggleShuffle(nextMode, playAction);
+    this.toggleShuffle(nextMode);
   }
 
   /**

@@ -825,7 +825,7 @@ class PlayerController {
    * 专门处理 SMTC 的随机按钮事件
    */
   public handleSmtcShuffle() {
-    this.playModeManager.handleSmtcShuffle(this.play.bind(this));
+    this.playModeManager.handleSmtcShuffle();
   }
 
   /**
@@ -953,7 +953,25 @@ class PlayerController {
    * @param mode 可选，直接设置目标模式。如果不传则按 Off -> On -> Heartbeat -> Off 顺序轮转
    */
   public async toggleShuffle(mode?: ShuffleModeType) {
-    await this.playModeManager.toggleShuffle(mode, this.play.bind(this));
+    const statusStore = useStatusStore();
+    const currentMode = statusStore.shuffleMode;
+
+    // 预判下一个模式
+    const nextMode = mode ?? this.playModeManager.calculateNextShuffleMode(currentMode);
+
+    // 已经是心动模式，再次触发心动模式并播放
+    if (currentMode === "heartbeat" && nextMode === "heartbeat") {
+      if (!statusStore.playStatus) {
+        await this.play();
+      }
+      statusStore.showFullPlayer = true;
+      return;
+    }
+
+    // 如果模式确实改变了，才让 Manager 进行繁重的数据处理
+    if (currentMode !== nextMode) {
+      await this.playModeManager.toggleShuffle(nextMode);
+    }
   }
 
   /**
