@@ -246,7 +246,6 @@ export class PlayModeManager {
 
   /**
    * 专门处理 SMTC 的随机按钮事件
-   * @param playAction 播放回调
    */
   public handleSmtcShuffle() {
     const statusStore = useStatusStore();
