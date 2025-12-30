@@ -22,7 +22,7 @@ export interface DiscordConfigPayload {
 export declare enum DiscordDisplayMode {
   /** 仅歌曲名：显示为 "正在听 {歌曲名}" */
   Name = 0,
-  /** 仅播放状态：显示为 "正在听 SPlayer" */
+  /** 仅播放状态：显示为 "正在听 `SPlayer`" */
   State = 1,
   /** 完整信息：显示为 "正在听 {歌曲名} - {歌手}" */
   Details = 2
@@ -36,7 +36,7 @@ export interface DiscordMetadataParam {
   authorName: string
   /** 专辑名称 */
   albumName: string
-  /** HTTP URL 用于封面显示 */
+  /** `HTTP URL` 用于封面显示 */
   originalCoverUrl?: string
   /** 歌曲时长（毫秒） */
   duration?: number
@@ -46,7 +46,7 @@ export interface DiscordMetadataParam {
 
 /** Discord 播放状态参数 */
 export interface DiscordPlayStateParam {
-  /** "Playing" or "Paused" */
+  /** `"Playing"` 或 `"Paused"` */
   status: string
 }
 

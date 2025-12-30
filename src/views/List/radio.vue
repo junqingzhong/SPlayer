@@ -2,8 +2,8 @@
 <template>
   <div class="radio-list">
     <ListDetail
-      :detail-data="detailData"
-      :list-data="listData"
+      :detail-data="detailData?.id === radioId ? detailData : null"
+      :list-data="detailData?.id === radioId ? listData : []"
       :loading="showLoading"
       :list-scrolling="listScrolling"
       :search-value="searchValue"
@@ -35,7 +35,7 @@
       <template v-if="currentTab === 'songs'">
         <SongList
           v-if="!searchValue || searchData?.length"
-          :data="displayData"
+          :data="detailData?.id === radioId ? displayData : []"
           :loading="loading"
           :height="songListHeight"
           :radioId="radioId"
@@ -152,7 +152,7 @@ const playButtonText = computed(() => {
 const moreOptions = computed<DropdownOption[]>(() => [
   {
     label: "刷新缓存",
-    key: "refresh",
+    key: "refresh-cache",
     props: {
       onClick: () => getRadioDetail(radioId.value, true),
     },
@@ -212,7 +212,9 @@ const getRadioDetail = async (id: number, refresh: boolean = false) => {
   }
 
   // 获取播客详情
-  setDetailData(null);
+  if (detailData.value?.id !== id) {
+    setDetailData(null);
+  }
   const detail = await radioDetail(id);
   if (currentRequestId.value !== id) return;
   setDetailData(formatCoverList(detail.data)[0]);
@@ -241,7 +243,6 @@ const backgroundCheck = async (id: number, cached: any) => {
 const getRadioAllProgram = async (id: number, count: number) => {
   if (!id || !count) return;
   setLoading(true);
-  setListData([]);
   // 加载提示
   if (count > 500) loadingMsgShow();
   // 循环获取
@@ -320,11 +321,8 @@ onActivated(() => {
   if (oldRadioId.value === 0) {
     oldRadioId.value = radioId.value;
   } else {
-    // 是否不相同
-    const isSame = oldRadioId.value === radioId.value;
     oldRadioId.value = radioId.value;
-    // 刷新播客
-    if (!isSame) getRadioDetail(radioId.value);
+    getRadioDetail(radioId.value, false);
   }
 });
 

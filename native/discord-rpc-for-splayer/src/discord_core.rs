@@ -495,9 +495,9 @@ pub fn update_timeline(payload: TimelinePayload) {
 }
 
 pub fn shutdown() {
-    if let Ok(mut guard) = SENDER.lock() {
-        if guard.take().is_some() {
-            info!("Shutting down Discord RPC thread.");
-        }
+    if let Ok(mut guard) = SENDER.lock()
+        && guard.take().is_some()
+    {
+        info!("Shutting down Discord RPC thread.");
     }
 }

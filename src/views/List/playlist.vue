@@ -2,8 +2,8 @@
 <template>
   <div class="playlist-list">
     <ListDetail
-      :detail-data="detailData"
-      :list-data="listData"
+      :detail-data="detailData?.id === playlistId ? detailData : null"
+      :list-data="detailData?.id === playlistId ? listData : []"
       :loading="showLoading"
       :list-scrolling="listScrolling"
       :search-value="searchValue"
@@ -49,7 +49,7 @@
       <template v-if="currentTab === 'songs'">
         <SongList
           v-if="!searchValue || searchData?.length"
-          :data="displayData"
+          :data="detailData?.id === playlistId ? displayData : []"
           :loading="loading"
           :height="songListHeight"
           :playListId="playlistId"
@@ -251,7 +251,7 @@ const getPlaylistDetail = async (
   const { getList, refresh } = options;
   // 清空数据
   clearSearch();
-  if (!refresh) resetPlaylistData(getList);
+  if (!refresh && detailData.value?.id !== id) resetPlaylistData(getList);
   // 判断是否为本地歌单，本地歌单 ID 为 16 位
   const isLocal = id.toString().length === 16;
   // 本地歌单
@@ -483,11 +483,9 @@ onActivated(() => {
   if (oldPlaylistId.value === 0) {
     oldPlaylistId.value = playlistId.value;
   } else {
-    // 是否不相同
-    const isSame = oldPlaylistId.value === playlistId.value;
     oldPlaylistId.value = playlistId.value;
     // 刷新歌单
-    getPlaylistDetail(playlistId.value, { getList: true, refresh: isSame });
+    getPlaylistDetail(playlistId.value, { getList: true, refresh: false });
   }
 });
 

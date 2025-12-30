@@ -2,8 +2,8 @@
 <template>
   <div class="album-list">
     <ListDetail
-      :detail-data="detailData"
-      :list-data="listData"
+      :detail-data="detailData?.id === albumId ? detailData : null"
+      :list-data="detailData?.id === albumId ? listData : []"
       :loading="showLoading"
       :list-scrolling="listScrolling"
       :search-value="searchValue"
@@ -35,7 +35,7 @@
       <template v-if="currentTab === 'songs'">
         <SongList
           v-if="!searchValue || searchData?.length"
-          :data="displayData"
+          :data="detailData?.id === albumId ? displayData : []"
           :loading="loading"
           :height="songListHeight"
           :doubleClickAction="searchData?.length ? 'add' : 'all'"
@@ -100,7 +100,11 @@ const { listScrolling, handleListScroll, resetScroll } = useListScroll();
 const { playAllSongs: playAllSongsAction } = useListActions();
 
 // 专辑 ID
+const oldAlbumId = ref<number>(0);
 const albumId = computed<number>(() => Number(router.currentRoute.value.query.id as string));
+
+// 当前正在请求的专辑 ID，用于防止竞态条件
+const currentRequestId = ref<number>(0);
 
 // 是否处于收藏专辑
 const isLikeAlbum = computed(() =>
@@ -168,6 +172,8 @@ const moreOptions = computed<DropdownOption[]>(() => [
 // 获取专辑基础信息
 const getAlbumDetail = async (id: number, refresh: boolean = false) => {
   if (!id) return;
+  // 设置当前请求的专辑 ID，用于防止竞态条件
+  currentRequestId.value = id;
   setLoading(true);
   clearSearch();
 
@@ -185,15 +191,19 @@ const getAlbumDetail = async (id: number, refresh: boolean = false) => {
     }
   }
 
-  if (!refresh) {
+  if (!refresh && detailData.value?.id !== id) {
     resetData(true);
   }
   // 获取专辑详情
   const detail = await albumDetail(id);
+  // 检查是否仍然是当前请求的专辑
+  if (currentRequestId.value !== id) return;
   setDetailData(formatCoverList(detail.album)[0]);
   // 获取专辑歌曲
   const ids: number[] = detail.songs.map((song: any) => song.id as number);
   const result = await songDetail(ids);
+  // 再次检查是否仍然是当前请求的专辑
+  if (currentRequestId.value !== id) return;
   const songs = formatSongsList(result.songs);
   setListData(songs);
 
@@ -207,8 +217,8 @@ const getAlbumDetail = async (id: number, refresh: boolean = false) => {
 const backgroundCheck = async (id: number, cached: any) => {
   try {
     const detail = await albumDetail(id);
-    // 简单的 ID 检查
-    if (detail.album.id !== id) return;
+    // 检查是否仍然是当前请求的专辑
+    if (currentRequestId.value !== id) return;
 
     const latestDetail = formatCoverList(detail.album)[0];
 
@@ -248,9 +258,8 @@ onActivated(() => {
   if (!isActivated.value) {
     isActivated.value = true;
   } else {
-    // 是否相同专辑
-    const isSame = detailData.value?.id === albumId.value;
-    getAlbumDetail(albumId.value, isSame);
+    oldAlbumId.value = albumId.value;
+    getAlbumDetail(albumId.value, false);
   }
 });
 

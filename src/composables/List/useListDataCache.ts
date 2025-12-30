@@ -139,14 +139,18 @@ export const useListDataCache = () => {
       return needsUpdate;
     }
 
-    // 如果没有 updateTime，为了安全起见，认为需要更新
-    // 或者可以比较 count?
+    // 如果没有 updateTime，比较 count
     if (cached.detail.count !== latestDetail.count) {
       console.log(`🔄 Cache needs update: count changed`);
       return true;
     }
 
-    console.log(`⚠️ No timestamp found, assuming up to date based on count`);
+    if (cached.type === "album") {
+      console.log(`✅ Album cache is up to date (count match)`);
+    } else {
+      console.log(`⚠️ No timestamp found, assuming up to date based on count`);
+    }
+
     return false;
   };
 

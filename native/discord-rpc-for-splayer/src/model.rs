@@ -7,7 +7,7 @@ use napi_derive::napi;
 pub enum DiscordDisplayMode {
     /// 仅歌曲名：显示为 "正在听 {歌曲名}"
     Name = 0,
-    /// 仅播放状态：显示为 "正在听 SPlayer"
+    /// 仅播放状态：显示为 "正在听 `SPlayer`"
     State = 1,
     /// 完整信息：显示为 "正在听 {歌曲名} - {歌手}"
     Details = 2,
@@ -23,7 +23,7 @@ pub struct DiscordMetadataParam {
     pub author_name: String,
     /// 专辑名称
     pub album_name: String,
-    /// HTTP URL 用于封面显示
+    /// `HTTP URL` 用于封面显示
     pub original_cover_url: Option<String>,
     /// 歌曲时长（毫秒）
     pub duration: Option<f64>,
@@ -35,7 +35,7 @@ pub struct DiscordMetadataParam {
 #[napi(object)]
 #[derive(Debug, Clone)]
 pub struct DiscordPlayStateParam {
-    /// "Playing" or "Paused"
+    /// `"Playing"` 或 `"Paused"`
     pub status: String,
 }
 
