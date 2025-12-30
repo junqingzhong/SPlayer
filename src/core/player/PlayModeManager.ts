@@ -112,10 +112,11 @@ export class PlayModeManager {
           const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
           if (idx !== -1) statusStore.playIndex = idx;
         } else if (nextMode === "heartbeat") {
-          if (isLogin() !== 1) {
+          const loginStatus = isLogin();
+          if (loginStatus !== 1) {
             // 未登录，回滚状态
             statusStore.shuffleMode = previousMode;
-            if (isLogin() === 0) {
+            if (loginStatus === 0) {
               openUserLogin(true);
             } else {
               window.$message.warning("该登录模式暂不支持该操作");
