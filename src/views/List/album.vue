@@ -142,22 +142,11 @@ const playButtonText = computed(() => {
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
   {
-    label: "刷新缓存",
-    key: "refresh",
-    props: {
-      onClick: () => getAlbumDetail(albumId.value, true),
-    },
-    icon: renderIcon("Refresh"),
-  {
     label: "批量操作",
     key: "batch",
     props: {
       onClick: () => {
-        openBatchList(
-          displayData.value,
-          false,
-          isLikeAlbum.value ? albumId.value : undefined,
-        );
+        openBatchList(displayData.value, false, isLikeAlbum.value ? albumId.value : undefined);
       },
     },
     icon: renderIcon("Batch"),
