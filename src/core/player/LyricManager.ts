@@ -1,10 +1,12 @@
-import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
 import { songLyric, songLyricTTML } from "@/api/song";
-import { type SongLyric } from "@/types/lyric";
-import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
-import { isElectron } from "@/utils/env";
-import { isEmpty } from "lodash-es";
+import { keywords as defaultKeywords, regexes as defaultRegexes } from "@/assets/data/exclude";
 import { useCacheManager } from "@/core/resource/CacheManager";
+import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { type SongLyric } from "@/types/lyric";
+import { isElectron } from "@/utils/env";
+import { stripLyricMetadata } from "@/utils/lyricStripper";
+import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
+import { escapeRegExp, isEmpty } from "lodash-es";
 
 class LyricManager {
   /**
@@ -108,7 +110,8 @@ class LyricManager {
     // 同一时间的两/三行分别作为主句、翻译、音译
     const toTime = (line: LyricLine) => Number(line?.startTime ?? line?.words?.[0]?.startTime ?? 0);
     // 获取结束时间
-    const toEndTime = (line: LyricLine) => Number(line?.endTime ?? line?.words?.[line?.words?.length - 1]?.endTime ?? 0);
+    const toEndTime = (line: LyricLine) =>
+      Number(line?.endTime ?? line?.words?.[line?.words?.length - 1]?.endTime ?? 0);
     // 取内容
     const toText = (line: LyricLine) => String(line?.words?.[0]?.word || "").trim();
     const lrc = lyricData.lrcData || [];
@@ -318,42 +321,62 @@ class LyricManager {
    * @returns 处理后的歌词数据
    */
   private handleLyricExclude(lyricData: SongLyric): SongLyric {
-    const statusStore = useStatusStore();
     const settingStore = useSettingStore();
+    const musicStore = useMusicStore();
+
     const { enableExcludeLyrics, excludeKeywords, excludeRegexes } = settingStore;
-    // 未开启排除
+
     if (!enableExcludeLyrics) return lyricData;
-    // 处理正则表达式
-    const regexes = (excludeRegexes || []).map((r: string) => new RegExp(r));
-    /**
-     * 判断歌词是否被排除
-     * @param line 歌词行
-     * @returns 是否被排除
-     */
-    const isExcluded = (line: LyricLine) => {
-      const content = (line?.words || [])
-        .map((w) => String(w.word || ""))
-        .join("")
-        .trim();
-      if (!content) return true;
-      return (
-        (excludeKeywords || []).some((k: string) => content.includes(k)) ||
-        regexes.some((re) => re.test(content))
-      );
+
+    // 将设置中和默认的预定义的关键字和正则表达式合并在一起给 stripLyricMetadata，方便之后更新默认的列表
+    // TODO: 建议在设置界面加一个默认的规则集以便和用户自己加的关键字分开，也方便更新默认列表
+    const userKeywords = excludeKeywords || [];
+    const userRegexes = excludeRegexes || [];
+
+    const mergedKeywords = [...new Set([...userKeywords, ...defaultKeywords])];
+    const mergedRegexes = [...new Set([...userRegexes, ...defaultRegexes])];
+
+    const { name, artists } = musicStore.playSong;
+    const songMetadataRegexes: string[] = [];
+
+    // 例如第一行就是 `歌手 - 歌曲名` 这样的格式，或者只有歌曲名
+    if (name && name !== "未播放歌曲") {
+      songMetadataRegexes.push(escapeRegExp(name));
+    }
+
+    if (artists) {
+      if (typeof artists === "string") {
+        if (artists !== "未知歌手") {
+          songMetadataRegexes.push(escapeRegExp(artists));
+        }
+      } else if (Array.isArray(artists)) {
+        artists.forEach((artist) => {
+          if (artist.name) {
+            songMetadataRegexes.push(escapeRegExp(artist.name));
+          }
+        });
+      }
+    }
+
+    const options = {
+      keywords: mergedKeywords,
+      regexPatterns: mergedRegexes,
+      softMatchRegexes: songMetadataRegexes,
     };
-    /**
-     * 过滤排除的歌词行
-     * @param lines 歌词行数组
-     * @returns 过滤后的歌词行数组
-     */
-    const filterLines = (lines: LyricLine[]) => (lines || []).filter((l) => !isExcluded(l));
+
+    const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
+
+    // FIXME: 这部分逻辑有问题，因为 TTML 歌词 (硬性规定没有元数据行) 和网易云的 YRC 歌词都塞进 yrcData 了，无法区分，
+    // 不开排除 TTML 就不能清理 YRC 歌词
+    // 暂时关掉，因为 stripLyricMetadata 应该足够稳健，不会删掉正常的歌词行
+    let yrcData = lyricData.yrcData || [];
+    // if (statusStore.usingTTMLLyric && enableExcludeTTML) {
+    yrcData = stripLyricMetadata(yrcData, options);
+    // }
+
     return {
-      lrcData: filterLines(lyricData.lrcData || []),
-      yrcData:
-        // 若当前为 TTML 且开启排除
-        statusStore.usingTTMLLyric && settingStore.enableExcludeTTML
-          ? filterLines(lyricData.yrcData || [])
-          : lyricData.yrcData || [],
+      lrcData,
+      yrcData,
     };
   }
 
