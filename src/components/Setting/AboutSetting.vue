@@ -332,8 +332,12 @@ onMounted(() => {
     }
   }
 }
+.link {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 12px !important;
+}
 .link-item {
-  max-width: 200px;
   border-radius: 8px;
   cursor: pointer;
   :deep(.n-card__content) {
