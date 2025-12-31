@@ -4,6 +4,8 @@
 
 /**
  * 默认的关键字列表，不包含冒号
+ *
+ * 建议更新这里的列表后运行 scripts\sort-keywords.ts 来排序并去重列表
  */
 export const keywords = [
   "版权",
