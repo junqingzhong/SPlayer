@@ -139,12 +139,16 @@ function cleanTextForCheck(text: string): string {
 
 function isStrictMatch(text: string, keywords: string[], regexes: RegExp[]): boolean {
   const cleaned = cleanTextForCheck(text);
-  const lowerCleaned = cleaned.toLowerCase();
+
+  // 转小写并移除空格进行匹配
+  const normalizedText = cleaned.toLowerCase().replace(/\s+/g, "");
 
   for (const kw of keywords) {
-    const lowerKw = kw.toLowerCase();
-    if (lowerCleaned.startsWith(lowerKw)) {
-      const remainder = lowerCleaned.slice(lowerKw.length).trim();
+    const normalizedKw = kw.toLowerCase().replace(/\s+/g, "");
+
+    if (normalizedText.startsWith(normalizedKw)) {
+      const remainder = normalizedText.slice(normalizedKw.length);
+
       if (remainder.startsWith(":") || remainder.startsWith("：")) {
         return true;
       }
