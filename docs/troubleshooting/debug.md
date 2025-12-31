@@ -27,14 +27,13 @@
 | ------- | --------------------------------------------- |
 | Windows | `%APPDATA%\SPlayer\logs\`                     |
 | macOS   | `~/Library/Application Support/SPlayer/logs/` |
-| Linux   | `~/.config/SPlayer/logs/`                     |
+| Linux   | `$XDG_CONFIG_HOME/SPlayer/logs/`              |
 
-开发环境日志：`%APPDATA%\SPlayer\logs\dev\`
+开发环境日志：`%APPDATA%\SPlayer\logs\dev\`（在原日志目录的 `dev` 子文件夹下）
 
 原生模块日志：
 
 - SMTC 日志：`%APPDATA%\SPlayer\logs\smtc\`
-- Discord RPC 日志：`%APPDATA%\SPlayer\logs\discord\`
 
 ## 常见错误类型
 
@@ -90,6 +89,9 @@ rd /s /q "%APPDATA%\SPlayer\Cache"
 
 # 清除应用缓存（macOS）
 rm -rf ~/Library/Application\ Support/SPlayer/Cache
+
+# 清除应用缓存（Linux）
+rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/SPlayer/Cache"
 ```
 
 ## 收集调试信息
@@ -98,7 +100,7 @@ rm -rf ~/Library/Application\ Support/SPlayer/Cache
 
 1. **系统信息**
    - 操作系统版本
-   - SPlayer 版本
+   - SPlayer 版本（如果是开发版本，还要带上 Commit ID）
    - Node.js 版本（如果是开发环境）
 
 2. **错误信息**
@@ -125,7 +127,7 @@ rd /s /q "%APPDATA%\SPlayer"
 rm -rf ~/Library/Application\ Support/SPlayer
 
 # Linux
-rm -rf ~/.config/SPlayer
+rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/SPlayer"
 ```
 
 重置后重新启动应用并登录即可。

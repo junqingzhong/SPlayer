@@ -64,17 +64,17 @@
 > - 感谢您的尊重与理解
 
 - 本项目采用 [Vue 3](https://cn.vuejs.org/) + [TypeScript](https://www.typescriptlang.org/) + [Naïve UI](https://www.naiveui.com/) + [Electron](https://www.electronjs.org/zh/docs/latest/) 开发
-- 支持网页端与客户端，由于设备有限，目前仅适配 `Win`，其他平台可自行解决兼容性后进行构建
-- 仅对移动端做了基础适配，**不保证功能全部可用**
+- 支持网页端与客户端，由于设备有限，目前仅保证 Windows 系统的适配，其他平台如遇问题可以提 Issue 或自行解决后选择提 PR
+<!-- - 仅对移动端做了基础适配，**不保证功能全部可用** -->
 
-  > 请注意，本程序不打算开发移动端，也不会对移动端进行完美适配，仅保证基础可用性
+<!--  > 请注意，本程序不打算开发移动端，也不会对移动端进行完美适配，仅保证基础可用性 -->
 
 - 欢迎各位大佬 `Star` 😍
 
 ## 💬 交流群
 
 <a href="https://qm.qq.com/cgi-bin/qm/qr?k=2-cVSf1bE0AvAehCib00qFEFdUvPaJ_k&jump_from=webapi&authKey=1NEhib9+GsmsXVo2rCc0IbRaVHeeRXJJ0gbsyKDcIwDdAzYySOubkFCvkV32+7Cw" target="_blank">
-<img src="screenshots/welcome.png" alt="交流群" width="300" />
+  <img src="screenshots/welcome.png" alt="交流群" width="300" />
 </a>
 
 ## 👀 Demo
@@ -172,9 +172,7 @@
 
 #### 开发版
 
-可以通过 `GitHub Actions` 工作流获取最新的开发版，目前开发版仅提供 `Win` 版本
-
-> 如需其他平台的开发版构建，请自行 Fork 本项目并参考 `.github/workflows/release.yml` 创建相应的工作流
+可以通过 GitHub Actions 工作流获取最新的开发版
 
 [Dev Workflow](https://github.com/imsyy/SPlayer/actions/workflows/dev.yml)
 
@@ -210,13 +208,13 @@ docker pull ghcr.io/imsyy/splayer:latest
 docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 ```
 
-以上步骤成功后，将会在本地 [localhost: 25884](http://localhost:25884/) 启动，如需更换端口，请自行修改命令行中的端口号
+以上步骤成功后，将会在本地 [localhost:25884](http://localhost:25884/) 启动，如需更换端口，请自行修改命令行中的第一个端口号
 
 #### ⚙️ Vercel 部署
 
 > 其他部署平台大致相同，在此不做说明
 
-1. 本程序依赖 [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi) 运行，请确保您已成功部署该项目，并成功取得在线访问地址
+1. 本程序依赖 [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi) 运行，请确保您已成功部署该项目或兼容的项目，并成功取得在线访问地址
 2. 点击本仓库右上角的 `Fork`，复制本仓库到你的 `GitHub` 账号
 3. 复制 `/.env.example` 文件并重命名为 `/.env`
 4. 将 `.env` 文件中的 `VITE_API_URL` 改为第一步得到的 API 地址
@@ -282,7 +280,7 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
    | ------------------ | -------- |
    | `pnpm build:win`   | Windows  |
    | `pnpm build:linux` | Linux    |
-   | `pnpm build:mac`   | MacOS    |
+   | `pnpm build:mac`   | macOS    |
 
 ## 😘 鸣谢
 
@@ -302,15 +300,11 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 感谢以下所有贡献者 💖
 
 <a href="https://github.com/imsyy/SPlayer/graphs/contributors" target="_blank" rel="noopener">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" 
-            srcset="https://contrib.rocks/image?repo=imsyy/SPlayer&max=30&anon=1&theme=dark&v=1">
-    <img src="https://contrib.rocks/image?repo=imsyy/SPlayer&max=30&anon=1&v=1" 
-         alt="SPlayer 项目贡献者" 
-         width="650" 
-         loading="lazy"
-         style="border-radius: 10px; transition: transform 0.2s ease;">
-  </picture>
+  <img src="https://contrib.rocks/image?repo=imsyy/SPlayer&max=30&anon=1&v=1"
+    alt="SPlayer 项目贡献者"
+    width="650"
+    loading="lazy"
+  />
 </a>
 
 ## 📢 免责声明
@@ -333,8 +327,6 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
   4. **免责声明：** 根据 AGPL-3.0，本项目不提供任何明示或暗示的担保。请详细阅读 [GNU Affero General Public License (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html) 以了解完整的免责声明内容
   5. **社区参与：** 欢迎社区的参与和贡献，我们鼓励开发者一同改进和维护本项目
   6. **许可证链接：** 请阅读 [GNU Affero General Public License (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html) 了解更多详情
-
-
 
 ## ⭐ Star History
 

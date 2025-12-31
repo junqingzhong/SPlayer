@@ -35,7 +35,7 @@
 
 ## 开发环境搭建
 
-请参考 [使用指南](/guide.html#本地开发环境) 完成以下准备工作：
+请参考 [使用指南](/guide.html#🛠-本地开发环境) 完成以下准备工作：
 
 1. 安装 Node.js (v18+)
 2. 安装 pnpm
@@ -152,14 +152,15 @@ git push origin feature/your-feature-name
 2. 点击 **Compare & pull request** 按钮
 3. 填写 PR 标题和描述：
    - 清晰描述更改内容
-   - 关联相关 Issue（如有）：`Closes #123`
+   - 关联相关 Issue（如有）：`Closes #123`（详细信息可查看 [GitHub 文档](https://docs.github.com/zh/issues/tracking-your-work-with-issues/using-issues/linking-a-pull-request-to-an-issue)）
    - 提供测试方法或截图
 4. 点击 **Create pull request**
 
 ### 8. 代码审查
 
+- AI 会对 PR 进行初步审核（AI 有时会挑刺，只改你觉得有必要的即可）
 - 维护者可能会提出修改建议
-- 根据反馈进行修改并推送更新
+- 根据反馈进行修改并推送更新，你也可以选择说服维护者为什么你是对的
 - PR 合并后，可删除功能分支
 
 ```bash
@@ -184,7 +185,7 @@ pnpm lint
 pnpm format
 ```
 
-提交前请确保代码通过规范检查。
+提交前请确保您的代码通过规范检查。
 
 ### 目录结构
 
