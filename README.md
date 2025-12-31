@@ -19,7 +19,6 @@
 
 # 目录
 
-
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
@@ -50,9 +49,6 @@
   - [⭐ Star History](#-star-history)
 
 <!-- /code_chunk_output -->
-
-
-
 
 ## 说明
 
@@ -321,13 +317,6 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
          style="border-radius: 10px; transition: transform 0.2s ease;">
   </picture>
 </a>
-
-<style>
-  a:hover img {
-    transform: translateY(-4px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.34);
-  }
-</style>
 
 ## 📢 免责声明
 
