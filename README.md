@@ -1,7 +1,7 @@
 <div align="center">
 <img alt="logo" height="100" width="100" src="public/icons/favicon.png" />
-<h2>SPlayer</h2>
-<p>一个简约的音乐播放器</p>
+<h2> SPlayer </h2>
+<p> 一个简约的音乐播放器 </p>
 
 [API Docs](https://splayer.imsyy.top/api.html) | [交流群](https://qm.qq.com/cgi-bin/qm/qr?k=2-cVSf1bE0AvAehCib00qFEFdUvPaJ_k&jump_from=webapi&authKey=1NEhib9+GsmsXVo2rCc0IbRaVHeeRXJJ0gbsyKDcIwDdAzYySOubkFCvkV32+7Cw) | [开发版](https://github.com/imsyy/SPlayer/actions) | [发行版](https://splayer.imsyy.top/download.html)
 
@@ -16,6 +16,38 @@
 </div>
 
 ![main](/screenshots/SPlayer.jpg)
+
+# 目录
+
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
+
+<!-- code_chunk_output -->
+
+- [目录](#目录)
+  - [说明](#说明)
+    - [严肃警告](#严肃警告)
+  - [💬 交流群](#-交流群)
+  - [👀 Demo](#-demo)
+  - [🎉 功能](#-功能)
+  - [🖼️ 界面展示](#️-界面展示)
+  - [📦️ 获取](#️-获取)
+    - [二进制安装方案](#二进制安装方案)
+      - [稳定版](#稳定版)
+      - [开发版](#开发版)
+    - [自行部署方案](#自行部署方案)
+      - [⚙️ Docker 部署](#️-docker-部署)
+        - [本地构建](#本地构建)
+        - [在线部署](#在线部署)
+      - [⚙️ Vercel 部署](#️-vercel-部署)
+      - [⚙️ 服务器部署](#️-服务器部署)
+      - [⚙️ 本地部署](#️-本地部署)
+  - [😘 鸣谢](#-鸣谢)
+  - [🗺️ 贡献者联盟](#️-贡献者联盟)
+  - [📢 免责声明](#-免责声明)
+  - [📜 开源许可](#-开源许可)
+  - [⭐ Star History](#-star-history)
+
+<!-- /code_chunk_output -->
 
 ## 说明
 
@@ -47,7 +79,9 @@
 
 ## 👀 Demo
 
-- [SPlayer](https://music.imsyy.top/)
+- 在线演示：[SPlayer](https://music.imsyy.top/)
+
+  > 如打不开，说明已经失效请自行前往 [获取](#️-获取)
 
 ## 🎉 功能
 
@@ -80,47 +114,47 @@
 - 🎵 支持 Last.fm Scrobble（播放记录上报）
 - ~~📱 移动端基础适配~~
 
-## 🖼️ screenshots
+## 🖼️ 界面展示
 
 > 开发中，仅供参考
 
 <details>
-<summary>主页面</summary>
+<summary> 主页面 </summary>
 
 ![主页面](/screenshots/SPlayer%20-%20主页面.jpg)
 
 </details>
 
 <details>
-<summary>播放页面</summary>
+<summary> 播放页面 </summary>
 
 ![播放页面](/screenshots/SPlayer%20-%20播放页面.jpg)
 
 </details>
 
 <details>
-<summary>发现页面</summary>
+<summary> 发现页面 </summary>
 
 ![发现页面](/screenshots/SPlayer%20-%20发现页面.jpg)
 
 </details>
 
 <details>
-<summary>歌单页面</summary>
+<summary> 歌单页面 </summary>
 
 ![发现页面](/screenshots/SPlayer%20-%20歌单页面.jpg)
 
 </details>
 
 <details>
-<summary>评论页面</summary>
+<summary> 评论页面 </summary>
 
 ![发现页面](/screenshots/SPlayer%20-%20评论页面.jpg)
 
 </details>
 
 <details>
-<summary>本地音乐</summary>
+<summary> 本地音乐 </summary>
 
 ![发现页面](/screenshots/SPlayer%20-%20本地音乐.jpg)
 
@@ -128,13 +162,15 @@
 
 ## 📦️ 获取
 
-### 稳定版
+### 二进制安装方案
+
+#### 稳定版
 
 通常情况下，可以在 [Releases](https://github.com/imsyy/SPlayer/releases) 中获取稳定版
 
 也可前往 [SPlayer 官网](https://splayer.imsyy.top/) 获取稳定版
 
-### 开发版
+#### 开发版
 
 可以通过 `GitHub Actions` 工作流获取最新的开发版，目前开发版仅提供 `Win` 版本
 
@@ -142,15 +178,13 @@
 
 [Dev Workflow](https://github.com/imsyy/SPlayer/actions/workflows/dev.yml)
 
-## Snap Store
+### 自行部署方案
 
-[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/splayer)
-
-## ⚙️ Docker 部署
+#### ⚙️ Docker 部署
 
 > 安装及配置 `Docker` 将不在此处说明，请自行解决
 
-### 本地构建
+##### 本地构建
 
 > 请尽量拉取最新分支后使用本地构建方式，在线部署的仓库可能更新不及时
 
@@ -164,7 +198,7 @@ docker run -d --name SPlayer -p 25884:25884 splayer
 docker-compose up -d
 ```
 
-### 在线部署
+##### 在线部署
 
 ```bash
 # 从 Docker Hub 拉取
@@ -176,9 +210,9 @@ docker pull ghcr.io/imsyy/splayer:latest
 docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 ```
 
-以上步骤成功后，将会在本地 [localhost:25884](http://localhost:25884/) 启动，如需更换端口，请自行修改命令行中的端口号
+以上步骤成功后，将会在本地 [localhost: 25884](http://localhost:25884/) 启动，如需更换端口，请自行修改命令行中的端口号
 
-## ⚙️ Vercel 部署
+#### ⚙️ Vercel 部署
 
 > 其他部署平台大致相同，在此不做说明
 
@@ -197,7 +231,7 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 
 6. 点击 `Deploy`，即可成功部署
 
-## ⚙️ 服务器部署
+#### ⚙️ 服务器部署
 
 1. 重复 `⚙️ Vercel 部署` 中的 1 - 4 步骤
 2. 克隆仓库
@@ -228,7 +262,7 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 
 5. 将站点运行目录设置为 `out/renderer` 目录
 
-## ⚙️ 本地部署
+#### ⚙️ 本地部署
 
 1. 本地部署需要用到 `Node.js`。可前往 [Node.js 官网](https://nodejs.org/zh-cn/) 下载安装包，请下载最新稳定版
 2. 安装 pnpm
@@ -252,7 +286,7 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 
 ## 😘 鸣谢
 
-特此感谢为本项目提供支持与灵感的项目
+特此感谢为本项目提供支持与灵感的项目：
 
 - [NeteaseCloudMusicApi](https://github.com/Binaryify/NeteaseCloudMusicApi)
 - [YesPlayMusic](https://github.com/qier222/YesPlayMusic)
@@ -261,6 +295,23 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 - [Vue-mmPlayer](https://github.com/maomao1996/Vue-mmPlayer)
 - [refined-now-playing-netease](https://github.com/solstice23/refined-now-playing-netease)
 - [material-color-utilities](https://github.com/material-foundation/material-color-utilities)
+
+## 🗺️ 贡献者联盟
+
+欢迎加入我们 🥰! 一起为 SPlayer 贡献一份力量。
+感谢以下所有贡献者 💖
+
+<a href="https://github.com/imsyy/SPlayer/graphs/contributors" target="_blank" rel="noopener">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" 
+            srcset="https://contrib.rocks/image?repo=imsyy/SPlayer&max=30&anon=1&theme=dark&v=1">
+    <img src="https://contrib.rocks/image?repo=imsyy/SPlayer&max=30&anon=1&v=1" 
+         alt="SPlayer 项目贡献者" 
+         width="650" 
+         loading="lazy"
+         style="border-radius: 10px; transition: transform 0.2s ease;">
+  </picture>
+</a>
 
 ## 📢 免责声明
 
@@ -282,6 +333,8 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
   4. **免责声明：** 根据 AGPL-3.0，本项目不提供任何明示或暗示的担保。请详细阅读 [GNU Affero General Public License (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html) 以了解完整的免责声明内容
   5. **社区参与：** 欢迎社区的参与和贡献，我们鼓励开发者一同改进和维护本项目
   6. **许可证链接：** 请阅读 [GNU Affero General Public License (AGPL-3.0)](https://www.gnu.org/licenses/agpl-3.0.html) 了解更多详情
+
+
 
 ## ⭐ Star History
 
