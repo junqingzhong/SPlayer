@@ -34,7 +34,6 @@
     - [二进制安装方案](#二进制安装方案)
       - [稳定版](#稳定版)
       - [开发版](#开发版)
-      - [Snap Store](#snap-store)
     - [自行部署方案](#自行部署方案)
       - [⚙️ Docker 部署](#️-docker-部署)
         - [本地构建](#本地构建)
@@ -178,10 +177,6 @@
 > 如需其他平台的开发版构建，请自行 Fork 本项目并参考 `.github/workflows/release.yml` 创建相应的工作流
 
 [Dev Workflow](https://github.com/imsyy/SPlayer/actions/workflows/dev.yml)
-
-#### Snap Store
-
-[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/splayer)
 
 ### 自行部署方案
 
