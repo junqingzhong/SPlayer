@@ -381,7 +381,7 @@ export const useSettingStore = defineStore("setting", {
     localFilesPath: [],
     localLyricPath: [],
     showDefaultLocalPath: true,
-    localFolderDisplayMode: "dropdown",
+    localFolderDisplayMode: "tab",
     localSeparators: ["/", "&"],
     showLocalCover: true,
     downloadPath: "",

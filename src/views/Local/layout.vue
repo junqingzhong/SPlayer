@@ -5,7 +5,7 @@
       <n-flex class="status">
         <n-text class="item">
           <SvgIcon name="Music" :depth="3" />
-          <n-number-animation :from="0" :to="localStore.localSongs?.length || 0" /> 首歌曲
+          <n-number-animation :from="0" :to="listData?.length || 0" /> 首歌曲
         </n-text>
         <n-text class="item">
           <SvgIcon name="Storage" :depth="3" />
@@ -53,14 +53,16 @@
           </n-button>
         </n-dropdown>
         <!-- 文件夹选择 -->
-        <n-select
-          v-if="isLocalSongsRoute && settingStore.localFolderDisplayMode === 'dropdown'"
-          v-model:value="selectedFolder"
-          :options="folderOptions"
-          class="folder-select"
-          size="medium"
-          style="width: 200px"
-        />
+        <Transition name="fade" mode="out-in">
+          <n-select
+            v-if="!isLocalFoldersRoute && settingStore.localFolderDisplayMode === 'dropdown'"
+            v-model:value="selectedFolder"
+            :options="folderOptions"
+            class="folder-select"
+            size="medium"
+            style="width: 200px"
+          />
+        </Transition>
       </n-flex>
       <n-flex class="right" justify="end">
         <!-- 模糊搜索 -->
@@ -87,13 +89,7 @@
           <n-tab :disabled="tabsDisabled" name="local-songs"> 单曲 </n-tab>
           <n-tab :disabled="tabsDisabled" name="local-artists"> 歌手 </n-tab>
           <n-tab :disabled="tabsDisabled" name="local-albums"> 专辑 </n-tab>
-          <n-tab
-            v-if="settingStore.localFolderDisplayMode === 'tab'"
-            :disabled="tabsDisabled"
-            name="local-folders"
-          >
-            文件夹
-          </n-tab>
+          <n-tab :disabled="tabsDisabled" name="local-folders"> 文件夹 </n-tab>
         </n-tabs>
       </n-flex>
     </n-flex>
@@ -101,7 +97,13 @@
     <RouterView v-if="!showEmptyState" v-slot="{ Component }">
       <Transition :name="`router-${settingStore.routeAnimation}`" mode="out-in">
         <KeepAlive v-if="settingStore.useKeepAlive">
-          <component :is="Component" :data="listData" :loading="loading" :list-version="listVersion" class="router-view" />
+          <component
+            :is="Component"
+            :data="listData"
+            :loading="loading"
+            :list-version="listVersion"
+            class="router-view"
+          />
         </KeepAlive>
         <component v-else :is="Component" :data="listData" :loading="loading" class="router-view" />
       </Transition>
@@ -195,7 +197,7 @@ const listVersion = ref<number>(0);
 // 文件夹选项（基于配置的目录列表）
 const folderOptions = computed(() => {
   const options: { label: string; value: string }[] = [{ label: "全部文件夹", value: "all" }];
-  
+
   // 基于配置的目录列表生成选项
   settingStore.localFilesPath.forEach((folderPath) => {
     if (!folderPath) return;
@@ -255,6 +257,11 @@ const isLocalSongsRoute = computed<boolean>(
   () => (router.currentRoute.value?.name as string) === "local-songs",
 );
 
+// 当前是否在本地文件夹路由
+const isLocalFoldersRoute = computed<boolean>(
+  () => (router.currentRoute.value?.name as string) === "local-folders",
+);
+
 // 是否展示空状态
 const showEmptyState = computed<boolean>(() => isLocalSongsRoute.value && !hasSong.value);
 
@@ -265,9 +272,9 @@ const getMusicFolder = async (): Promise<string[]> => {
   return paths.filter((p) => p && p.trim() !== "");
 };
 
-// 全部音乐大小
+// 全部音乐大小（基于筛选后的数据）
 const allMusicSize = computed<number>(() => {
-  const total = localStore.localSongs.reduce((total, song) => (total += song?.size || 0), 0);
+  const total = listData.value.reduce((total, song) => (total += song?.size || 0), 0);
   return Number((total / 1024).toFixed(2));
 });
 

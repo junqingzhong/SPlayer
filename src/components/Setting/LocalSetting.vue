@@ -12,6 +12,20 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">本地文件夹显示模式</n-text>
+          <n-text class="tip" :depth="3">选择本地音乐页面文件夹的显示方式</n-text>
+        </div>
+        <n-select
+          class="set"
+          v-model:value="settingStore.localFolderDisplayMode"
+          :options="[
+            { label: '标签页模式', value: 'tab' },
+            { label: '下拉筛选模式', value: 'dropdown' },
+          ]"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">显示本地默认歌曲目录</n-text>
         </div>
         <n-switch class="set" v-model:value="settingStore.showDefaultLocalPath" :round="false" />

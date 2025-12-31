@@ -239,7 +239,9 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">播放器时间样式</n-text>
-          <n-text class="tip" :depth="3">播放页面底部的时间如何显示（单击底部时间可以快速切换）</n-text>
+          <n-text class="tip" :depth="3"
+            >播放页面底部的时间如何显示（单击底部时间可以快速切换）</n-text
+          >
         </div>
         <n-select
           v-model:value="settingStore.timeFormatFullPlayer"
@@ -340,7 +342,7 @@ import { useSettingStore, useStatusStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
 import { renderOption } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
-import { uniqBy } from "lodash";
+import { uniqBy } from "lodash-es";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { openSongUnlockManager } from "@/utils/modal";
 

@@ -1,6 +1,26 @@
 import { execSync } from "child_process";
-import os from "os";
 import process from "process";
+
+// 检测 Rust/Cargo 是否可用
+const isRustAvailable = () => {
+  try {
+    execSync("cargo --version", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const skipNative = process.env.SKIP_NATIVE_BUILD === "true" || !isRustAvailable();
+
+if (skipNative) {
+  const reason = process.env.SKIP_NATIVE_BUILD === "true" 
+    ? "SKIP_NATIVE_BUILD 已设置" 
+    : "Rust 工具链不可用";
+  console.log(`[BuildNative] ${reason}，跳过原生模块构建`);
+  console.log("[BuildNative] 这是正常的，Web 部署不需要原生模块");
+  process.exit(0);
+}
 
 console.log(`[BuildNative] 当前构建目标: ${process.platform}`);
 
