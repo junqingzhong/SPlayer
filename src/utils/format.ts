@@ -355,36 +355,3 @@ export const getPlayerInfo = (song?: SongType, sep: string = "/"): string | null
   if (!info) return null;
   return `${info.name} - ${info.artist}`;
 };
-
-// 歌曲播放时间显示类型
-export type TimeDisplayType = "current" | "total" | "remaining";
-
-// 歌曲播放时间显示格式
-export const TIME_FORMATS = ["current-total", "remaining-total", "current-remaining"] as const;
-export type TimeFormat = (typeof TIME_FORMATS)[number];
-
-export const displayTimeFormat = (format: TimeFormat): [TimeDisplayType, TimeDisplayType] => {
-  switch (format) {
-    case "current-total":
-      return ["current", "total"];
-    case "remaining-total":
-      return ["remaining", "total"];
-    case "current-remaining":
-      return ["current", "remaining"];
-  }
-};
-
-export const getTimeDisplay =
-  (format: () => TimeFormat, statusStore: { currentTime: number; duration: number }) =>
-  (index: number) =>
-    computed(() => {
-      const display = displayTimeFormat(format())[index];
-      switch (display) {
-        case "current":
-          return msToTime(statusStore.currentTime);
-        case "total":
-          return msToTime(statusStore.duration);
-        case "remaining":
-          return "-" + msToTime(statusStore.duration - statusStore.currentTime);
-      }
-    });
