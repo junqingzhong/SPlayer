@@ -131,24 +131,24 @@
       transform-origin="center"
       style="width: 600px"
     >
-      <n-list class="local-list" hoverable clickable bordered>
-        <template #header>
-          <n-text>请选择本地音乐文件夹，将自动扫描您添加的目录，歌曲增删实时同步</n-text>
-        </template>
-        <n-list-item v-for="(item, index) in settingStore.localFilesPath" :key="index">
-          <template #prefix>
-            <SvgIcon :size="20" name="Folder" />
-          </template>
-          <template #suffix>
-            <n-button :focusable="false" quaternary @click="changeLocalMusicPath(index)">
-              <template #icon>
-                <SvgIcon :size="20" name="Delete" />
-              </template>
-            </n-button>
-          </template>
-          <n-thing :title="item" />
-        </n-list-item>
-      </n-list>
+      <n-text class="local-list-tip">请选择本地音乐文件夹，将自动扫描您添加的目录，歌曲增删实时同步</n-text>
+      <n-scrollbar style="max-height: 50vh">
+        <n-list class="local-list" hoverable clickable bordered>
+          <n-list-item v-for="(item, index) in settingStore.localFilesPath" :key="index">
+            <template #prefix>
+              <SvgIcon :size="20" name="Folder" />
+            </template>
+            <template #suffix>
+              <n-button :focusable="false" quaternary @click="changeLocalMusicPath(index)">
+                <template #icon>
+                  <SvgIcon :size="20" name="Delete" />
+                </template>
+              </n-button>
+            </template>
+            <n-thing :title="item" />
+          </n-list-item>
+        </n-list>
+      </n-scrollbar>
       <template #footer>
         <n-flex justify="center">
           <n-button class="add-path" strong secondary @click="changeLocalMusicPath()">
@@ -591,6 +591,11 @@ onUnmounted(() => {
     overflow: hidden;
     max-height: calc((var(--layout-height) - 132) * 1px);
   }
+}
+.local-list-tip {
+  display: block;
+  margin-bottom: 12px;
+  opacity: 0.8;
 }
 .local-list {
   :deep(.n-list-item__prefix) {
