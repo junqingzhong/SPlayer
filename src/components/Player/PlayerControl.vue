@@ -145,7 +145,6 @@ const toggleTimeFormat = () => {
   width: 100%;
   height: 80px;
   overflow: hidden;
-  cursor: pointer;
   .control-content {
     width: 100%;
     height: 100%;
@@ -258,7 +257,6 @@ const toggleTimeFormat = () => {
       width: 100%;
       max-width: 480px;
       font-size: 12px;
-      cursor: pointer;
       .n-slider {
         margin: 6px 8px;
         --n-handle-size: 12px;
@@ -266,6 +264,7 @@ const toggleTimeFormat = () => {
       }
       span {
         opacity: 0.6;
+        cursor: pointer;
       }
     }
   }

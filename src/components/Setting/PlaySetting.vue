@@ -235,6 +235,13 @@
             placeholder="请输入背景动画流动速度"
           />
         </n-card>
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">背景动画暂停时暂停</n-text>
+            <n-text class="tip" :depth="3">在暂停时是否也暂停背景动画</n-text>
+          </div>
+          <n-switch v-model:value="settingStore.playerBackgroundPause" class="set" :round="false" />
+        </n-card>
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">

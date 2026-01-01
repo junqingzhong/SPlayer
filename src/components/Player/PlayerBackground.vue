@@ -20,7 +20,7 @@
         v-else-if="settingStore.playerBackgroundType === 'animation'"
         :album="musicStore.songCover"
         :fps="settingStore.playerBackgroundFps ?? 60"
-        :flowSpeed="settingStore.playerBackgroundFlowSpeed ?? 4"
+        :flowSpeed="flowSpeed"
         :hasLyric="musicStore.isHasLrc"
       />
     </Transition>
@@ -28,11 +28,17 @@
 </template>
 
 <script setup lang="ts">
-import { useMusicStore, useSettingStore } from "@/stores";
+import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import BackgroundRender from "../Special/BackgroundRender.vue";
 
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
+const statusStore = useStatusStore();
+
+const flowSpeed = computed(() => {
+  if (!statusStore.playStatus && settingStore.playerBackgroundPause) return 0;
+  else return settingStore.playerBackgroundFlowSpeed ?? 4;
+})
 </script>
 
 <style lang="scss" scoped>

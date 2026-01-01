@@ -142,6 +142,8 @@ export interface SettingState {
   playerBackgroundFps: number;
   /** 背景动画流动速度 */
   playerBackgroundFlowSpeed: number;
+  /** 背景动画是否在歌曲暂停时暂停 */
+  playerBackgroundPause: boolean
   /** 播放器元素自动隐藏 */
   autoHidePlayerMeta: boolean;
   /** 记忆最后进度 */
@@ -343,6 +345,7 @@ export const useSettingStore = defineStore("setting", {
     playerBackgroundType: "blur",
     playerBackgroundFps: 30,
     playerBackgroundFlowSpeed: 4,
+    playerBackgroundPause: false,
     autoHidePlayerMeta: true,
     memoryLastSeek: true,
     progressTooltipShow: true,

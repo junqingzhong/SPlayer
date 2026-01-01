@@ -93,11 +93,16 @@ onMounted(() => {
   }
 });
 
-onUnmounted(() => {
+const { start: delayedDispose } = useTimeoutFn(() => {
   if (bgRenderRef.value) {
     bgRenderRef.value.dispose();
     bgRenderRef.value = undefined;
   }
+}, 500, { immediate: false });
+
+onBeforeUnmount(() => {
+  bgRenderRef.value?.pause();
+  delayedDispose();
 });
 
 watch(
