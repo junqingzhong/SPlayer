@@ -951,13 +951,23 @@ class PlayerController {
   /**
    * 切换随机模式
    * @param mode 可选，直接设置目标模式。如果不传则按 Off -> On -> Heartbeat -> Off 顺序轮转
+   * @note 当播放列表包含本地歌曲时，跳过心动模式，只在 Off 和 On 之间切换
    */
   public async toggleShuffle(mode?: ShuffleModeType) {
+    const dataStore = useDataStore();
     const statusStore = useStatusStore();
     const currentMode = statusStore.shuffleMode;
 
+    // 检查播放列表是否包含本地歌曲
+    const hasLocalSongs = dataStore.playList.some((song) => song.path);
+
     // 预判下一个模式
-    const nextMode = mode ?? this.playModeManager.calculateNextShuffleMode(currentMode);
+    let nextMode = mode ?? this.playModeManager.calculateNextShuffleMode(currentMode);
+
+    // 如果播放列表包含本地歌曲，跳过心动模式
+    if (hasLocalSongs && nextMode === "heartbeat") {
+      nextMode = "off";
+    }
 
     // 已经是心动模式，再次触发心动模式并播放
     if (currentMode === "heartbeat" && nextMode === "heartbeat") {
