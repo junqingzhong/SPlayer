@@ -309,6 +309,9 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">播放列表歌曲数量</n-text>
+          <n-text class="tip" :depth="3">
+            在右下角的播放列表按钮处显示播放列表的歌曲数量
+          </n-text>
         </div>
         <n-switch v-model:value="settingStore.showPlaylistCount" class="set" :round="false" />
       </n-card>
