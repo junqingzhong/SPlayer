@@ -16,6 +16,7 @@ import {
   enableDiscordRpc,
   updateDiscordConfig,
 } from "./PlayerIpc";
+import { throttle } from "lodash-es";
 
 /**
  * 媒体会话管理器，负责控制媒体控件相关功能
@@ -236,14 +237,21 @@ class MediaSessionManager {
         return;
       }
     }
+    this.throttledUpdatePositionState(duration, position);
+  }
 
+  /**
+   * 媒体会话进度更新限流
+   * 频繁的更新会导致 Linux 下的 MPRIS 进度条抽搐，因此限制更新频率
+   */
+  private throttledUpdatePositionState = throttle((duration: number, position: number) => {
     if ("mediaSession" in navigator) {
       navigator.mediaSession.setPositionState({
         duration: msToS(duration),
         position: msToS(position),
       });
     }
-  }
+  }, 1000);
 }
 
 /**
