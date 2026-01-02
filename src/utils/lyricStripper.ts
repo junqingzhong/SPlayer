@@ -21,6 +21,26 @@
 
 import { type LyricLine } from "@applemusic-like-lyrics/lyric";
 
+const STRICT_MATCH_SEPARATORS = [
+  ":",
+  "：",
+  ",",
+  "，",
+  ".",
+  "。",
+  "!",
+  "！",
+  "-",
+  "_",
+  "(",
+  "（",
+  "[",
+  "【",
+  "{",
+  "『",
+  "「",
+];
+
 /**
  * 扫描限制配置
  */
@@ -149,7 +169,15 @@ function isStrictMatch(text: string, keywords: string[], regexes: RegExp[]): boo
     if (normalizedText.startsWith(normalizedKw)) {
       const remainder = normalizedText.slice(normalizedKw.length);
 
-      if (remainder.startsWith(":") || remainder.startsWith("：")) {
+      // 如果剩余部分为空，说明完全匹配
+      if (remainder.length === 0) {
+        return true;
+      }
+
+      // 检查分隔符
+      // 允许的分隔符包括：冒号、逗号、句号、感叹号、连字符、括号等
+      // 注意：normalizedText 已经移除了空格
+      if (STRICT_MATCH_SEPARATORS.includes(remainder.charAt(0))) {
         return true;
       }
     }

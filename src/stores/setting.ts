@@ -1,5 +1,4 @@
 import { defineStore } from "pinia";
-import { keywords, regexes } from "@/assets/data/exclude";
 import { SongUnlockServer } from "@/core/player/SongManager";
 import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
@@ -212,10 +211,10 @@ export interface SettingState {
   enableExcludeTTML: boolean;
   /** 「排除歌词」是否适用于本地歌词 */
   enableExcludeLocalLyrics: boolean;
-  /** 排除歌词关键字 */
-  excludeKeywords: string[];
-  /** 排除歌词正则表达式 */
-  excludeRegexes: string[];
+  /** 用户自定义的排除歌词关键字 */
+  excludeUserKeywords: string[];
+  /** 用户自定义的排除歌词正则表达式 */
+  excludeUserRegexes: string[];
   /** 显示默认本地路径 */
   showDefaultLocalPath: boolean;
   /** 本地文件夹显示模式 */
@@ -373,8 +372,8 @@ export const useSettingStore = defineStore("setting", {
     enableExcludeLyrics: true,
     enableExcludeTTML: false,
     enableExcludeLocalLyrics: false,
-    excludeKeywords: keywords,
-    excludeRegexes: regexes,
+    excludeUserKeywords: [],
+    excludeUserRegexes: [],
     localFilesPath: [],
     localLyricPath: [],
     showDefaultLocalPath: true,

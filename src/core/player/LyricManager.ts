@@ -324,17 +324,13 @@ class LyricManager {
     const settingStore = useSettingStore();
     const musicStore = useMusicStore();
 
-    const { enableExcludeLyrics, excludeKeywords, excludeRegexes } = settingStore;
+    const { enableExcludeLyrics, excludeUserKeywords, excludeUserRegexes } = settingStore;
 
     if (!enableExcludeLyrics) return lyricData;
 
-    // 将设置中和默认的预定义的关键字和正则表达式合并在一起给 stripLyricMetadata，方便之后更新默认的列表
-    // TODO: 建议在设置界面加一个默认的规则集以便和用户自己加的关键字分开，也方便更新默认列表
-    const userKeywords = excludeKeywords || [];
-    const userRegexes = excludeRegexes || [];
-
-    const mergedKeywords = [...new Set([...userKeywords, ...defaultKeywords])];
-    const mergedRegexes = [...new Set([...userRegexes, ...defaultRegexes])];
+    // 合并默认规则和用户自定义规则
+    const mergedKeywords = [...new Set([...defaultKeywords, ...(excludeUserKeywords ?? [])])];
+    const mergedRegexes = [...new Set([...defaultRegexes, ...(excludeUserRegexes ?? [])])];
 
     const { name, artists } = musicStore.playSong;
     const songMetadataRegexes: string[] = [];
