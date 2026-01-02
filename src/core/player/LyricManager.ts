@@ -322,6 +322,7 @@ class LyricManager {
    */
   private handleLyricExclude(lyricData: SongLyric): SongLyric {
     const settingStore = useSettingStore();
+    const statusStore = useStatusStore();
     const musicStore = useMusicStore();
 
     const { enableExcludeLyrics, excludeUserKeywords, excludeUserRegexes } = settingStore;
@@ -362,13 +363,11 @@ class LyricManager {
 
     const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
 
-    // FIXME: 这部分逻辑有问题，因为 TTML 歌词 (硬性规定没有元数据行) 和网易云的 YRC 歌词都塞进 yrcData 了，无法区分，
-    // 不开排除 TTML 就不能清理 YRC 歌词
-    // 暂时关掉，因为 stripLyricMetadata 应该足够稳健，不会删掉正常的歌词行
     let yrcData = lyricData.yrcData || [];
-    // if (statusStore.usingTTMLLyric && enableExcludeTTML) {
-    yrcData = stripLyricMetadata(yrcData, options);
-    // }
+
+    if (!statusStore.usingTTMLLyric || settingStore.enableExcludeTTML) {
+      yrcData = stripLyricMetadata(yrcData, options);
+    }
 
     return {
       lrcData,
