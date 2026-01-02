@@ -238,19 +238,6 @@
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">播放器时间样式</n-text>
-          <n-text class="tip" :depth="3"
-            >播放页面底部的时间如何显示（单击底部时间可以快速切换）</n-text
-          >
-        </div>
-        <n-select
-          v-model:value="settingStore.timeFormatFullPlayer"
-          :options="timeFormatOptions"
-          class="set"
-        />
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
           <n-text class="name">播放器主色跟随封面</n-text>
           <n-text class="tip" :depth="3">播放器主颜色是否跟随封面主色，下一曲生效</n-text>
         </div>
@@ -308,13 +295,13 @@
       <n-h3 prefix="bar"> 全局播放器 </n-h3>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">底栏时间样式</n-text>
+          <n-text class="name">时间显示格式</n-text>
           <n-text class="tip" :depth="3">
-            全局播放器右侧的时间如何显示（单击底栏时间可以快速切换）
+            底栏右侧和播放页面底部的时间如何显示（单击时间可以快速切换）
           </n-text>
         </div>
         <n-select
-          v-model:value="settingStore.timeFormatMainPlayer"
+          v-model:value="settingStore.timeFormat"
           :options="timeFormatOptions"
           class="set"
         />
@@ -322,6 +309,9 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">播放列表歌曲数量</n-text>
+          <n-text class="tip" :depth="3">
+            在右下角的播放列表按钮处显示播放列表的歌曲数量
+          </n-text>
         </div>
         <n-switch v-model:value="settingStore.showPlaylistCount" class="set" :round="false" />
       </n-card>

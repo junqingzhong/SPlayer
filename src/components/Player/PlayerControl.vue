@@ -100,9 +100,9 @@
           </div>
           <!-- 进度条 -->
           <div class="slider">
-            <span @click="toggleTimeFormat">{{ timeDisplay0 }}</span>
+            <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
             <PlayerSlider :show-tooltip="false" />
-            <span @click="toggleTimeFormat">{{ timeDisplay1 }}</span>
+            <span @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
           </div>
         </div>
         <n-flex class="right" align="center" justify="end">
@@ -117,27 +117,19 @@
 <script setup lang="ts">
 import { usePlayerController } from "@/core/player/PlayerController";
 import { useSongManager } from "@/core/player/SongManager";
-import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { useDataStore, useMusicStore, useStatusStore } from "@/stores";
 import { toLikeSong } from "@/utils/auth";
-import { getTimeDisplay, TIME_FORMATS } from "@/utils/format";
+import { useTimeFormat } from "@/composables/useTimeFormat";
 import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
-const settingStore = useSettingStore();
 
 const songManager = useSongManager();
 const player = usePlayerController();
 
-const timeDisplay = getTimeDisplay(() => settingStore.timeFormatFullPlayer, statusStore);
-const timeDisplay0 = timeDisplay(0);
-const timeDisplay1 = timeDisplay(1);
-
-const toggleTimeFormat = () => {
-  const currentIndex = TIME_FORMATS.indexOf(settingStore.timeFormatFullPlayer);
-  settingStore.timeFormatFullPlayer = TIME_FORMATS[(currentIndex + 1) % TIME_FORMATS.length];
-};
+const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 </script>
 
 <style lang="scss" scoped>
