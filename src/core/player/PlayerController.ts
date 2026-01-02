@@ -950,7 +950,8 @@ class PlayerController {
 
   /**
    * 切换随机模式
-   * @param mode 可选，直接设置目标模式。如果不传则按 Off -> On -> Heartbeat -> Off 顺序轮转
+   * @param mode 可选，直接设置目标模式。如果不传则按 Off -> On -> Off 顺序轮转
+   * @note 心跳模式只能通过菜单开启（传入 "heartbeat" 参数），点击随机按钮不会进入心跳模式
    * @note 当播放列表包含本地歌曲时，跳过心动模式，只在 Off 和 On 之间切换
    */
   public async toggleShuffle(mode?: ShuffleModeType) {
@@ -967,15 +968,6 @@ class PlayerController {
     // 如果播放列表包含本地歌曲，跳过心动模式
     if (hasLocalSongs && nextMode === "heartbeat") {
       nextMode = "off";
-    }
-
-    // 已经是心动模式，再次触发心动模式并播放
-    if (currentMode === "heartbeat" && nextMode === "heartbeat") {
-      if (!statusStore.playStatus) {
-        await this.play();
-      }
-      statusStore.showFullPlayer = true;
-      return;
     }
 
     // 如果模式确实改变了，才让 Manager 进行繁重的数据处理

@@ -77,10 +77,13 @@ export class PlayModeManager {
 
   /**
    * 计算下一个随机模式
+   * 注意：心跳模式只能通过菜单开启，不能通过点击随机按钮进入
    */
   public calculateNextShuffleMode(currentMode: ShuffleModeType): ShuffleModeType {
     if (currentMode === "off") return "on";
-    if (currentMode === "on") return "heartbeat";
+    if (currentMode === "on") return "off";
+    // 如果是心跳模式，点击随机按钮时退出心跳模式
+    if (currentMode === "heartbeat") return "off";
     return "off";
   }
 
@@ -127,31 +130,36 @@ export class PlayModeManager {
     }
 
     this.loadingMessage = window.$message.loading("心动模式开启中...", {
-      duration: 0, // 不自动关闭，必须手动 destroy
+      duration: 0,
     });
 
-    const pid =
-      musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
-    const currentSongId = musicStore.playSong?.id || 0;
+    try {
+      const pid =
+        musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
+      if (!musicStore.playSong) throw new Error("无播放歌曲");
+      // 获取当前歌曲ID，如果不是纯数字则生成随机10位数
+      let currentSongId = musicStore.playSong.id;
+      if (!Number.isInteger(currentSongId) || currentSongId <= 0) {
+        currentSongId = Math.floor(Math.random() * 9000000000) + 1000000000;
+      }
 
-    if (!currentSongId) throw new Error("无播放歌曲");
+      const res = await heartRateList(currentSongId, pid, undefined, signal);
+      if (res.code !== 200) throw new Error("获取推荐失败");
 
-    const res = await heartRateList(currentSongId, pid, undefined, signal);
-    if (res.code !== 200) throw new Error("获取推荐失败");
+      const recList = formatSongsList(res.data);
 
-    const recList = formatSongsList(res.data);
+      // 混合列表
+      const currentList = [...dataStore.playList];
+      const mixedList = interleaveLists(currentList, recList);
 
-    // 混合列表
-    const currentList = [...dataStore.playList];
-    const mixedList = interleaveLists(currentList, recList);
+      await dataStore.setPlayList(mixedList);
 
-    await dataStore.setPlayList(mixedList);
-
-    const idx = mixedList.findIndex((s) => s.id === currentSongId);
-    if (idx !== -1) statusStore.playIndex = idx;
-
-    this.clearLoadingMessage();
-    window.$message.success("心动模式已开启");
+      const idx = mixedList.findIndex((s) => s.id === currentSongId);
+      if (idx !== -1) statusStore.playIndex = idx;
+      window.$message.success("心动模式已开启");
+    } finally {
+      this.clearLoadingMessage();
+    }
   }
 
   /**
