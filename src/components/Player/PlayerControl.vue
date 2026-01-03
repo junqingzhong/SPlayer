@@ -137,7 +137,6 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
   width: 100%;
   height: 80px;
   overflow: hidden;
-  cursor: pointer;
   .control-content {
     width: 100%;
     height: 100%;
@@ -250,7 +249,6 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
       width: 100%;
       max-width: 480px;
       font-size: 12px;
-      cursor: pointer;
       .n-slider {
         margin: 6px 8px;
         --n-handle-size: 12px;
@@ -258,6 +256,7 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
       }
       span {
         opacity: 0.6;
+        cursor: pointer;
       }
     }
   }
