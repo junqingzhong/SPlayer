@@ -111,7 +111,7 @@
         />
       </n-card>
     </div>
-    <div v-if="isElectron && statusStore.isDeveloperMode" class="set-list">
+    <div v-if="isElectron" class="set-list">
       <n-h3 prefix="bar">
         音乐解锁
         <n-tag type="warning" size="small" round>Beta</n-tag>
@@ -316,9 +316,7 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">播放列表歌曲数量</n-text>
-          <n-text class="tip" :depth="3">
-            在右下角的播放列表按钮处显示播放列表的歌曲数量
-          </n-text>
+          <n-text class="tip" :depth="3"> 在右下角的播放列表按钮处显示播放列表的歌曲数量 </n-text>
         </div>
         <n-switch v-model:value="settingStore.showPlaylistCount" class="set" :round="false" />
       </n-card>

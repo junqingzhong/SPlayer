@@ -477,31 +477,7 @@
           <n-text class="name">歌词字体</n-text>
           <n-text class="tip" :depth="3"> 更改桌面歌词字体 </n-text>
         </div>
-        <n-flex>
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="desktopLyricConfig.fontFamily !== 'system-ui'"
-              type="primary"
-              strong
-              secondary
-              @click="
-                () => {
-                  desktopLyricConfig.fontFamily = 'system-ui';
-                  saveDesktopLyricConfig();
-                }
-              "
-            >
-              恢复默认
-            </n-button>
-          </Transition>
-          <n-select
-            v-model:value="desktopLyricConfig.fontFamily"
-            :options="allFontsData"
-            class="set"
-            filterable
-            @update:value="saveDesktopLyricConfig"
-          />
-        </n-flex>
+        <n-button type="primary" strong secondary @click="openFontManager">配置</n-button>
       </n-card>
       <n-card class="set-item">
         <div class="label">
@@ -639,7 +615,6 @@ import { isElectron } from "@/utils/env";
 import { openLyricExclude, openAMLLServer, openFontManager } from "@/utils/modal";
 import { LyricConfig } from "@/types/desktop-lyric";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { SelectOption } from "naive-ui";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
 const props = defineProps<{ scrollTo?: string }>();
@@ -651,20 +626,19 @@ const settingStore = useSettingStore();
 // 桌面歌词区域引用
 const desktopLyricRef = ref<HTMLElement | null>(null);
 
-// 全部字体
-const allFontsData = ref<SelectOption[]>([]);
-
 /**
  * 创建响应式字体大小计算属性
  * 当启用 AMLL 时，翻译和音译的字体大小会根据主歌词大小自动调整
  */
-const fontSizeComputed = (key: string) => computed({
-  get: () => settingStore.useAMLyrics ?
-    // AMLL 会为翻译和音译设置 `font-size: max(.5em, 10px);`
-    Math.max(0.5 * settingStore.lyricFontSize, 10) :
-    settingStore[key],
-  set: (value) => settingStore[key] = value,
-});
+const fontSizeComputed = (key: string) =>
+  computed({
+    get: () =>
+      settingStore.useAMLyrics
+        ? // AMLL 会为翻译和音译设置 `font-size: max(.5em, 10px);`
+          Math.max(0.5 * settingStore.lyricFontSize, 10)
+        : settingStore[key],
+    set: (value) => (settingStore[key] = value),
+  });
 
 // 真实显示的翻译歌词字体大小
 const tranFontSize = fontSizeComputed("lyricTranFontSize");
@@ -673,8 +647,9 @@ const tranFontSize = fontSizeComputed("lyricTranFontSize");
 const romaFontSize = fontSizeComputed("lyricRomaFontSize");
 
 // 显示翻译和音译歌词字体大小被禁用的原因
-const tranFontSizeTitle = computed(() => settingStore.useAMLyrics ?
-  "翻译和音译歌词大小由 Apple Music-like Lyrics 自动设置" : "")
+const tranFontSizeTitle = computed(() =>
+  settingStore.useAMLyrics ? "翻译和音译歌词大小由 Apple Music-like Lyrics 自动设置" : "",
+);
 
 // 桌面歌词配置
 const desktopLyricConfig = reactive<LyricConfig>({ ...defaultDesktopLyricConfig });
