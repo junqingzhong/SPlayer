@@ -162,7 +162,7 @@ class LyricManager {
     const isStale = () => this.activeLyricReq !== req || musicStore.playSong?.id !== id;
     // 处理 TTML 歌词
     const adoptTTML = async () => {
-      if (!settingStore.enableTTMLLyric) return;
+      if (!settingStore.enableOnlineTTMLLyric) return;
       let ttmlContent: string | null = await this.getRawLyricCache(id, "ttml");
       if (!ttmlContent) {
         ttmlContent = await songLyricTTML(id);

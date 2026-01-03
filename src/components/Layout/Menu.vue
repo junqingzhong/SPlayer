@@ -66,7 +66,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           key: "discover",
           link: "discover",
           label: "发现音乐",
-          show: !settingStore.hideDiscover,
+          show: !settingStore.sidebarHide.hideDiscover,
           icon: renderIcon("Discover", {
             style: {
               transform: "translateY(-1px)",
@@ -76,7 +76,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
         {
           key: "personal-fm",
           label: "私人漫游",
-          show: isLogin() !== 0 && !settingStore.hidePersonalFM,
+          show: isLogin() !== 0 && !settingStore.sidebarHide.hidePersonalFM,
           icon: renderIcon("Radio", {
             style: {
               transform: "translateY(-1px)",
@@ -87,7 +87,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           key: "radio-hot",
           link: "radio-hot",
           label: "播客电台",
-          show: !settingStore.hideRadioHot,
+          show: !settingStore.sidebarHide.hideRadioHot,
           icon: renderIcon("Record", {
             style: {
               transform: "translateY(-1px)",
@@ -103,7 +103,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           label: () =>
             h("div", { class: "user-liked" }, [
               h(NText, null, () => "我喜欢的音乐"),
-              !settingStore.hideHeartbeatMode
+              !settingStore.sidebarHide.hideHeartbeatMode
                 ? h(NButton, {
                     type: statusStore.shuffleMode === "heartbeat" ? "primary" : "default",
                     round: true,
@@ -123,14 +123,14 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           key: "like",
           link: "like",
           label: "我的收藏",
-          show: !settingStore.hideLike,
+          show: !settingStore.sidebarHide.hideLike,
           icon: renderIcon("Star"),
         },
         {
           key: "cloud",
           link: "cloud",
           label: "我的云盘",
-          show: isLogin() === 1 && !settingStore.hideCloud,
+          show: isLogin() === 1 && !settingStore.sidebarHide.hideCloud,
           icon: renderIcon("Cloud"),
         },
         {
@@ -145,21 +145,21 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
               },
               () => "下载管理",
             ),
-          show: statusStore.isDeveloperMode && isElectron && !settingStore.hideDownload,
+          show: statusStore.isDeveloperMode && isElectron && !settingStore.sidebarHide.hideDownload,
           icon: renderIcon("Download"),
         },
         {
           key: "local",
           link: "local",
           label: "本地歌曲",
-          show: isElectron && !settingStore.hideLocal,
+          show: isElectron && !settingStore.sidebarHide.hideLocal,
           icon: renderIcon("FolderMusic"),
         },
         {
           key: "history",
           link: "history",
           label: "最近播放",
-          show: !settingStore.hideHistory,
+          show: !settingStore.sidebarHide.hideHistory,
           icon: renderIcon("History"),
         },
         {
@@ -169,7 +169,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
         // 创建的歌单
         {
           key: "user-playlists",
-          show: !settingStore.hideUserPlaylists,
+          show: !settingStore.sidebarHide.hideUserPlaylists,
           icon: statusStore.menuCollapsed ? renderIcon("PlaylistAdd") : undefined,
           label: () =>
             h("div", { class: "user-list" }, [
@@ -191,7 +191,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
         // 收藏的歌单
         {
           key: "liked-playlists",
-          show: !settingStore.hideLikedPlaylists,
+          show: !settingStore.sidebarHide.hideLikedPlaylists,
           icon: statusStore.menuCollapsed ? renderIcon("PlaylistAddCheck") : undefined,
           label: () =>
             h(
