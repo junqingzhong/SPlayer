@@ -52,7 +52,7 @@ interface StatusState {
   };
   /** 纯净歌词模式 */
   pureLyricMode: boolean;
-  /** 是否使用 TTML 歌词 */
+  /** 当前是否正使用 TTML 歌词 */
   usingTTMLLyric: boolean;
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;

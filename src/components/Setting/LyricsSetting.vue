@@ -23,7 +23,7 @@
       >
         <n-card class="warning" v-if="settingStore.useAMLyrics">
           <n-text>
-            你已使用 Apple-Music-like Lyrics，实际显示效果可能与此处的预览有较大差别
+            正在使用 Apple Music-like Lyrics，实际显示效果可能与此处的预览有较大差别
           </n-text>
         </n-card>
         <div v-for="item in 2" :key="item" :class="['lrc-item', { on: item === 2 }]">
@@ -293,9 +293,9 @@
             歌词支持逐字、翻译、音译等功能，将会在下一首歌生效
           </n-text>
         </div>
-        <n-switch v-model:value="settingStore.enableTTMLLyric" class="set" :round="false" />
+        <n-switch v-model:value="settingStore.enableOnlineTTMLLyric" class="set" :round="false" />
       </n-card>
-      <n-collapse-transition :show="settingStore.enableTTMLLyric">
+      <n-collapse-transition :show="settingStore.enableOnlineTTMLLyric">
         <n-card class="set-item">
           <div class="label">
             <n-text class="name">AMLL TTML DB 地址</n-text>

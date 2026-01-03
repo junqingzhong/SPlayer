@@ -6,7 +6,7 @@ import { keywords, regexes } from "@/assets/data/exclude";
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 5;
+export const CURRENT_SETTING_SCHEMA_VERSION = 6;
 
 /**
  * 迁移函数类型
@@ -76,6 +76,42 @@ export const settingMigrations: Record<number, MigrationFunction> = {
       excludeUserKeywords: userKeywords,
       excludeUserRegexes: userRegexes,
     };
+  },
+  6: (state) => {
+    interface OldSettingState extends Partial<SettingState> {
+      enableTTMLLyric?: boolean;
+
+      hideDiscover?: boolean;
+      hidePersonalFM?: boolean;
+      hideRadioHot?: boolean;
+      hideLike?: boolean;
+      hideCloud?: boolean;
+      hideDownload?: boolean;
+      hideLocal?: boolean;
+      hideHistory?: boolean;
+      hideUserPlaylists?: boolean;
+      hideLikedPlaylists?: boolean;
+      hideHeartbeatMode?: boolean;
+    }
+    const oldState = state as OldSettingState;
+
+    return {
+      enableOnlineTTMLLyric: oldState.enableTTMLLyric,
+
+      sidebarHide: {
+        hideDiscover: oldState.hideDiscover || false,
+        hidePersonalFM: oldState.hidePersonalFM || false,
+        hideRadioHot: oldState.hideRadioHot || false,
+        hideLike: oldState.hideLike || false,
+        hideCloud: oldState.hideCloud || false,
+        hideDownload: oldState.hideDownload || false,
+        hideLocal: oldState.hideLocal || false,
+        hideHistory: oldState.hideHistory || false,
+        hideUserPlaylists: oldState.hideUserPlaylists || false,
+        hideLikedPlaylists: oldState.hideLikedPlaylists || false,
+        hideHeartbeatMode: oldState.hideHeartbeatMode || false,
+      },
+    }
   },
 };
 
