@@ -95,7 +95,7 @@ class LyricManager {
     if (lyricsData.length && otherLyrics.length) {
       lyricsData.forEach((v: LyricLine) => {
         otherLyrics.forEach((x: LyricLine) => {
-          if (v.startTime === x.startTime || Math.abs(v.startTime - x.startTime) < 0.6) {
+          if (v.startTime === x.startTime || Math.abs(v.startTime - x.startTime) < 600) {
             v[key] = x.words.map((word) => word.word).join("");
           }
         });
@@ -155,8 +155,6 @@ class LyricManager {
    */
   private parseQRCLyric(qrcContent: string, trans?: string, roma?: string): LyricLine[] {
     const lines: LyricLine[] = [];
-    // 感觉 QQ 音乐歌词时间全部有些慢，所以时间偏移一下
-    const QRC_TIME_OFFSET = -200;
 
     // 从 XML 中提取歌词内容
     const contentMatch = /<Lyric_1[^>]*LyricContent="([^"]*)"[^>]*\/>/.exec(qrcContent);
@@ -177,7 +175,7 @@ class LyricManager {
       const lineMatch = linePattern.exec(line);
       if (!lineMatch) continue;
 
-      const lineStart = parseInt(lineMatch[1], 10) + QRC_TIME_OFFSET;
+      const lineStart = parseInt(lineMatch[1], 10);
       const lineDuration = parseInt(lineMatch[2], 10);
       const lineContent = lineMatch[3];
 
@@ -188,7 +186,7 @@ class LyricManager {
 
       while ((wordMatch = wordRegex.exec(lineContent)) !== null) {
         const wordText = wordMatch[1];
-        const wordStart = parseInt(wordMatch[2], 10) + QRC_TIME_OFFSET;
+        const wordStart = parseInt(wordMatch[2], 10);
         const wordDuration = parseInt(wordMatch[3], 10);
 
         if (wordText) {
@@ -213,23 +211,22 @@ class LyricManager {
       }
     }
 
-    // 处理翻译歌词
+    // 处理翻译
+    let result = lines;
     if (trans) {
       const transLines = parseLrc(trans);
       if (transLines?.length) {
-        return this.alignLyrics(lines, transLines, "translatedLyric");
+        result = this.alignLyrics(result, transLines, "translatedLyric");
       }
     }
-
-    // 处理罗马音歌词
+    // 处理罗马音
     if (roma) {
       const romaLines = parseLrc(roma);
       if (romaLines?.length) {
-        return this.alignLyrics(lines, romaLines, "romanLyric");
+        result = this.alignLyrics(result, romaLines, "romanLyric");
       }
     }
-
-    return lines;
+    return result;
   }
 
   /**
@@ -333,8 +330,6 @@ class LyricManager {
     // 处理 TTML 歌词
     const adoptTTML = async () => {
       if (!settingStore.enableOnlineTTMLLyric) return;
-      // 如果已经有 QQ 音乐歌词，跳过 TTML
-      if (qqMusicAdopted) return;
       let ttmlContent: string | null = await this.getRawLyricCache(id, "ttml");
       if (!ttmlContent) {
         ttmlContent = await songLyricTTML(id);
@@ -402,17 +397,12 @@ class LyricManager {
       const lyricData = this.handleLyricExclude(result);
       this.setFinalLyric(lyricData, req);
     };
-
     // 优先获取 QQ 音乐歌词
     if (settingStore.preferQQMusicLyric) {
       await adoptQQMusic();
     }
-    if (qqMusicAdopted) {
-      statusStore.usingTTMLLyric = false;
-      return result;
-    }
-    // 否则使用原有逻辑
     await Promise.allSettled([adoptTTML(), adoptLRC()]);
+    // 优先使用 TTML
     statusStore.usingTTMLLyric = ttmlAdopted;
     return result;
   }
