@@ -23,7 +23,7 @@
           <!-- 下载 -->
           <div
             class="menu-icon"
-            v-if="!musicStore.playSong.path"
+            v-if="!musicStore.playSong.path && statusStore.isDeveloperMode"
             @click.stop="openDownloadSong(musicStore.playSong)"
           >
             <SvgIcon name="Download" />

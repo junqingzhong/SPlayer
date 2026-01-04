@@ -177,10 +177,12 @@ export interface SettingState {
   wordFadeWidth: number;
   /** 歌词时延调节步长（毫秒） */
   lyricOffsetStep: number;
-  /** 是否启用在线 TTML 歌词 */
+  /** 启用在线 TTML 歌词 */
   enableOnlineTTMLLyric: boolean;
   /** 优先使用 QQ 音乐歌词源 */
   preferQQMusicLyric: boolean;
+  /** 本地歌曲使用 QQ 音乐歌词匹配 */
+  localLyricQQMusicMatch: boolean;
   /** AMLL DB 服务地址 */
   amllDbServer: string;
   /** 菜单显示封面 */
@@ -371,6 +373,7 @@ export const useSettingStore = defineStore("setting", {
     lyricOffsetStep: 500,
     enableOnlineTTMLLyric: false,
     preferQQMusicLyric: false,
+    localLyricQQMusicMatch: false,
     amllDbServer: defaultAMLLDbServer,
     showYrc: true,
     showYrcAnimation: true,
