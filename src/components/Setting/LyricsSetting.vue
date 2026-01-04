@@ -207,6 +207,15 @@
       <n-collapse-transition :show="settingStore.showYrc">
         <n-card class="set-item">
           <div class="label">
+            <n-text class="name">优先使用 QQ 音乐歌词</n-text>
+            <n-text class="tip" :depth="3">
+              优先从 QQ 音乐获取逐字歌词，模糊搜索，可能不准确
+            </n-text>
+          </div>
+          <n-switch v-model:value="settingStore.preferQQMusicLyric" class="set" :round="false" />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
             <n-text class="name">显示逐字歌词动画</n-text>
             <n-text class="tip" :depth="3"> 可能会造成性能问题，如遇卡顿请关闭 </n-text>
           </div>

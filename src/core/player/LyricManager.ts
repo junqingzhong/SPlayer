@@ -1,4 +1,5 @@
 import { songLyric, songLyricTTML } from "@/api/song";
+import { qqMusicMatch } from "@/api/qqmusic";
 import { keywords as defaultKeywords, regexes as defaultRegexes } from "@/assets/data/exclude";
 import { useCacheManager } from "@/core/resource/CacheManager";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
@@ -42,12 +43,13 @@ class LyricManager {
    * @param type 缓存类型
    * @returns 缓存数据
    */
-  private async getRawLyricCache(id: number, type: "lrc" | "ttml"): Promise<string | null> {
+  private async getRawLyricCache(id: number, type: "lrc" | "ttml" | "qrc"): Promise<string | null> {
     const settingStore = useSettingStore();
     if (!isElectron || !settingStore.cacheEnabled) return null;
     try {
       const cacheManager = useCacheManager();
-      const result = await cacheManager.get("lyrics", `${id}.${type === "ttml" ? "ttml" : "json"}`);
+      const ext = type === "ttml" ? "ttml" : type === "qrc" ? "qrc.json" : "json";
+      const result = await cacheManager.get("lyrics", `${id}.${ext}`);
       if (result.success && result.data) {
         // Uint8Array to string
         const decoder = new TextDecoder();
@@ -65,12 +67,13 @@ class LyricManager {
    * @param type 缓存类型
    * @param data 数据
    */
-  private async saveRawLyricCache(id: number, type: "lrc" | "ttml", data: string) {
+  private async saveRawLyricCache(id: number, type: "lrc" | "ttml" | "qrc", data: string) {
     const settingStore = useSettingStore();
     if (!isElectron || !settingStore.cacheEnabled) return;
     try {
       const cacheManager = useCacheManager();
-      await cacheManager.set("lyrics", `${id}.${type === "ttml" ? "ttml" : "json"}`, data);
+      const ext = type === "ttml" ? "ttml" : type === "qrc" ? "qrc.json" : "json";
+      await cacheManager.set("lyrics", `${id}.${ext}`, data);
     } catch (error) {
       console.error("写入歌词缓存失败:", error);
     }
@@ -144,6 +147,92 @@ class LyricManager {
   }
 
   /**
+   * 解析 QQ 音乐 QRC 格式歌词
+   * @param qrcContent QRC 原始内容
+   * @param trans 翻译歌词
+   * @param roma 罗马音歌词
+   * @returns LyricLine 数组
+   */
+  private parseQRCLyric(qrcContent: string, trans?: string, roma?: string): LyricLine[] {
+    const lines: LyricLine[] = [];
+    // 感觉 QQ 音乐歌词时间全部有些慢，所以时间偏移一下
+    const QRC_TIME_OFFSET = -200;
+
+    // 从 XML 中提取歌词内容
+    const contentMatch = /<Lyric_1[^>]*LyricContent="([^"]*)"[^>]*\/>/.exec(qrcContent);
+    const content = contentMatch ? contentMatch[1] : qrcContent;
+
+    // 行匹配: [开始时间,持续时间]内容
+    const linePattern = /^\[(\d+),(\d+)\](.*)$/;
+    // 逐字匹配: 文字(开始时间,持续时间)
+    const wordPattern = /([^(]*)\((\d+),(\d+)\)/g;
+
+    for (const rawLine of content.split("\n")) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      // 跳过元数据标签 [ti:xxx] [ar:xxx] 等
+      if (/^\[[a-z]+:/i.test(line)) continue;
+
+      const lineMatch = linePattern.exec(line);
+      if (!lineMatch) continue;
+
+      const lineStart = parseInt(lineMatch[1], 10) + QRC_TIME_OFFSET;
+      const lineDuration = parseInt(lineMatch[2], 10);
+      const lineContent = lineMatch[3];
+
+      // 解析逐字
+      const words: Array<{ word: string; startTime: number; endTime: number }> = [];
+      let wordMatch: RegExpExecArray | null;
+      const wordRegex = new RegExp(wordPattern.source, "g");
+
+      while ((wordMatch = wordRegex.exec(lineContent)) !== null) {
+        const wordText = wordMatch[1];
+        const wordStart = parseInt(wordMatch[2], 10) + QRC_TIME_OFFSET;
+        const wordDuration = parseInt(wordMatch[3], 10);
+
+        if (wordText) {
+          words.push({
+            word: wordText,
+            startTime: wordStart,
+            endTime: wordStart + wordDuration,
+          });
+        }
+      }
+
+      if (words.length > 0) {
+        lines.push({
+          words: words.map((w) => ({ ...w, romanWord: "" })),
+          startTime: lineStart,
+          endTime: lineStart + lineDuration,
+          translatedLyric: "",
+          romanLyric: "",
+          isBG: false,
+          isDuet: false,
+        });
+      }
+    }
+
+    // 处理翻译歌词
+    if (trans) {
+      const transLines = parseLrc(trans);
+      if (transLines?.length) {
+        return this.alignLyrics(lines, transLines, "translatedLyric");
+      }
+    }
+
+    // 处理罗马音歌词
+    if (roma) {
+      const romaLines = parseLrc(roma);
+      if (romaLines?.length) {
+        return this.alignLyrics(lines, romaLines, "romanLyric");
+      }
+    }
+
+    return lines;
+  }
+
+  /**
    * 处理在线歌词
    * @param id 歌曲 ID
    * @returns 歌词数据
@@ -158,11 +247,94 @@ class LyricManager {
     const result: SongLyric = { lrcData: [], yrcData: [] };
     // 是否采用了 TTML
     let ttmlAdopted = false;
+    // 是否采用了 QQ 音乐歌词
+    let qqMusicAdopted = false;
     // 过期判断
     const isStale = () => this.activeLyricReq !== req || musicStore.playSong?.id !== id;
+
+    // 处理 QQ 音乐歌词
+    const adoptQQMusic = async () => {
+      if (!settingStore.preferQQMusicLyric) return;
+      const song = musicStore.playSong;
+      if (!song) return;
+      // 先检查缓存
+      const cached = await this.getRawLyricCache(id, "qrc");
+      let data: any = null;
+      if (cached) {
+        try {
+          data = JSON.parse(cached);
+        } catch {
+          data = null;
+        }
+      }
+      // 如果没有缓存，则请求 API
+      if (!data) {
+        // 构建搜索关键词
+        const artistsStr = Array.isArray(song.artists)
+          ? song.artists.map((a) => a.name).join("/")
+          : song.artists || "";
+        const keyword = `${song.name}-${artistsStr}`;
+        try {
+          data = await qqMusicMatch(keyword);
+        } catch (error) {
+          console.warn("QQ 音乐歌词获取失败:", error);
+          return;
+        }
+      }
+      if (isStale()) return;
+      if (!data || data.code !== 200) return;
+
+      // 验证时长匹配（相差超过 5 秒视为不匹配）
+      if (data.song?.duration) {
+        const durationDiff = Math.abs(data.song.duration - song.duration);
+        if (durationDiff > 5000) {
+          console.warn(
+            `QQ 音乐歌词时长不匹配: ${data.song.duration}ms vs ${song.duration}ms (差异 ${durationDiff}ms)`,
+          );
+          return;
+        }
+      }
+      // 保存到缓存
+      if (!cached && data.code === 200) {
+        this.saveRawLyricCache(id, "qrc", JSON.stringify(data));
+      }
+      // 解析 QRC 逐字歌词
+      if (data.qrc) {
+        const qrcLines = this.parseQRCLyric(data.qrc, data.trans, data.roma);
+        if (qrcLines.length > 0) {
+          result.yrcData = qrcLines;
+          qqMusicAdopted = true;
+        }
+      }
+      // 解析 LRC 歌词（如果没有 QRC）
+      if (!qqMusicAdopted && data.lrc) {
+        let lrcLines = parseLrc(data.lrc) || [];
+        // 处理翻译
+        if (data.trans) {
+          const transLines = parseLrc(data.trans);
+          if (transLines?.length) {
+            lrcLines = this.alignLyrics(lrcLines, transLines, "translatedLyric");
+          }
+        }
+        // 处理罗马音
+        if (data.roma) {
+          const romaLines = parseLrc(data.roma);
+          if (romaLines?.length) {
+            lrcLines = this.alignLyrics(lrcLines, romaLines, "romanLyric");
+          }
+        }
+        if (lrcLines.length > 0) {
+          result.lrcData = lrcLines;
+          qqMusicAdopted = true;
+        }
+      }
+    };
+
     // 处理 TTML 歌词
     const adoptTTML = async () => {
       if (!settingStore.enableOnlineTTMLLyric) return;
+      // 如果已经有 QQ 音乐歌词，跳过 TTML
+      if (qqMusicAdopted) return;
       let ttmlContent: string | null = await this.getRawLyricCache(id, "ttml");
       if (!ttmlContent) {
         ttmlContent = await songLyricTTML(id);
@@ -180,6 +352,8 @@ class LyricManager {
     };
     // 处理 LRC 歌词
     const adoptLRC = async () => {
+      // 如果已经有 QQ 音乐歌词，跳过网易云
+      if (qqMusicAdopted) return;
       let data: any = null;
       const cached = await this.getRawLyricCache(id, "lrc");
       if (cached) {
@@ -228,7 +402,16 @@ class LyricManager {
       const lyricData = this.handleLyricExclude(result);
       this.setFinalLyric(lyricData, req);
     };
-    // 设置 TTML
+
+    // 优先获取 QQ 音乐歌词
+    if (settingStore.preferQQMusicLyric) {
+      await adoptQQMusic();
+    }
+    if (qqMusicAdopted) {
+      statusStore.usingTTMLLyric = false;
+      return result;
+    }
+    // 否则使用原有逻辑
     await Promise.allSettled([adoptTTML(), adoptLRC()]);
     statusStore.usingTTMLLyric = ttmlAdopted;
     return result;

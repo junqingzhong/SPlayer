@@ -179,6 +179,8 @@ export interface SettingState {
   lyricOffsetStep: number;
   /** 是否启用在线 TTML 歌词 */
   enableOnlineTTMLLyric: boolean;
+  /** 优先使用 QQ 音乐歌词源 */
+  preferQQMusicLyric: boolean;
   /** AMLL DB 服务地址 */
   amllDbServer: string;
   /** 菜单显示封面 */
@@ -368,6 +370,7 @@ export const useSettingStore = defineStore("setting", {
     wordFadeWidth: 0.5,
     lyricOffsetStep: 500,
     enableOnlineTTMLLyric: false,
+    preferQQMusicLyric: false,
     amllDbServer: defaultAMLLDbServer,
     showYrc: true,
     showYrcAnimation: true,
