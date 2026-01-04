@@ -75,6 +75,8 @@ export interface SettingState {
   downloadPath: string;
   /** 是否启用缓存 */
   cacheEnabled: boolean;
+  /** 是否缓存歌曲（音频文件） */
+  songCacheEnabled: boolean;
   /** 音乐命名格式 */
   fileNameFormat: "title" | "artist-title" | "title-artist";
   /** 文件智能分类 */
@@ -140,7 +142,7 @@ export interface SettingState {
   /** 背景动画流动速度 */
   playerBackgroundFlowSpeed: number;
   /** 背景动画是否在歌曲暂停时暂停 */
-  playerBackgroundPause: boolean
+  playerBackgroundPause: boolean;
   /** 播放器元素自动隐藏 */
   autoHidePlayerMeta: boolean;
   /** 记忆最后进度 */
@@ -388,6 +390,7 @@ export const useSettingStore = defineStore("setting", {
     showLocalCover: true,
     downloadPath: "",
     cacheEnabled: true,
+    songCacheEnabled: true,
     fileNameFormat: "title-artist",
     folderStrategy: "none",
     downloadMeta: true,

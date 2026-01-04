@@ -207,6 +207,9 @@ export class CacheService {
     const { target } = this.resolveSafePath(type, key);
     const buffer = this.toBuffer(data);
 
+    // 检查并清理超限缓存
+    await this.checkAndCleanCache();
+
     // 检查旧文件大小
     let oldSize = 0;
     try {
@@ -241,6 +244,51 @@ export class CacheService {
 
     // 更新大小记录
     this.sizes[type] = this.sizes[type] - oldSize + dataToWrite.length;
+  }
+
+  /**
+   * 检查并清理超限缓存
+   * 优先清理 music 类型的缓存
+   */
+  public async checkAndCleanCache(): Promise<void> {
+    const store = useStore();
+    const limitSizeGB = store.get("cacheLimit") ?? 10;
+
+    // 如果设置为 0，则不限制
+    if (limitSizeGB <= 0) return;
+
+    const limitSizeBytes = limitSizeGB * 1024 * 1024 * 1024;
+    const currentSize = await this.getSize();
+
+    if (currentSize <= limitSizeBytes) return;
+
+    // 需要腾出的空间（至少 100MB）
+    const targetFreeSize = currentSize - limitSizeBytes + 100 * 1024 * 1024;
+    let freedSize = 0;
+
+    // 清理顺序：优先清理 music，然后是其他类型
+    const cleanOrder: CacheResourceType[] = ["music", "lyrics", "list-data", "local-data"];
+
+    for (const cacheType of cleanOrder) {
+      if (freedSize >= targetFreeSize) break;
+
+      const items = await this.list(cacheType);
+      // 按 atime 升序排序 (最久未访问的在前)
+      items.sort((a, b) => a.atime - b.atime);
+
+      for (const item of items) {
+        if (freedSize >= targetFreeSize) break;
+        try {
+          await this.remove(cacheType, item.key);
+          freedSize += item.size;
+          cacheLog.info(`Cleaned cache: ${cacheType}/${item.key}, size: ${item.size}`);
+        } catch (e) {
+          cacheLog.warn(`Failed to remove cache file: ${item.key}`, e);
+        }
+      }
+    }
+
+    cacheLog.info(`Cache cleanup completed. Freed: ${freedSize} bytes`);
   }
 
   /**

@@ -110,6 +110,13 @@
       <n-collapse-transition :show="settingStore.cacheEnabled">
         <n-card class="set-item">
           <div class="label">
+            <n-text class="name">缓存歌曲</n-text>
+            <n-text class="tip" :depth="3">是否缓存歌曲音频，关闭后可节省缓存空间</n-text>
+          </div>
+          <n-switch class="set" v-model:value="settingStore.songCacheEnabled" :round="false" />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
             <n-text class="name">缓存大小上限</n-text>
             <n-text class="tip" :depth="3">达到上限后将清理最旧的缓存，可以是小数，最低 2GB</n-text>
           </div>

@@ -333,7 +333,7 @@
 
 <script setup lang="ts">
 import type { SelectOption } from "naive-ui";
-import { useSettingStore, useStatusStore } from "@/stores";
+import { useSettingStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
 import { renderOption } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
@@ -342,7 +342,6 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { openSongUnlockManager } from "@/utils/modal";
 
 const player = usePlayerController();
-const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 // 输出设备数据
 const outputDevices = ref<SelectOption[]>([]);

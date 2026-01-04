@@ -2,7 +2,6 @@ import { existsSync, createWriteStream } from "fs";
 import { unlink, rename, stat } from "fs/promises";
 import { pipeline } from "stream/promises";
 import { CacheService } from "./CacheService";
-import { useStore } from "../store";
 import { cacheLog } from "../logger";
 import got from "got";
 
@@ -54,9 +53,7 @@ export class MusicCacheService {
       const items = await this.cacheService.list("music");
       // 查找以 id_ 开头且以 .sc 结尾的文件（排除 .tmp 文件）
       const prefix = `${id}_`;
-      const match = items.find(
-        (item) => item.key.startsWith(prefix) && item.key.endsWith(".sc"),
-      );
+      const match = items.find((item) => item.key.startsWith(prefix) && item.key.endsWith(".sc"));
       if (match) {
         return this.cacheService.getFilePath("music", match.key);
       }
@@ -74,29 +71,15 @@ export class MusicCacheService {
    * @returns 缓存后的本地文件路径
    */
   public async cacheMusic(id: number | string, url: string, quality: string): Promise<string> {
-    const store = useStore();
-    const limitSizeGB = store.get("cacheLimit") ?? 10;
-    const limitSizeBytes = limitSizeGB * 1024 * 1024 * 1024;
-
-    // 如果设置为 0，则不限制
-    if (limitSizeGB > 0) {
-      const currentSize = await this.cacheService.getSize();
-
-      if (currentSize > limitSizeBytes) {
-        // 腾出至少 100MB 空间
-        await this.cacheService.cleanOldCache(
-          "music",
-          currentSize - limitSizeBytes + 100 * 1024 * 1024,
-        );
-      }
-    }
-
     const key = this.getCacheKey(id, quality);
     const filePath = this.cacheService.getFilePath("music", key);
     const tempPath = `${filePath}.tmp`;
 
     // 确保目录存在
     await this.cacheService.init();
+
+    // 检查并清理超限缓存
+    await this.cacheService.checkAndCleanCache();
 
     // 下载并写入
     try {
