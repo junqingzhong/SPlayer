@@ -174,6 +174,15 @@ class PlayerController {
       await audioManager.play(url, { fadeIn: !!fadeTime, fadeDuration: fadeTime, autoPlay });
       // 恢复进度
       if (seek > 0) audioManager.seek(seek / 1000);
+      // 如果不自动播放，设置任务栏暂停状态
+      if (!autoPlay) {
+        playerIpc.sendTaskbarMode("paused");
+        if (seek > 0) {
+          const duration = this.getDuration();
+          const progress = calculateProgress(seek, duration);
+          playerIpc.sendTaskbarProgress(progress);
+        }
+      }
     } catch (error) {
       console.error("❌ 音频播放失败:", error);
       throw error;
@@ -315,6 +324,8 @@ class PlayerController {
       lastfmScrobbler.resume();
       // IPC 通知
       playerIpc.sendPlayStatus(true);
+      playerIpc.sendTaskbarMode("normal");
+      playerIpc.sendTaskbarProgress(statusStore.progress);
       // ipcService.sendSongChange(playTitle, name || "", artist || "", album || "");
       console.log(`▶️ [${musicStore.playSong?.id}] 歌曲播放:`, name);
     });
@@ -328,6 +339,8 @@ class PlayerController {
       }
       if (!isElectron) window.document.title = "SPlayer";
       playerIpc.sendPlayStatus(false);
+      playerIpc.sendTaskbarMode("paused");
+      playerIpc.sendTaskbarProgress(statusStore.progress);
       lastfmScrobbler.pause();
       console.log(`⏸️ [${musicStore.playSong?.id}] 歌曲暂停`);
     });
@@ -416,6 +429,11 @@ class PlayerController {
       window.$message.error("本地文件无法播放");
       statusStore.playLoading = false;
       this.retryInfo.count = 0;
+      // 如果列表只有一首，直接停止
+      if (dataStore.playList.length <= 1) {
+        this.pause(true);
+        return;
+      }
       await this.nextOrPrev("next");
       return;
     }

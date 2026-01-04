@@ -34,17 +34,27 @@ export const sendSongChange = (title: string, name: string, artist: string, albu
 };
 
 /**
- * 发送进度
+ * 发送状态栏进度
  * @param progress 进度
  */
 export const sendTaskbarProgress: (progress: number | "none") => void = throttle(
   (progress: number | "none") => {
     if (isElectron) {
-      window.electron.ipcRenderer.send("set-bar", progress);
+      window.electron.ipcRenderer.send("set-bar-progress", progress);
     }
   },
   1000,
 );
+
+/**
+ * 发送状态栏模式
+ * @param mode 模式
+ */
+export const sendTaskbarMode = (mode: "normal" | "paused" | "error" | "indeterminate") => {
+  if (isElectron) {
+    window.electron.ipcRenderer.send("set-bar-mode", mode);
+  }
+};
 
 /**
  * 发送 Socket 实时进度

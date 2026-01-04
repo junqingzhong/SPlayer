@@ -118,32 +118,83 @@ const initWindowsIpc = (): void => {
     mainWin.webContents.send(eventName, ...args);
   });
 
-  // 显示进度
-  ipcMain.on("set-bar", (_event, val: number | "none" | "indeterminate" | "error" | "paused") => {
+  // 进度条状态
+  let currentProgress = -1;
+  let currentMode: "normal" | "paused" | "error" | "indeterminate" = "normal";
+
+  // 更新进度条
+  const updateProgressBar = () => {
     const mainWin = mainWindow.getWin();
     if (!mainWin) return;
-    switch (val) {
-      case "none":
-        mainWin?.setProgressBar(-1);
-        break;
-      case "indeterminate":
-        mainWin?.setProgressBar(2, { mode: "indeterminate" });
-        break;
-      case "error":
-        mainWin?.setProgressBar(1, { mode: "error" });
-        break;
-      case "paused":
-        mainWin?.setProgressBar(1, { mode: "paused" });
-        break;
-      default:
-        if (typeof val === "number") {
-          mainWin?.setProgressBar(val / 100);
-        } else {
-          mainWin?.setProgressBar(-1);
-        }
-        break;
+
+    if (currentProgress < 0) {
+      mainWin.setProgressBar(-1);
+    } else {
+      mainWin.setProgressBar(currentProgress, { mode: currentMode as any });
     }
+  };
+
+  // 设置进度
+  ipcMain.on("set-bar-progress", (_event, progress: number | "none") => {
+    if (progress === "none") {
+      currentProgress = -1;
+    } else {
+      currentProgress = progress / 100;
+    }
+    updateProgressBar();
   });
+
+  // 设置模式
+  ipcMain.on("set-bar-mode", (_event, mode: "normal" | "paused" | "error" | "indeterminate") => {
+    currentMode = mode;
+    updateProgressBar();
+  });
+
+  // 显示进度 (兼容旧版，建议使用 set-bar-progress 和 set-bar-mode)
+  ipcMain.on(
+    "set-bar",
+    (
+      _event,
+      val:
+        | number
+        | "none"
+        | "indeterminate"
+        | "error"
+        | "paused"
+        | { progress: number; mode: "normal" | "paused" | "error" | "indeterminate" },
+    ) => {
+      if (typeof val === "object" && val !== null) {
+        currentProgress = val.progress / 100;
+        currentMode = val.mode === "normal" ? "normal" : val.mode;
+        updateProgressBar();
+        return;
+      }
+
+      switch (val) {
+        case "none":
+          currentProgress = -1;
+          break;
+        case "indeterminate":
+          currentProgress = 2; // Electron treat > 1 as indeterminate usually, but let's stick to mode
+          currentMode = "indeterminate";
+          break;
+        case "error":
+          currentMode = "error";
+          break;
+        case "paused":
+          currentMode = "paused";
+          break;
+        default:
+          if (typeof val === "number") {
+            currentProgress = val / 100;
+          } else {
+            currentProgress = -1;
+          }
+          break;
+      }
+      updateProgressBar();
+    },
+  );
 
   // 开启控制台
   ipcMain.on("open-dev-tools", () => {
