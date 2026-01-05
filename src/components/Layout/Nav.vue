@@ -16,7 +16,7 @@
     <!-- 主内容 -->
     <n-flex class="nav-main">
       <!-- 搜索 -->
-      <SearchInp />
+      <SearchInp v-if="settingStore.useOnlineService" />
       <!-- 可拖拽 -->
       <div class="nav-drag" />
       <!-- 用户 -->

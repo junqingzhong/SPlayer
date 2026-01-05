@@ -242,9 +242,54 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
         {
           key: "local",
           link: "local",
-          label: "本地歌曲",
+          label: "音乐库",
           show: isElectron,
           icon: renderIcon("FolderMusic"),
+        },
+        {
+          key: "local-albums",
+          link: "local-albums",
+          label: "专辑",
+          show:
+            isElectron &&
+            (localStore.localSongs?.length > 0 || settingStore.localFilesPath?.length > 0),
+          icon: renderIcon("Album"),
+        },
+        {
+          key: "local-artists",
+          link: "local-artists",
+          label: "艺术家",
+          show:
+            isElectron &&
+            (localStore.localSongs?.length > 0 || settingStore.localFilesPath?.length > 0),
+          icon: renderIcon("Person"),
+        },
+        {
+          key: "divider",
+          type: "divider",
+          show: localPlaylistMenu.value.length > 0,
+        },
+        // 本地歌单
+        {
+          key: "local-playlists",
+          show: localPlaylistMenu.value.length > 0,
+          icon: statusStore.menuCollapsed ? renderIcon("PlaylistAdd") : undefined,
+          label: () =>
+            h("div", { class: "user-list" }, [
+              h(NText, { depth: 3 }, () => "本地歌单"),
+              h(NButton, {
+                type: "tertiary",
+                round: true,
+                strong: true,
+                secondary: true,
+                renderIcon: renderIcon("Add"),
+                onclick: (event: Event) => {
+                  event.stopPropagation();
+                  openCreatePlaylist(true);
+                },
+              }),
+            ]),
+          children: [...localPlaylistMenu.value],
         },
       ];
 });
@@ -341,12 +386,15 @@ const menuUpdate = (key: string, item: MenuOption) => {
       query: { id: item.key },
     });
   } else if (typeof key === "string" && key.startsWith("local-")) {
-    // 本地歌单
+    // 检查是否为本地歌单（16位数字ID）
     const localId = key.replace("local-", "");
-    router.push({
-      name: "playlist",
-      query: { id: localId },
-    });
+    const isLocalPlaylist = /^\d{16}$/.test(localId);
+    if (isLocalPlaylist) {
+      router.push({
+        name: "playlist",
+        query: { id: localId },
+      });
+    }
   } else {
     switch (key) {
       case "like-songs":
@@ -377,11 +425,13 @@ const checkMenuItem = () => {
   // 处理路由名称
   const prefixMap = [
     { prefix: "discover-", name: "discover" },
-    { prefix: "local-", name: "local" },
+    // 本地模式下不合并 local- 前缀的路由
+    { prefix: "local-", name: "local", skipInLocalMode: true },
     { prefix: "like-", name: "like", exclude: "like-songs" },
     { prefix: "download-", name: "download" },
   ];
   for (const item of prefixMap) {
+    if (item.skipInLocalMode && !settingStore.useOnlineService) continue;
     if (routerName.startsWith(item.prefix) && (!item.exclude || routerName !== item.exclude)) {
       routerName = item.name;
       break;
@@ -389,6 +439,12 @@ const checkMenuItem = () => {
   }
   // 显示菜单
   menuRef.value?.showOption(routerName);
+  // 本地模式下处理
+  if (!settingStore.useOnlineService) {
+    if (routerName === "local-songs" || routerName === "local-folders") {
+      routerName = "local";
+    }
+  }
   // 高亮菜单
   switch (routerName) {
     case "playlist": {
@@ -422,6 +478,15 @@ const checkMenuItem = () => {
 const openHeartMode = debounce(() => player.toggleShuffle("heartbeat"), 1000, {
   leading: true,
   trailing: false,
+});
+
+// 本地模式下自动展开本地歌单
+onMounted(() => {
+  if (!settingStore.useOnlineService && localPlaylistMenu.value.length > 0) {
+    if (!settingStore.menuExpandedKeys.includes("local-playlists")) {
+      settingStore.menuExpandedKeys.push("local-playlists");
+    }
+  }
 });
 
 // 监听路由

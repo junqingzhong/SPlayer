@@ -282,6 +282,7 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
     {
       key: "search",
       label: "同名搜索",
+      show: settingStore.useOnlineService,
       props: {
         onClick: () => router.push({ name: "search", query: { keyword: song.name } }),
       },

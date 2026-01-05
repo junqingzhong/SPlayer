@@ -40,10 +40,15 @@
 import type { SongType } from "@/types/main";
 import { useLocalStore } from "@/stores";
 import { some } from "lodash-es";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 const props = defineProps<{ data: SongType[] }>();
 
 const localStore = useLocalStore();
+const player = usePlayerController();
+
+// 播放事件总线
+const localPlayEventBus = useEventBus("local-play");
 
 // 专辑数据
 const chooseAlbum = ref<string>("");
@@ -84,6 +89,13 @@ const handleRemoveSong = (ids: number[]) => {
   const updatedSongs = localStore.localSongs.filter((song) => !ids.includes(song.id));
   localStore.updateLocalSong(updatedSongs);
 };
+
+// 监听播放事件
+const router = useRouter();
+localPlayEventBus.on(() => {
+  if (router.currentRoute.value?.name !== "local-albums") return;
+  player.updatePlayList(albumSongs.value);
+});
 
 watch(
   () => chooseAlbum.value,
