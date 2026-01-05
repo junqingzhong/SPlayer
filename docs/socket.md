@@ -108,6 +108,56 @@ ws.onmessage = (event) => {
 };
 ```
 
+## 获取信息
+
+**消息类型**: `get-song-info`
+
+**请求格式**:
+
+```json
+{
+  "type": "get-song-info"
+}
+```
+
+**响应格式**:
+
+成功响应：
+
+```json
+{
+  "type": "song-info",
+  "data": {
+    "playStatus": "play",
+    "playName": "歌曲名",
+    "artistName": "歌手名",
+    "albumName": "专辑名",
+    "currentTime": 123.45,
+    "volume": 1,
+    "playRate": 1,
+    "id": 123456,
+    "name": "歌曲名",
+    "artists": "歌手名",
+    "album": "专辑名",
+    "cover": "http://...",
+    "duration": 300,
+    "lrcData": [],
+    "yrcData": []
+  }
+}
+```
+
+错误响应：
+
+```json
+{
+  "type": "error",
+  "data": {
+    "message": "获取当前播放信息失败"
+  }
+}
+```
+
 ## 事件广播
 
 当播放器状态发生变化时，服务器会向所有连接的客户端广播消息。
@@ -167,7 +217,7 @@ ws.onmessage = (event) => {
   "type": "progress-change",
   "data": {
     "currentTime": 12000, // 当前播放时间(ms)
-    "duration": 240000,   // 总时长(ms)
+    "duration": 240000, // 总时长(ms)
     "timestamp": 1234567890123
   }
 }

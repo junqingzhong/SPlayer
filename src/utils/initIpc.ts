@@ -93,6 +93,30 @@ const initIpc = () => {
       console.log("📡 Received protocol url:", url);
       handleProtocolUrl(url);
     });
+    // 请求播放信息
+    window.electron.ipcRenderer.on("request-track-info", () => {
+      const musicStore = useMusicStore();
+      const statusStore = useStatusStore();
+      const { name, artist, album } = getPlayerInfoObj() || {};
+      // 获取原始对象
+      const playSong = toRaw(musicStore.playSong);
+      const songLyric = toRaw(musicStore.songLyric);
+      window.electron.ipcRenderer.send(
+        "return-track-info",
+        cloneDeep({
+          playStatus: statusStore.playStatus,
+          playName: name,
+          artistName: artist,
+          albumName: album,
+          currentTime: statusStore.currentTime,
+          // 音量及播放速率
+          volume: statusStore.playVolume,
+          playRate: statusStore.playRate,
+          ...playSong,
+          ...songLyric,
+        }),
+      );
+    });
   } catch (error) {
     console.log(error);
   }

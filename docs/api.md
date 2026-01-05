@@ -169,6 +169,44 @@
 
 ---
 
+### 获取当前播放信息
+
+**接口**: `GET /api/control/song-info`
+
+**描述**: 获取当前播放的歌曲信息
+
+> [!WARNING]
+> 请勿频繁调用此接口（如每秒调用一次）来获取播放进度，这会导致软件性能异常。
+> 如需实时获取播放进度和状态，请使用 WebSocket 连接并监听相关事件。
+
+**响应示例**:
+
+```json
+{
+  "code": 200,
+  "message": "获取当前播放信息成功",
+  "data": {
+    "playStatus": "play",
+    "playName": "歌曲名",
+    "artistName": "歌手名",
+    "albumName": "专辑名",
+    "currentTime": 123.45,
+    "volume": 1,
+    "playRate": 1,
+    "id": 123456,
+    "name": "歌曲名",
+    "artists": "歌手名",
+    "album": "专辑名",
+    "cover": "http://...",
+    "duration": 300,
+    "lrcData": [],
+    "yrcData": []
+  }
+}
+```
+
+---
+
 ## 云音乐 API (Netease API)
 
 **基础路径**: `/api/netease`

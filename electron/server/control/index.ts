@@ -197,6 +197,25 @@ export const initControlAPI = async (fastify: FastifyInstance) => {
           });
         }
       });
+
+      // 获取当前播放信息
+      fastify.get("/song-info", async (_request, reply) => {
+        try {
+          const { getTrackInfoFromRenderer } = await import("../../main/utils/track-info");
+          const trackInfo = await getTrackInfoFromRenderer();
+          return reply.send({
+            code: 200,
+            message: "获取当前播放信息成功",
+            data: trackInfo,
+          });
+        } catch (error) {
+          return reply.code(500).send({
+            code: 500,
+            message: "获取当前播放信息失败",
+            data: error instanceof Error ? error.message : error,
+          });
+        }
+      });
     },
     { prefix: "/control" },
   );
