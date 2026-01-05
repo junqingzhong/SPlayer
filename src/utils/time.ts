@@ -41,21 +41,23 @@ export const formatTimestamp = (
 
 /** 格式化评论时间戳 */
 export const formatCommentTime = (timestamp: number): string => {
-  const now = dayjs();
-  const time = dayjs(timestamp);
-  const diff = now.diff(time, "minute");
+  const timeNow = dayjs();
+  const timeComment = dayjs(timestamp);
+  const diff = timeNow.diff(timeComment, "minute");
 
   if (diff < 1) return "刚刚发布";
   if (diff < 60) return `${diff}分钟前`;
   if (diff < 1440) return `${Math.floor(diff / 60)}小时前`;
 
   // 超过一天：同年只显示日期，跨年显示完整日期
-  const format = time.year() === now.year() ? "MM-DD HH:mm" : "YYYY-MM-DD HH:mm";
-  return time.format(format);
+  const format = timeComment.year() === timeNow.year() ? "MM-DD HH:mm" : "YYYY-MM-DD HH:mm";
+  return timeComment.format(format);
 };
 
 /**
  * 计算进度条百分比
+ * @param currentTime 当前时间
+ * @param duration 总时长
  * @returns 进度百分比，精确到 0.01，范围 0-100
  */
 export const calculateProgress = (currentTime: number, duration: number): number => {
