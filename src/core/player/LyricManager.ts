@@ -96,7 +96,7 @@ class LyricManager {
     if (lyricsData.length && otherLyrics.length) {
       lyricsData.forEach((v: LyricLine) => {
         otherLyrics.forEach((x: LyricLine) => {
-          if (v.startTime === x.startTime || Math.abs(v.startTime - x.startTime) < 600) {
+          if (v.startTime === x.startTime || Math.abs(v.startTime - x.startTime) < 300) {
             v[key] = x.words.map((word) => word.word).join("");
           }
         });
@@ -244,80 +244,106 @@ class LyricManager {
    * 解析 QQ 音乐 QRC 格式歌词
    * @param qrcContent QRC 原始内容
    * @param trans 翻译歌词
-   * @param roma 罗马音歌词
+   * @param roma 罗马音歌词（QRC 格式）
    * @returns LyricLine 数组
    */
   private parseQRCLyric(qrcContent: string, trans?: string, roma?: string): LyricLine[] {
-    const lines: LyricLine[] = [];
-
-    // 从 XML 中提取歌词内容
-    const contentMatch = /<Lyric_1[^>]*LyricContent="([^"]*)"[^>]*\/>/.exec(qrcContent);
-    const content = contentMatch ? contentMatch[1] : qrcContent;
-
     // 行匹配: [开始时间,持续时间]内容
     const linePattern = /^\[(\d+),(\d+)\](.*)$/;
     // 逐字匹配: 文字(开始时间,持续时间)
     const wordPattern = /([^(]*)\((\d+),(\d+)\)/g;
+    /**
+     * 解析 QRC 内容为行数据
+     */
+    const parseQRCContent = (
+      rawContent: string,
+    ): Array<{
+      startTime: number;
+      endTime: number;
+      words: Array<{ word: string; startTime: number; endTime: number }>;
+    }> => {
+      // 从 XML 中提取歌词内容
+      const contentMatch = /<Lyric_1[^>]*LyricContent="([^"]*)"[^>]*\/>/.exec(rawContent);
+      const content = contentMatch ? contentMatch[1] : rawContent;
 
-    for (const rawLine of content.split("\n")) {
-      const line = rawLine.trim();
-      if (!line) continue;
+      const result: Array<{
+        startTime: number;
+        endTime: number;
+        words: Array<{ word: string; startTime: number; endTime: number }>;
+      }> = [];
 
-      // 跳过元数据标签 [ti:xxx] [ar:xxx] 等
-      if (/^\[[a-z]+:/i.test(line)) continue;
+      for (const rawLine of content.split("\n")) {
+        const line = rawLine.trim();
+        if (!line) continue;
 
-      const lineMatch = linePattern.exec(line);
-      if (!lineMatch) continue;
+        // 跳过元数据标签 [ti:xxx] [ar:xxx] 等
+        if (/^\[[a-z]+:/i.test(line)) continue;
 
-      const lineStart = parseInt(lineMatch[1], 10);
-      const lineDuration = parseInt(lineMatch[2], 10);
-      const lineContent = lineMatch[3];
+        const lineMatch = linePattern.exec(line);
+        if (!lineMatch) continue;
 
-      // 解析逐字
-      const words: Array<{ word: string; startTime: number; endTime: number }> = [];
-      let wordMatch: RegExpExecArray | null;
-      const wordRegex = new RegExp(wordPattern.source, "g");
+        const lineStart = parseInt(lineMatch[1], 10);
+        const lineDuration = parseInt(lineMatch[2], 10);
+        const lineContent = lineMatch[3];
 
-      while ((wordMatch = wordRegex.exec(lineContent)) !== null) {
-        const wordText = wordMatch[1];
-        const wordStart = parseInt(wordMatch[2], 10);
-        const wordDuration = parseInt(wordMatch[3], 10);
+        // 解析逐字
+        const words: Array<{ word: string; startTime: number; endTime: number }> = [];
+        let wordMatch: RegExpExecArray | null;
+        const wordRegex = new RegExp(wordPattern.source, "g");
 
-        if (wordText) {
-          words.push({
-            word: wordText,
-            startTime: wordStart,
-            endTime: wordStart + wordDuration,
+        while ((wordMatch = wordRegex.exec(lineContent)) !== null) {
+          const wordText = wordMatch[1];
+          const wordStart = parseInt(wordMatch[2], 10);
+          const wordDuration = parseInt(wordMatch[3], 10);
+
+          if (wordText) {
+            words.push({
+              word: wordText,
+              startTime: wordStart,
+              endTime: wordStart + wordDuration,
+            });
+          }
+        }
+
+        if (words.length > 0) {
+          result.push({
+            startTime: lineStart,
+            endTime: lineStart + lineDuration,
+            words,
           });
         }
       }
-
-      if (words.length > 0) {
-        lines.push({
-          words: words.map((w) => ({ ...w, romanWord: "" })),
-          startTime: lineStart,
-          endTime: lineStart + lineDuration,
-          translatedLyric: "",
-          romanLyric: "",
-          isBG: false,
-          isDuet: false,
-        });
-      }
-    }
-
+      return result;
+    };
+    // 解析主歌词
+    const qrcLines = parseQRCContent(qrcContent);
+    // 解析罗马音（如果有）
+    const romaLines = roma ? parseQRCContent(roma) : [];
+    // 构建 LyricLine 数组，同时填充 romanWord
+    const lines: LyricLine[] = qrcLines.map((qrcLine, lineIndex) => {
+      // 找到对应的罗马音行
+      const romaLine = romaLines[lineIndex];
+      // 按索引填充 romanWord
+      const words = qrcLine.words.map((w, wordIndex) => ({
+        ...w,
+        romanWord: romaLine?.words[wordIndex]?.word || "",
+      }));
+      return {
+        words,
+        startTime: qrcLine.startTime,
+        endTime: qrcLine.endTime,
+        translatedLyric: "",
+        romanLyric: romaLine?.words.map((w) => w.word).join("") || "",
+        isBG: false,
+        isDuet: false,
+      };
+    });
     // 处理翻译
     let result = lines;
     if (trans) {
       const transLines = parseLrc(trans);
       if (transLines?.length) {
         result = this.alignLyrics(result, transLines, "translatedLyric");
-      }
-    }
-    // 处理罗马音
-    if (roma) {
-      const romaLines = parseLrc(roma);
-      if (romaLines?.length) {
-        result = this.alignLyrics(result, romaLines, "romanLyric");
       }
     }
     return result;
