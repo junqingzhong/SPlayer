@@ -904,26 +904,31 @@ class PlayerController {
   public startAutoCloseTimer(time: number, remainTime: number) {
     const statusStore = useStatusStore();
     if (!time || !remainTime) return;
-
+    // 清除已有定时器
     if (this.autoCloseInterval) {
       clearInterval(this.autoCloseInterval);
     }
-
+    // 计算目标结束时间戳
+    const endTime = Date.now() + remainTime * 1000;
     statusStore.autoClose.enable = true;
     statusStore.autoClose.time = time;
+    statusStore.autoClose.endTime = endTime;
     statusStore.autoClose.remainTime = remainTime;
-
+    // 定时器仅用于 UI 更新，实际计时基于系统时间
     this.autoCloseInterval = setInterval(() => {
-      if (statusStore.autoClose.remainTime <= 0) {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((statusStore.autoClose.endTime - now) / 1000));
+      statusStore.autoClose.remainTime = remaining;
+      // 到达时间
+      if (remaining <= 0) {
         clearInterval(this.autoCloseInterval);
         if (!statusStore.autoClose.waitSongEnd) {
           this.pause();
           statusStore.autoClose.enable = false;
           statusStore.autoClose.remainTime = statusStore.autoClose.time * 60;
+          statusStore.autoClose.endTime = 0;
         }
-        return;
       }
-      statusStore.autoClose.remainTime--;
     }, 1000);
   }
 
@@ -938,6 +943,7 @@ class PlayerController {
       statusStore.autoClose.enable = false;
       // 重置时间
       statusStore.autoClose.remainTime = statusStore.autoClose.time * 60;
+      statusStore.autoClose.endTime = 0;
       return true;
     }
     return false;

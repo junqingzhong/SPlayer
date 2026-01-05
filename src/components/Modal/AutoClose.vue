@@ -81,6 +81,7 @@ const handleUpdate = (value: boolean) => {
   } else {
     statusStore.autoClose.enable = false;
     statusStore.autoClose.remainTime = statusStore.autoClose.time * 60;
+    statusStore.autoClose.endTime = 0;
   }
 };
 </script>

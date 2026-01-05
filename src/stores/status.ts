@@ -98,6 +98,8 @@ interface StatusState {
     time: number;
     /** 剩余时长（秒） */
     remainTime: number;
+    /** 目标结束时间戳（毫秒） */
+    endTime: number;
     /** 等待歌曲结束 */
     waitSongEnd: boolean;
   };
@@ -146,6 +148,7 @@ export const useStatusStore = defineStore("status", {
       enable: false,
       time: 30,
       remainTime: 0,
+      endTime: 0,
       waitSongEnd: true,
     },
     developerMode: false,
