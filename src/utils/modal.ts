@@ -125,7 +125,7 @@ export const openPlaylistAdd = (data: SongType[], isLocal: boolean) => {
     transformOrigin: "center",
     autoFocus: false,
     style: { width: "600px" },
-    title: "添加到歌单",
+    title: isLocal ? "添加到本地歌单" : "添加到歌单",
     content: () => {
       return h(PlaylistAdd, { data, isLocal, onClose: () => modal.destroy() });
     },
@@ -166,15 +166,15 @@ export const openCloudMatch = (id: number, index: number) => {
 };
 
 // 新建歌单
-export const openCreatePlaylist = () => {
+export const openCreatePlaylist = (isLocal: boolean = false) => {
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
     style: { width: "600px" },
-    title: "新建歌单",
+    title: isLocal ? "新建本地歌单" : "新建歌单",
     content: () => {
-      return h(CreatePlaylist, { onClose: () => modal.destroy() });
+      return h(CreatePlaylist, { isLocal, onClose: () => modal.destroy() });
     },
   });
 };

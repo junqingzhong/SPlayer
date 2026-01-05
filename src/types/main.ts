@@ -137,6 +137,24 @@ export type CoverType = {
   }[];
 };
 
+/** 本地歌单类型 */
+export interface LocalPlaylistType {
+  /** 歌单ID（16位数字） */
+  id: number;
+  /** 歌单名称 */
+  name: string;
+  /** 歌单描述 */
+  description?: string;
+  /** 歌单封面 */
+  cover?: string;
+  /** 歌曲ID数组 */
+  songs: string[];
+  /** 创建时间 */
+  createTime: number;
+  /** 更新时间 */
+  updateTime: number;
+}
+
 // Artist
 export type ArtistType = {
   id: number;

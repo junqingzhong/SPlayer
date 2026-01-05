@@ -108,6 +108,10 @@ audio {
   }
 }
 
+.n-popselect-menu {
+  --n-border-radius: 8px !important;
+}
+
 // n-message
 .n-message-container {
   bottom: 90px !important;
