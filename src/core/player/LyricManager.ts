@@ -386,6 +386,11 @@ class LyricManager {
         result.lrcData = qqLyric.lrcData;
         if (!qqMusicAdopted) qqMusicAdopted = true;
       }
+      // 先返回一次，避免 TTML 请求过慢
+      if (qqMusicAdopted) {
+        const lyricData = this.handleLyricExclude(result);
+        this.setFinalLyric(lyricData, req);
+      }
     };
 
     // 处理 TTML 歌词

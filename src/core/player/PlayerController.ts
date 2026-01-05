@@ -1010,6 +1010,15 @@ class PlayerController {
   }
 
   /**
+   * 获取低频音量 [0.0-1.0]
+   * 用于驱动背景动画等视觉效果
+   */
+  public getLowFrequencyVolume(): number {
+    const audioManager = useAudioManager();
+    return audioManager.getLowFrequencyVolume();
+  }
+
+  /**
    * 更新均衡器
    * @param options 均衡器选项
    * @param options.bands 频带增益

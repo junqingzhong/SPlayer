@@ -242,6 +242,17 @@
           </div>
           <n-switch v-model:value="settingStore.playerBackgroundPause" class="set" :round="false" />
         </n-card>
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">背景跳动效果</n-text>
+            <n-text class="tip" :depth="3">使流体背景根据音乐低频节拍产生脉动效果</n-text>
+          </div>
+          <n-switch
+            v-model:value="settingStore.playerBackgroundLowFreqVolume"
+            :round="false"
+            class="set"
+          />
+        </n-card>
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">

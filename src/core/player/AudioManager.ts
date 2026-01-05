@@ -50,6 +50,8 @@ class AudioManager {
   private volume: number = 1;
   /** 事件监听器集合 */
   private eventListeners: Map<string, Set<(e: Event) => void>> = new Map();
+  /** 平滑后的低频音量 */
+  private smoothedLowFreqVolume: number = 0;
 
   /** 均衡器频段 (10段) */
   private readonly eqFrequencies = [32, 64, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
@@ -344,6 +346,35 @@ class AudioManager {
     const dataArray = new Uint8Array(this.analyserNode.frequencyBinCount);
     this.analyserNode.getByteFrequencyData(dataArray);
     return dataArray;
+  }
+
+  /**
+   * 获取低频音量 [0.0-1.0]
+   * 用于驱动背景动画等视觉效果
+   * @returns 低频音量值
+   */
+  public getLowFrequencyVolume(): number {
+    if (!this.analyserNode) return 0;
+    const dataArray = new Uint8Array(this.analyserNode.frequencyBinCount);
+    this.analyserNode.getByteFrequencyData(dataArray);
+    // 低频范围：前 3 个 bin (约 0-280Hz，基于 512 FFT 和约 48kHz 采样率)
+    const lowFreqBins = dataArray.slice(0, 3);
+    const sum = lowFreqBins.reduce((acc, val) => acc + val, 0);
+    const avg = sum / lowFreqBins.length;
+    // 使用阈值和幂函数扩展动态范围
+    // 通常低频能量较高（约 200-255），我们需要将其映射到更有意义的范围
+    const threshold = 180; // 低于此值视为静音
+    const maxValue = 255;
+    // 计算超过阈值的部分
+    const normalized = Math.max(0, (avg - threshold) / (maxValue - threshold));
+    // 应用幂函数扩展动态范围 (使低值更低，高值保持)
+    const rawValue = Math.pow(normalized, 2);
+    // 应用指数移动平均 (EMA) 平滑处理
+    // smoothFactor 越小平滑效果越明显，0.1-0.3 较为平缓
+    const smoothFactor = 0.28;
+    this.smoothedLowFreqVolume =
+      this.smoothedLowFreqVolume + smoothFactor * (rawValue - this.smoothedLowFreqVolume);
+    return this.smoothedLowFreqVolume;
   }
 
   /**
