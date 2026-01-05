@@ -19,7 +19,12 @@ export const msToTime = (milliseconds: number): string => {
   return dayjs.duration(milliseconds, "milliseconds").format(format);
 };
 
-/** 毫秒转为秒 */
+/**
+ * 将毫秒转换为秒
+ * @param milliseconds - 毫秒数
+ * @param decimalPlaces - 保留小数位数，默认为 2
+ * @returns 转换后的秒数
+ */
 export const msToS = (milliseconds: number, decimalPlaces: number = 2): number => {
   return Number((milliseconds / 1000).toFixed(decimalPlaces));
 };
@@ -39,15 +44,19 @@ export const formatTimestamp = (
   return date.format(isSameYear ? format.replace("YYYY-", "") : format);
 };
 
-/** 格式化评论时间戳 */
+/**
+ * 格式化评论时间戳
+ * @param timestamp 评论时间戳（毫秒）
+ * @returns 格式化后的字符串
+ */
 export const formatCommentTime = (timestamp: number): string => {
   const timeNow = dayjs();
   const timeComment = dayjs(timestamp);
-  const diff = timeNow.diff(timeComment, "minute");
+  const diffMinute = timeNow.diff(timeComment, "minute");
 
-  if (diff < 1) return "刚刚发布";
-  if (diff < 60) return `${diff}分钟前`;
-  if (diff < 1440) return `${Math.floor(diff / 60)}小时前`;
+  if (diffMinute < 1) return "刚刚发布";
+  if (diffMinute < 60) return `${diffMinute} 分钟前`;
+  if (diffMinute < 1440) return `${Math.floor(diffMinute / 60)} 小时前`;
 
   // 超过一天：同年只显示日期，跨年显示完整日期
   const format = timeComment.year() === timeNow.year() ? "MM-DD HH:mm" : "YYYY-MM-DD HH:mm";
