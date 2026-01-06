@@ -24,7 +24,8 @@ class MainWindow {
     const bounds = this.win?.getBounds();
     if (bounds) {
       const maximized = this.win?.isMaximized();
-      store.set("window", { ...bounds, maximized });
+      const windowState = store.get("window");
+      store.set("window", { ...windowState, ...bounds, maximized });
     }
   }
   /**
