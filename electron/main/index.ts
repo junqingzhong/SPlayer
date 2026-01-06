@@ -46,7 +46,12 @@ class MainProcess {
         "disable-features",
         "HardwareMediaKeyHandling,MediaSessionService",
       );
+      // GPU 稳定性配置：禁用 GPU 进程崩溃次数限制，允许 GPU 进程自动恢复
+      app.commandLine.appendSwitch("disable-gpu-process-crash-limit");
     }
+    // 防止后台时渲染进程被休眠
+    app.commandLine.appendSwitch("disable-renderer-backgrounding");
+    app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
     // 程序单例锁
     initSingleLock();
     // 监听应用事件

@@ -215,6 +215,7 @@ export const keywords = [
   "总企划",
   "作词",
   "作曲",
+  "乐团",
   "Acknowledgement",
   "Additional Vocal by",
   "Arranged By",
