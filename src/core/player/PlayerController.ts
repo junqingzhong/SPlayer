@@ -11,7 +11,7 @@ import { handleSongQuality, shuffleArray } from "@/utils/helper";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { calculateProgress } from "@/utils/time";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
-import { throttle } from "lodash-es";
+import { DebouncedFunc, throttle } from "lodash-es";
 import { useAudioManager } from "./AudioManager";
 import { useLyricManager } from "./LyricManager";
 import { mediaSessionManager } from "./MediaSessionManager";
@@ -36,6 +36,8 @@ class PlayerController {
   private failSkipCount = 0;
   /** 负责管理播放模式相关的逻辑 */
   private playModeManager = new PlayModeManager();
+
+  private onTimeUpdate: DebouncedFunc<() => void> | null = null;
 
   constructor() {
     this.bindAudioEvents();
@@ -72,9 +74,15 @@ class PlayerController {
       // 停止当前播放
       audioManager.stop();
       musicStore.playSong = playSongData;
-      // 重置播放进度
-      statusStore.currentTime = 0;
-      statusStore.progress = 0;
+
+      statusStore.currentTime = options.seek ?? 0;
+      const duration = this.getDuration() || statusStore.duration;
+      if (duration > 0) {
+        statusStore.progress = calculateProgress(statusStore.currentTime, duration);
+      } else {
+        statusStore.progress = 0;
+      }
+
       statusStore.lyricIndex = -1;
       // 重置重试计数
       const sid = playSongData.type === "radio" ? playSongData.dj?.id : playSongData.id;
@@ -174,6 +182,11 @@ class PlayerController {
       await audioManager.play(url, { fadeIn: !!fadeTime, fadeDuration: fadeTime, autoPlay });
       // 恢复进度
       if (seek > 0) audioManager.seek(seek / 1000);
+      statusStore.currentTime = seek;
+      const duration = this.getDuration() || statusStore.duration;
+      if (duration > 0) {
+        statusStore.progress = calculateProgress(seek, duration);
+      }
       // 如果不自动播放，设置任务栏暂停状态
       if (!autoPlay) {
         playerIpc.sendTaskbarMode("paused");
@@ -274,16 +287,13 @@ class PlayerController {
 
     const audioManager = useAudioManager();
 
-    // 清理旧事件
-    audioManager.offAll();
-
     // 加载状态
-    audioManager.on("loadstart", () => {
+    audioManager.addEventListener("loadstart", () => {
       statusStore.playLoading = true;
     });
 
     // 加载完成
-    audioManager.on("canplay", () => {
+    audioManager.addEventListener("canplay", () => {
       const playSongData = getPlaySongData();
 
       // 结束加载
@@ -307,7 +317,7 @@ class PlayerController {
     });
 
     // 播放开始
-    audioManager.on("play", () => {
+    audioManager.addEventListener("play", () => {
       const { name, artist } = getPlayerInfoObj() || {};
       const playTitle = `${name} - ${artist}`;
       // 更新状态
@@ -331,7 +341,7 @@ class PlayerController {
     });
 
     // 暂停
-    audioManager.on("pause", () => {
+    audioManager.addEventListener("pause", () => {
       statusStore.playStatus = false;
       playerIpc.sendSmtcPlayState(PlaybackStatus.Paused);
       if (settingStore.discordRpc.enabled) {
@@ -346,7 +356,7 @@ class PlayerController {
     });
 
     // 播放结束
-    audioManager.on("ended", () => {
+    audioManager.addEventListener("ended", () => {
       console.log(`⏹️ [${musicStore.playSong?.id}] 歌曲结束`);
       lastfmScrobbler.stop();
       // 检查定时关闭
@@ -356,8 +366,9 @@ class PlayerController {
     });
 
     // 进度更新
-    const handleTimeUpdate = throttle(() => {
-      const currentTime = Math.floor(audioManager.currentTime * 1000);
+    this.onTimeUpdate = throttle(() => {
+      const rawTime = audioManager.currentTime;
+      const currentTime = Math.floor(rawTime * 1000);
       const duration = Math.floor(audioManager.duration * 1000) || statusStore.duration;
       // 计算歌词索引
       const songId = musicStore.playSong?.id;
@@ -395,15 +406,12 @@ class PlayerController {
       // Socket 进度
       playerIpc.sendSocketProgress(currentTime, duration);
     }, 200);
-    audioManager.on("timeupdate", handleTimeUpdate);
+
+    audioManager.addEventListener("timeupdate", this.onTimeUpdate);
 
     // 错误处理
-    audioManager.on("error", (e: any) => {
-      // 从 Event 中提取错误码
-      let errCode: number | undefined;
-      if ("detail" in e && e.detail) {
-        errCode = (e.detail as { errorCode?: number }).errorCode;
-      }
+    audioManager.addEventListener("error", (e) => {
+      const errCode = e.detail.errorCode;
       this.handlePlaybackError(errCode, this.getSeek());
     });
   }
@@ -611,6 +619,9 @@ class PlayerController {
    * @param time 时间 (ms)
    */
   public setSeek(time: number) {
+    if (this.onTimeUpdate) {
+      this.onTimeUpdate.cancel();
+    }
     const statusStore = useStatusStore();
     const audioManager = useAudioManager();
     // 边界检查
