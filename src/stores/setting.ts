@@ -1,9 +1,9 @@
-import { defineStore } from "pinia";
+import { TimeFormat } from "@/composables/useTimeFormat";
 import { SongUnlockServer } from "@/core/player/SongManager";
 import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
+import { defineStore } from "pinia";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
-import { TimeFormat } from "@/composables/useTimeFormat";
 
 export interface SettingState {
   /** Schema 版本号（可选，用于数据迁移） */
@@ -115,6 +115,8 @@ export interface SettingState {
     | "jymaster";
   /** 播放设备 */
   playDevice: "default" | string;
+  /** 音频引擎: element (原生) 或 ffmpeg */
+  audioEngine: "element" | "ffmpeg";
   /** 自动播放 */
   autoPlay: boolean;
   /** 预载下一首 */
@@ -334,6 +336,7 @@ export const useSettingStore = defineStore("setting", {
     useKeepAlive: true,
     songLevel: "exhigh",
     playDevice: "default",
+    audioEngine: "element",
     autoPlay: false,
     useNextPrefetch: true,
     songVolumeFade: true,

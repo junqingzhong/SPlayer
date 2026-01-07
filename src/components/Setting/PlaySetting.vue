@@ -90,6 +90,23 @@
           class="set"
         />
       </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name"
+            >音频播放引擎
+            <n-tag type="warning" size="small" round> Beta </n-tag>
+          </n-text>
+          <n-text class="tip" :depth="3">
+            {{ audioEngineData[settingStore.audioEngine]?.tip }}
+          </n-text>
+          <n-text type="warning">需重启生效</n-text>
+        </div>
+        <n-select
+          v-model:value="settingStore.audioEngine"
+          :options="Object.values(audioEngineData)"
+          class="set"
+        />
+      </n-card>
       <n-card v-if="!isElectron" class="set-item">
         <div class="label">
           <n-text class="name">播放试听</n-text>
@@ -343,14 +360,14 @@
 </template>
 
 <script setup lang="ts">
-import type { SelectOption } from "naive-ui";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { useSettingStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
-import { renderOption } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
-import { uniqBy } from "lodash-es";
-import { usePlayerController } from "@/core/player/PlayerController";
+import { renderOption } from "@/utils/helper";
 import { openSongUnlockManager } from "@/utils/modal";
+import { uniqBy } from "lodash-es";
+import type { SelectOption } from "naive-ui";
 
 const player = usePlayerController();
 const settingStore = useSettingStore();
@@ -359,6 +376,20 @@ const outputDevices = ref<SelectOption[]>([]);
 
 // 显示音乐频谱
 const showSpectrums = ref<boolean>(settingStore.showSpectrums);
+
+// 音频引擎数据
+const audioEngineData = {
+  element: {
+    label: "原生",
+    value: "element",
+    tip: "浏览器原生播放引擎，稳定可靠占用低，但不支持部分音频格式",
+  },
+  ffmpeg: {
+    label: "FFmpeg",
+    value: "ffmpeg",
+    tip: "FFmpeg 播放引擎，支持更多音频格式，但不支持部分功能，如倍速播放",
+  },
+};
 
 // 音质数据
 const songLevelData = {

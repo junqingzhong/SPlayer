@@ -1,3 +1,5 @@
+import { useSettingStore } from "@/stores";
+import { AudioElementPlayer } from "../audio-player/AudioElementPlayer";
 import {
   AUDIO_EVENTS,
   AudioEventType,
@@ -18,9 +20,14 @@ class AudioManager extends EventTarget {
   /** 用于清理当前 player 的事件监听器 */
   private cleanupListeners: (() => void) | null = null;
 
-  constructor() {
+  constructor(engineType: "ffmpeg" | "element") {
     super();
-    this.player = new FFmpegAudioPlayer();
+
+    if (engineType === "ffmpeg") {
+      this.player = new FFmpegAudioPlayer();
+    } else {
+      this.player = new AudioElementPlayer();
+    }
 
     this.bindPlayerEvents();
   }
@@ -240,6 +247,9 @@ let instance: AudioManager | null = null;
  * @returns AudioManager
  */
 export const useAudioManager = (): AudioManager => {
-  if (!instance) instance = new AudioManager();
+  if (!instance) {
+    const settingStore = useSettingStore();
+    instance = new AudioManager(settingStore.audioEngine);
+  }
   return instance;
 };
