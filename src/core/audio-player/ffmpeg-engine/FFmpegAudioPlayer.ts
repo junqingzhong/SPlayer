@@ -204,6 +204,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     });
     this.activeSources = [];
 
+    if (this.metadata && this.metadata.coverUrl) {
+      URL.revokeObjectURL(this.metadata.coverUrl);
+    }
+
     this.metadata = null;
     this.isWorkerPaused = false;
     this.isDecodingFinished = false;
