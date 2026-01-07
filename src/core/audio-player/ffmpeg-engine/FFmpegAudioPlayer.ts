@@ -1,9 +1,14 @@
-import { BaseAudioPlayer } from "../BaseAudioPlayer";
+import { AudioErrorDetail, BaseAudioPlayer } from "../BaseAudioPlayer";
 import AudioWorker from "./audio.worker?worker";
 import type { AudioMetadata, PlayerEventMap, PlayerState, WorkerResponse } from "./types";
 
 const HIGH_WATER_MARK = 30;
 const LOW_WATER_MARK = 10;
+
+// const ERR_ABORTED = 1;
+const ERR_NETWORK = 2;
+const ERR_DECODE = 3;
+// const ERR_SRC_NOT_SUPPORTED = 4;
 
 export class FFmpegAudioPlayer extends BaseAudioPlayer {
   private worker: Worker | null = null;
@@ -19,6 +24,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
   private isWorkerSeeking = false;
   /** 暂存 Seek 目标时间，用于在 Seek 期间维持 currentTime 稳定 */
   private targetSeekTime = 0;
+  private _errorCode: number = 0;
 
   private metadataResolve: (() => void) | null = null;
   private metadataReject: ((reason?: unknown) => void) | null = null;
@@ -51,7 +57,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     return this.playerState !== "playing";
   }
   public getErrorCode() {
-    return 0;
+    return this._errorCode;
   }
 
   public get audioInfo() {
@@ -94,7 +100,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
           }
         } catch (e) {
           this.cleanupLoadPromise();
-          this.handleError((e as Error).message);
+          this.handleError((e as Error).message, ERR_NETWORK);
           reject(e);
         }
       };
@@ -183,6 +189,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
   }
 
   private reset() {
+    this._errorCode = 0;
     if (this.metadataReject) {
       this.metadataReject(new Error("Aborted by reset"));
       this.cleanupLoadPromise();
@@ -227,10 +234,22 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     if (newState === "paused") this.dispatchEvent(new Event("pause"));
   }
 
-  private handleError(msg: string) {
-    console.error("[FFmpegAudioPlayer]", msg);
+  private handleError(msg: string, code: number = ERR_DECODE) {
+    console.error("[FFmpegAudioPlayer]", msg, code);
+
+    this._errorCode = code;
+
     this.setState("error");
-    this.dispatch("error", msg);
+
+    const errorDetail: AudioErrorDetail = {
+      originalEvent: new ErrorEvent("error", {
+        message: msg,
+        error: new Error(msg),
+      }),
+      errorCode: code,
+    };
+
+    this.dispatch("error", errorDetail);
   }
 
   private setupWorkerListeners() {
@@ -246,7 +265,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
             this.metadataReject(new Error(resp.error));
             this.cleanupLoadPromise();
           }
-          this.handleError(resp.error);
+          this.handleError(resp.error, ERR_DECODE);
           break;
         case "METADATA":
           this.metadata = {

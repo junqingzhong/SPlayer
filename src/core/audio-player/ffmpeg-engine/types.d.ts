@@ -2,6 +2,11 @@
 
 export type PlayerState = "idle" | "loading" | "ready" | "playing" | "paused" | "error";
 
+export interface AudioErrorDetail {
+  originalEvent: Event;
+  errorCode: number;
+}
+
 export interface AudioMetadata {
   sampleRate: number;
   channels: number;
@@ -16,7 +21,7 @@ export interface PlayerEventMap {
   stateChange: PlayerState;
   timeUpdate: number;
   durationChange: number;
-  error: string;
+  error: AudioErrorDetail;
   ended: undefined;
 }
 
