@@ -92,6 +92,10 @@ export class AudioEffectManager {
     return dataArray;
   }
 
+  /**
+   * 获取低频音量
+   * @returns 低频音量 (0-1)
+   */
   public getLowFrequencyVolume(): number {
     if (!this.analyserNode) return 0;
 

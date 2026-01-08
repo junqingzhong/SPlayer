@@ -102,9 +102,10 @@
           </n-text>
         </div>
         <n-select
-          v-model:value="settingStore.audioEngine"
+          :value="settingStore.audioEngine"
           :options="Object.values(audioEngineData)"
           class="set"
+          @update:value="handleEngineChange"
         />
       </n-card>
       <n-card v-if="!isElectron" class="set-item">
@@ -117,13 +118,20 @@
       <n-card v-if="isElectron" class="set-item">
         <div class="label">
           <n-text class="name">音频输出设备</n-text>
-          <n-text class="tip" :depth="3">新增或移除音频设备后请重新打开设置</n-text>
+          <n-text class="tip" :depth="3">
+            {{
+              settingStore.audioEngine === "ffmpeg"
+                ? "FFmpeg 引擎不支持切换输出设备"
+                : "新增或移除音频设备后请重新打开设置"
+            }}
+          </n-text>
         </div>
         <n-select
           v-model:value="settingStore.playDevice"
           class="set"
           :options="outputDevices"
           :render-option="renderOption"
+          :disabled="settingStore.audioEngine === 'ffmpeg'"
           @update:value="playDeviceChange"
         />
       </n-card>
@@ -485,6 +493,34 @@ const playDeviceChange = (deviceId: string, option: SelectOption) => {
 const showSpectrumsChange = (value: boolean) => {
   showSpectrums.value = value;
   settingStore.showSpectrums = value;
+};
+
+// 处理音频引擎切换
+const handleEngineChange = (newEngine: "element" | "ffmpeg") => {
+  const oldEngine = settingStore.audioEngine;
+  if (newEngine === oldEngine) return;
+
+  // 先保存新的引擎设置
+  settingStore.audioEngine = newEngine;
+
+  // 弹出确认对话框
+  window.$dialog.warning({
+    title: "切换音频引擎",
+    content: "音频引擎切换需要重启应用才能生效。是否立即重启？",
+    positiveText: "立即重启",
+    negativeText: "稍后",
+    onPositiveClick: () => {
+      // 立即重启应用
+      if (isElectron) {
+        window.electron.ipcRenderer.send("restart-app");
+      } else {
+        window.location.reload();
+      }
+    },
+    onNegativeClick: () => {
+      window.$message.info("引擎将在下次启动时生效");
+    },
+  });
 };
 
 onMounted(() => {

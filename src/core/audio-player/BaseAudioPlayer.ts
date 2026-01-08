@@ -172,19 +172,14 @@ export abstract class BaseAudioPlayer extends EventTarget {
    */
   public async seek(time: number) {
     this.cancelPendingPause();
-
     // 如果已经暂停，直接跳转
     if (this.paused) {
       this.doSeek(time);
       return;
     }
-
     this.applyFadeTo(0, SEEK_FADE_TIME);
-
     await new Promise((resolve) => setTimeout(resolve, SEEK_FADE_TIME * 1000));
-
     this.doSeek(time);
-
     this.applyFadeTo(this.volume, SEEK_FADE_TIME);
   }
 
@@ -278,18 +273,22 @@ export abstract class BaseAudioPlayer extends EventTarget {
     }
   }
 
+  /** 获取频率数据 */
   public getFrequencyData(): Uint8Array {
     return this.effectManager ? this.effectManager.getFrequencyData() : new Uint8Array(0);
   }
 
+  /** 获取低频音量 */
   public getLowFrequencyVolume(): number {
     return this.effectManager ? this.effectManager.getLowFrequencyVolume() : 0;
   }
 
+  /** 设置滤波器增益 */
   public setFilterGain(index: number, value: number) {
     this.effectManager?.setFilterGain(index, value);
   }
 
+  /** 获取滤波器增益 */
   public getFilterGains(): number[] {
     return this.effectManager ? this.effectManager.getFilterGains() : [];
   }
@@ -321,6 +320,11 @@ export abstract class BaseAudioPlayer extends EventTarget {
   public abstract get paused(): boolean;
   public abstract getErrorCode(): number;
 
+  /**
+   * 触发事件
+   * @param type 事件类型
+   * @param detail 事件详情
+   */
   protected emit(type: Exclude<AudioEventType, "error">): void;
   protected emit(type: typeof AUDIO_EVENTS.ERROR, detail: AudioErrorDetail): void;
   protected emit(type: AudioEventType, detail?: AudioErrorDetail): void {
@@ -331,6 +335,12 @@ export abstract class BaseAudioPlayer extends EventTarget {
     }
   }
 
+  /**
+   * 添加事件监听
+   * @param type 事件类型
+   * @param listener 事件监听器
+   * @param options 事件选项
+   */
   public override addEventListener<K extends keyof AudioEventMap>(
     type: K,
     listener: (this: BaseAudioPlayer, ev: AudioEventMap[K]) => unknown,
@@ -339,6 +349,12 @@ export abstract class BaseAudioPlayer extends EventTarget {
     super.addEventListener(type, listener as EventListenerOrEventListenerObject, options);
   }
 
+  /**
+   * 移除事件监听
+   * @param type 事件类型
+   * @param listener 事件监听器
+   * @param options 事件选项
+   */
   public override removeEventListener<K extends keyof AudioEventMap>(
     type: K,
     listener: (this: BaseAudioPlayer, ev: AudioEventMap[K]) => unknown,

@@ -170,7 +170,9 @@ class PlayerController {
 
     // 设置基础参数
     audioManager.setVolume(statusStore.playVolume);
-    audioManager.setRate(statusStore.playRate);
+    if (settingStore.audioEngine !== "ffmpeg") {
+      audioManager.setRate(statusStore.playRate);
+    }
 
     // 切换输出设备
     if (!settingStore.showSpectrums) this.toggleOutputDevice();
@@ -685,9 +687,12 @@ class PlayerController {
   public setRate(rate: number) {
     const statusStore = useStatusStore();
     const audioManager = useAudioManager();
+    const settingStore = useSettingStore();
 
     statusStore.playRate = rate;
-    audioManager.setRate(rate);
+    if (settingStore.audioEngine !== "ffmpeg") {
+      audioManager.setRate(rate);
+    }
   }
 
   /**

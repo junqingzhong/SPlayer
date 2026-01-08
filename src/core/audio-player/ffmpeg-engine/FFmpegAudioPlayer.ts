@@ -2,48 +2,85 @@ import { AUDIO_EVENTS, BaseAudioPlayer } from "../BaseAudioPlayer";
 import AudioWorker from "./audio.worker?worker";
 import type { AudioMetadata, PlayerState, WorkerResponse } from "./types";
 
+/** 缓冲区高水位标记（秒），超过此值暂停解码 */
 const HIGH_WATER_MARK = 30;
+/** 缓冲区低水位标记（秒），低于此值恢复解码 */
 const LOW_WATER_MARK = 10;
 
 // const ERR_ABORTED = 1;
+/** 网络错误码 */
 const ERR_NETWORK = 2;
+/** 解码错误码 */
 const ERR_DECODE = 3;
 // const ERR_SRC_NOT_SUPPORTED = 4;
 
+/**
+ * 基于 FFmpeg WASM 的音频播放器实现
+ *
+ * 使用 Web Worker 在后台进行音频解码，支持更多音频格式（如 FLAC、ALAC 等）。
+ * 解码后的 PCM 数据通过 AudioBufferSourceNode 播放。
+ *
+ * @remarks
+ * - 不支持播放速率调节
+ * - 需要完整下载音频文件后才能播放
+ * - 支持 Seek 操作
+ */
 export class FFmpegAudioPlayer extends BaseAudioPlayer {
+  /** 解码 Worker 实例 */
   private worker: Worker | null = null;
+  /** 音频元数据 */
   private metadata: AudioMetadata | null = null;
 
+  /** 当前播放器状态 */
   private playerState: PlayerState = "idle";
+  /** 下一个 AudioBufferSourceNode 的开始时间 */
   private nextStartTime = 0;
+  /** 时间偏移量，用于计算 currentTime */
   private timeOffset = 0;
+  /** Worker 是否暂停（用于缓冲区管理） */
   private isWorkerPaused = false;
+  /** 活动的 AudioBufferSourceNode 列表 */
   private activeSources: AudioBufferSourceNode[] = [];
+  /** 解码是否完成 */
   private isDecodingFinished = false;
   /** 精确控制 Worker Seek 状态的标志 */
   private isWorkerSeeking = false;
   /** 暂存 Seek 目标时间，用于在 Seek 期间维持 currentTime 稳定 */
   private targetSeekTime = 0;
+  /** 错误码 */
   private _errorCode: number = 0;
 
+  /** 元数据加载成功回调 */
   private metadataResolve: (() => void) | null = null;
+  /** 元数据加载失败回调 */
   private metadataReject: ((reason?: unknown) => void) | null = null;
 
-  private timeUpdateFrameId: number = 0;
+  /** 时间更新定时器 ID */
+  private timeUpdateIntervalId: ReturnType<typeof setInterval> | null = null;
+  /** 当前消息 ID，用于过滤过期的 Worker 消息 */
   private currentMessageId = 0;
 
+  /** 当前音频源地址 */
   private _src: string = "";
 
   constructor() {
     super();
   }
 
+  /** 获取当前音频源地址 */
   public get src(): string {
     return this._src;
   }
+
+  /** 获取音频总时长（秒） */
   public get duration() {
     return this.metadata?.duration || 0;
   }
+
+  /**
+   * 获取当前播放时间（秒）
+   * 如果正在 Seek，返回目标时间以避免进度跳回
+   */
   public get currentTime() {
     if (this.isWorkerSeeking) {
       return this.targetSeekTime;
@@ -53,19 +90,39 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     const t = this.audioCtx.currentTime - this.timeOffset;
     return Math.max(0, t);
   }
+
+  /** 获取是否暂停状态 */
   public get paused() {
     return this.playerState !== "playing";
   }
+
+  /**
+   * 获取错误码
+   * @returns 错误码 (0: 无错误, 2: NETWORK, 3: DECODE)
+   */
   public getErrorCode() {
     return this._errorCode;
   }
 
+  /** 获取音频元数据信息 */
   public get audioInfo() {
     return this.metadata;
   }
 
+  /**
+   * 当音频图谱初始化完成时调用
+   * FFmpeg 播放器不需要额外的初始化操作
+   */
   protected onGraphInitialized() {}
 
+  /**
+   * 加载音频资源
+   *
+   * 会先完整下载音频文件，然后通过 Worker 进行解码
+   *
+   * @param url 音频地址
+   * @throws 网络错误或解码错误时抛出
+   */
   public async load(url: string) {
     this._src = url;
     this.reset();
@@ -110,11 +167,18 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     });
   }
 
+  /**
+   * 清理加载 Promise 引用
+   */
   private cleanupLoadPromise() {
     this.metadataResolve = null;
     this.metadataReject = null;
   }
 
+  /**
+   * 执行底层播放
+   * 恢复 Worker 解码并开始时间更新
+   */
   protected async doPlay() {
     if (this.worker && this.isWorkerPaused) {
       this.worker.postMessage({ type: "RESUME", id: this.currentMessageId });
@@ -125,6 +189,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.startTimeUpdate();
   }
 
+  /**
+   * 执行底层暂停
+   * 暂停 Worker 解码并停止时间更新
+   */
   protected doPause() {
     this.setState("paused");
     this.stopTimeUpdate();
@@ -135,6 +203,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     }
   }
 
+  /**
+   * 跳转到指定时间
+   * @param time 目标时间（秒）
+   */
   public async seek(time: number) {
     // 如果正在 Seek (无论是等待淡出，还是正在缓冲)，强制返回目标时间以避免进度跳回
     this.isWorkerSeeking = true;
@@ -143,6 +215,11 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     await super.seek(time);
   }
 
+  /**
+   * 执行底层 Seek
+   * 清空当前缓冲区并通知 Worker 跳转
+   * @param time 目标时间（秒）
+   */
   protected doSeek(time: number) {
     if (!this.worker || !this.audioCtx || !this.metadata) return;
 
@@ -166,21 +243,36 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.emit(AUDIO_EVENTS.TIME_UPDATE);
   }
 
+  /**
+   * 设置播放速率
+   * @param _value 速率值（不支持，会输出警告）
+   */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public setRate(_value: number) {
     console.warn("[FFmpegAudioPlayer] setRate is not supported");
   }
 
+  /**
+   * 获取当前播放速率
+   * @returns 始终返回 1（不支持速率调节）
+   */
   public getRate() {
     console.warn("[FFmpegAudioPlayer] getRate is not supported");
     return 1;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /**
+   * 设置音频输出设备
+   * @param _deviceId 设备 ID（不支持，依赖基类的 AudioContext.setSinkId）
+   */
   protected async doSetSinkId(_deviceId: string) {
     console.warn("[FFmpegAudioPlayer] doSetSinkId is not supported");
   }
 
+  /**
+   * 销毁播放器实例
+   * 释放所有资源并关闭 AudioContext
+   */
   public destroy() {
     this.reset();
 
@@ -190,6 +282,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     }
   }
 
+  /**
+   * 重置播放器状态
+   * 停止 Worker、清空缓冲区、释放资源
+   */
   private reset() {
     this._errorCode = 0;
     if (this.metadataReject) {
@@ -226,6 +322,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.setState("idle");
   }
 
+  /**
+   * 设置播放器状态并触发相应事件
+   * @param newState 新状态
+   */
   private setState(newState: PlayerState) {
     if (this.playerState === newState) return;
     this.playerState = newState;
@@ -243,6 +343,11 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     }
   }
 
+  /**
+   * 处理错误
+   * @param msg 错误消息
+   * @param code 错误码
+   */
   private handleError(msg: string, code: number = ERR_DECODE) {
     console.error("[FFmpegAudioPlayer]", msg, code);
 
@@ -259,6 +364,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     });
   }
 
+  /**
+   * 设置 Worker 消息监听器
+   * 处理 METADATA、CHUNK、EOF、SEEK_DONE、ERROR 消息
+   */
   private setupWorkerListeners() {
     if (!this.worker) return;
 
@@ -339,6 +448,16 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     };
   }
 
+  /**
+   * 调度音频块播放
+   *
+   * 将解码后的 PCM 数据创建为 AudioBuffer 并调度播放
+   *
+   * @param planarData 平面格式的 PCM 数据
+   * @param sampleRate 采样率
+   * @param channels 声道数
+   * @param chunkStartTime 音频块的开始时间
+   */
   private scheduleChunk(
     planarData: Float32Array,
     sampleRate: number,
@@ -378,7 +497,8 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.activeSources.push(source);
 
     source.onended = () => {
-      this.activeSources = this.activeSources.filter((s) => s !== source);
+      const idx = this.activeSources.indexOf(source);
+      if (idx !== -1) this.activeSources.splice(idx, 1);
 
       if (this.audioCtx && !this.isDecodingFinished) {
         const bufferedDuration = this.nextStartTime - this.audioCtx.currentTime;
@@ -394,6 +514,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     };
   }
 
+  /**
+   * 检查是否播放结束
+   * 当解码完成且所有 AudioBufferSourceNode 播放完毕时触发 ENDED 事件
+   */
   private checkIfEnded() {
     if (this.playerState !== "playing") return;
     if (this.activeSources.length > 0) return;
@@ -403,24 +527,26 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.emit(AUDIO_EVENTS.ENDED);
   }
 
+  /**
+   * 启动时间更新定时器
+   */
   private startTimeUpdate() {
     this.stopTimeUpdate();
-    const tick = () => {
-      if (this.playerState === "playing") {
-        if (!this.isWorkerSeeking) {
-          this.emit(AUDIO_EVENTS.TIME_UPDATE);
-          this.dispatchEvent(new Event("timeupdate"));
-        }
-        this.timeUpdateFrameId = requestAnimationFrame(tick);
+    this.timeUpdateIntervalId = setInterval(() => {
+      if (this.playerState === "playing" && !this.isWorkerSeeking) {
+        this.emit(AUDIO_EVENTS.TIME_UPDATE);
+        this.dispatchEvent(new Event("timeupdate"));
       }
-    };
-    this.timeUpdateFrameId = requestAnimationFrame(tick);
+    }, 250);
   }
 
+  /**
+   * 停止时间更新定时器
+   */
   private stopTimeUpdate() {
-    if (this.timeUpdateFrameId) {
-      cancelAnimationFrame(this.timeUpdateFrameId);
-      this.timeUpdateFrameId = 0;
+    if (this.timeUpdateIntervalId !== null) {
+      clearInterval(this.timeUpdateIntervalId);
+      this.timeUpdateIntervalId = null;
     }
   }
 }
