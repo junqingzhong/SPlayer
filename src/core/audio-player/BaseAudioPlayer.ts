@@ -28,6 +28,19 @@ export type AudioEventMap = {
     : Event;
 };
 
+export enum AudioErrorCode {
+  /** 用户中止 */
+  ABORTED = 1,
+  /** 网络错误 */
+  NETWORK = 2,
+  /** 解码错误 */
+  DECODE = 3,
+  /** 格式不支持 */
+  SRC_NOT_SUPPORTED = 4,
+  /** DOMException: AbortError */
+  DOM_ABORT = 20,
+}
+
 const SEEK_FADE_TIME = 0.05;
 
 /**
@@ -263,7 +276,6 @@ export abstract class BaseAudioPlayer extends EventTarget {
 
   /**
    * 取消正在进行的暂停计划
-   *
    * 用于在淡出期间点击了播放或跳转，取消之前的暂停指令
    */
   protected cancelPendingPause() {

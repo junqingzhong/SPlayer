@@ -1,4 +1,4 @@
-import { AUDIO_EVENTS, BaseAudioPlayer } from "../BaseAudioPlayer";
+import { AUDIO_EVENTS, AudioErrorCode, BaseAudioPlayer } from "../BaseAudioPlayer";
 import AudioWorker from "./audio.worker?worker";
 import type { AudioMetadata, PlayerState, WorkerResponse } from "./types";
 
@@ -6,13 +6,6 @@ import type { AudioMetadata, PlayerState, WorkerResponse } from "./types";
 const HIGH_WATER_MARK = 30;
 /** 缓冲区低水位标记（秒），低于此值恢复解码 */
 const LOW_WATER_MARK = 10;
-
-// const ERR_ABORTED = 1;
-/** 网络错误码 */
-const ERR_NETWORK = 2;
-/** 解码错误码 */
-const ERR_DECODE = 3;
-// const ERR_SRC_NOT_SUPPORTED = 4;
 
 /**
  * 基于 FFmpeg WASM 的音频播放器实现
@@ -159,7 +152,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
           }
         } catch (e) {
           this.cleanupLoadPromise();
-          this.handleError((e as Error).message, ERR_NETWORK);
+          this.handleError((e as Error).message, AudioErrorCode.NETWORK);
           reject(e);
         }
       };
@@ -348,7 +341,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
    * @param msg 错误消息
    * @param code 错误码
    */
-  private handleError(msg: string, code: number = ERR_DECODE) {
+  private handleError(msg: string, code: number = AudioErrorCode.DECODE) {
     console.error("[FFmpegAudioPlayer]", msg, code);
 
     this._errorCode = code;
@@ -381,7 +374,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
             this.metadataReject(new Error(resp.error));
             this.cleanupLoadPromise();
           }
-          this.handleError(resp.error, ERR_DECODE);
+          this.handleError(resp.error, AudioErrorCode.DECODE);
           break;
         case "METADATA":
           this.metadata = {

@@ -1,4 +1,9 @@
-import { AUDIO_EVENTS, BaseAudioPlayer, type AudioEventType } from "./BaseAudioPlayer";
+import {
+  AUDIO_EVENTS,
+  AudioErrorCode,
+  BaseAudioPlayer,
+  type AudioEventType,
+} from "./BaseAudioPlayer";
 
 /**
  * 基于 HTMLAudioElement 的播放器实现
@@ -76,7 +81,8 @@ export class AudioElementPlayer extends BaseAudioPlayer {
     this.isInternalSeeking = true;
     this.targetSeekTime = time;
 
-    await super.seek(time);
+    this.cancelPendingPause();
+    this.doSeek(time);
   }
 
   /**
@@ -149,13 +155,13 @@ export class AudioElementPlayer extends BaseAudioPlayer {
     if (!this.audioElement.error) return 0;
     switch (this.audioElement.error.code) {
       case MediaError.MEDIA_ERR_ABORTED:
-        return 1;
+        return AudioErrorCode.ABORTED;
       case MediaError.MEDIA_ERR_NETWORK:
-        return 2;
+        return AudioErrorCode.NETWORK;
       case MediaError.MEDIA_ERR_DECODE:
-        return 3;
+        return AudioErrorCode.DECODE;
       case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-        return 4;
+        return AudioErrorCode.SRC_NOT_SUPPORTED;
       default:
         return 0;
     }
