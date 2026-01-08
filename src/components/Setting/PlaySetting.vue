@@ -92,14 +92,14 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name"
-            >音频播放引擎
+          <n-text class="name">
+            音频播放引擎
             <n-tag type="warning" size="small" round> Beta </n-tag>
           </n-text>
           <n-text class="tip" :depth="3">
-            {{ audioEngineData[settingStore.audioEngine]?.tip }}
+            {{ audioEngineData[settingStore.audioEngine]?.tip }} <br />
+            <n-text type="warning">需重启生效</n-text>
           </n-text>
-          <n-text type="warning">需重启生效</n-text>
         </div>
         <n-select
           v-model:value="settingStore.audioEngine"
@@ -380,7 +380,7 @@ const showSpectrums = ref<boolean>(settingStore.showSpectrums);
 // 音频引擎数据
 const audioEngineData = {
   element: {
-    label: "原生",
+    label: "Web Audio",
     value: "element",
     tip: "浏览器原生播放引擎，稳定可靠占用低，但不支持部分音频格式",
   },
