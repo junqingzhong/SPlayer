@@ -579,16 +579,9 @@ class LyricManager {
       * @param lang 正则中第一个捕获组匹配到的语言代码 (例如 "ja-JP")
       */
       const replacer = (match: string, lang: string) => (lang === major_lang ? match : "");
-
-      if (ttml_text.indexOf("iTunesMetadata") !== -1) {
-        const translationRegex = /<translation[^>]+xml:lang="([^"]+)"[^>]*>[\s\S]*?<\/translation>/g;
-
-        return ttml_text.replace(translationRegex, replacer);
-      } else {
-        const spanRegex = /<span[^>]+xml:lang="([^"]+)"[^>]*>[\s\S]*?<\/span>/g;
-
-        return ttml_text.replace(spanRegex, replacer);
-      }
+      const translationRegex = /<translation[^>]+xml:lang="([^"]+)"[^>]*>[\s\S]*?<\/translation>/g;
+      const spanRegex = /<span[^>]+xml:lang="([^" ]+)"[^>]*>[\s\S]*?<\/span>/g;
+      return ttml_text.replace(translationRegex, replacer).replace(spanRegex, replacer);
     }
 
     const context_lang = lang_counter(ttmlContent);
