@@ -1,9 +1,4 @@
-import {
-  AUDIO_EVENTS,
-  AudioErrorDetail,
-  BaseAudioPlayer,
-  type AudioEventType,
-} from "./BaseAudioPlayer";
+import { AUDIO_EVENTS, BaseAudioPlayer, type AudioEventType } from "./BaseAudioPlayer";
 
 /**
  * 基于 HTMLAudioElement 的播放器实现
@@ -124,15 +119,13 @@ export class AudioElementPlayer extends BaseAudioPlayer {
 
     events.forEach((eventType) => {
       this.audioElement.addEventListener(eventType, (e) => {
-        // 转发错误代码
         if (eventType === AUDIO_EVENTS.ERROR) {
-          const detail: AudioErrorDetail = {
+          this.emit(AUDIO_EVENTS.ERROR, {
             originalEvent: e,
             errorCode: this.getErrorCode(),
-          };
-          this.dispatchEvent(new CustomEvent(AUDIO_EVENTS.ERROR, { detail }));
+          });
         } else {
-          this.dispatchEvent(new Event(eventType));
+          this.emit(eventType);
         }
       });
     });

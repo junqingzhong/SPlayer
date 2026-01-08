@@ -1,6 +1,6 @@
-import { AudioErrorDetail, BaseAudioPlayer } from "../BaseAudioPlayer";
+import { AUDIO_EVENTS, BaseAudioPlayer } from "../BaseAudioPlayer";
 import AudioWorker from "./audio.worker?worker";
-import type { AudioMetadata, PlayerEventMap, PlayerState, WorkerResponse } from "./types";
+import type { AudioMetadata, PlayerState, WorkerResponse } from "./types";
 
 const HIGH_WATER_MARK = 30;
 const LOW_WATER_MARK = 10;
@@ -69,7 +69,9 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
   public async load(url: string) {
     this._src = url;
     this.reset();
-    this.setState("loading");
+
+    this.playerState = "loading";
+    this.emit(AUDIO_EVENTS.LOAD_START);
 
     return new Promise<void>((resolve, reject) => {
       this.metadataResolve = resolve;
@@ -161,7 +163,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     });
     this.isDecodingFinished = false;
 
-    this.dispatch("timeUpdate", time);
+    this.emit(AUDIO_EVENTS.TIME_UPDATE);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -228,10 +230,17 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     if (this.playerState === newState) return;
     this.playerState = newState;
 
-    this.dispatch("stateChange", newState);
-
-    if (newState === "playing") this.dispatchEvent(new Event("play"));
-    if (newState === "paused") this.dispatchEvent(new Event("pause"));
+    switch (newState) {
+      case "playing":
+        this.emit(AUDIO_EVENTS.PLAY);
+        break;
+      case "paused":
+        this.emit(AUDIO_EVENTS.PAUSE);
+        break;
+      case "loading":
+        this.emit(AUDIO_EVENTS.LOAD_START);
+        break;
+    }
   }
 
   private handleError(msg: string, code: number = ERR_DECODE) {
@@ -241,15 +250,13 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
 
     this.setState("error");
 
-    const errorDetail: AudioErrorDetail = {
+    this.emit(AUDIO_EVENTS.ERROR, {
       originalEvent: new ErrorEvent("error", {
         message: msg,
         error: new Error(msg),
       }),
       errorCode: code,
-    };
-
-    this.dispatch("error", errorDetail);
+    });
   }
 
   private setupWorkerListeners() {
@@ -282,11 +289,9 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
             this.timeOffset = now;
             this.nextStartTime = now;
           }
-          this.dispatch("durationChange", resp.duration);
-          this.dispatchEvent(new Event("durationchange"));
 
           this.setState("ready");
-          this.dispatchEvent(new Event("canplay"));
+          this.emit(AUDIO_EVENTS.CAN_PLAY);
 
           if (this.metadataResolve) {
             this.metadataResolve();
@@ -395,12 +400,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     if (!this.isDecodingFinished) return;
 
     this.setState("idle");
-    this.dispatch("ended", undefined);
-    this.dispatchEvent(new Event("ended"));
-  }
-
-  private dispatch<K extends keyof PlayerEventMap>(type: K, detail?: PlayerEventMap[K]) {
-    this.dispatchEvent(new CustomEvent(type, { detail }));
+    this.emit(AUDIO_EVENTS.ENDED);
   }
 
   private startTimeUpdate() {
@@ -408,7 +408,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     const tick = () => {
       if (this.playerState === "playing") {
         if (!this.isWorkerSeeking) {
-          this.dispatch("timeUpdate", this.currentTime);
+          this.emit(AUDIO_EVENTS.TIME_UPDATE);
           this.dispatchEvent(new Event("timeupdate"));
         }
         this.timeUpdateFrameId = requestAnimationFrame(tick);

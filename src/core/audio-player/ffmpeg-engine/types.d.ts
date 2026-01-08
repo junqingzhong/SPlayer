@@ -17,14 +17,6 @@ export interface AudioMetadata {
   bitsPerSample: number;
 }
 
-export interface PlayerEventMap {
-  stateChange: PlayerState;
-  timeUpdate: number;
-  durationChange: number;
-  error: AudioErrorDetail;
-  ended: undefined;
-}
-
 export type WorkerRequest =
   | { type: "INIT"; id: number; file: File; chunkSize: number }
   | { type: "PAUSE"; id: number }

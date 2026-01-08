@@ -16,13 +16,8 @@ export const AUDIO_EVENTS = {
   ENDED: "ended",
   TIME_UPDATE: "timeupdate",
   ERROR: "error",
-  WAITING: "waiting",
   CAN_PLAY: "canplay",
-  LOADED_METADATA: "loadedmetadata",
   LOAD_START: "loadstart",
-  VOLUME_CHANGE: "volumechange",
-  SEEKING: "seeking",
-  SEEKED: "seeked",
 } as const;
 
 export type AudioEventType = (typeof AUDIO_EVENTS)[keyof typeof AUDIO_EVENTS];
@@ -325,6 +320,16 @@ export abstract class BaseAudioPlayer extends EventTarget {
   public abstract get currentTime(): number;
   public abstract get paused(): boolean;
   public abstract getErrorCode(): number;
+
+  protected emit(type: Exclude<AudioEventType, "error">): void;
+  protected emit(type: typeof AUDIO_EVENTS.ERROR, detail: AudioErrorDetail): void;
+  protected emit(type: AudioEventType, detail?: AudioErrorDetail): void {
+    if (type === AUDIO_EVENTS.ERROR && detail) {
+      this.dispatchEvent(new CustomEvent(type, { detail }));
+    } else {
+      this.dispatchEvent(new Event(type));
+    }
+  }
 
   public override addEventListener<K extends keyof AudioEventMap>(
     type: K,
