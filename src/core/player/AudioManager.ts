@@ -19,6 +19,8 @@ class AudioManager extends EventTarget {
   private player: BaseAudioPlayer;
   /** 用于清理当前 player 的事件监听器 */
   private cleanupListeners: (() => void) | null = null;
+  /** 当前引擎类型 */
+  public readonly engineType: "ffmpeg" | "element";
 
   constructor(engineType: "ffmpeg" | "element") {
     super();
@@ -28,7 +30,7 @@ class AudioManager extends EventTarget {
     } else {
       this.player = new AudioElementPlayer();
     }
-
+    this.engineType = engineType;
     this.bindPlayerEvents();
   }
 

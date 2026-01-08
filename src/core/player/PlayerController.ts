@@ -170,7 +170,7 @@ class PlayerController {
 
     // 设置基础参数
     audioManager.setVolume(statusStore.playVolume);
-    if (settingStore.audioEngine !== "ffmpeg") {
+    if (audioManager.engineType !== "ffmpeg") {
       audioManager.setRate(statusStore.playRate);
     }
 
@@ -682,15 +682,14 @@ class PlayerController {
 
   /**
    * 设置播放速率
-   * @param rate 速率 (0.5 - 2.0)
+   * @param rate 速率 (0.25 - 2.0)
    */
   public setRate(rate: number) {
     const statusStore = useStatusStore();
     const audioManager = useAudioManager();
-    const settingStore = useSettingStore();
 
     statusStore.playRate = rate;
-    if (settingStore.audioEngine !== "ffmpeg") {
+    if (audioManager.engineType !== "ffmpeg") {
       audioManager.setRate(rate);
     }
   }
