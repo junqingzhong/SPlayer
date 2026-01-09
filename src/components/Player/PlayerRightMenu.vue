@@ -76,6 +76,7 @@ const controlsOptions = computed<DropdownOption[]>(() => [
     label: "均衡器",
     key: "equalizer",
     icon: renderIcon("Eq"),
+    disabled: settingStore.playbackEngine === "mpv",
   },
   {
     label: "自动关闭",
@@ -85,7 +86,7 @@ const controlsOptions = computed<DropdownOption[]>(() => [
   {
     label: "播放速度",
     key: "rate",
-    disabled: settingStore.audioEngine === "ffmpeg",
+    disabled: settingStore.audioEngine === "ffmpeg" && settingStore.playbackEngine !== "mpv",
     icon: renderIcon("PlayRate"),
   },
 ]);
@@ -94,6 +95,10 @@ const controlsOptions = computed<DropdownOption[]>(() => [
 const handleControls = (key: string) => {
   switch (key) {
     case "equalizer":
+      if (settingStore.playbackEngine === "mpv") {
+        window.$message.warning("MPV 引擎不支持均衡器功能");
+        return;
+      }
       openEqualizer();
       break;
     case "autoClose":
