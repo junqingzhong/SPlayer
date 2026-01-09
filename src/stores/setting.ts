@@ -149,6 +149,8 @@ export interface SettingState {
   playerBackgroundPause: boolean;
   /** 背景动画是否响应低频音量 */
   playerBackgroundLowFreqVolume: boolean;
+  /** 背景动画渲染比例 */
+  playerBackgroundRenderScale: number;
   /** 播放器元素自动隐藏 */
   autoHidePlayerMeta: boolean;
   /** 记忆最后进度 */
@@ -359,6 +361,7 @@ export const useSettingStore = defineStore("setting", {
     playerBackgroundFlowSpeed: 4,
     playerBackgroundPause: false,
     playerBackgroundLowFreqVolume: false,
+    playerBackgroundRenderScale: 0.5,
     autoHidePlayerMeta: true,
     memoryLastSeek: true,
     progressTooltipShow: true,
