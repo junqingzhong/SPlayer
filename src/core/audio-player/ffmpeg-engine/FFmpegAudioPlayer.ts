@@ -19,6 +19,8 @@ const LOW_WATER_MARK = 10;
  * - 支持 Seek 操作
  */
 export class FFmpegAudioPlayer extends BaseAudioPlayer {
+  /** 静态消息 ID 计数器，确保唯一性 */
+  private static messageIdCounter = 0;
   /** 解码 Worker 实例 */
   private worker: Worker | null = null;
   /** 音频元数据 */
@@ -141,7 +143,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
           this.worker = new AudioWorker();
           this.setupWorkerListeners();
 
-          this.currentMessageId = Date.now();
+          this.currentMessageId = ++FFmpegAudioPlayer.messageIdCounter;
           if (this.worker) {
             this.worker.postMessage({
               type: "INIT",
@@ -224,7 +226,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
       }
     });
     this.activeSources = [];
-    this.currentMessageId = Date.now();
+    this.currentMessageId = ++FFmpegAudioPlayer.messageIdCounter;
 
     this.worker.postMessage({
       type: "SEEK",
@@ -528,7 +530,6 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.timeUpdateIntervalId = setInterval(() => {
       if (this.playerState === "playing" && !this.isWorkerSeeking) {
         this.emit(AUDIO_EVENTS.TIME_UPDATE);
-        this.dispatchEvent(new Event("timeupdate"));
       }
     }, 250);
   }
