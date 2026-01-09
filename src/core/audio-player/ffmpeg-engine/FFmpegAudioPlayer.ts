@@ -57,6 +57,8 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
 
   /** 当前音频源地址 */
   private _src: string = "";
+  /** 用于取消正在进行的 fetch 请求 */
+  private abortController: AbortController | null = null;
 
   constructor() {
     super();
@@ -125,6 +127,13 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.playerState = "loading";
     this.emit(AUDIO_EVENTS.LOAD_START);
 
+    // 唯一的加载 ID
+    const loadId = ++FFmpegAudioPlayer.messageIdCounter;
+    this.currentMessageId = loadId;
+
+    // 取消 fetch
+    this.abortController = new AbortController();
+
     return new Promise<void>((resolve, reject) => {
       this.metadataResolve = resolve;
       this.metadataReject = reject;
@@ -135,15 +144,19 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
             this.init();
           }
 
-          const response = await fetch(url);
+          const response = await fetch(url, { signal: this.abortController?.signal });
+          // 检查是否被新的 load 调用覆盖
+          if (this.currentMessageId !== loadId) return;
           if (!response.ok) throw new Error(`Failed to fetch ${url}`);
           const blob = await response.blob();
+          // 再次检查
+          if (this.currentMessageId !== loadId) return;
+
           const file = new File([blob], "und", { type: blob.type });
 
           this.worker = new AudioWorker();
           this.setupWorkerListeners();
 
-          this.currentMessageId = ++FFmpegAudioPlayer.messageIdCounter;
           if (this.worker) {
             this.worker.postMessage({
               type: "INIT",
@@ -153,6 +166,8 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
             });
           }
         } catch (e) {
+          // 被新的 load 取消了，不需要处理
+          if ((e as Error).name === "AbortError") return;
           this.cleanupLoadPromise();
           this.handleError((e as Error).message, AudioErrorCode.NETWORK);
           reject(e);
@@ -283,6 +298,13 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
    */
   private reset() {
     this._errorCode = 0;
+
+    // 取消正在进行的 fetch 请求
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+
     if (this.metadataReject) {
       this.metadataReject(new Error("Aborted by reset"));
       this.cleanupLoadPromise();
