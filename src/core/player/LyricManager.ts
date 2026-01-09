@@ -7,7 +7,7 @@ import { type SongLyric } from "@/types/lyric";
 import { isElectron } from "@/utils/env";
 import { stripLyricMetadata } from "@/utils/lyricStripper";
 import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
-import { parseSmartLrc, isWordLevelFormat } from "@/utils/lyricParser";
+import { isWordLevelFormat, parseSmartLrc } from "@/utils/lyricParser";
 import { escapeRegExp, isEmpty } from "lodash-es";
 import { SongType } from "@/types/main";
 
@@ -323,29 +323,21 @@ class LyricManager {
     };
     // 解析主歌词
     const qrcLines = parseQRCContent(qrcContent);
-    // 解析罗马音（如果有）
-    const romaLines = roma ? parseQRCContent(roma) : [];
-    // 构建 LyricLine 数组，同时填充 romanWord
-    const lines: LyricLine[] = qrcLines.map((qrcLine, lineIndex) => {
-      // 找到对应的罗马音行
-      const romaLine = romaLines[lineIndex];
-      // 按索引填充 romanWord
-      const words = qrcLine.words.map((w, wordIndex) => ({
-        ...w,
-        romanWord: romaLine?.words[wordIndex]?.word || "",
-      }));
+    let result = qrcLines.map((qrcLine) => {
       return {
-        words,
+        words: qrcLine.words.map((word) => ({
+          ...word,
+          romanWord: "",
+        })),
         startTime: qrcLine.startTime,
         endTime: qrcLine.endTime,
         translatedLyric: "",
-        romanLyric: romaLine?.words.map((w) => w.word).join("") || "",
+        romanLyric: "",
         isBG: false,
         isDuet: false,
       };
     });
     // 处理翻译
-    let result = lines;
     if (trans) {
       let transLines = parseLrc(trans);
       if (transLines?.length) {
@@ -355,6 +347,31 @@ class LyricManager {
           return !text.includes("//") && !text.includes("作品的著作权");
         });
         result = this.alignLyrics(result, transLines, "translatedLyric");
+      }
+    }
+    // 处理音译
+    if (roma) {
+      const qrcRomaLines = parseQRCContent(roma);
+      if (qrcRomaLines?.length) {
+        const romaLines = qrcRomaLines.map((line) => {
+          return {
+            words: [
+              {
+                startTime: line.startTime,
+                endTime: line.endTime,
+                word: line.words.map((w) => w.word).join(""),
+                romanWord: "",
+              },
+            ],
+            startTime: line.startTime,
+            endTime: line.endTime,
+            translatedLyric: "",
+            romanLyric: "",
+            isBG: false,
+            isDuet: false,
+          };
+        });
+        result = this.alignLyrics(result, romaLines, "romanLyric");
       }
     }
     return result;
