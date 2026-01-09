@@ -406,19 +406,34 @@ export const handleSongQuality = (
     if (song >= 160000) return QualityType.MQ;
     return QualityType.LQ;
   }
-  // 含有 level 特殊处理
-  if (typeof song === "object" && "level" in song) {
-    if (song.level === "jymaster") return QualityType.Master;
-    if (song.level === "dolby") return QualityType.Dolby;
-    if (song.level === "sky") return QualityType.Spatial;
-    if (song.level === "jyeffect") return QualityType.Surround;
-    if (song.level === "hires") return QualityType.HiRes;
-    if (song.level === "lossless") return QualityType.SQ;
-    if (song.level === "exhigh") return QualityType.HQ;
-    if (song.level === "higher") return QualityType.MQ;
-    if (song.level === "standard") return QualityType.LQ;
-    return undefined;
+
+  const levelQualityMap = {
+    "jymaster": QualityType.Master,
+    "dolby": QualityType.Dolby,
+    "sky": QualityType.Spatial,
+    "jyeffect": QualityType.Surround,
+    "hires": QualityType.HiRes,
+    "lossless": QualityType.SQ,
+    "exhigh": QualityType.HQ,
+    "higher": QualityType.MQ,
+    "standard": QualityType.LQ,
   }
+
+  if (typeof song === "object") {
+    // 含有 level 特殊处理
+    if ("level" in song) {
+      const quality = levelQualityMap[song.level];
+      if (quality) return quality;
+    }
+    // 云盘歌曲适配
+    if ("privilege" in song) {
+      const privilege = song.privilege;
+      const quality = levelQualityMap[privilege?.playMaxBrLevel]
+        ?? levelQualityMap[privilege?.plLevel];
+      if (quality) return quality;
+    }
+  }
+
   const order = [
     { key: "jm", type: QualityType.Master },
     { key: "db", type: QualityType.Dolby },
