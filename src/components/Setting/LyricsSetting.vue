@@ -246,7 +246,6 @@
           v-model:value="settingStore.showTran"
           class="set"
           :round="false"
-          :disabled="settingStore.useAMLyrics"
         />
       </n-card>
       <n-card class="set-item">
@@ -257,7 +256,6 @@
           v-model:value="settingStore.showRoma"
           class="set"
           :round="false"
-          :disabled="settingStore.useAMLyrics"
         />
       </n-card>
       <n-card class="set-item">
@@ -416,6 +414,16 @@
             :min="0.01"
             :max="1"
             :step="0.01"
+            :round="false"
+          />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">显示逐字音译</n-text>
+          </div>
+          <n-switch
+            v-model:value="settingStore.showWordsRoma"
+            class="set"
             :round="false"
           />
         </n-card>

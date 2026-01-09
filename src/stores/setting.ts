@@ -67,6 +67,8 @@ export interface SettingState {
   showTran: boolean;
   /** 显示歌词音译 */
   showRoma: boolean;
+  /** 显示逐字音译 */
+  showWordsRoma: boolean;
   /** 歌词位置 */
   lyricsPosition: "flex-start" | "center" | "flex-end";
   /** 歌词滚动位置 */
@@ -385,6 +387,7 @@ export const useSettingStore = defineStore("setting", {
     showYrcAnimation: true,
     showTran: true,
     showRoma: true,
+    showWordsRoma: true,
     lyricsPosition: "flex-start",
     lyricsBlur: false,
     lyricsScrollPosition: "start",
