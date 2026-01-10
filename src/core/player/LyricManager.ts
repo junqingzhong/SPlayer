@@ -433,7 +433,7 @@ class LyricManager {
       }
       if (isStale()) return;
       if (!ttmlContent || typeof ttmlContent !== "string") return;
-      const sorted = this.sortTTMLTranslations(ttmlContent);
+      const sorted = this.cleanTTMLTranslations(ttmlContent);
       const parsed = parseTTML(sorted);
       const lines = parsed?.lines || [];
       if (!lines.length) return;
@@ -517,7 +517,7 @@ class LyricManager {
       if (!lyric) return { lrcData: [], yrcData: [] };
       // TTML 直接返回
       if (format === "ttml") {
-        const sorted = this.sortTTMLTranslations(lyric);
+        const sorted = this.cleanTTMLTranslations(lyric);
         const ttml = parseTTML(sorted);
         const lines = ttml?.lines || [];
         statusStore.usingTTMLLyric = true;
@@ -551,52 +551,74 @@ class LyricManager {
   }
 
   /**
-   * 处理 TTML 内容并排序翻译
+   * 清洗 TTML 中不需要的翻译
    * @param ttmlContent 原始 TTML 内容
-   * @param translationOrder 翻译排序顺序
-   * @returns 排序后的 TTML 内容
+   * @returns 清洗后的 TTML 内容
    */
-  // 此函数应该在 AMLL 的 TTML 解析器支持多语言翻译后删除
-  private sortTTMLTranslations(
+  // 当支持 i18n 之后，需要对其中的部分函数进行修改，使其优选逻辑能够根据用户界面语言变化
+  private cleanTTMLTranslations(
+    // 一般没有多种音译，故不对音译部分进行清洗，如果需要请另写处理函数
     ttmlContent: string,
-    translationOrder: string[] = ["zh-CN", "zh-Hans", "zh-TW", "zh-Hant"],
   ): string {
-    // 使用 DOMParser 解析 XML 内容
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(ttmlContent, "text/xml");
+    const lang_counter = (ttml_text: string) => {
+      // 使用正则匹配所有 xml:lang="xx-XX" 格式的字符串
+      const langRegex = /(?<=<(span|translation)[^<>]+)xml:lang="([^"]+)"/g;
+      const matches = ttml_text.matchAll(langRegex);
 
-    // 查找所有歌词行元素
-    const lyricsElements = xmlDoc.querySelectorAll("tt > body > div > p");
+      // 提取匹配结果并去重
+      const langSet = new Set<string>();
+      for (const match of matches) {
+        if (match[2]) langSet.add(match[2]);
+      }
 
-    lyricsElements.forEach((element: Element) => {
-      // 获取当前歌词行的所有翻译元素
-      const translationElements = Array.from(element.children).filter(
-        (child) =>
-          child.hasAttribute("ttm:role") && child.getAttribute("ttm:role") === "x-translation",
-      );
+      return Array.from(langSet);
+    };
 
-      // 按照指定顺序对翻译进行排序
-      // 按照指定顺序对翻译进行排序
-      translationElements.sort((a, b) => {
-        const aLang = (a.getAttribute("xml:lang") || a.getAttribute("lang") || "").toLowerCase();
-        const bLang = (b.getAttribute("xml:lang") || b.getAttribute("lang") || "").toLowerCase();
+    const lang_filter = (langs: string[]): string | null => {
+      if (langs.length <= 1) return null;
 
-        const aIndex = translationOrder.findIndex((lang) => aLang.startsWith(lang.toLowerCase()));
-        const bIndex = translationOrder.findIndex((lang) => bLang.startsWith(lang.toLowerCase()));
+      const lang_matcher = (target: string) => {
+        return langs.find((lang) => {
+          try {
+            return new Intl.Locale(lang).maximize().script === target;
+          } catch {
+            return false;
+          }
+        });
+      };
 
-        // 如果找不到指定语言，则放在最后
-        return (aIndex === -1 ? Infinity : aIndex) - (bIndex === -1 ? Infinity : bIndex);
-      });
+      const hans_matched = lang_matcher("Hans");
+      if (hans_matched) return hans_matched;
 
-      // 重新排列翻译元素
-      translationElements.forEach((translationElement) => {
-        element.appendChild(translationElement); // 移动到末尾以实现排序
-      });
-    });
+      const hant_matched = lang_matcher("Hant");
+      if (hant_matched) return hant_matched;
 
-    // 序列化回字符串
-    const serializer = new XMLSerializer();
-    return serializer.serializeToString(xmlDoc);
+      const major = langs.find((key) => key.startsWith("zh"));
+      if (major) return major;
+
+      return langs[0];
+    };
+
+    const ttml_cleaner = (ttml_text: string, major_lang: string | null): string => {
+      // 如果没有指定主语言，直接返回原文本（或者根据需求返回空）
+      if (major_lang === null) return ttml_text;
+
+      /**
+       * 替换逻辑回调函数
+       * @param match 完整匹配到的标签字符串 (例如 <code><span ...>...<\/span></code>)
+       * @param lang 正则中第一个捕获组匹配到的语言代码 (例如 "ja-JP")
+       */
+      const replacer = (match: string, lang: string) => (lang === major_lang ? match : "");
+      const translationRegex = /<translation[^>]+xml:lang="([^"]+)"[^>]*>[\s\S]*?<\/translation>/g;
+      const spanRegex = /<span[^>]+xml:lang="([^" ]+)"[^>]*>[\s\S]*?<\/span>/g;
+      return ttml_text.replace(translationRegex, replacer).replace(spanRegex, replacer);
+    };
+
+    const context_lang = lang_counter(ttmlContent);
+    const major = lang_filter(context_lang);
+    const cleaned_ttml = ttml_cleaner(ttmlContent, major);
+
+    return cleaned_ttml;
   }
 
   /**
