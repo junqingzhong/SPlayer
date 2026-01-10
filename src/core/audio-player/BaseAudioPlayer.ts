@@ -1,4 +1,5 @@
 import { AudioEffectManager } from "./AudioEffectManager";
+import type { EngineCapabilities, IPlaybackEngine } from "./IPlaybackEngine";
 
 /** 扩充 AudioContext 接口以支持 setSinkId (实验性 API) */
 export interface IExtendedAudioContext extends AudioContext {
@@ -47,8 +48,9 @@ const SEEK_FADE_TIME = 0.05;
  * 音频播放器抽象基类
  *
  * 管理 AudioContext、音量增益、EQ连接、以及通用的淡入淡出/Seek逻辑
+ * 实现 IPlaybackEngine 接口
  */
-export abstract class BaseAudioPlayer extends EventTarget {
+export abstract class BaseAudioPlayer extends EventTarget implements IPlaybackEngine {
   /** 核心上下文 */
   protected audioCtx: IExtendedAudioContext | null = null;
   /** 主输出增益节点 (控制音量) */
@@ -64,6 +66,9 @@ export abstract class BaseAudioPlayer extends EventTarget {
   protected volume: number = 1;
   /** 存储淡出暂停的定时器 ID */
   private fadeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** 引擎能力描述 */
+  public abstract readonly capabilities: EngineCapabilities;
 
   constructor() {
     super();
@@ -109,6 +114,20 @@ export abstract class BaseAudioPlayer extends EventTarget {
   }
 
   /**
+   * 销毁引擎，释放资源
+   */
+  public destroy(): void {
+    if (this.audioCtx) {
+      this.audioCtx.close().catch(console.warn);
+      this.audioCtx = null;
+    }
+    this.gainNode = null;
+    this.inputNode = null;
+    this.effectManager = null;
+    this.isInitialized = false;
+  }
+
+  /**
    * 供子类重写，当 AudioContext 初始化完成时调用
    *
    * 子类应在此处创建 SourceNode 并连接到 this.inputNode
@@ -121,7 +140,7 @@ export abstract class BaseAudioPlayer extends EventTarget {
    */
   public async play(
     url?: string,
-    options: { fadeIn?: boolean; fadeDuration?: number; autoPlay?: boolean } = {},
+    options: { fadeIn?: boolean; fadeDuration?: number; autoPlay?: boolean; seek?: number } = {},
   ) {
     this.cancelPendingPause();
     const shouldPlay = options.autoPlay ?? true;
@@ -130,9 +149,14 @@ export abstract class BaseAudioPlayer extends EventTarget {
       await this.load(url);
     }
 
-    if (!shouldPlay) return;
-
     if (!this.isInitialized) this.init();
+
+    // 恢复播放位置
+    if (options.seek && options.seek > 0) {
+      this.doSeek(options.seek);
+    }
+
+    if (!shouldPlay) return;
 
     if (this.audioCtx?.state === "suspended") {
       await this.audioCtx.resume();
@@ -147,6 +171,10 @@ export abstract class BaseAudioPlayer extends EventTarget {
       console.error("播放失败", e);
       throw e;
     }
+  }
+
+  public async resume(options?: { fadeIn?: boolean; fadeDuration?: number }): Promise<void> {
+    await this.play(undefined, options);
   }
 
   public async pause(options: { fadeOut?: boolean; fadeDuration?: number } = {}) {

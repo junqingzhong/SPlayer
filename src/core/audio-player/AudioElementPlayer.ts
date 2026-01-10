@@ -4,6 +4,7 @@ import {
   BaseAudioPlayer,
   type AudioEventType,
 } from "./BaseAudioPlayer";
+import type { EngineCapabilities } from "./IPlaybackEngine";
 
 /**
  * 基于 HTMLAudioElement 的播放器实现
@@ -21,6 +22,14 @@ export class AudioElementPlayer extends BaseAudioPlayer {
   private isInternalSeeking = false;
   /** 目标时间缓存，用于在 seek 过程中返回稳定的 currentTime */
   private targetSeekTime = 0;
+
+  /** 引擎能力描述 */
+  public override readonly capabilities: EngineCapabilities = {
+    supportsRate: true,
+    supportsSinkId: true,
+    supportsEqualizer: true,
+    supportsSpectrum: true,
+  };
 
   constructor() {
     super();

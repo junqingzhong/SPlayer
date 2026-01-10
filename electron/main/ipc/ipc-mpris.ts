@@ -3,7 +3,29 @@ import { IpcChannelMap } from "../../../src/types/global";
 import { processLog } from "../logger";
 import { loadNativeModule } from "../utils/native-loader";
 
-let mprisInstance: any = null;
+type NativeMprisModule = typeof import("@mpris");
+
+let nativeMpris: NativeMprisModule | null = null;
+let mprisInstance: InstanceType<NativeMprisModule["SPlayerMpris"]> | null = null;
+
+/**
+ * 注册 IPC 处理函数
+ */
+const registerHandler = <K extends keyof IpcChannelMap>(
+  channel: K,
+  handler: (payload: IpcChannelMap[K]) => void,
+  errorContext: string,
+) => {
+  ipcMain.on(channel, (_, payload: IpcChannelMap[K]) => {
+    if (mprisInstance) {
+      try {
+        handler(payload);
+      } catch (e) {
+        processLog.error(`[MPRIS] ${errorContext} 失败`, e);
+      }
+    }
+  });
+};
 
 export default function initMprisIpc() {
   // 仅在 Linux 上加载 MPRIS 原生模块
@@ -12,22 +34,21 @@ export default function initMprisIpc() {
     return;
   }
 
-  const nativeMpris = loadNativeModule("mpris-for-splayer.node", "mpris-for-splayer");
+  nativeMpris = loadNativeModule("mpris-for-splayer.node", "mpris-for-splayer");
 
   if (!nativeMpris) {
     processLog.warn("[MPRIS] 找不到原生插件，MPRIS 功能将不可用");
   } else {
     try {
       // 创建 MPRIS 实例
-      mprisInstance = new (nativeMpris as any).SPlayerMpris();
-      
+      mprisInstance = new nativeMpris.SPlayerMpris();
+
       // 注册事件处理器
-      mprisInstance.registerEventHandler((event: any) => {
+      mprisInstance.registerEventHandler((event) => {
         if (!event || !event.eventType) {
           processLog.warn("[MPRIS] 收到无效的事件:", event);
           return;
         }
-        //processLog.info(`[MPRIS] 收到系统事件: ${event.eventType}`, event.value);
         const wins = BrowserWindow.getAllWindows();
         if (wins.length > 0) {
           wins.forEach((win) => {
@@ -37,7 +58,7 @@ export default function initMprisIpc() {
           });
         }
       });
-      
+
       processLog.info("[MPRIS] MPRIS 原生插件已初始化");
     } catch (e) {
       processLog.error("[MPRIS] 初始化时失败", e);
@@ -45,79 +66,59 @@ export default function initMprisIpc() {
   }
 
   // 元数据更新
-  ipcMain.on("mpris-update-metadata", (_, payload: IpcChannelMap["mpris-update-metadata"]) => {
-    if (mprisInstance) {
-      try {
-        mprisInstance.setMetadata({
-          title: payload.title,
-          artist: payload.artist,
-          album: payload.album,
-          length: payload.length,
-          url: payload.url,
-        });
-      } catch (e) {
-        processLog.error("[MPRIS] updateMetadata 失败", e);
-      }
-    }
-  });
+  registerHandler(
+    "mpris-update-metadata",
+    (payload) => {
+      mprisInstance!.setMetadata({
+        title: payload.title,
+        artist: payload.artist,
+        album: payload.album,
+        length: payload.length,
+        url: payload.url,
+      });
+    },
+    "updateMetadata",
+  );
 
   // 播放状态更新
-  ipcMain.on("mpris-update-play-state", (_, payload: IpcChannelMap["mpris-update-play-state"]) => {
-    if (mprisInstance) {
-      try {
-        mprisInstance.setPlaybackStatus(payload.status);
-      } catch (e) {
-        processLog.error("[MPRIS] updatePlayState 失败", e);
-      }
-    }
-  });
+  registerHandler(
+    "mpris-update-play-state",
+    (payload) => mprisInstance!.setPlaybackStatus(payload.status),
+    "updatePlayState",
+  );
 
   // 进度更新
-  ipcMain.on("mpris-update-timeline", (_, payload: IpcChannelMap["mpris-update-timeline"]) => {
-    if (mprisInstance) {
-      try {
-        // 转换为微秒
-        const position = payload.position * 1000;
-        const length = payload.length * 1000;
-        mprisInstance.setProgress(position, length);
-      } catch (e) {
-        processLog.error("[MPRIS] updateTimeline 失败", e);
-      }
-    }
-  });
+  registerHandler(
+    "mpris-update-timeline",
+    (payload) => {
+      // 转换为微秒
+      const position = payload.position * 1000;
+      const length = payload.length * 1000;
+      mprisInstance!.setProgress(position, length);
+    },
+    "updateTimeline",
+  );
 
   // 循环模式更新
-  ipcMain.on("mpris-update-loop-status", (_, payload: IpcChannelMap["mpris-update-loop-status"]) => {
-    if (mprisInstance) {
-      try {
-        mprisInstance.setLoopStatus(payload.status);
-      } catch (e) {
-        processLog.error("[MPRIS] updateLoopStatus 失败", e);
-      }
-    }
-  });
+  registerHandler(
+    "mpris-update-loop-status",
+    (payload) => mprisInstance!.setLoopStatus(payload.status),
+    "updateLoopStatus",
+  );
 
   // 随机播放更新
-  ipcMain.on("mpris-update-shuffle", (_, payload: IpcChannelMap["mpris-update-shuffle"]) => {
-    if (mprisInstance) {
-      try {
-        mprisInstance.setShuffle(payload.shuffle);
-      } catch (e) {
-        processLog.error("[MPRIS] updateShuffle 失败", e);
-      }
-    }
-  });
+  registerHandler(
+    "mpris-update-shuffle",
+    (payload) => mprisInstance!.setShuffle(payload.shuffle),
+    "updateShuffle",
+  );
 
   // 音量更新
-  ipcMain.on("mpris-update-volume", (_, payload: IpcChannelMap["mpris-update-volume"]) => {
-    if (mprisInstance) {
-      try {
-        mprisInstance.setVolume(payload.volume);
-      } catch (e) {
-        processLog.error("[MPRIS] updateVolume 失败", e);
-      }
-    }
-  });
+  registerHandler(
+    "mpris-update-volume",
+    (payload) => mprisInstance!.setVolume(payload.volume),
+    "updateVolume",
+  );
 }
 
 export function shutdownMpris() {
