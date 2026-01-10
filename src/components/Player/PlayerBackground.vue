@@ -23,6 +23,7 @@
         :flowSpeed="flowSpeed"
         :hasLyric="musicStore.isHasLrc"
         :lowFreqVolume="lowFreqVolume"
+        :renderScale="settingStore.playerBackgroundRenderScale ?? 0.5"
       />
     </Transition>
   </div>
@@ -55,8 +56,6 @@ const { pause: pauseRaf, resume: resumeRaf } = useRafFn(
       statusStore.playStatus
     ) {
       lowFreqVolume.value = player.getLowFrequencyVolume();
-    } else {
-      lowFreqVolume.value = 1.0;
     }
   },
   { immediate: false },
@@ -70,8 +69,8 @@ watch(
     statusStore.playStatus,
   ],
   ([enabled, bgType, playing]) => {
-    if (enabled && bgType === "animation" && playing) {
-      resumeRaf();
+    if (enabled && bgType === "animation") {
+      playing ? resumeRaf() : pauseRaf();
     } else {
       pauseRaf();
       lowFreqVolume.value = 1.0;

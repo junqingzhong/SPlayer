@@ -262,6 +262,23 @@
         </n-card>
         <n-card class="set-item">
           <div class="label">
+            <n-text class="name">背景渲染缩放比例</n-text>
+            <n-text class="tip" :depth="3">设置当前渲染缩放比例，默认 0.5</n-text>
+            <n-text class="tip" :depth="3">
+              适当提高此值（如 1.0 或 1.5）可以减少分界线锯齿，让效果更好，但也会增加显卡压力
+            </n-text>
+          </div>
+          <n-input-number
+            v-model:value="settingStore.playerBackgroundRenderScale"
+            :min="0.1"
+            :max="10"
+            :show-button="false"
+            class="set"
+            placeholder="请输入背景渲染缩放比例"
+          />
+        </n-card>
+        <n-card class="set-item">
+          <div class="label">
             <n-text class="name">背景动画暂停时暂停</n-text>
             <n-text class="tip" :depth="3">在暂停时是否也暂停背景动画</n-text>
           </div>

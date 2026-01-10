@@ -67,6 +67,8 @@ export interface SettingState {
   showTran: boolean;
   /** 显示歌词音译 */
   showRoma: boolean;
+  /** 显示逐字音译 */
+  showWordsRoma: boolean;
   /** 歌词位置 */
   lyricsPosition: "flex-start" | "center" | "flex-end";
   /** 歌词滚动位置 */
@@ -147,6 +149,8 @@ export interface SettingState {
   playerBackgroundPause: boolean;
   /** 背景动画是否响应低频音量 */
   playerBackgroundLowFreqVolume: boolean;
+  /** 背景动画渲染比例 */
+  playerBackgroundRenderScale: number;
   /** 播放器元素自动隐藏 */
   autoHidePlayerMeta: boolean;
   /** 记忆最后进度 */
@@ -357,6 +361,7 @@ export const useSettingStore = defineStore("setting", {
     playerBackgroundFlowSpeed: 4,
     playerBackgroundPause: false,
     playerBackgroundLowFreqVolume: false,
+    playerBackgroundRenderScale: 0.5,
     autoHidePlayerMeta: true,
     memoryLastSeek: true,
     progressTooltipShow: true,
@@ -385,6 +390,7 @@ export const useSettingStore = defineStore("setting", {
     showYrcAnimation: true,
     showTran: true,
     showRoma: true,
+    showWordsRoma: true,
     lyricsPosition: "flex-start",
     lyricsBlur: false,
     lyricsScrollPosition: "start",
