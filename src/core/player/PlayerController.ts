@@ -94,9 +94,6 @@ class PlayerController {
         onDuration: (durationMs) => {
           statusStore.duration = durationMs;
         },
-        onVolume: (v01) => {
-          statusStore.playVolume = v01;
-        },
         onFileLoaded: () => {
           statusStore.playLoading = false;
           const mpv = useMpvManager();
