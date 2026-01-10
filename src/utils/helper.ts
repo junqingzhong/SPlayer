@@ -419,7 +419,7 @@ export const handleSongQuality = (
     "standard": QualityType.LQ,
   }
 
-  if (typeof song === "object") {
+  if (typeof song === "object" && song) {
     // 含有 level 特殊处理
     if ("level" in song) {
       const quality = levelQualityMap[song.level];
