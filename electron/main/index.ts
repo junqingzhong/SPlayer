@@ -53,10 +53,7 @@ class MainProcess {
     }
     // 在 Linux 上禁用 Chromium 内置的 MPRIS 服务，使用原生 MPRIS 插件
     if (process.platform === "linux") {
-      app.commandLine.appendSwitch(
-        "disable-features",
-        "MediaSessionService",
-      );
+      app.commandLine.appendSwitch("disable-features", "MediaSessionService");
     }
     // 防止后台时渲染进程被休眠
     app.commandLine.appendSwitch("disable-renderer-backgrounding");
@@ -109,6 +106,7 @@ class MainProcess {
 
     // 退出前
     app.on("before-quit", (event) => {
+      if (this.isQuit) return;
       event.preventDefault();
       this.isQuit = true;
       (async () => {

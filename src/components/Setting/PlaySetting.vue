@@ -98,7 +98,7 @@
           </n-text>
           <n-text class="tip" :depth="3">
             {{ engineTip }} <br />
-            <n-text type="warning">切换后热重载生效</n-text>
+            <n-text type="warning">重启应用以生效</n-text>
           </n-text>
         </div>
         <n-select
@@ -115,17 +115,17 @@
         </div>
         <n-switch v-model:value="settingStore.playSongDemo" class="set" :round="false" />
       </n-card>
-      
+
       <n-card v-if="isElectron" class="set-item">
         <div class="label">
           <n-text class="name">音频输出设备</n-text>
           <n-text class="tip" :depth="3">
             {{
-              settingStore.audioEngine === 'ffmpeg'
-                ? 'FFmpeg 引擎不支持切换输出设备'
-                : settingStore.playbackEngine === 'mpv'
-                ? '如不知怎么选择，请选择"Autoselect"或者"Default"设备，选错可能导致无声，或处于锁死状态，重新选择"Autoselect"后切歌即可解决'
-                : '新增或移除音频设备后请重新打开设置'
+              settingStore.audioEngine === "ffmpeg"
+                ? "FFmpeg 引擎不支持切换输出设备"
+                : settingStore.playbackEngine === "mpv"
+                  ? '如不知怎么选择，请选择"Autoselect"或者"Default"设备，选错可能导致无声，或处于锁死状态，重新选择"Autoselect"后切歌即可解决'
+                  : "新增或移除音频设备后请重新打开设置"
             }}
           </n-text>
         </div>
@@ -326,7 +326,11 @@
         <div class="label">
           <n-text class="name">音乐频谱</n-text>
           <n-text class="tip" :depth="3">
-            {{ settingStore.playbackEngine === 'mpv' ? 'MPV 引擎暂不支持显示音乐频谱' : '开启音乐频谱会影响性能或增加内存占用，如遇问题请关闭' }}
+            {{
+              settingStore.playbackEngine === "mpv"
+                ? "MPV 引擎暂不支持显示音乐频谱"
+                : "开启音乐频谱会影响性能或增加内存占用，如遇问题请关闭"
+            }}
           </n-text>
         </div>
         <n-switch
@@ -386,14 +390,22 @@ const settingStore = useSettingStore();
 // 输出设备数据
 const outputDevices = ref<SelectOption[]>([]);
 
-type PlaybackEngine = "web-audio" | "mpv";
+// 统一处理音频引擎选择
+const handleAudioEngineSelect = async (value: "element" | "ffmpeg" | "mpv") => {
+  const targetPlaybackEngine = value === "mpv" ? "mpv" : "web-audio";
+  // 如果是切回 web-audio，且 value 为 element/ffmpeg，则更新 audioEngine
+  const targetAudioEngine = value !== "mpv" ? value : settingStore.audioEngine;
 
-// 切换播放引擎（切换后热重载以确保完整生效）
-const playbackEngineChange = async (engine: PlaybackEngine) => {
-  if (engine === settingStore.playbackEngine) return;
+  // 检查是否有变化
+  if (
+    targetPlaybackEngine === settingStore.playbackEngine &&
+    targetAudioEngine === settingStore.audioEngine
+  ) {
+    return;
+  }
 
   // 如果切换到 MPV 引擎，先检查是否已安装
-  if (engine === "mpv" && isElectron) {
+  if (targetPlaybackEngine === "mpv" && isElectron) {
     const result = await window.electron.ipcRenderer.invoke("mpv-check-installed");
     if (!result.installed) {
       window.$message.error("未检测到 MPV，请先安装 MPV 播放器", { duration: 3000 });
@@ -401,13 +413,16 @@ const playbackEngineChange = async (engine: PlaybackEngine) => {
     }
   }
 
-  settingStore.playbackEngine = engine;
-
-  window.$message.loading("播放引擎切换完成，软件即将热重载", {
-    duration: 1500,
-    onAfterLeave: () => {
+  window.$dialog.warning({
+    title: "更换播放引擎",
+    content: "更换播放引擎需要重启应用以确保设置生效，是否立即重启？",
+    positiveText: "重启",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      settingStore.playbackEngine = targetPlaybackEngine;
+      settingStore.audioEngine = targetAudioEngine;
       if (isElectron) {
-        window.electron.ipcRenderer.send("win-reload");
+        window.electron.ipcRenderer.send("win-restart");
       } else {
         window.location.reload();
       }
@@ -438,14 +453,14 @@ const audioEngineData = {
 };
 
 const engineTip = computed(() => {
-  if (settingStore.playbackEngine === 'mpv') {
+  if (settingStore.playbackEngine === "mpv") {
     return audioEngineData.mpv?.tip;
   }
   return audioEngineData[settingStore.audioEngine]?.tip;
 });
 
 // 组合下拉选项：包含 WebAudio / FFmpeg / MPV
-const audioEngineOptions: Array<{ label: string; value: "element" | "ffmpeg" | "mpv" }> = [
+const audioEngineOptions = [
   { label: "Web Audio (默认)", value: "element" },
   { label: "FFmpeg", value: "ffmpeg" },
   { label: "MPV", value: "mpv" },
@@ -455,26 +470,6 @@ const audioEngineOptions: Array<{ label: string; value: "element" | "ffmpeg" | "
 const audioEngineSelectValue = computed<"element" | "ffmpeg" | "mpv">(() =>
   settingStore.playbackEngine === "mpv" ? "mpv" : settingStore.audioEngine,
 );
-
-// 统一处理下拉选择
-const handleAudioEngineSelect = async (value: "element" | "ffmpeg" | "mpv") => {
-  if (value === "mpv") {
-    if (settingStore.playbackEngine !== "mpv") {
-      await playbackEngineChange("mpv");
-    }
-    return;
-  }
-
-  // 选择 WebAudio 路径下的引擎
-  if (settingStore.playbackEngine === "mpv") {
-    // 从 MPV 切回 WebAudio：先设置引擎，再切换播放引擎，统一热重载一次
-    settingStore.audioEngine = value;
-    await playbackEngineChange("web-audio");
-  } else {
-    // WebAudio 内部在 element/ffmpeg 间切换
-    handleEngineChange(value);
-  }
-};
 
 // 音质数据
 const songLevelData = {
@@ -615,26 +610,6 @@ const playDeviceChange = async (deviceId: string, option: SelectOption) => {
 const showSpectrumsChange = (value: boolean) => {
   showSpectrums.value = value;
   settingStore.showSpectrums = value;
-};
-
-// 处理音频引擎切换
-const handleEngineChange = (newEngine: "element" | "ffmpeg") => {
-  const oldEngine = settingStore.audioEngine;
-  if (newEngine === oldEngine) return;
-
-  // 先保存新的引擎设置
-  settingStore.audioEngine = newEngine;
-
-  window.$message.loading("音频引擎切换完成，软件即将热重载", {
-    duration: 1500,
-    onAfterLeave: () => {
-      if (isElectron) {
-        window.electron.ipcRenderer.send("win-reload");
-      } else {
-        window.location.reload();
-      }
-    },
-  });
 };
 
 onMounted(() => {

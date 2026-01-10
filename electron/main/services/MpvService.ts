@@ -256,24 +256,36 @@ export class MpvService {
 
   public async stop() {
     if (this.mpvProcess) {
-      this.sendCommand("quit");
+      try {
+        this.sendCommand("quit");
+      } catch (e) {
+        processLog.error("向 MPV 发送退出命令失败:", e);
+      }
+
       // 等待进程退出
       await new Promise<void>((resolve) => {
         if (!this.mpvProcess) {
           resolve();
           return;
         }
+
         const timeout = setTimeout(() => {
           if (this.mpvProcess) {
-            this.mpvProcess.kill();
+            try {
+              this.mpvProcess.kill("SIGKILL");
+            } catch (e) {
+              processLog.error("强制杀死 MPV 进程失败:", e);
+            }
           }
           resolve();
-        }, 1000);
+        }, 2000);
+
         this.mpvProcess.once("exit", () => {
           clearTimeout(timeout);
           resolve();
         });
       });
+
       this.mpvProcess = null;
       this.isConnected = false;
       this.client = null;
@@ -404,11 +416,23 @@ export class MpvService {
 
     if (this.mpvProcess) {
       try {
+        // 尝试正常终止
         this.mpvProcess.kill();
+        // 如果 500ms 后还没死，直接 SIGKILL
+        const timer = setTimeout(() => {
+          if (this.mpvProcess) {
+            this.mpvProcess.kill("SIGKILL");
+            this.mpvProcess = null;
+          }
+        }, 500);
+        this.mpvProcess.once("exit", () => {
+          clearTimeout(timer);
+          this.mpvProcess = null;
+        });
       } catch (error) {
-        processLog.error("强制终止 MPV 进程失败", error);
+        processLog.error("终止 MPV 进程失败", error);
+        this.mpvProcess = null;
       }
-      this.mpvProcess = null;
     }
 
     this.isConnected = false;
