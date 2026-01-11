@@ -203,7 +203,7 @@ class MediaSessionManager {
           songName: metadata.title,
           authorName: metadata.artist,
           albumName: metadata.album,
-          coverUrl: coverUrl.startsWith("http") ? coverUrl : undefined,
+          coverUrl: isLinux ? (coverUrl || undefined) : (coverUrl?.startsWith("http") ? coverUrl : undefined),
           coverData: coverBuffer as Buffer,
           duration: song.duration,
           trackId: typeof song.id === "number" ? song.id : 0,
