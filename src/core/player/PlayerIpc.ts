@@ -77,7 +77,14 @@ export const sendSocketProgress: (currentTime: number, duration: number) => void
  * @param data 歌词数据
  */
 export const sendLyric: (data: unknown) => void = throttle((data: unknown) => {
-  if (isElectron) window.electron.ipcRenderer.send("play-lyric-change", data);
+  if (isElectron) {
+    // 添加发送时间戳，用于桌面歌词端补偿 IPC 传输延迟
+    const payload =
+      typeof data === "object" && data !== null
+        ? { ...data, sendTimestamp: performance.now() }
+        : data;
+    window.electron.ipcRenderer.send("play-lyric-change", payload);
+  }
 }, 500);
 
 /**
@@ -266,8 +273,7 @@ export const sendMprisPlayState = (status: "Playing" | "Paused" | "Stopped") => 
  */
 export const sendMprisTimeline: (position: number, length: number) => void = throttle(
   (position: number, length: number) => {
-    if (isElectron)
-      window.electron.ipcRenderer.send("mpris-update-timeline", { position, length });
+    if (isElectron) window.electron.ipcRenderer.send("mpris-update-timeline", { position, length });
   },
   1000,
 );

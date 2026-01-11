@@ -12,17 +12,17 @@ export interface SettingState {
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
   themeColorType:
-  | "default"
-  | "orange"
-  | "blue"
-  | "pink"
-  | "brown"
-  | "indigo"
-  | "green"
-  | "purple"
-  | "yellow"
-  | "teal"
-  | "custom";
+    | "default"
+    | "orange"
+    | "blue"
+    | "pink"
+    | "brown"
+    | "indigo"
+    | "green"
+    | "purple"
+    | "yellow"
+    | "teal"
+    | "custom";
   /** 主题自定义颜色 */
   themeCustomColor: string;
   /** 全局着色 */
@@ -105,14 +105,14 @@ export interface SettingState {
   proxyPort: number;
   /** 歌曲音质 */
   songLevel:
-  | "standard"
-  | "higher"
-  | "exhigh"
-  | "lossless"
-  | "hires"
-  | "jyeffect"
-  | "sky"
-  | "jymaster";
+    | "standard"
+    | "higher"
+    | "exhigh"
+    | "lossless"
+    | "hires"
+    | "jyeffect"
+    | "sky"
+    | "jymaster";
   /** 播放设备 */
   playDevice: "default" | string;
   /** 音频引擎: element (原生) 或 ffmpeg */
@@ -159,10 +159,8 @@ export interface SettingState {
   showPlaylistCount: boolean;
   /** 是否显示音乐频谱 */
   showSpectrums: boolean;
-  /** 是否开启 SMTC */
+  /** 是否开启系统音频集成 */
   smtcOpen: boolean;
-  /** 是否开启原生 SMTC 支持 (Windows) */
-  enableNativeSmtc: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
   /** 鼠标悬停暂停 */
@@ -366,7 +364,6 @@ export const useSettingStore = defineStore("setting", {
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
-    enableNativeSmtc: true,
     playSongDemo: false,
     scrobbleSong: false,
     dynamicCover: false,
@@ -534,10 +531,10 @@ export const useSettingStore = defineStore("setting", {
         `已切换至
         ${
           this.themeMode === "auto"
-          ? "跟随系统"
-          : this.themeMode === "light"
-            ? "浅色模式"
-            : "深色模式"
+            ? "跟随系统"
+            : this.themeMode === "light"
+              ? "浅色模式"
+              : "深色模式"
         }`,
         {
           showIcon: false,

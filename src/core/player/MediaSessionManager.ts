@@ -50,10 +50,7 @@ class MediaSessionManager {
       switch (event.eventType) {
         case "play":
           player.play();
-          setTimeout(
-            () => sendMprisPlayState(statusStore.playStatus ? "Playing" : "Paused"),
-            50
-          );
+          setTimeout(() => sendMprisPlayState(statusStore.playStatus ? "Playing" : "Paused"), 50);
           break;
         case "pause":
           player.pause();
@@ -61,10 +58,7 @@ class MediaSessionManager {
           break;
         case "play_pause":
           player.playOrPause();
-          setTimeout(
-            () => sendMprisPlayState(statusStore.playStatus ? "Playing" : "Paused"),
-            50
-          );
+          setTimeout(() => sendMprisPlayState(statusStore.playStatus ? "Playing" : "Paused"), 50);
           break;
         case "stop":
           player.pause();
@@ -141,7 +135,7 @@ class MediaSessionManager {
         });
       }
 
-      if (isWin && settingStore.enableNativeSmtc) return;
+      if (isWin && settingStore.smtcOpen) return;
     }
 
     // Web API 初始化（非 Linux）
@@ -163,7 +157,7 @@ class MediaSessionManager {
   private handleSmtcEvent(
     event: SmtcEvent,
     player: ReturnType<typeof usePlayerController>,
-    settingStore: ReturnType<typeof useSettingStore>
+    settingStore: ReturnType<typeof useSettingStore>,
   ) {
     switch (event.type) {
       case SmtcEventType.Play:
@@ -221,15 +215,14 @@ class MediaSessionManager {
           songName: metadata.title,
           authorName: metadata.artist,
           albumName: metadata.album,
-          originalCoverUrl:
-            metadata.coverUrl.startsWith("http") ? metadata.coverUrl : undefined,
+          originalCoverUrl: metadata.coverUrl.startsWith("http") ? metadata.coverUrl : undefined,
           duration: song.duration,
           ncmId: typeof song.id === "number" ? song.id : 0,
         });
       }
 
       // Windows SMTC
-      if (isWin && settingStore.enableNativeSmtc) {
+      if (isWin && settingStore.smtcOpen) {
         await this.updateSmtcMetadata(metadata, signal);
         return;
       }
@@ -238,17 +231,20 @@ class MediaSessionManager {
       if (this.shouldUseNativeMpris()) {
         // 处理本地文件路径：MPRIS 需要可访问的 URL
         let mprisArtUrl = metadata.coverUrl;
-        
+
         if (mprisArtUrl && !mprisArtUrl.startsWith("http")) {
           // 如果是 blob URL，转换为 base64 data URL
           if (mprisArtUrl.startsWith("blob:")) {
             try {
-              const resp = await axios.get(mprisArtUrl, { 
+              const resp = await axios.get(mprisArtUrl, {
                 responseType: "arraybuffer",
-                signal 
+                signal,
               });
               const base64 = btoa(
-                new Uint8Array(resp.data).reduce((data, byte) => data + String.fromCharCode(byte), "")
+                new Uint8Array(resp.data).reduce(
+                  (data, byte) => data + String.fromCharCode(byte),
+                  "",
+                ),
               );
               mprisArtUrl = `data:image/jpeg;base64,${base64}`;
             } catch (e) {
@@ -262,7 +258,7 @@ class MediaSessionManager {
             mprisArtUrl = `file://${mprisArtUrl}`;
           }
         }
-        
+
         sendMprisMetadata({
           title: metadata.title,
           artist: metadata.artist,
@@ -288,9 +284,12 @@ class MediaSessionManager {
   /**
    * 构建元数据
    */
-  private buildMetadata(
-    song: ReturnType<typeof getPlaySongData>
-  ): { title: string; artist: string; album: string; coverUrl: string } {
+  private buildMetadata(song: ReturnType<typeof getPlaySongData>): {
+    title: string;
+    artist: string;
+    album: string;
+    coverUrl: string;
+  } {
     const isRadio = song!.type === "radio";
     const musicStore = useMusicStore();
 
@@ -348,15 +347,14 @@ class MediaSessionManager {
    */
   private async updateSmtcMetadata(
     metadata: { title: string; artist: string; album: string; coverUrl: string },
-    signal: AbortSignal
+    signal: AbortSignal,
   ): Promise<void> {
     try {
       let coverBuffer: Uint8Array | undefined;
 
       if (
         metadata.coverUrl &&
-        (metadata.coverUrl.startsWith("http") ||
-          metadata.coverUrl.startsWith("blob:"))
+        (metadata.coverUrl.startsWith("http") || metadata.coverUrl.startsWith("blob:"))
       ) {
         const resp = await axios.get(metadata.coverUrl, {
           responseType: "arraybuffer",
@@ -395,7 +393,7 @@ class MediaSessionManager {
         sendDiscordTimeline(position, duration);
       }
 
-      if (isWin && settingStore.enableNativeSmtc) {
+      if (isWin && settingStore.smtcOpen) {
         sendSmtcTimeline(position, duration);
         return;
       }
