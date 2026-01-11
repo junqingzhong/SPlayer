@@ -10,8 +10,7 @@ import initWindowsIpc from "./ipc-window";
 import initProtocolIpc from "./ipc-protocol";
 import initCacheIpc from "./ipc-cache";
 import initSocketIpc from "./ipc-socket";
-import initSmtcIpc from "./ipc-smtc";
-import initMprisIpc from "./ipc-mpris";
+import initMediaIpc from "./ipc-media";
 import initMpvIpc from "./ipc-mpv";
 
 /**
@@ -31,8 +30,7 @@ const initIpc = (): void => {
   initProtocolIpc();
   initCacheIpc();
   initSocketIpc();
-  initSmtcIpc();
-  initMprisIpc();
+  initMediaIpc();
   initMpvIpc();
 };
 

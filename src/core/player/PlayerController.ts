@@ -2,7 +2,6 @@ import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { type SongType } from "@/types/main";
 import { RepeatModeType, ShuffleModeType } from "@/types/shared";
-import { PlaybackStatus } from "@/types/smtc";
 import { calculateLyricIndex } from "@/utils/calc";
 import { getCoverColor } from "@/utils/color";
 import { isElectron } from "@/utils/env";
@@ -349,10 +348,7 @@ class PlayerController {
       const playTitle = `${name} - ${artist}`;
       // 更新状态
       statusStore.playStatus = true;
-      playerIpc.sendSmtcPlayState(PlaybackStatus.Playing);
-      if (settingStore.discordRpc.enabled) {
-        playerIpc.sendDiscordPlayState(PlaybackStatus.Playing);
-      }
+      playerIpc.sendMediaPlayState("Playing");
       mediaSessionManager.updatePlaybackStatus(true);
       window.document.title = `${playTitle} | SPlayer`;
       // 只有真正播放了才重置重试计数
@@ -370,10 +366,7 @@ class PlayerController {
     // 暂停
     audioManager.addEventListener("pause", () => {
       statusStore.playStatus = false;
-      playerIpc.sendSmtcPlayState(PlaybackStatus.Paused);
-      if (settingStore.discordRpc.enabled) {
-        playerIpc.sendDiscordPlayState(PlaybackStatus.Paused);
-      }
+      playerIpc.sendMediaPlayState("Paused");
       mediaSessionManager.updatePlaybackStatus(false);
       if (!isElectron) window.document.title = "SPlayer";
       playerIpc.sendPlayStatus(false);

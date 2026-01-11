@@ -1,25 +1,17 @@
 import axios from "axios";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getPlaySongData } from "@/utils/format";
-import { isElectron, isWin, isLinux } from "@/utils/env";
+import { isElectron, isLinux, isWin } from "@/utils/env";
 import { msToS } from "@/utils/time";
-import { type SmtcEvent } from "@native";
+import type { MediaEvent } from "@/types/global";
 import { usePlayerController } from "./PlayerController";
-import { SmtcEventType, PlaybackStatus } from "@/types/smtc";
 import {
-  sendSmtcMetadata,
-  sendSmtcTimeline,
-  sendSmtcPlayState,
-  sendDiscordMetadata,
-  sendDiscordTimeline,
-  sendDiscordPlayState,
+  sendMediaMetadata,
+  sendMediaTimeline,
+  sendMediaPlayState,
+  sendMediaPlayMode,
   enableDiscordRpc,
   updateDiscordConfig,
-  sendMprisMetadata,
-  sendMprisTimeline,
-  sendMprisPlayState,
-  sendMprisLoopStatus,
-  sendMprisShuffle,
 } from "./PlayerIpc";
 import { throttle } from "lodash-es";
 
@@ -32,74 +24,50 @@ import { throttle } from "lodash-es";
 class MediaSessionManager {
   private metadataAbortController: AbortController | null = null;
 
-  private shouldUseNativeMpris(): boolean {
-    return isElectron && isLinux;
+  /**
+   * 是否使用原生媒体集成
+   */
+  private shouldUseNativeMedia(): boolean {
+    return isElectron && (isWin || isLinux);
   }
 
   /**
-   * 初始化 MPRIS 事件监听和状态同步
+   * 处理统一媒体事件
    */
-  private initMpris() {
-    const player = usePlayerController();
+  private handleMediaEvent(event: MediaEvent, player: ReturnType<typeof usePlayerController>) {
     const statusStore = useStatusStore();
 
-    window.electron.ipcRenderer.removeAllListeners("mpris-event");
-    window.electron.ipcRenderer.on("mpris-event", (_, event: any) => {
-      //console.log("[MPRIS] 收到系统事件:", event.eventType, event.value);
-
-      switch (event.eventType) {
-        case "play":
-          player.play();
-          setTimeout(() => sendMprisPlayState(statusStore.playStatus ? "Playing" : "Paused"), 50);
-          break;
-        case "pause":
-          player.pause();
-          setTimeout(() => sendMprisPlayState("Paused"), 50);
-          break;
-        case "play_pause":
-          player.playOrPause();
-          setTimeout(() => sendMprisPlayState(statusStore.playStatus ? "Playing" : "Paused"), 50);
-          break;
-        case "stop":
-          player.pause();
-          setTimeout(() => sendMprisPlayState("Stopped"), 50);
-          break;
-        case "next":
-          player.nextOrPrev("next");
-          break;
-        case "previous":
-          player.nextOrPrev("prev");
-          break;
-        case "seek":
-          if (event.value !== undefined) {
-            player.setSeek(player.getSeek() + event.value);
-          }
-          break;
-        case "set_position":
-          if (event.value !== undefined) {
-            player.setSeek(event.value);
-          }
-          break;
-        case "loop_status_changed":
-          player.toggleRepeat();
-          break;
-        case "shuffle_changed":
-          player.handleSmtcShuffle();
-          break;
-      }
-    });
-
-    // 同步初始播放模式状态
-    const loopStatus =
-      statusStore.repeatMode === "list"
-        ? "Playlist"
-        : statusStore.repeatMode === "one"
-          ? "Track"
-          : "None";
-    const shuffle = statusStore.shuffleMode !== "off";
-
-    sendMprisLoopStatus(loopStatus);
-    sendMprisShuffle(shuffle);
+    switch (event.type) {
+      case "play":
+        player.play();
+        setTimeout(() => sendMediaPlayState(statusStore.playStatus ? "Playing" : "Paused"), 50);
+        break;
+      case "pause":
+        player.pause();
+        setTimeout(() => sendMediaPlayState("Paused"), 50);
+        break;
+      case "stop":
+        player.pause();
+        setTimeout(() => sendMediaPlayState("Stopped"), 50);
+        break;
+      case "next":
+        player.nextOrPrev("next");
+        break;
+      case "previous":
+        player.nextOrPrev("prev");
+        break;
+      case "seek":
+        if (event.value !== undefined) {
+          player.setSeek(event.value);
+        }
+        break;
+      case "shuffle":
+        player.handleSmtcShuffle();
+        break;
+      case "repeat":
+        player.toggleRepeat();
+        break;
+    }
   }
 
   /**
@@ -110,20 +78,28 @@ class MediaSessionManager {
     if (!settingStore.smtcOpen) return;
 
     const player = usePlayerController();
+    const statusStore = useStatusStore();
 
     if (isElectron) {
-      // Windows SMTC 初始化
-      if (isWin) {
-        window.electron.ipcRenderer.removeAllListeners("smtc-event");
-        window.electron.ipcRenderer.on("smtc-event", (_, event: SmtcEvent) => {
-          this.handleSmtcEvent(event, player, settingStore);
-        });
-        player.syncSmtcPlayMode();
-      }
+      // 统一媒体事件监听
+      window.electron.ipcRenderer.removeAllListeners("media-event");
+      window.electron.ipcRenderer.on("media-event", (_, event: MediaEvent) => {
+        this.handleMediaEvent(event, player);
+      });
 
-      // Linux MPRIS 初始化
-      if (!isWin && isLinux) {
-        this.initMpris();
+      // 同步初始播放模式状态
+      const shuffle = statusStore.shuffleMode !== "off";
+      const repeat =
+        statusStore.repeatMode === "list"
+          ? "list"
+          : statusStore.repeatMode === "one"
+            ? "one"
+            : "off";
+      sendMediaPlayMode(shuffle, repeat);
+
+      // SMTC 播放模式同步
+      if (isWin) {
+        player.syncSmtcPlayMode();
       }
 
       // Discord RPC 初始化
@@ -135,11 +111,12 @@ class MediaSessionManager {
         });
       }
 
-      if (isWin && settingStore.smtcOpen) return;
+      // 如果有原生集成则不需要 Web API
+      if ((isWin || isLinux) && settingStore.smtcOpen) return;
     }
 
-    // Web API 初始化（非 Linux）
-    if (!this.shouldUseNativeMpris() && "mediaSession" in navigator) {
+    // Web API 初始化
+    if ("mediaSession" in navigator) {
       const nav = navigator.mediaSession;
       nav.setActionHandler("play", () => player.play());
       nav.setActionHandler("pause", () => player.pause());
@@ -152,46 +129,10 @@ class MediaSessionManager {
   }
 
   /**
-   * 处理 Windows SMTC 事件
-   */
-  private handleSmtcEvent(
-    event: SmtcEvent,
-    player: ReturnType<typeof usePlayerController>,
-    settingStore: ReturnType<typeof useSettingStore>,
-  ) {
-    switch (event.type) {
-      case SmtcEventType.Play:
-        player.play();
-        break;
-      case SmtcEventType.Pause:
-        sendSmtcPlayState(PlaybackStatus.Paused);
-        if (settingStore.discordRpc.enabled) {
-          sendDiscordPlayState(PlaybackStatus.Paused);
-        }
-        player.pause();
-        break;
-      case SmtcEventType.NextSong:
-        player.nextOrPrev("next");
-        break;
-      case SmtcEventType.PreviousSong:
-        player.nextOrPrev("prev");
-        break;
-      case SmtcEventType.Stop:
-        player.pause();
-        break;
-      case SmtcEventType.Seek:
-        if (event.positionMs !== undefined) {
-          player.setSeek(event.positionMs);
-        }
-        break;
-    }
-  }
-
-  /**
    * 更新元数据
    */
   public async updateMetadata() {
-    if (!("mediaSession" in navigator)) return;
+    if (!("mediaSession" in navigator) && !isElectron) return;
 
     const musicStore = useMusicStore();
     const settingStore = useSettingStore();
@@ -208,35 +149,30 @@ class MediaSessionManager {
 
     const metadata = this.buildMetadata(song);
 
-    if (isElectron) {
-      // Discord
-      if (settingStore.discordRpc.enabled) {
-        sendDiscordMetadata({
-          songName: metadata.title,
-          authorName: metadata.artist,
-          albumName: metadata.album,
-          originalCoverUrl: metadata.coverUrl.startsWith("http") ? metadata.coverUrl : undefined,
-          duration: song.duration,
-          ncmId: typeof song.id === "number" ? song.id : 0,
-        });
-      }
+    // 原生插件
+    if (this.shouldUseNativeMedia() && settingStore.smtcOpen) {
+      try {
+        let coverBuffer: Uint8Array | undefined;
+        let coverUrl = metadata.coverUrl;
 
-      // Windows SMTC
-      if (isWin && settingStore.smtcOpen) {
-        await this.updateSmtcMetadata(metadata, signal);
-        return;
-      }
+        // 获取封面数据（用于 SMTC）
+        if (
+          isWin &&
+          metadata.coverUrl &&
+          (metadata.coverUrl.startsWith("http") || metadata.coverUrl.startsWith("blob:"))
+        ) {
+          const resp = await axios.get(metadata.coverUrl, {
+            responseType: "arraybuffer",
+            signal,
+          });
+          coverBuffer = new Uint8Array(resp.data);
+        }
 
-      // Linux MPRIS
-      if (this.shouldUseNativeMpris()) {
-        // 处理本地文件路径：MPRIS 需要可访问的 URL
-        let mprisArtUrl = metadata.coverUrl;
-
-        if (mprisArtUrl && !mprisArtUrl.startsWith("http")) {
-          // 如果是 blob URL，转换为 base64 data URL
-          if (mprisArtUrl.startsWith("blob:")) {
+        // 处理 MPRIS 封面 URL
+        if (isLinux && coverUrl) {
+          if (coverUrl.startsWith("blob:")) {
             try {
-              const resp = await axios.get(mprisArtUrl, {
+              const resp = await axios.get(coverUrl, {
                 responseType: "arraybuffer",
                 signal,
               });
@@ -246,28 +182,42 @@ class MediaSessionManager {
                   "",
                 ),
               );
-              mprisArtUrl = `data:image/jpeg;base64,${base64}`;
+              coverUrl = `data:image/jpeg;base64,${base64}`;
             } catch (e) {
               if (!axios.isCancel(e)) {
                 console.error("转换 blob 封面失败:", e);
               }
-              mprisArtUrl = "";
+              coverUrl = "";
             }
-          } else if (!mprisArtUrl.startsWith("file://") && !mprisArtUrl.startsWith("data:")) {
-            // 确保使用正确的 file:// 协议格式
-            mprisArtUrl = `file://${mprisArtUrl}`;
+          } else if (
+            !coverUrl.startsWith("http") &&
+            !coverUrl.startsWith("file://") &&
+            !coverUrl.startsWith("data:")
+          ) {
+            coverUrl = `file://${coverUrl}`;
           }
         }
 
-        sendMprisMetadata({
-          title: metadata.title,
-          artist: metadata.artist,
-          album: metadata.album,
-          length: song.duration,
-          url: mprisArtUrl,
+        // 发送统一的元数据
+        sendMediaMetadata({
+          songName: metadata.title,
+          authorName: metadata.artist,
+          albumName: metadata.album,
+          coverUrl: coverUrl.startsWith("http") ? coverUrl : undefined,
+          coverData: coverBuffer as Buffer,
+          duration: song.duration,
+          trackId: typeof song.id === "number" ? song.id : 0,
         });
-        return;
+      } catch (e) {
+        if (!axios.isCancel(e)) {
+          console.error("[Media] 更新元数据失败", e);
+        }
+      } finally {
+        if (this.metadataAbortController?.signal === signal) {
+          this.metadataAbortController = null;
+        }
       }
+      return;
     }
 
     // Web API
@@ -343,67 +293,19 @@ class MediaSessionManager {
   }
 
   /**
-   * 更新 SMTC 元数据
-   */
-  private async updateSmtcMetadata(
-    metadata: { title: string; artist: string; album: string; coverUrl: string },
-    signal: AbortSignal,
-  ): Promise<void> {
-    try {
-      let coverBuffer: Uint8Array | undefined;
-
-      if (
-        metadata.coverUrl &&
-        (metadata.coverUrl.startsWith("http") || metadata.coverUrl.startsWith("blob:"))
-      ) {
-        const resp = await axios.get(metadata.coverUrl, {
-          responseType: "arraybuffer",
-          signal,
-        });
-        coverBuffer = new Uint8Array(resp.data);
-      }
-
-      sendSmtcMetadata({
-        songName: metadata.title,
-        authorName: metadata.artist,
-        albumName: metadata.album,
-        coverData: coverBuffer as Buffer,
-        ncmId: 0,
-      });
-    } catch (e) {
-      if (!axios.isCancel(e)) {
-        console.error("[SMTC] 更新元数据失败", e);
-      }
-    } finally {
-      if (this.metadataAbortController?.signal === signal) {
-        this.metadataAbortController = null;
-      }
-    }
-  }
-
-  /**
    * 更新播放进度
    */
   public updateState(duration: number, position: number) {
     const settingStore = useSettingStore();
     if (!settingStore.smtcOpen) return;
 
-    if (isElectron) {
-      if (settingStore.discordRpc.enabled) {
-        sendDiscordTimeline(position, duration);
-      }
-
-      if (isWin && settingStore.smtcOpen) {
-        sendSmtcTimeline(position, duration);
-        return;
-      }
-
-      if (this.shouldUseNativeMpris()) {
-        sendMprisTimeline(position, duration);
-        return;
-      }
+    // 原生插件
+    if (this.shouldUseNativeMedia()) {
+      sendMediaTimeline(position, duration);
+      return;
     }
 
+    // Web API
     this.throttledUpdatePositionState(duration, position);
   }
 
@@ -411,8 +313,9 @@ class MediaSessionManager {
    * 更新播放状态
    */
   public updatePlaybackStatus(isPlaying: boolean) {
-    if (this.shouldUseNativeMpris()) {
-      sendMprisPlayState(isPlaying ? "Playing" : "Paused");
+    // 发送到原生插件
+    if (this.shouldUseNativeMedia()) {
+      sendMediaPlayState(isPlaying ? "Playing" : "Paused");
     }
   }
 

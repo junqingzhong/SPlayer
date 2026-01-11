@@ -13,8 +13,7 @@ import initAppServer from "../server";
 import loadWindow from "./windows/load-window";
 import mainWindow from "./windows/main-window";
 import initIpc from "./ipc";
-import { shutdownSmtc } from "./ipc/ipc-smtc";
-import { shutdownMpris } from "./ipc/ipc-mpris";
+import { shutdownMedia } from "./ipc/ipc-media";
 import { MpvService } from "./services/MpvService";
 
 // 屏蔽报错
@@ -112,10 +111,8 @@ class MainProcess {
       (async () => {
         // 注销全部快捷键
         unregisterShortcuts();
-        // 清理 SMTC 相关资源
-        shutdownSmtc();
-        // 清理 MPRIS 相关资源
-        shutdownMpris();
+        // 清理媒体集成资源
+        shutdownMedia();
         // 停止 MPV 服务
         const mpvService = MpvService.getInstance();
         try {
