@@ -6,10 +6,7 @@ use anyhow::Result;
 use mpris_server::{
     LoopStatus as MprisLoopStatus, Metadata, PlaybackStatus as MprisPlaybackStatus, Player, Time,
 };
-use napi::Status;
-use napi::threadsafe_function::{
-    ThreadsafeFunction, ThreadsafeFunctionCallMode, UnknownReturnValue,
-};
+use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 use tempfile::NamedTempFile;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
@@ -320,16 +317,7 @@ impl SystemMediaControls for LinuxImpl {
         Ok(())
     }
 
-    fn register_event_handler(
-        &self,
-        callback: ThreadsafeFunction<
-            SystemMediaEvent,
-            UnknownReturnValue,
-            SystemMediaEvent,
-            Status,
-            false,
-        >,
-    ) -> Result<()> {
+    fn register_event_handler(&self, callback: SystemMediaThreadsafeFunction) -> Result<()> {
         self.send_command(MprisCommand::RegisterCallback(callback));
         Ok(())
     }

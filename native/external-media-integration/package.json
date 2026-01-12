@@ -3,8 +3,12 @@
   "devDependencies": {
     "@napi-rs/cli": "^3.5.1"
   },
+  "napi": {
+    "binaryName": "external-media-integration",
+    "triples": {}
+  },
   "scripts": {
-    "build": "napi build --release",
+    "build": "napi build --release --no-const-enum",
     "build:debug": "napi build"
   }
 }

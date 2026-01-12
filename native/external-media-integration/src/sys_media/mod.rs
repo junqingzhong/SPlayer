@@ -55,6 +55,9 @@ pub mod windows;
 #[cfg(target_os = "linux")]
 pub mod linux;
 
+#[cfg(target_os = "macos")]
+mod macos;
+
 pub fn get_platform_controls() -> Box<dyn SystemMediaControls> {
     #[cfg(target_os = "windows")]
     {
@@ -66,7 +69,13 @@ pub fn get_platform_controls() -> Box<dyn SystemMediaControls> {
         Box::new(linux::LinuxImpl::new())
     }
 
+    #[cfg(target_os = "macos")]
+    {
+        return Box::new(macos::MacosImpl::new());
+    }
+
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
+    #[allow(unreachable_code)]
     {
         Box::new(NoOpControls)
     }

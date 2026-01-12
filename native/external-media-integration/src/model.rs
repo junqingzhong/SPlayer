@@ -3,7 +3,7 @@ use std::fmt;
 use napi::bindgen_prelude::Buffer;
 use napi_derive::napi;
 
-#[napi]
+#[napi(string_enum)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SystemMediaEventType {
     Play,
@@ -105,14 +105,14 @@ impl From<MetadataParam> for MetadataPayload {
     }
 }
 
-#[napi]
+#[napi(string_enum)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlaybackStatus {
     Playing,
     Paused,
 }
 
-#[napi]
+#[napi(string_enum)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RepeatMode {
     None,
@@ -144,16 +144,18 @@ pub struct PlayModePayload {
 }
 
 /// Discord 显示模式枚举
-/// 控制 Discord 左下角 "正在听 - XXX" 的显示内容
-#[napi]
+///
+/// 控制 Discord 左下角 "正在听 XXX" 的显示内容
+#[napi(string_enum)]
+#[allow(clippy::doc_markdown)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiscordDisplayMode {
-    /// 仅歌曲名：显示为 "正在听 {歌曲名}"
-    Name = 0,
-    /// 仅播放状态：显示为 "正在听 `SPlayer`"
-    State = 1,
-    /// 完整信息：显示为 "正在听 {歌曲名} - {歌手}"
-    Details = 2,
+    /// Listening to SPlayer
+    Name,
+    /// Listening to Rick Astley
+    State,
+    /// Listening to Never Gonna Give You Up
+    Details,
 }
 
 /// Discord 配置参数
