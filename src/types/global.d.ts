@@ -38,7 +38,16 @@ export interface MediaPlayModeParam {
 
 /** 统一媒体事件 */
 export interface MediaEvent {
-  type: "play" | "pause" | "stop" | "next" | "previous" | "seek" | "shuffle" | "repeat";
+  type:
+    | "play"
+    | "pause"
+    | "stop"
+    | "next"
+    | "previous"
+    | "seek"
+    | "shuffle"
+    | "repeat"
+    | "toggle-play-pause";
   /** seek 时为毫秒偏移 */
   value?: number;
 }

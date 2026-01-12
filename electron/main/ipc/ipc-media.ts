@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, app } from "electron";
+import { ipcMain, app } from "electron";
 import { join } from "path";
 import type {
   MediaMetadataParam,
@@ -11,6 +11,7 @@ import type {
 import { processLog } from "../logger";
 import { loadNativeModule } from "../utils/native-loader";
 import { isLinux, isWin } from "../utils/config";
+import mainWindow from "../windows/main-window";
 
 // 原生模块类型
 type NativeSmtcModule = typeof import("@native");
@@ -33,15 +34,13 @@ const convertRepeatMode = (repeat: "off" | "one" | "list") => {
 };
 
 /**
- * 派发统一事件到渲染进程
+ * 派发统一事件到主窗口渲染进程
  */
 const emitMediaEvent = (event: MediaEvent) => {
-  const wins = BrowserWindow.getAllWindows();
-  wins.forEach((win) => {
-    if (!win.isDestroyed()) {
-      win.webContents.send("media-event", event);
-    }
-  });
+  const mainWin = mainWindow.getWin();
+  if (mainWin && !mainWin.isDestroyed()) {
+    mainWin.webContents.send("media-event", event);
+  }
 };
 
 /** 初始化 SMTC 原生插件 */
@@ -99,7 +98,7 @@ const initMpris = () => {
     const mprisEventTypeMap: Record<string, MediaEvent["type"]> = {
       play: "play",
       pause: "pause",
-      play_pause: "pause",
+      play_pause: "toggle-play-pause",
       stop: "stop",
       next: "next",
       previous: "previous",

@@ -67,6 +67,15 @@ class MediaSessionManager {
       case "repeat":
         player.toggleRepeat();
         break;
+      case "toggle-play-pause":
+        if (statusStore.playStatus) {
+          player.pause();
+          setTimeout(() => sendMediaPlayState("Paused"), 50);
+        } else {
+          player.play();
+          setTimeout(() => sendMediaPlayState(statusStore.playStatus ? "Playing" : "Paused"), 50);
+        }
+        break;
     }
   }
 
@@ -203,7 +212,11 @@ class MediaSessionManager {
           songName: metadata.title,
           authorName: metadata.artist,
           albumName: metadata.album,
-          coverUrl: isLinux ? (coverUrl || undefined) : (coverUrl?.startsWith("http") ? coverUrl : undefined),
+          coverUrl: isLinux
+            ? coverUrl || undefined
+            : coverUrl?.startsWith("http")
+              ? coverUrl
+              : undefined,
           coverData: coverBuffer as Buffer,
           duration: song.duration,
           trackId: typeof song.id === "number" ? song.id : 0,
