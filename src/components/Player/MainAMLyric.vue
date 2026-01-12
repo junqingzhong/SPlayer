@@ -25,7 +25,7 @@
         :style="{
           '--display-count-down-show': settingStore.countDownShow ? 'flex' : 'none',
           '--amll-lp-font-size': settingStore.lyricFontSize + 'px',
-          'font-weight': settingStore.lyricFontBold ? 'bold' : 'normal',
+          'font-weight': settingStore.lyricFontWeight,
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
           ...lyricLangFontStyle(settingStore),
         }"

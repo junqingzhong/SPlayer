@@ -86,6 +86,13 @@
         </div>
         <n-button type="primary" strong secondary @click="openFontManager"> 配置 </n-button>
       </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">自定义代码注入</n-text>
+          <n-text class="tip" :depth="3"> 注入自定义 CSS 和 JavaScript 代码 </n-text>
+        </div>
+        <n-button type="primary" strong secondary @click="openCustomCode"> 配置 </n-button>
+      </n-card>
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> 杂项设置 </n-h3>
@@ -293,7 +300,12 @@ import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/
 import { isElectron } from "@/utils/env";
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";
-import { openSidebarHideManager, openHomePageSectionManager, openFontManager } from "@/utils/modal";
+import {
+  openSidebarHideManager,
+  openHomePageSectionManager,
+  openFontManager,
+  openCustomCode,
+} from "@/utils/modal";
 import { sendRegisterProtocol } from "@/utils/protocol";
 import { getCoverColor } from "@/utils/color";
 import { usePlayerController } from "@/core/player/PlayerController";

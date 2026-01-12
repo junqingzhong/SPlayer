@@ -55,7 +55,7 @@
         :style="{
           fontSize: lyricConfig.fontSize + 'px',
           fontFamily: lyricConfig.fontFamily,
-          fontWeight: lyricConfig.fontIsBold ? 'bold' : 'normal',
+          fontWeight: lyricConfig.fontWeight,
           textShadow: `0 0 4px ${lyricConfig.shadowColor}`,
         }"
         :class="['lyric-container', lyricConfig.position]"

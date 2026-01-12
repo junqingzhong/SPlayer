@@ -1,5 +1,5 @@
 <template>
-  <div class="font-manager">
+  <n-scrollbar style="max-height: 70vh" class="font-manager">
     <div class="set-list">
       <n-h3 prefix="bar">通用字体</n-h3>
       <n-card v-if="isElectron" class="set-item">
@@ -122,7 +122,7 @@
         </n-flex>
       </n-card>
     </div>
-  </div>
+  </n-scrollbar>
 </template>
 
 <script setup lang="ts">

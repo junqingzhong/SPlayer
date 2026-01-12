@@ -7,7 +7,7 @@
         :content-style="{
           'flex-direction': 'column',
           'align-items': settingStore.lyricsPosition,
-          '--font-weight': settingStore.lyricFontBold ? 'bold' : 'normal',
+          '--font-weight': settingStore.lyricFontWeight,
           '--font-size': settingStore.lyricFontSize,
           '--font-tran-size': tranFontSize,
           '--font-roma-size': romaFontSize,
@@ -136,10 +136,16 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">歌词字体加粗</n-text>
-          <n-text class="tip" :depth="3">是否将歌词字体加粗显示，部分字体可能显示异常</n-text>
+          <n-text class="name">歌词字重设置</n-text>
+          <n-text class="tip" :depth="3">设置歌词显示的字重，部分字体可能不支持所有字重</n-text>
         </div>
-        <n-switch v-model:value="settingStore.lyricFontBold" class="set" :round="false" />
+        <n-input-number
+          v-model:value="settingStore.lyricFontWeight"
+          :min="100"
+          :max="900"
+          :step="100"
+          class="set"
+        />
       </n-card>
       <n-card class="set-item">
         <div class="label">
@@ -242,21 +248,13 @@
         <div class="label">
           <n-text class="name">显示歌词翻译</n-text>
         </div>
-        <n-switch
-          v-model:value="settingStore.showTran"
-          class="set"
-          :round="false"
-        />
+        <n-switch v-model:value="settingStore.showTran" class="set" :round="false" />
       </n-card>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">显示歌词音译</n-text>
         </div>
-        <n-switch
-          v-model:value="settingStore.showRoma"
-          class="set"
-          :round="false"
-        />
+        <n-switch v-model:value="settingStore.showRoma" class="set" :round="false" />
       </n-card>
       <n-card class="set-item">
         <div class="label">
@@ -421,11 +419,7 @@
           <div class="label">
             <n-text class="name">显示逐字音译</n-text>
           </div>
-          <n-switch
-            v-model:value="settingStore.showWordsRoma"
-            class="set"
-            :round="false"
-          />
+          <n-switch v-model:value="settingStore.showWordsRoma" class="set" :round="false" />
         </n-card>
       </n-collapse-transition>
     </div>
@@ -533,12 +527,14 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">文字加粗</n-text>
-          <n-text class="tip" :depth="3">是否加粗桌面歌词文字</n-text>
+          <n-text class="name">文字字重</n-text>
+          <n-text class="tip" :depth="3">设置桌面歌词显示的字重</n-text>
         </div>
-        <n-switch
-          v-model:value="desktopLyricConfig.fontIsBold"
-          :round="false"
+        <n-input-number
+          v-model:value="desktopLyricConfig.fontWeight"
+          :min="100"
+          :max="900"
+          :step="100"
           class="set"
           @update:value="saveDesktopLyricConfig"
         />

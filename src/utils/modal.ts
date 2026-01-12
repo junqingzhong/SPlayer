@@ -28,6 +28,7 @@ import HomePageSectionManager from "@/components/Modal/Setting/HomePageSectionMa
 import CopyLyrics from "@/components/Modal/CopyLyrics.vue";
 import AMLLServer from "@/components/Modal/Setting/AMLLServer.vue";
 import FontManager from "@/components/Modal/Setting/FontManager.vue";
+import CustomCode from "@/components/Modal/Setting/CustomCode.vue";
 
 export const openUserAgreement = () => {
   const settingStore = useSettingStore();
@@ -447,6 +448,20 @@ export const openFontManager = () => {
     title: "字体设置",
     content: () => {
       return h(FontManager);
+    },
+  });
+};
+
+/** 打开自定义代码弹窗 */
+export const openCustomCode = () => {
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "700px" },
+    title: "自定义代码注入",
+    content: () => {
+      return h(CustomCode);
     },
   });
 };
