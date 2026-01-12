@@ -39,13 +39,11 @@
 </template>
 
 <script setup lang="ts">
-import { LyricPlayer } from "@applemusic-like-lyrics/vue";
 import { type LyricLine } from "@applemusic-like-lyrics/core";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { cloneDeep } from "lodash-es";
-import "@applemusic-like-lyrics/core/style.css";
 import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
 
 const musicStore = useMusicStore();

@@ -65,6 +65,7 @@ class PlayerController {
     const statusStore = useStatusStore();
     const songManager = useSongManager();
     const audioManager = useAudioManager();
+    const lyricManager = useLyricManager();
 
     // 生成新的请求标识
     this.currentRequestToken++;
@@ -91,7 +92,6 @@ class PlayerController {
       } else {
         statusStore.progress = 0;
       }
-
       statusStore.lyricIndex = -1;
       // 重置重试计数
       const sid = playSongData.type === "radio" ? playSongData.dj?.id : playSongData.id;
@@ -100,7 +100,16 @@ class PlayerController {
       }
       // 设置加载状态
       statusStore.playLoading = true;
-      // 获取音频源
+      statusStore.lyricLoading = true;
+      // 通知桌面歌词
+      if (isElectron) {
+        window.electron.ipcRenderer.send("update-desktop-lyric-data", {
+          lyricLoading: true,
+        });
+      }
+      // 获取歌词
+      lyricManager.handleLyric(playSongData.id, playSongData.path);
+      // 获取音频
       const audioSource = await songManager.getAudioSource(playSongData);
       if (requestToken !== this.currentRequestToken) {
         console.log(`🚫 [${playSongData.id}] 请求已过期，舍弃`);
@@ -231,17 +240,12 @@ class PlayerController {
   /**
    * 播放成功后的后续设置
    * @param song 歌曲
-   * @param url 音频源
    */
   private async afterPlaySetup(song: SongType) {
     const dataStore = useDataStore();
     const musicStore = useMusicStore();
     const settingStore = useSettingStore();
     const songManager = useSongManager();
-    const lyricManager = useLyricManager();
-
-    // 获取歌词
-    lyricManager.handleLyric(song.id, song.path);
     // 记录播放历史 (非电台)
     if (song.type !== "radio") dataStore.setHistory(song);
     // 更新歌曲数据

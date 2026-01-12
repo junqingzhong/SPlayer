@@ -246,7 +246,8 @@ onMounted(() => {
     :deep(.comments) {
       .text {
         &::selection {
-          background-color: rgba(var(--main-cover-color));
+          color: rgb(var(--main-cover-color));
+          background-color: rgba(var(--main-cover-color), 0.2);
         }
       }
     }

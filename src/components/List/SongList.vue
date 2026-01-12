@@ -5,7 +5,10 @@
       <Transition name="fade" mode="out-in">
         <div
           :key="listKey + '_' + statusStore.listSort"
-          :style="{ height: height === 'auto' ? 'auto' : `${height || songListHeight}px` }"
+          :style="{
+            height: height === 'auto' ? 'auto' : `${height || songListHeight}px`,
+            transition: disableHeightTransition ? 'transform 0.3s, opacity 0.3s' : undefined,
+          }"
           class="virtual-list-wrapper"
         >
           <!-- 悬浮顶栏 -->
@@ -150,6 +153,8 @@ const props = withDefaults(
     doubleClickAction?: "all" | "add";
     /** 列表版本 */
     listVersion?: string | number;
+    /** 禁用高度过渡动画 */
+    disableHeightTransition?: boolean;
   }>(),
   {
     type: "song",

@@ -158,7 +158,7 @@
 </template>
 
 <script setup lang="ts">
-import { LyricWord } from "@applemusic-like-lyrics/lyric";
+import { type LyricWord } from "@applemusic-like-lyrics/lyric";
 import { NScrollbar } from "naive-ui";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { usePlayerController } from "@/core/player/PlayerController";
