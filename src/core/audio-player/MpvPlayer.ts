@@ -141,6 +141,8 @@ export class MpvPlayer extends EventTarget implements IPlaybackEngine {
       } else {
         this._paused = false;
         this.dispatchEvent(new Event(MPV_EVENTS.PLAY));
+        // 确保播放状态
+        window.electron.ipcRenderer.send("mpv-resume");
         this.forcePaused = false;
       }
 
@@ -185,6 +187,10 @@ export class MpvPlayer extends EventTarget implements IPlaybackEngine {
       this.dispatchEvent(new Event(MPV_EVENTS.LOAD_START));
 
       this.autoPlayPending = autoPlay;
+      // 重置播放状态
+      if (autoPlay) {
+        this.forcePaused = false;
+      }
       this._src = url;
 
       // 设置期望的 seek 位置
