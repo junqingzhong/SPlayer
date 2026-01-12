@@ -3,7 +3,42 @@ use std::fmt;
 use napi::bindgen_prelude::Buffer;
 use napi_derive::napi;
 
-#[derive(Clone)]
+#[napi]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SystemMediaEventType {
+    Play,
+    Pause,
+    Stop,
+    NextSong,
+    PreviousSong,
+    ToggleShuffle,
+    ToggleRepeat,
+    Seek,
+}
+
+#[napi(object)]
+#[derive(Clone, Debug)]
+pub struct SystemMediaEvent {
+    pub type_: SystemMediaEventType,
+    pub position_ms: Option<f64>,
+}
+
+impl SystemMediaEvent {
+    pub const fn new(t: SystemMediaEventType) -> Self {
+        Self {
+            type_: t,
+            position_ms: None,
+        }
+    }
+    pub const fn seek(pos: f64) -> Self {
+        Self {
+            type_: SystemMediaEventType::Seek,
+            position_ms: Some(pos),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq)]
 pub struct MetadataPayload {
     pub song_name: String,
     pub author_name: String,
@@ -11,7 +46,11 @@ pub struct MetadataPayload {
 
     pub cover_data: Option<Vec<u8>>,
 
+    pub original_cover_url: Option<String>,
+
     pub ncm_id: Option<i64>,
+
+    pub duration: Option<f64>,
 }
 
 impl fmt::Debug for MetadataPayload {
@@ -27,7 +66,9 @@ impl fmt::Debug for MetadataPayload {
                     |bytes| format!("Some({} bytes)", bytes.len()),
                 ),
             )
+            .field("original_cover_url", &self.original_cover_url)
             .field("ncm_id", &self.ncm_id)
+            .field("duration", &self.duration)
             .finish()
     }
 }
@@ -41,8 +82,13 @@ pub struct MetadataParam {
     /// 只用于 SMTC 更新
     pub cover_data: Option<Buffer>,
 
+    /// `HTTP URL` 用于封面显示
+    pub original_cover_url: Option<String>,
+
     /// 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段
     pub ncm_id: Option<i64>,
+
+    pub duration: Option<f64>,
 }
 
 impl From<MetadataParam> for MetadataPayload {
@@ -52,7 +98,9 @@ impl From<MetadataParam> for MetadataPayload {
             author_name: param.author_name,
             album_name: param.album_name,
             cover_data: param.cover_data.map(|b| b.to_vec()),
+            original_cover_url: param.original_cover_url,
             ncm_id: param.ncm_id,
+            duration: param.duration,
         }
     }
 }
@@ -93,4 +141,27 @@ pub struct TimelinePayload {
 pub struct PlayModePayload {
     pub is_shuffling: bool,
     pub repeat_mode: RepeatMode,
+}
+
+/// Discord 显示模式枚举
+/// 控制 Discord 左下角 "正在听 - XXX" 的显示内容
+#[napi]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DiscordDisplayMode {
+    /// 仅歌曲名：显示为 "正在听 {歌曲名}"
+    Name = 0,
+    /// 仅播放状态：显示为 "正在听 `SPlayer`"
+    State = 1,
+    /// 完整信息：显示为 "正在听 {歌曲名} - {歌手}"
+    Details = 2,
+}
+
+/// Discord 配置参数
+#[napi(object)]
+#[derive(Debug, Clone)]
+pub struct DiscordConfigPayload {
+    /// 暂停时是否显示
+    pub show_when_paused: bool,
+    /// 显示模式
+    pub display_mode: Option<DiscordDisplayMode>,
 }

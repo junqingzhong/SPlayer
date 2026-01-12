@@ -18,7 +18,7 @@ pub fn init(log_dir_str: String) -> Result<()> {
 
     let file_appender = RollingFileAppender::builder()
         .rotation(tracing_appender::rolling::Rotation::DAILY)
-        .filename_prefix("smtc-for-splayer")
+        .filename_prefix("external-media-integration")
         .filename_suffix("log")
         .max_log_files(3)
         .build(&log_path)

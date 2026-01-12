@@ -1,0 +1,352 @@
+use std::io::Write;
+use std::sync::{Arc, RwLock};
+use std::thread;
+
+use anyhow::Result;
+use mpris_server::{
+    LoopStatus as MprisLoopStatus, Metadata, PlaybackStatus as MprisPlaybackStatus, Player, Time,
+};
+use napi::Status;
+use napi::threadsafe_function::{
+    ThreadsafeFunction, ThreadsafeFunctionCallMode, UnknownReturnValue,
+};
+use tempfile::NamedTempFile;
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
+use tracing::error;
+
+use crate::model::{PlaybackStatus, RepeatMode, SystemMediaEventType};
+
+use super::{
+    MetadataPayload, PlayModePayload, PlayStatePayload, SystemMediaControls, SystemMediaEvent,
+    SystemMediaThreadsafeFunction, TimelinePayload,
+};
+
+/// 主线程和后台 D-Bus 现成通信的指令
+pub enum MprisCommand {
+    UpdateMetadata(MetadataPayload),
+    UpdatePlaybackStatus(PlayStatePayload),
+    UpdateTimeline(TimelinePayload),
+    UpdatePlayMode(PlayModePayload),
+    Enable,
+    Disable,
+    RegisterCallback(SystemMediaThreadsafeFunction),
+    Shutdown,
+}
+
+pub struct LinuxImpl {
+    sender: UnboundedSender<MprisCommand>,
+}
+
+impl LinuxImpl {
+    pub fn new() -> Self {
+        let (tx, rx) = unbounded_channel();
+
+        thread::spawn(move || {
+            let rt = match Runtime::new() {
+                Ok(r) => r,
+                Err(e) => {
+                    error!("无法创建 MPRIS Tokio Runtime: {e:?}");
+                    return;
+                }
+            };
+
+            rt.block_on(async move {
+                if let Err(e) = run_mpris_loop(rx).await {
+                    error!("MPRIS 循环异常退出: {e:?}");
+                }
+            });
+        });
+
+        Self { sender: tx }
+    }
+
+    fn send_command(&self, cmd: MprisCommand) {
+        if let Err(e) = self.sender.send(cmd) {
+            error!("无法发送 MPRIS 指令: {e:?}");
+        }
+    }
+}
+
+fn setup_mpris_signals(
+    player: &Player,
+    event_handler: Arc<RwLock<Option<SystemMediaThreadsafeFunction>>>,
+) {
+    let dispatch = move |evt: SystemMediaEvent| {
+        if let Ok(guard) = event_handler.read()
+            && let Some(tsfn) = guard.as_ref()
+        {
+            tsfn.call(evt, ThreadsafeFunctionCallMode::NonBlocking);
+        }
+    };
+
+    // 播放
+    let d = dispatch.clone();
+    player.connect_play(move |_| {
+        d(SystemMediaEvent::new(SystemMediaEventType::Play));
+    });
+
+    // 暂停
+    let d = dispatch.clone();
+    player.connect_pause(move |_| {
+        d(SystemMediaEvent::new(SystemMediaEventType::Pause));
+    });
+
+    // Toggle
+    let d = dispatch.clone();
+    player.connect_play_pause(move |p| {
+        let status = p.playback_status();
+        let evt_type = if status == MprisPlaybackStatus::Playing {
+            SystemMediaEventType::Pause
+        } else {
+            SystemMediaEventType::Play
+        };
+        d(SystemMediaEvent::new(evt_type));
+    });
+
+    // 上一首
+    let d = dispatch.clone();
+    player.connect_previous(move |_| {
+        d(SystemMediaEvent::new(SystemMediaEventType::PreviousSong));
+    });
+
+    // 下一首
+    let d = dispatch.clone();
+    player.connect_next(move |_| {
+        d(SystemMediaEvent::new(SystemMediaEventType::NextSong));
+    });
+
+    // 停止
+    let d = dispatch.clone();
+    player.connect_stop(move |_| {
+        d(SystemMediaEvent::new(SystemMediaEventType::Stop));
+    });
+
+    // 相对跳转
+    // 这里通过 Player 内部维护的进度来计算绝对跳转位置
+    let d = dispatch.clone();
+    player.connect_seek(move |p, offset| {
+        let current_micros = p.position().as_micros();
+        let delta_micros = offset.as_micros();
+        let target_micros = current_micros.saturating_add(delta_micros);
+        let final_micros = if target_micros < 0 { 0 } else { target_micros };
+        let target_millis = final_micros as f64 / 1000.0;
+
+        d(SystemMediaEvent::seek(target_millis));
+    });
+
+    // 绝对跳转
+    player.connect_set_position(move |_, _, position| {
+        let ms = position.as_micros() as f64 / 1000.0;
+        dispatch(SystemMediaEvent::seek(ms));
+    });
+}
+
+#[allow(clippy::future_not_send)]
+async fn process_metadata_update(
+    player: &Player,
+    payload: MetadataPayload,
+    cover_guard: &mut Option<NamedTempFile>,
+) {
+    let art_url = if let Some(url) = payload.original_cover_url {
+        *cover_guard = None;
+        Some(url)
+    } else if let Some(data) = payload.cover_data {
+        match tempfile::Builder::new().suffix(".jpg").tempfile() {
+            Ok(mut file) => {
+                if file.write_all(&data).is_ok() {
+                    let path = file.path().to_string_lossy().to_string();
+                    let url = format!("file://{path}");
+
+                    *cover_guard = Some(file);
+
+                    Some(url)
+                } else {
+                    None
+                }
+            }
+            Err(e) => {
+                error!("创建临时封面失败: {e:?}");
+                None
+            }
+        }
+    } else {
+        *cover_guard = None;
+        None
+    };
+
+    let mut mb = Metadata::builder()
+        .title(payload.song_name)
+        .artist([payload.author_name])
+        .album(payload.album_name);
+
+    if let Some(dur) = payload.duration {
+        mb = mb.length(Time::from_millis(dur as i64));
+    }
+
+    if let Some(url) = art_url {
+        mb = mb.art_url(url);
+    }
+
+    player.set_metadata(mb.build()).await.ok();
+}
+
+#[allow(clippy::future_not_send)]
+async fn handle_command(
+    cmd: MprisCommand,
+    player: &Player,
+    event_handler: &Arc<RwLock<Option<SystemMediaThreadsafeFunction>>>,
+    cover_guard: &mut Option<NamedTempFile>,
+) -> bool {
+    match cmd {
+        MprisCommand::Shutdown => return false,
+
+        MprisCommand::RegisterCallback(cb) => {
+            if let Ok(mut guard) = event_handler.write() {
+                *guard = Some(cb);
+            }
+        }
+
+        MprisCommand::UpdateMetadata(payload) => {
+            process_metadata_update(player, payload, cover_guard).await;
+        }
+
+        MprisCommand::UpdatePlaybackStatus(payload) => {
+            let status = match payload.status {
+                PlaybackStatus::Playing => MprisPlaybackStatus::Playing,
+                PlaybackStatus::Paused => MprisPlaybackStatus::Paused,
+            };
+            player.set_playback_status(status).await.ok();
+        }
+
+        MprisCommand::UpdateTimeline(payload) => {
+            let pos = Time::from_millis(payload.current_time as i64);
+            player.set_position(pos);
+        }
+
+        MprisCommand::UpdatePlayMode(payload) => {
+            let loop_status = match payload.repeat_mode {
+                RepeatMode::None => MprisLoopStatus::None,
+                RepeatMode::Track => MprisLoopStatus::Track,
+                RepeatMode::List => MprisLoopStatus::Playlist,
+            };
+            player.set_loop_status(loop_status).await.ok();
+            player.set_shuffle(payload.is_shuffling).await.ok();
+        }
+
+        MprisCommand::Enable => {
+            // Linux 上，只要在 D-Bus 上注册了名字就会自动启用，所以这里什么都不做
+        }
+        MprisCommand::Disable => {
+            player
+                .set_playback_status(MprisPlaybackStatus::Stopped)
+                .await
+                .ok();
+
+            player.set_metadata(Metadata::new()).await.ok();
+        }
+    }
+    true
+}
+
+#[allow(clippy::future_not_send)]
+async fn run_mpris_loop(mut rx: UnboundedReceiver<MprisCommand>) -> Result<()> {
+    let event_handler = Arc::new(RwLock::new(None::<SystemMediaThreadsafeFunction>));
+    let mut current_cover_file_guard: Option<NamedTempFile> = None;
+
+    let player = Player::builder("splayer")
+        .can_play(true)
+        .can_pause(true)
+        .can_go_next(true)
+        .can_go_previous(true)
+        .can_seek(true)
+        .can_control(true)
+        .playback_status(MprisPlaybackStatus::Stopped)
+        .build()
+        .await
+        .map_err(|e| anyhow::anyhow!("MPRIS Player 初始化失败: {e}"))?;
+
+    setup_mpris_signals(&player, event_handler.clone());
+
+    let server_task = player.run();
+    tokio::pin!(server_task);
+
+    loop {
+        tokio::select! {
+            () = &mut server_task => {
+                error!("MPRIS D-Bus 连接意外断开");
+                break;
+            }
+
+            // 来自 lib.rs 的指令
+            cmd_opt = rx.recv() => {
+                let Some(cmd) = cmd_opt else { break };
+
+                let should_continue = handle_command(
+                    cmd,
+                    &player,
+                    &event_handler,
+                    &mut current_cover_file_guard
+                ).await;
+
+                if !should_continue {
+                    break;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+impl SystemMediaControls for LinuxImpl {
+    fn initialize(&self) -> Result<()> {
+        // Linux 上不用初始化
+        Ok(())
+    }
+
+    fn enable(&self) -> Result<()> {
+        self.send_command(MprisCommand::Enable);
+        Ok(())
+    }
+
+    fn disable(&self) -> Result<()> {
+        self.send_command(MprisCommand::Disable);
+        Ok(())
+    }
+
+    fn shutdown(&self) -> Result<()> {
+        self.send_command(MprisCommand::Shutdown);
+        Ok(())
+    }
+
+    fn register_event_handler(
+        &self,
+        callback: ThreadsafeFunction<
+            SystemMediaEvent,
+            UnknownReturnValue,
+            SystemMediaEvent,
+            Status,
+            false,
+        >,
+    ) -> Result<()> {
+        self.send_command(MprisCommand::RegisterCallback(callback));
+        Ok(())
+    }
+
+    fn update_metadata(&self, payload: MetadataPayload) {
+        self.send_command(MprisCommand::UpdateMetadata(payload));
+    }
+
+    fn update_playback_status(&self, payload: PlayStatePayload) {
+        self.send_command(MprisCommand::UpdatePlaybackStatus(payload));
+    }
+
+    fn update_timeline(&self, payload: TimelinePayload) {
+        self.send_command(MprisCommand::UpdateTimeline(payload));
+    }
+
+    fn update_play_mode(&self, payload: PlayModePayload) {
+        self.send_command(MprisCommand::UpdatePlayMode(payload));
+    }
+}

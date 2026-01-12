@@ -1,28 +1,23 @@
-import { ipcMain, app } from "electron";
+import { app, ipcMain } from "electron";
 import { join } from "path";
 import type {
+  DiscordConfigPayload,
+  MediaEvent,
   MediaMetadataParam,
   MediaPlaybackStatus,
-  MediaTimelineParam,
   MediaPlayModeParam,
-  MediaEvent,
-  DiscordConfigPayload,
+  MediaTimelineParam,
 } from "../../../src/types/global";
 import { processLog } from "../logger";
-import { loadNativeModule } from "../utils/native-loader";
 import { isLinux, isWin } from "../utils/config";
+import { loadNativeModule } from "../utils/native-loader";
 import mainWindow from "../windows/main-window";
 
 // 原生模块类型
 type NativeSmtcModule = typeof import("@native");
-type NativeMprisModule = typeof import("@mpris");
-type DiscordRpcModule = typeof import("@discord-rpc");
 
 // 原生模块实例
 let nativeSmtc: NativeSmtcModule | null = null;
-let nativeMpris: NativeMprisModule | null = null;
-let mprisInstance: InstanceType<NativeMprisModule["SPlayerMpris"]> | null = null;
-let discordRpc: DiscordRpcModule | null = null;
 
 /**
  * 将统一播放模式转换为各平台格式

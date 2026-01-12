@@ -1,0 +1,10 @@
+{
+  "name": "external-media-integration",
+  "devDependencies": {
+    "@napi-rs/cli": "^3.5.1"
+  },
+  "scripts": {
+    "build": "napi build --release",
+    "build:debug": "napi build"
+  }
+}

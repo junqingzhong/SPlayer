@@ -18,9 +18,7 @@
     "composite": true,
     "types": ["electron-vite/node"],
     "paths": {
-      "@native": ["./native/smtc-for-splayer"],
-      "@discord-rpc": ["./native/discord-rpc-for-splayer"],
-      "@mpris": ["./native/mpris-for-splayer"],
+      "@native": ["./native/external-media-integration"],
       "@shared": ["./src/types/shared.ts"]
     }
   }

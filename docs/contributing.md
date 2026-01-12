@@ -201,8 +201,7 @@ SPlayer/
 │   ├── main/               # 主进程代码
 │   └── preload/            # 预加载脚本
 ├── native/                 # 原生 Rust 插件
-│   ├── smtc-for-splayer/   # SMTC 模块
-│   └── discord-rpc-for-splayer/  # Discord RPC 模块
+│   ├── external-media-integration/   # 媒体控件集成模块
 ├── docs/                   # 文档
 └── scripts/                # 构建脚本
 ```
