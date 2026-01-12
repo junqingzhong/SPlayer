@@ -121,9 +121,10 @@ const initLyricIpc = (): void => {
         lyricWin.setAlwaysOnTop(true, "screen-saver");
       }
     } else {
-      // 关闭：不销毁窗口，直接隐藏，保留位置与状态
       if (!isWinAlive(lyricWin)) return;
-      lyricWin.hide();
+      // 解绑事件
+      unbindMainWinEvents();
+      lyricWin.close();
     }
   });
 

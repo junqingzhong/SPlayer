@@ -68,6 +68,7 @@ const initIpc = () => {
             lrcData: musicStore.songLyric.lrcData ?? [],
             yrcData: musicStore.songLyric.yrcData ?? [],
             lyricIndex: statusStore.lyricIndex,
+            lyricLoading: statusStore.lyricLoading,
           }),
         );
       }
@@ -100,7 +101,9 @@ const initIpc = () => {
       const { name, artist, album } = getPlayerInfoObj() || {};
       // 获取原始对象
       const playSong = toRaw(musicStore.playSong);
-      const songLyric = toRaw(musicStore.songLyric);
+      const songLyric = statusStore.lyricLoading
+        ? { lrcData: [], yrcData: [] }
+        : toRaw(musicStore.songLyric);
       window.electron.ipcRenderer.send(
         "return-track-info",
         cloneDeep({
@@ -113,6 +116,9 @@ const initIpc = () => {
           volume: statusStore.playVolume,
           playRate: statusStore.playRate,
           ...playSong,
+          // 歌词及加载状态
+          lyricLoading: statusStore.lyricLoading,
+          lyricIndex: statusStore.lyricIndex,
           ...songLyric,
         }),
       );
