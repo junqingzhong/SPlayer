@@ -107,8 +107,8 @@ const initWindowsIpc = (): void => {
 
   // 重启
   ipcMain.on("win-restart", () => {
-    app.quit();
     app.relaunch();
+    app.quit();
   });
 
   // 向主窗口发送事件

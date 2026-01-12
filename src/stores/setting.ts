@@ -163,10 +163,8 @@ export interface SettingState {
   showPlaylistCount: boolean;
   /** 是否显示音乐频谱 */
   showSpectrums: boolean;
-  /** 是否开启 SMTC */
+  /** 是否开启系统音频集成 */
   smtcOpen: boolean;
-  /** 是否开启原生 SMTC 支持 (Windows) */
-  enableNativeSmtc: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
   /** 鼠标悬停暂停 */
@@ -310,6 +308,8 @@ export interface SettingState {
     /** 显示模式 */
     displayMode: "name" | "state" | "details";
   };
+  /** 播放引擎 */
+  playbackEngine: "web-audio" | "mpv";
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -369,7 +369,6 @@ export const useSettingStore = defineStore("setting", {
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
-    enableNativeSmtc: true,
     playSongDemo: false,
     scrobbleSong: false,
     dynamicCover: false,
@@ -472,6 +471,7 @@ export const useSettingStore = defineStore("setting", {
       showWhenPaused: true,
       displayMode: "name",
     },
+    playbackEngine: "web-audio",
   }),
   getters: {
     /**

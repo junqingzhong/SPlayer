@@ -2,9 +2,8 @@ import { heartRateList } from "@/api/playlist";
 import { useDataStore, useMusicStore, useStatusStore } from "@/stores";
 import { type SongType } from "@/types/main";
 import { RepeatModeType, ShuffleModeType } from "@/types/shared";
-import { RepeatMode } from "@/types/smtc";
 import { isLogin } from "@/utils/auth";
-import { isElectron, isWin } from "@/utils/env";
+import { isElectron } from "@/utils/env";
 import { formatSongsList } from "@/utils/format";
 import { shuffleArray } from "@/utils/helper";
 import { openUserLogin } from "@/utils/modal";
@@ -236,19 +235,21 @@ export class PlayModeManager {
   }
 
   /**
-   * 同步当前的播放模式到 SMTC
+   * 同步当前的播放模式到 SMTC / MPRIS
    */
   public syncSmtcPlayMode() {
     const statusStore = useStatusStore();
 
-    if (isElectron && isWin) {
-      const smtcShuffle = statusStore.shuffleMode !== "off";
+    if (isElectron) {
+      const shuffle = statusStore.shuffleMode !== "off";
+      const repeat =
+        statusStore.repeatMode === "list"
+          ? "list"
+          : statusStore.repeatMode === "one"
+            ? "one"
+            : "off";
 
-      let smtcRepeat = RepeatMode.None;
-      if (statusStore.repeatMode === "list") smtcRepeat = RepeatMode.List;
-      if (statusStore.repeatMode === "one") smtcRepeat = RepeatMode.Track;
-
-      playerIpc.sendSmtcPlayMode(smtcShuffle, smtcRepeat);
+      playerIpc.sendMediaPlayMode(shuffle, repeat);
     }
   }
 

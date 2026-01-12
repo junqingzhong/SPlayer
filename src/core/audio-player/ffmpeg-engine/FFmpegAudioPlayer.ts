@@ -1,4 +1,5 @@
 import { AUDIO_EVENTS, AudioErrorCode, BaseAudioPlayer } from "../BaseAudioPlayer";
+import type { EngineCapabilities } from "../IPlaybackEngine";
 import AudioWorker from "./audio.worker?worker";
 import type { AudioMetadata, PlayerState, WorkerResponse } from "./types";
 
@@ -59,6 +60,14 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
   private _src: string = "";
   /** 用于取消正在进行的 fetch 请求 */
   private abortController: AbortController | null = null;
+
+  /** 引擎能力描述 */
+  public override readonly capabilities: EngineCapabilities = {
+    supportsRate: false,
+    supportsSinkId: false,
+    supportsEqualizer: true,
+    supportsSpectrum: true,
+  };
 
   constructor() {
     super();
