@@ -197,7 +197,7 @@ impl RpcWorker {
                 self.last_sent_end_timestamp = None;
             }
             Err(e) => {
-                info!("连接 Discord IPC 失败: {e:?}. Discord 可能未运行");
+                debug!("连接 Discord IPC 失败: {e:?}. Discord 可能未运行");
                 self.connect_retry_count = RECONNECT_COOLDOWN_SECONDS;
             }
         }
