@@ -176,7 +176,6 @@ export const amllDbServers = [
 
 /**
  * 默认 AMLL TTML DB Server
- * 感谢 HelloZGY 提供镜像源
  * @returns 默认 AMLL TTML DB Server
  */
-export const defaultAMLLDbServer = amllDbServers[0].value;
+export const defaultAMLLDbServer = amllDbServers[2].value;

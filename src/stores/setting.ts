@@ -1,14 +1,9 @@
 import { defineStore } from "pinia";
 import { keywords, regexes } from "@/assets/data/exclude";
-import { SongUnlockServer } from "@/utils/songManager";
-// 导入类型但未使用，添加ts-ignore注释
-// @ts-ignore - 类型导入用于类型检查
+import { SongUnlockServer } from "@/core/player/SongManager";
 import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
-import {
-  CURRENT_SETTING_SCHEMA_VERSION,
-  migrateSettingState,
-} from "./migrations/settingMigrations";
+import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
 
 export interface SettingState {
   /** Schema 版本号（可选，用于数据迁移） */
@@ -17,17 +12,17 @@ export interface SettingState {
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
   themeColorType:
-    | "default"
-    | "orange"
-    | "blue"
-    | "pink"
-    | "brown"
-    | "indigo"
-    | "green"
-    | "purple"
-    | "yellow"
-    | "teal"
-    | "custom";
+  | "default"
+  | "orange"
+  | "blue"
+  | "pink"
+  | "brown"
+  | "indigo"
+  | "green"
+  | "purple"
+  | "yellow"
+  | "teal"
+  | "custom";
   /** 主题自定义颜色 */
   themeCustomColor: string;
   /** 全局着色 */
@@ -40,6 +35,10 @@ export interface SettingState {
   LyricFont: "follow" | string;
   /** 日语歌词字体 */
   japaneseLyricFont: "follow" | string;
+  /** 英语歌词字体 */
+  englishLyricFont: "follow" | string;
+  /** 韩语歌词字体 */
+  koreanLyricFont: "follow" | string;
   /** 隐藏 VIP 标签 */
   showCloseAppTip: boolean;
   /** 关闭应用方式 */
@@ -94,14 +93,7 @@ export interface SettingState {
   usePlaybackForDownload: boolean;
   /** 保存元信息文件 */
   saveMetaFile: boolean;
-  useSpecificSourceUnlock: boolean; // 是否启用特定来源解锁音频功能
-  unlockSources: {
-    netease: boolean;
-    bilibili: boolean;
-    kuwo: boolean;
-    kugou: boolean;
-    qq: boolean;
-  }; // 音频解锁来源平台配置
+  // 音频解锁来源平台配置 - 已整合到 songUnlockServer
   // Proxy settings
   proxyType: "off" | "system" | "manual" | "pac";
   proxyProtocol: "http" | "https" | "off"; // Used when proxyType is 'manual'
@@ -112,14 +104,14 @@ export interface SettingState {
   pacUrl?: string; // Used when proxyType is 'pac'
   autoLoginCookie: string;
   songLevel:
-    | "standard"
-    | "higher"
-    | "exhigh"
-    | "lossless"
-    | "hires"
-    | "jyeffect"
-    | "sky"
-    | "jymaster";
+  | "standard"
+  | "higher"
+  | "exhigh"
+  | "lossless"
+  | "hires"
+  | "jyeffect"
+  | "sky"
+  | "jymaster";
   /** 播放设备 */
   playDevice: "default" | string;
   /** 自动播放 */
@@ -134,6 +126,8 @@ export interface SettingState {
   useSongUnlock: boolean;
   /** 歌曲解锁音源 */
   songUnlockServer: { key: SongUnlockServer; enabled: boolean }[];
+  /** 时间显示格式 */
+  timeDisplayFormat: 'HH:MM:SS' | 'MM:SS';
   /** 显示倒计时 */
   countDownShow: boolean;
   /** 显示歌词条 */
@@ -146,6 +140,8 @@ export interface SettingState {
   playerBackgroundFps: number;
   /** 背景动画流动速度 */
   playerBackgroundFlowSpeed: number;
+  /** 播放器元素自动隐藏 */
+  autoHidePlayerMeta: boolean;
   /** 记忆最后进度 */
   memoryLastSeek: boolean;
   /** 显示播放列表数量 */
@@ -238,6 +234,8 @@ export interface SettingState {
   hideLikedPlaylists: boolean;
   /** 隐藏心动模式 */
   hideHeartbeatMode: boolean;
+  /** 隐藏活动列表 */
+  hideActivities: boolean;
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
   /** 下载音质 */
@@ -261,6 +259,8 @@ export interface SettingState {
     visible: boolean;
     order: number;
   }>;
+  /** 用户协议版本 */
+  userAgreementVersion: string;
   /** 自定义协议注册 **/
   registryProtocol: {
     orpheus: boolean;
@@ -271,7 +271,7 @@ export interface SettingState {
 
 export const useSettingStore = defineStore("setting", {
   state: (): SettingState => ({
-    schemaVersion: CURRENT_SETTING_SCHEMA_VERSION,
+    schemaVersion: 0,
     themeMode: "auto",
     themeColorType: "default",
     themeCustomColor: "#fe7971",
@@ -280,6 +280,8 @@ export const useSettingStore = defineStore("setting", {
     globalFont: "default",
     LyricFont: "follow",
     japaneseLyricFont: "follow",
+    englishLyricFont: "follow",
+    koreanLyricFont: "follow",
     hideVipTag: false,
     showSearchHistory: true,
     menuShowCover: true,
@@ -300,24 +302,23 @@ export const useSettingStore = defineStore("setting", {
     songVolumeFadeTime: 300,
     useSongUnlock: true,
     songUnlockServer: [
+      { key: SongUnlockServer.NETEASE, enabled: true },
+      { key: SongUnlockServer.QQ, enabled: true },
+      { key: SongUnlockServer.KUGOU, enabled: true },
+      { key: SongUnlockServer.KUWO, enabled: true },
+      { key: SongUnlockServer.BILIBILI, enabled: true },
       { key: SongUnlockServer.BODIAN, enabled: true },
       { key: SongUnlockServer.GEQUBAO, enabled: true },
-      { key: SongUnlockServer.NETEASE, enabled: true },
     ],
-    useSpecificSourceUnlock: true, // 是否启用特定来源解锁音频功能
-    unlockSources: {
-      netease: true,
-      bilibili: true,
-      kuwo: true,
-      kugou: true,
-      qq: true,
-    }, // 音
+    timeDisplayFormat: 'MM:SS', // 时间显示格式
+    // 音频解锁来源平台配置 - 已整合到 songUnlockServer
     countDownShow: true,
     barLyricShow: true,
     playerType: "cover",
     playerBackgroundType: "blur",
     playerBackgroundFps: 30,
     playerBackgroundFlowSpeed: 4,
+    autoHidePlayerMeta: true,
     memoryLastSeek: true,
     showPlaylistCount: true,
     showSpectrums: false,
@@ -391,6 +392,7 @@ export const useSettingStore = defineStore("setting", {
     hideUserPlaylists: false,
     hideLikedPlaylists: false,
     hideHeartbeatMode: false,
+    hideActivities: false,
     enableSearchKeyword: true,
     hideStarPopup: true,
     homePageSections: [
@@ -401,6 +403,7 @@ export const useSettingStore = defineStore("setting", {
       { key: "radio", name: "推荐播客", visible: true, order: 4 },
       { key: "album", name: "新碟上架", visible: true, order: 5 },
     ],
+    userAgreementVersion: "",
     registryProtocol: {
       orpheus: false,
     },
@@ -427,11 +430,19 @@ export const useSettingStore = defineStore("setting", {
         console.log(`[Setting Migration] 检测到版本差异: ${currentVersion} -> ${targetVersion}`);
         // 保存当前完整状态
         const currentState = { ...this.$state } as Partial<SettingState>;
-        // 执行迁移，保留所有原有字段，只更新需要的字段
-        const migratedState = migrateSettingState(currentState, currentVersion, targetVersion);
-        // 应用迁移后的状态
-        Object.assign(this, migratedState);
-        // 确保版本号已更新
+        // 计算需要更新的字段（迁移返回的更新）
+        const updates: Partial<SettingState> = {};
+        // 按版本顺序执行迁移，收集所有更新
+        for (let version = currentVersion + 1; version <= targetVersion; version++) {
+          const migration = settingMigrations[version];
+          if (migration) {
+            const migrationUpdates = migration(currentState);
+            Object.assign(updates, migrationUpdates);
+          }
+        }
+        // 只 patch 需要更新的字段
+        this.$patch(updates);
+        // 统一设置版本号
         this.schemaVersion = targetVersion;
         console.log(`[Setting Migration] 迁移完成，已更新到版本 ${targetVersion}`);
       }
@@ -452,12 +463,11 @@ export const useSettingStore = defineStore("setting", {
       }
       window.$message.info(
         `已切换至
-        ${
-          this.themeMode === "auto"
-            ? "跟随系统"
-            : this.themeMode === "light"
-              ? "浅色模式"
-              : "深色模式"
+        ${this.themeMode === "auto"
+          ? "跟随系统"
+          : this.themeMode === "light"
+            ? "浅色模式"
+            : "深色模式"
         }`,
         {
           showIcon: false,

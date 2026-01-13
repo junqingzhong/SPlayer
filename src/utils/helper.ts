@@ -1,7 +1,6 @@
 import { QualityType, SongType, UpdateLogType } from "@/types/main";
 import { NTooltip, SelectOption } from "naive-ui";
 import { h, VNode } from "vue";
-import { useClipboard } from "@vueuse/core";
 import { getCacheData } from "./cache";
 import { updateLog } from "@/api/other";
 import { isEmpty } from "lodash-es";
@@ -13,9 +12,6 @@ import SvgIcon from "@/components/Global/SvgIcon.vue";
 import Fuse from "fuse.js";
 
 type AnyObject = { [key: string]: any };
-
-// 必要数据
-let imageBlobURL: string = "";
 
 /**
  * 打开链接
@@ -164,7 +160,7 @@ export const formatDate = (date: Date | number, format: string): string => {
   if (/(y+)/.test(format)) {
     format = format.replace(RegExp.$1, (date.getFullYear() + "").substr(4 - RegExp.$1.length));
   }
-  for (let k in o) {
+  for (const k in o) {
     if (new RegExp("(" + k + ")").test(format)) {
       format = format.replace(
         RegExp.$1,
@@ -187,53 +183,50 @@ export const formatFileSize = (bytes: number): string => {
     return `${(bytes / 1024 / 1024 / 1024).toFixed(1)} GB`;
   }
 };
-
 /**
- * 将图片链接转为 BlobUrl
- * @param imageUrl 图片链接
- * @returns BlobUrl
- */
-export const convertImageUrlToBlobUrl = async (imageUrl: string) => {
-  const response = await fetch(imageUrl);
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  // 将响应数据转换为 Blob 对象
-  const blob = await response.blob();
-  // 撤销之前生成的对象 URL
-  if (imageBlobURL) URL.revokeObjectURL(imageBlobURL);
-  // 生成对象 URL
-  imageBlobURL = URL.createObjectURL(blob);
-  return imageBlobURL;
-};
-
-/**
- * 复制数据到剪贴板
+ * 复制数据到剪贴板（原生实现）
  * @param text 要复制的数据
  * @param message 复制成功提示消息（可选）
- * @returns 无
  */
 export const copyData = async (text: any, message?: string) => {
-  const { copy, copied, isSupported } = useClipboard({ legacy: true });
-  if (!isSupported.value) {
-    window.$message.error("暂时无法使用复制功能");
-    return;
+  if (!text) return;
+  const content =
+    typeof text === "string" ? text.trim() : JSON.stringify(text, null, 2);
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(content);
+      window.$message.success(message ?? "已复制到剪贴板");
+      return;
+    } catch (err) {
+      console.error("clipboard.writeText 失败，尝试降级方案", err);
+    }
   }
-  // 开始复制
+  // 降级方案
   try {
-    if (!text) return;
-    text = typeof text === "string" ? text.trim() : JSON.stringify(text, null, 2);
-    await copy(text);
-    if (copied.value) {
+    const textarea = document.createElement("textarea");
+    textarea.value = content;
+    // 避免页面滚动
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+    // 添加到页面
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    // 执行复制
+    const success = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    if (success) {
       window.$message.success(message ?? "已复制到剪贴板");
     } else {
-      window.$message.error("复制出错，请重试");
+      throw new Error("execCommand 返回 false");
     }
   } catch (error) {
     window.$message.error("复制出错，请重试");
     console.error("复制出错：", error);
   }
 };
+
 
 /*
  * 获取剪贴板内容

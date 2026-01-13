@@ -6,8 +6,8 @@
           <SvgIcon name="TimeAuto" size="22" />
           <Transition name="fade" mode="out-in">
             <n-text v-if="!statusStore.autoClose.enable"> 未开启 </n-text>
-            <n-text v-else strong>
-              {{ convertSecondsToTime(statusStore.autoClose.remainTime) }}
+            <n-text v-else strong class="time-display time-display--primary auto-close-time">
+              {{ formatTime(statusStore.autoClose.remainTime, settingStore.timeDisplayFormat) }}
             </n-text>
           </Transition>
         </n-flex>
@@ -65,11 +65,13 @@
 
 <script setup lang="ts">
 import { useStatusStore } from "@/stores";
-import { convertSecondsToTime } from "@/utils/time";
-import { usePlayer } from "@/utils/player";
+import { useSettingStore } from "@/stores/setting";
+import { formatTime } from "@/utils/timeFormat";
+import { usePlayerController } from "@/core/player/PlayerController";
 
-const player = usePlayer();
+const player = usePlayerController();
 const statusStore = useStatusStore();
+const settingStore = useSettingStore();
 
 // 自定义时长
 const customTime = ref(1);
@@ -86,6 +88,7 @@ const handleUpdate = (value: boolean) => {
 </script>
 
 <style scoped lang="scss">
+
 .auto-close {
   width: 100%;
   .open {

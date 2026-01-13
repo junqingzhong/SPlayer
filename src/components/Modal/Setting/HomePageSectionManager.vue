@@ -22,8 +22,6 @@
 
 <script setup lang="ts">
 import { useSettingStore } from "@/stores";
-// 直接导入sortablejs来解决模块解析问题
-import Sortable from "sortablejs";
 import { useSortable } from "@vueuse/integrations/useSortable";
 import SvgIcon from "@/components/Global/SvgIcon.vue";
 

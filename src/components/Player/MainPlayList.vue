@@ -3,7 +3,6 @@
   <n-drawer
     v-model:show="statusStore.playListShow"
     :class="{ 'full-player': statusStore.showFullPlayer }"
-    :style="{ '--main-color': statusStore.mainColor }"
     :auto-focus="false"
     id="main-playlist"
     style="width: 400px"
@@ -32,7 +31,7 @@
               :class="['song-item', { on: statusStore.playIndex === index }]"
               v-debounce="
                 () => {
-                  player.togglePlayIndex(index);
+                  player.togglePlayIndex(index, true);
                   statusStore.playListShow = false;
                 }
               "
@@ -111,11 +110,11 @@
 <script setup lang="ts">
 import { useStatusStore, useDataStore } from "@/stores";
 import type { VirtualListInst } from "naive-ui";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
-const player = usePlayer();
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
+const player = usePlayerController();
 
 const playListRef = ref<VirtualListInst | null>(null);
 
@@ -267,8 +266,8 @@ const cleanPlayList = () => {
     padding: 16px;
   }
   &.full-player {
-    --n-color: rgb(var(--main-color));
-    --n-close-icon-color: rgba(var(--main-color), 0.58);
+    --n-color: rgb(var(--main-cover-color));
+    --n-close-icon-color: rgba(var(--main-cover-color), 0.58);
     background-color: transparent;
     box-shadow: none;
     .n-drawer-header,
@@ -278,25 +277,25 @@ const cleanPlayList = () => {
     a,
     span,
     .n-icon {
-      color: rgb(var(--main-color));
+      color: rgb(var(--main-cover-color));
     }
     .n-button {
-      --n-color: rgba(var(--main-color), 0.08);
-      --n-color-hover: rgba(var(--main-color), 0.12);
+      --n-color: rgba(var(--main-cover-color), 0.08);
+      --n-color-hover: rgba(var(--main-cover-color), 0.12);
       --n-color-pressed: var(--n-color);
       --n-color-focus: var(--n-color-hover);
     }
     .playlist-list {
       .song-item {
-        background-color: rgba(var(--main-color), 0.08);
+        background-color: rgba(var(--main-cover-color), 0.08);
         &.on {
-          border-color: rgb(var(--main-color));
+          border-color: rgb(var(--main-cover-color));
         }
         &:hover {
-          border-color: rgb(var(--main-color));
+          border-color: rgb(var(--main-cover-color));
         }
         .num {
-          color: rgba(var(--main-color), 0.52);
+          color: rgba(var(--main-cover-color), 0.52);
         }
       }
     }

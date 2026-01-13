@@ -1,9 +1,9 @@
-<template>
+﻿<template>
   <div class="activities-container">
     <div class="activities-header">
       <h2>活动列表</h2>
       <n-space>
-        <n-button type="primary" @click="showAddModal = true" class="add-btn" v-if="hasToken">
+        <n-button type="primary" @click="openAddModal" class="add-btn" v-if="hasToken">
           <template #icon>
             <SvgIcon name="Add" />
           </template>
@@ -50,10 +50,15 @@
           <SvgIcon name="Search" />
         </template>
       </n-input>
-      <n-select v-model:value="statusFilter" :options="[{ label: '全部', value:'', type: 'ignored' }, ...statusOptions]" placeholder="状态筛选" clearable class="status-filter" @update:value="handleStatusFilterChange" />
+      <n-select v-model:value="yearFilter" :options="yearOptions" placeholder="年份筛选" clearable class="year-filter" @update:value="handleYearFilterChange" />
+      <n-select v-model:value="categoryFilter" :options="[{ label: '全部分类', value: undefined, type: 'ignored' }, ...categoryOptions]" placeholder="分类筛选" clearable class="category-filter" @update:value="handleCategoryFilterChange" />
+      <n-select v-model:value="statusFilter" :options="[{ label: '全部状态', value: undefined, type: 'ignored' }, ...statusOptions]" placeholder="状态筛选" clearable class="status-filter" @update:value="handleStatusFilterChange" />
       <n-button @click="toggleSortOrder" class="sort-button">
-        {{ sortOrder === 'desc' ? '按时间正序' : '按时间倒序' }}
+        {{ sortText }}
       </n-button>
+      <div class="activity-count">
+        共 {{ filteredActivities.length }} 条记录
+      </div>
     </div>
 
     <!-- 日历视图 -->
@@ -63,7 +68,7 @@
         <template v-if="hasActivitiesOnDate(year, month, date)">
           <!-- 查找并显示对应日期的活动名称 -->
           <div v-for="activity in activities.filter((act) => {
-              const activityDate = parseChineseDate(act.date)?.getTime();
+              const activityDate = getActivityDate(act.date)?.getTime();
               const checkDate = new Date(year, month - 1, date).getTime();
               return activityDate === checkDate;
             })" :key="activity.id" class="activity-name-ellipsis" :class="{
@@ -102,37 +107,85 @@
     </n-modal>
     <!-- 列表视图 -->
     <div class="list-view">
-      <n-empty v-if="filteredActivities.length === 0" description="暂无活动数据" />
-      <n-list v-else hoverable clickable class="list-div">
-        <n-list-item v-for="activity in filteredActivities" :key="activity.id"
-          :class="getActivityClass(activity.status)">
-          <n-thing @click="updateActivityStatus(activity.id, activity.status)" :title="activity.name"
-            :description="activity.address">
-            <template #header-extra>
-              <n-space>
-                <n-tag :type="getStatusType(activity.status)">
-                  {{ activity.status }}
-                </n-tag>
-                <n-tag type="warning">
-                  {{ categories[activity.categoryId] ? categories[activity.categoryId] : '活动后台' }}
-                </n-tag>
+      <n-spin :show="loading" description="正在加载活动数据...">
+        <n-empty v-if="filteredActivities.length === 0 && !loading && hasActiveFilters" description="暂无符合条件的活动数据">
+        </n-empty>
+        <n-list v-else-if="!loading" hoverable clickable class="list-div">
+          <!-- 当没有活跃筛选条件且过滤后数据为空时，显示原始数据 -->
+          <template v-if="filteredActivities.length === 0 && !hasActiveFilters">
+            <n-list-item v-for="activity in activities" :key="activity.id"
+              :class="getActivityClass(activity.status)">
+              <n-thing @click="updateActivityStatus(activity.id, activity.status)" :title="activity.name"
+                :description="activity.address">
+                <template #header-extra>
+                  <n-space>
+                    <n-tag :type="getStatusType(activity.status)">
+                      {{ activity.status }}
+                    </n-tag>
+                    <n-tag type="warning">
+                      {{ categories[activity.categoryId] ? categories[activity.categoryId] : '活动后台' }}
+                    </n-tag>
+                  </n-space>
+                </template>
+                <span>{{ activity.remark }}</span>
+              </n-thing>
+              <n-space justify="space-between">
+                <span>{{ activity.date }}</span>
+                <n-space>
+                  <n-button size="small" type="info" @click="editActivity(activity)">
+                    编辑
+                  </n-button>
+                  <n-button size="small" type="error" @click="deleteActivity(activity.id)">
+                    删除
+                  </n-button>
+                </n-space>
               </n-space>
-            </template>
-            <span>{{ activity.remark }}</span>
-          </n-thing>
-          <n-space justify="space-between">
-            <span>{{ activity.date }}</span>
-            <n-space>
-              <n-button size="small" type="info" @click="editActivity(activity)">
-                编辑
-              </n-button>
-              <n-button size="small" type="error" @click="deleteActivity(activity.id)">
-                删除
-              </n-button>
+            </n-list-item>
+          </template>
+          <!-- 当有活跃筛选条件或有过滤后的数据时，显示过滤后的数据 -->
+          <template v-else>
+          <n-list-item v-for="activity in filteredActivities" :key="activity.id"
+            :class="getActivityClass(activity.status)">
+            <n-thing @click="updateActivityStatus(activity.id, activity.status)" :title="activity.name"
+              :description="activity.address">
+              <template #header-extra>
+                <n-space>
+                  <n-tag :type="getStatusType(activity.status)">
+                    {{ activity.status }}
+                  </n-tag>
+                  <n-tag type="warning">
+                    {{ categories[activity.categoryId] ? categories[activity.categoryId] : '活动后台' }}
+                  </n-tag>
+                </n-space>
+              </template>
+              <span>{{ activity.remark }}</span>
+            </n-thing>
+            <n-space justify="space-between">
+              <span>{{ activity.date }}</span>
+              <n-space>
+                <n-button size="small" type="info" @click="editActivity(activity)">
+                  编辑
+                </n-button>
+                <n-button size="small" type="error" @click="deleteActivity(activity.id)">
+                  删除
+                </n-button>
+              </n-space>
             </n-space>
-          </n-space>
-        </n-list-item>
-      </n-list>
+          </n-list-item>
+          </template>
+        </n-list>
+      </n-spin>
+      <!-- 底部间距，防止被播放器遮挡 -->
+      <div class="bottom-spacing"></div>
+    </div>
+
+    <!-- 回到顶部按钮 -->
+    <div class="back-to-top" @click="scrollToTop" v-show="showBackToTop">
+      <n-button circle type="primary" size="large">
+        <template #icon>
+          <svg-icon name="ArrowUp" />
+        </template>
+      </n-button>
     </div>
 
     <!-- 添加/编辑活动弹窗 -->
@@ -180,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useMessage, NButton, NSpace, NTag } from "naive-ui";
 import type { FormInst, FormRules } from "naive-ui";
@@ -197,9 +250,12 @@ const router = useRouter();
 
 // 状态管理
 const activities = ref<any[]>([]);
-const searchKeyword = ref("");
-const statusFilter = ref(null);
+const searchKeyword = ref<string | undefined>(undefined);
+const statusFilter = ref<string | undefined>(undefined);
+const categoryFilter = ref<number | undefined>(undefined);
+const yearFilter = ref<number | undefined>(undefined);
 const sortOrder = ref('desc');
+const loading = ref(false);
 const showAddModal = ref(false);
 const showDeleteModal = ref(false);
 const submitting = ref(false);
@@ -209,6 +265,7 @@ const deleteId = ref<number | null>(null);
 const hasToken = ref(false);
 const categories = ref<any[]>([]);
 const userId = ref<number | null>(null);
+const showBackToTop = ref(false);
 
 // 日历视图
 const showCalendar = ref(false);
@@ -224,7 +281,7 @@ const toggleCalendarView = () => {
 // 处理日期选择
 const handleDateSelect = (date: number) => {
   selectedDateactivities.value = activities.value.filter((act) => {
-    const activityDate = parseChineseDate(act.date)?.getTime() ?? 0;
+    const activityDate = getActivityDate(act.date)?.getTime() ?? 0;
     const checkDate = date;
     return activityDate === checkDate;
   })
@@ -241,7 +298,7 @@ const hasActivitiesOnDate = (year: number, month: number, date: number) => {
   checkDate.setHours(0, 0, 0, 0);
   const checkTimestamp = checkDate.getTime();
   return activities.value.some(activity => {
-    const activityDate = parseChineseDate(activity.date)?.getTime() ?? 0;
+    const activityDate = getActivityDate(activity.date)?.getTime() ?? 0;
     return activityDate === checkTimestamp;
   });
 };
@@ -310,14 +367,36 @@ const checkToken = async () => {
   return autoLoginCookie;
 };
 
-// 导航到用户管理页面
-const goToUserManagement = () => {
-  router.push('/user-management');
+// 小工具：判断活动是否处于激活（未完成）状态
+const isActive = (activity: any) => {
+  return activity && activity.status !== '已完成';
 };
 
-// 导航到分类管理页面
-const goToCategoryManagement = () => {
-  router.push('/category-management');
+// 小工具：统一解析活动日期字段，返回 Date 或 null
+const getActivityDate = (dateField: any): Date | null => {
+  if (!dateField && dateField !== 0) return null;
+  if (typeof dateField === 'number') {
+    try {
+      const d = new Date(dateField);
+      d.setHours(0,0,0,0);
+      return d;
+    } catch {
+      return null;
+    }
+  }
+  if (typeof dateField === 'string') {
+    const parsed = parseChineseDate(dateField);
+    if (parsed) {
+      parsed.setHours(0,0,0,0);
+    }
+    return parsed;
+  }
+  if (dateField instanceof Date) {
+    const copy = new Date(dateField.getTime());
+    copy.setHours(0,0,0,0);
+    return copy;
+  }
+  return null;
 };
 
 // 状态选项
@@ -331,6 +410,41 @@ const statusOptions = [
     value: "已完成",
   }
 ];
+
+// 年份选项
+const yearOptions = computed(() => {
+  try {
+    const years = new Set<number>();
+
+    if (!activities.value || !Array.isArray(activities.value)) {
+      return [{ label: '全部年份', value: undefined, type: 'ignored' as const }];
+    }
+
+    activities.value.forEach(activity => {
+      try {
+        if (activity && activity.date) {
+          const date = getActivityDate(activity.date);
+          if (date && !isNaN(date.getFullYear())) {
+            years.add(date.getFullYear());
+          }
+        }
+      } catch (dateError) {
+        console.warn('解析活动日期失败:', dateError, activity);
+      }
+    });
+
+    // 按年份倒序排列
+    const sortedYears = Array.from(years).sort((a, b) => b - a);
+
+    return [
+      { label: '全部年份', value: undefined, type: 'ignored' as const },
+      ...sortedYears.map(year => ({ label: `${year}年`, value: year }))
+    ];
+  } catch (error) {
+    console.error('生成年份选项失败:', error);
+    return [{ label: '全部年份', value: undefined, type: 'ignored' as const }];
+  }
+});
 
 // 分类选项
 const categoryOptions = computed(() => {
@@ -367,11 +481,54 @@ const getActivityClass = (status: string) => {
 // 处理搜索输入变化
 const handleSearch = (value) => {
   searchKeyword.value = value;
+  // 清除搜索关键词时自动重新筛选，只显示当前命中条件的数据
+  if (!value || value.trim() === '') {
+    searchKeyword.value = undefined;
+    console.log('搜索关键词已清除，自动重新筛选数据');
+  }
+};
+
+// 回到顶部函数
+const scrollToTop = () => {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth'
+  });
+};
+
+// 监听滚动事件，控制回到顶部按钮显示
+const handleScroll = () => {
+  showBackToTop.value = window.scrollY > 300;
+};
+
+// 处理年份筛选变化
+const handleYearFilterChange = (value) => {
+  yearFilter.value = value;
+  // 清除条件时自动重新筛选，只显示当前命中条件的数据
+  if (value === undefined || value === null) {
+    yearFilter.value = undefined;
+    console.log('年份筛选已清除，自动重新筛选数据');
+  }
+};
+
+// 处理分类筛选变化
+const handleCategoryFilterChange = (value) => {
+  categoryFilter.value = value;
+  // 清除条件时自动重新筛选，只显示当前命中条件的数据
+  if (value === undefined || value === null) {
+    categoryFilter.value = undefined;
+    console.log('分类筛选已清除，自动重新筛选数据');
+  }
 };
 
 // 处理状态筛选变化
 const handleStatusFilterChange = (value) => {
   statusFilter.value = value;
+  // 清除条件时自动重新筛选，只显示当前命中条件的数据
+  if (value === undefined || value === null || value === '') {
+    statusFilter.value = undefined;
+    console.log('状态筛选已清除，自动重新筛选数据');
+  }
 };
 /**
  * 切换排序顺序
@@ -380,28 +537,54 @@ const toggleSortOrder = () => {
   sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc';
 };
 
+// 绑定到模板的排序文字
+const sortText = computed(() => {
+  return sortOrder.value === 'desc' ? '按时间正序' : '按时间倒序';
+});
+
+// 判断是否有活跃的筛选条件
+const hasActiveFilters = computed(() => {
+  return (searchKeyword.value !== undefined && searchKeyword.value !== '') ||
+         yearFilter.value !== undefined ||
+         categoryFilter.value !== undefined ||
+         (statusFilter.value !== undefined && statusFilter.value !== '');
+});
+
 // 过滤活动列表
 const filteredActivities = computed(() => {
-  let filtered = activities.value;
+  let filtered = activities.value.slice();
 
   // Apply search filter
   if (searchKeyword.value) {
-    const keyword = searchKeyword.value.toLowerCase();
+    const keyword = String(searchKeyword.value).toLowerCase();
     filtered = filtered.filter(activity =>
-      activity.name.toLowerCase().includes(keyword) ||
-      activity.remark.toLowerCase().includes(keyword)
+      (activity.name || '').toLowerCase().includes(keyword) ||
+      (activity.remark || '').toLowerCase().includes(keyword)
     );
   }
 
+  // Apply year filter
+  if (yearFilter.value !== undefined) {
+    filtered = filtered.filter(activity => {
+      const date = getActivityDate(activity.date);
+      return date && date.getFullYear() === yearFilter.value;
+    });
+  }
+
+  // Apply category filter
+  if (categoryFilter.value !== undefined) {
+    filtered = filtered.filter(activity => activity.categoryId === categoryFilter.value);
+  }
+
   // Apply status filter
-  if (statusFilter.value !== null) {
+  if (statusFilter.value !== undefined && statusFilter.value !== '') {
     filtered = filtered.filter(activity => activity.status === statusFilter.value);
   }
 
-  // Sort by date
+  // Sort by date 使用 getActivityDate
   filtered.sort((a, b) => {
-    const dateA = parseChineseDate(a.date)?.getTime() ?? 0;
-    const dateB = parseChineseDate(b.date)?.getTime() ?? 0;
+    const dateA = getActivityDate(a.date)?.getTime() ?? 0;
+    const dateB = getActivityDate(b.date)?.getTime() ?? 0;
     return sortOrder.value === 'desc' ? dateB - dateA : dateA - dateB;
   });
 
@@ -409,7 +592,8 @@ const filteredActivities = computed(() => {
 });
 
 // 获取活动列表
-const fetchActivities = async () => {
+const fetchActivities = async (retryCount = 0) => {
+  loading.value = true;
   try {
     const token = await checkToken(); // 添加 await
     if (!token) {
@@ -420,13 +604,19 @@ const fetchActivities = async () => {
     const { activitiesApiBaseUrl } = useSettingStore();
     let apiUrl = `${activitiesApiBaseUrl}/lists`;
 
-    // 添加搜索和状态筛选参数
+    // 添加搜索、年份、分类和状态筛选参数
     const params = new URLSearchParams();
     if (searchKeyword.value) {
-      params.append('keyword', searchKeyword.value);
+      params.append('keyword', String(searchKeyword.value));
     }
-    if (statusFilter.value) {
-      params.append('status', statusFilter.value);
+    if (yearFilter.value !== undefined) {
+      params.append('year', String(yearFilter.value));
+    }
+    if (categoryFilter.value !== undefined) {
+      params.append('categoryId', String(categoryFilter.value));
+    }
+    if (statusFilter.value !== undefined && statusFilter.value !== '') {
+      params.append('status', String(statusFilter.value));
     }
 
     // 如果有参数，添加到URL
@@ -440,17 +630,83 @@ const fetchActivities = async () => {
     });
 
     if (response.data.status === 200) {
-      activities.value = response.data.data.activities;
-      categories.value = response.data.data.user.settings.categories;
-      userId.value = response.data.data.user.id;
+      // 数据验证
+      if (response.data.data && Array.isArray(response.data.data.activities)) {
+        activities.value = response.data.data.activities;
+        // 验证分类数据
+        if (response.data.data.user?.settings?.categories && Array.isArray(response.data.data.user.settings.categories)) {
+          categories.value = response.data.data.user.settings.categories;
+        } else {
+          console.warn('分类数据格式异常，使用默认值');
+          categories.value = ['活动后台'];
+        }
+
+        // 验证用户ID
+        if (response.data.data.user?.id) {
+          userId.value = response.data.data.user.id;
+        } else {
+          console.warn('用户ID数据异常');
+          userId.value = null;
+        }
+
+        // 如果活动数据为空，给出友好提示
+        if (activities.value.length === 0) {
+          message.info('暂无活动数据，可以添加新活动');
+        } else {
+          console.log(`成功获取 ${activities.value.length} 条活动数据`);
+          // 初始加载时确保数据按时间倒序排列
+          activities.value.sort((a, b) => {
+            const dateA = getActivityDate(a.date)?.getTime() ?? 0;
+            const dateB = getActivityDate(b.date)?.getTime() ?? 0;
+            return dateB - dateA; // 按时间倒序排列
+          });
+        }
+      } else {
+        console.error('API返回数据格式异常:', response.data);
+        message.error('数据格式错误，请联系管理员');
+        activities.value = [];
+        categories.value = [];
+        userId.value = null;
+      }
     } else {
-      message.error(response.data.data.message || "获取活动列表失败");
+      message.error(response.data.data?.message || "获取活动列表失败");
       activities.value = [];
+      categories.value = [];
+      userId.value = null;
     }
   } catch (error) {
     console.error("获取活动列表失败:", error);
-    message.error("获取活动列表失败，请检查网络连接或API域名配置");
+
+    // 网络错误或超时，尝试重试
+    if (retryCount < 2 && (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || !error.response)) {
+      message.warning(`网络连接失败，正在重试(${retryCount + 1}/3)...`);
+      setTimeout(() => fetchActivities(retryCount + 1), 1000 * (retryCount + 1));
+      return;
+    }
+
+    // 提供详细的错误信息
+    let errorMessage = "获取活动列表失败";
+    if (error.response) {
+      // 服务器响应错误
+      if (error.response.status === 401) {
+        errorMessage = "认证失败，请检查Token是否有效";
+      } else if (error.response.status === 404) {
+        errorMessage = "API接口不存在，请检查API域名配置";
+      } else if (error.response.status >= 500) {
+        errorMessage = "服务器错误，请稍后重试";
+      } else {
+        errorMessage = error.response.data?.message || `服务器错误 (${error.response.status})`;
+      }
+    } else if (error.request) {
+      errorMessage = "网络连接失败，请检查网络连接或API域名配置";
+    } else {
+      errorMessage = error.message || "未知错误，请刷新页面重试";
+    }
+
+    message.error(errorMessage);
     activities.value = [];
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -649,7 +905,9 @@ const parseChineseDate = (dateString: string): Date | null => {
     const year = parseInt(match[1], 10);
     const month = parseInt(match[2], 10) - 1; // 月份是0-11
     const day = parseInt(match[3], 10);
-    return new Date(year, month, day);
+    const d = new Date(year, month, day);
+    d.setHours(0,0,0,0);
+    return d;
   }
   return null;
 };
@@ -684,27 +942,65 @@ const deleteActivity = (id: number) => {
   deleteId.value = id;
   showDeleteModal.value = true;
 };
+
+/**
+ * @description 打开新增活动弹窗，重置表单数据
+ */
+const openAddModal = () => {
+  // 重置表单数据
+  activityForm.value = {
+    id: null,
+    name: '',
+    address: '',
+    remark: '',
+    date: null,
+    status: '未完成',
+    categoryId: 0,
+    userId: null
+  };
+  isEditing.value = false;
+  showAddModal.value = true;
+};
+
 /**
  * @description 导出活动数据到CSV文件
  */
 const exportToExcel = () => {
-  if (filteredActivities.value.length === 0) {
+  // 始终导出当前显示的数据（filteredActivities）
+  const exportData = filteredActivities.value;
+
+  if (exportData.length === 0) {
     message.info('没有数据可导出');
     return;
   }
 
+  // 构建筛选条件信息
+  const filterInfo: string[] = [];
+  if (yearFilter.value !== undefined) {
+    filterInfo.push(`年份: ${yearFilter.value}年`);
+  }
+  if (categoryFilter.value !== undefined) {
+    filterInfo.push(`分类: ${categories.value[categoryFilter.value as number] || '未知分类'}`);
+  }
+  if (statusFilter.value) {
+    filterInfo.push(`状态: ${statusFilter.value}`);
+  }
+  if (searchKeyword.value) {
+    filterInfo.push(`搜索: ${searchKeyword.value}`);
+  }
+
   const headers = [
     { key: 'name', label: '活动名称' },
-    { key: 'categoryId', label: '类别' },
+    { key: 'category', label: '分类' },
     { key: 'date', label: '日期' },
     { key: 'address', label: '地址' },
     { key: 'remark', label: '备注' },
     { key: 'status', label: '状态' },
   ];
 
-  const data = filteredActivities.value.map(activity => ({
+  const data = exportData.map(activity => ({
     name: activity.name,
-    categoryId: categories.value[activity.categoryId] || '活动后台',
+    category: categories.value[activity.categoryId] || '活动后台',
     date: activity.date,
     address: activity.address,
     remark: activity.remark,
@@ -716,8 +1012,22 @@ const exportToExcel = () => {
   // 将数据转换为工作表
   const ws = XLSX.utils.json_to_sheet(data, { header: headers.map(h => h.key) });
 
+  // 添加筛选条件信息和总行数
+  let startRow = 1;
+
   // 添加标题行
-  XLSX.utils.sheet_add_aoa(ws, [headers.map(h => h.label)], { origin: 'A1' });
+  XLSX.utils.sheet_add_aoa(ws, [headers.map(h => h.label)], { origin: `A${startRow}` });
+
+  // 设置筛选信息行样式
+  const infoStyle = {
+    font: { bold: true, sz: 10, color: { rgb: '666666' } },
+    alignment: { horizontal: 'left' },
+  };
+  for (let r = 0; r < startRow - 1; r++) {
+    const cellRef = XLSX.utils.encode_cell({ r: r, c: 0 });
+    if (!ws[cellRef]) ws[cellRef] = {};
+    ws[cellRef].s = infoStyle;
+  }
 
   // 设置标题行样式：加粗、字体加大、自动换行
   const headerStyle = {
@@ -725,13 +1035,13 @@ const exportToExcel = () => {
     alignment: { wrapText: true, vertical: 'center', horizontal: 'center' }, // 自动换行，垂直居中，水平居中
   };
   headers.forEach((_, colIndex) => {
-    const cellRef = XLSX.utils.encode_cell({ r: 0, c: colIndex });
+    const cellRef = XLSX.utils.encode_cell({ r: startRow - 1, c: colIndex });
     if (!ws[cellRef]) ws[cellRef] = {};
     ws[cellRef].s = headerStyle;
   });
 
   // 设置所有数据单元格样式：自动换行
-  for (let r = 1; r <= data.length; r++) {
+  for (let r = startRow + 1; r <= startRow + data.length; r++) {
     for (let c = 0; c < headers.length; c++) {
       const cellRef = XLSX.utils.encode_cell({ r: r, c: c });
       if (!ws[cellRef]) ws[cellRef] = {};
@@ -762,7 +1072,7 @@ const exportToExcel = () => {
 const confirmDelete = async () => {
   if (deleteId.value) {
     try {
-      const token = checkToken();
+      const token = await checkToken();
       if (!token) {
         message.error("您尚未设置Cookie或Token，无法删除活动");
         showDeleteModal.value = false;
@@ -798,7 +1108,22 @@ const confirmDelete = async () => {
 onMounted(async () => {
   await checkToken(); // 在组件挂载时执行检查和自动登录
   await fetchActivities();
+
+  // 确保内容渲染完成
+  await nextTick();
+
+  // 添加滚动事件监听
+  window.addEventListener('scroll', handleScroll);
+
+  console.log('活动列表组件已挂载，数据加载完成');
 });
+
+// 监听活动数据变化，确保内容渲染完成
+watch(activities, async (newActivities) => {
+  // 等待DOM更新完成
+  await nextTick();
+  console.log(`活动数据已更新，当前活动数量: ${newActivities.length}`);
+}, { deep: true });
 
 // 监听token变化，重新获取活动列表
 watch(() => useSettingStore().autoLoginCookie, () => {
@@ -828,8 +1153,63 @@ watch(() => useSettingStore().autoLoginCookie, () => {
   flex: 1;
 }
 
+.year-filter {
+  width: 150px;
+}
+
+.category-filter {
+  width: 150px;
+}
+
 .status-filter {
   width: 150px;
+}
+
+.activity-count {
+  margin-left: auto;
+  color: #666;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+/* 筛选状态显示栏样式 */
+.filter-status-bar {
+  margin: 16px 0;
+  padding: 12px 16px;
+  background-color: #f5f5f5;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+/* 修复下拉框被遮挡的问题 */
+:deep(.n-base-select-menu) {
+  z-index: 9999 !important;
+}
+
+:deep(.n-select-menu) {
+  z-index: 9999 !important;
+}
+
+/* 底部间距样式 */
+.bottom-spacing {
+  height: 60px;
+  width: 100%;
+}
+
+/* 回到顶部按钮样式 */
+.back-to-top {
+  position: fixed;
+  right: 30px;
+  bottom: 100px;
+  z-index: 1000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.back-to-top:hover {
+  transform: translateY(-2px);
 }
 
 /* 响应式样式 */
@@ -849,9 +1229,24 @@ watch(() => useSettingStore().autoLoginCookie, () => {
     flex-direction: column;
   }
 
+  .year-filter,
+  .category-filter,
   .status-filter,
   .sort-button {
     width: 100%;
+  }
+
+  /* 移动端回到顶部按钮调整 */
+  .back-to-top {
+    right: 20px;
+    bottom: 80px;
+  }
+
+  .activity-count {
+    width: 100%;
+    text-align: center;
+    margin-top: 10px;
+    margin-left: 0;
   }
 }
 

@@ -1,10 +1,11 @@
 import type { SettingState } from "../setting";
 import { defaultAMLLDbServer } from "@/utils/meta";
+import { SongUnlockServer } from "@/core/player/SongManager";
 
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 2;
+export const CURRENT_SETTING_SCHEMA_VERSION = 4;
 
 /**
  * 迁移函数类型
@@ -18,44 +19,43 @@ export type MigrationFunction = (state: Partial<SettingState>) => Partial<Settin
  * value: 从上一版本迁移到该版本的函数
  */
 export const settingMigrations: Record<number, MigrationFunction> = {
-  /**
-   * 迁移到版本 2
-   */
-  2: () => {
+  3: () => {
     return {
-      schemaVersion: 2,
       // ttml 同步
       enableTTMLLyric: false,
       amllDbServer: defaultAMLLDbServer,
     };
   },
-};
+  4: (state) => {
+    // 确保 songUnlockServer 包含所有音源
+    const defaultServers = [
+      { key: SongUnlockServer.NETEASE, enabled: true },
+      { key: SongUnlockServer.QQ, enabled: true },
+      { key: SongUnlockServer.KUGOU, enabled: true },
+      { key: SongUnlockServer.KUWO, enabled: true },
+      { key: SongUnlockServer.BILIBILI, enabled: true },
+      { key: SongUnlockServer.BODIAN, enabled: true },
+      { key: SongUnlockServer.GEQUBAO, enabled: true },
+    ];
 
-/**
- * 执行迁移
- * @param state 当前状态
- * @param fromVersion 当前版本号（如果不存在则为 0）
- * @param toVersion 目标版本号
- * @returns 迁移后的状态
- */
-export const migrateSettingState = (
-  state: Partial<SettingState>,
-  fromVersion: number,
-  toVersion: number,
-): Partial<SettingState> => {
-  let migratedState = { ...state };
-
-  // 按版本顺序执行迁移
-  for (let version = fromVersion + 1; version <= toVersion; version++) {
-    const migration = settingMigrations[version];
-    if (migration) {
-      // 迁移函数返回需要更新的字段，自动合并到原有状态
-      const updates = migration(migratedState);
-      migratedState = { ...migratedState, ...updates };
-    } else {
-      console.warn(`[Setting Migration] 未找到版本 ${version} 的迁移脚本，跳过`);
+    // 如果当前配置缺少音源，使用完整的默认配置
+    if (!state.songUnlockServer || state.songUnlockServer.length < defaultServers.length) {
+      return {
+        songUnlockServer: defaultServers,
+      };
     }
-  }
 
-  return migratedState;
+    // 如果配置存在但可能缺少某些音源，合并现有配置与默认配置
+    const existingKeys = state.songUnlockServer.map(s => s.key);
+    const missingServers = defaultServers.filter(s => !existingKeys.includes(s.key));
+
+    if (missingServers.length > 0) {
+      return {
+        songUnlockServer: [...state.songUnlockServer, ...missingServers],
+      };
+    }
+
+    return {};
+  },
 };
+

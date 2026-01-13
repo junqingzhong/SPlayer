@@ -1,3 +1,13 @@
+<!--
+ * @Author: ZJQ
+ * @Date: 2025-12-15 16:09:47
+ * @LastEditors: zjq zjq@xkb.com.cn
+ * @LastEditTime: 2025-12-15 17:02:10
+ * @FilePath: \tea\src\components\Modal\Setting\SidebarHideManager.vue
+ * @Description:
+ *
+ * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
+-->
 <template>
   <div class="sidebar-hide-manager">
     <n-scrollbar style="max-height: 400px" trigger="none">
@@ -43,6 +53,7 @@ const sidebarItems = [
   { label: "创建的歌单", key: "hideUserPlaylists" },
   { label: "收藏的歌单", key: "hideLikedPlaylists" },
   { label: "心动模式", key: "hideHeartbeatMode" },
+  { label: "活动列表", key: "hideActivities" },
 ] as const;
 
 const updateSetting = (key: keyof typeof settingStore, val: boolean) => {

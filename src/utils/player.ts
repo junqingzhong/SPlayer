@@ -12,8 +12,8 @@ import { openUserLogin } from "./modal";
 import { personalFm, personalFmToTrash } from "@/api/rec";
 import songManager, { type NextPrefetchSong } from "./songManager";
 import { isElectron, isDev } from "./env";
-import lyricManager from "./lyricManager";
 import audioManager from "./audioManager";
+import lyricManager from "./lyricManager";
 import blob from "./blob";
 import { songUrl, unlockSongUrl } from "@/api/song";
 
@@ -32,7 +32,7 @@ class Player {
   /** 其他数据 */
   private message: MessageReactive | null = null;
   /** 预载下一首歌曲播放地址缓存 */
-  // @ts-ignore - 在多个方法中使用
+  // @ts-expect-error - 在多个方法中使用
   private _nextPrefetch: NextPrefetchSong = null;
   /** Howler播放器实例 */
   private player: any = null;
@@ -242,21 +242,21 @@ class Player {
       // 设置解锁尝试标记
       (songData as any).unlockAttempted = true;
 
-      // 获取用户选择的解锁来源
-      const { unlockSources } = settingStore;
-      const enabledSources: string[] = [];
+      // 获取用户配置的音源解锁服务器列表（按优先级排序）
+      const { songUnlockServer } = settingStore;
 
-      if (unlockSources.kuwo) enabledSources.push('kuwo');
-      if (unlockSources.netease) enabledSources.push('netease');
-      if (unlockSources.kugou) enabledSources.push('kugou');
-      if (unlockSources.qq) enabledSources.push('qq');
-      if (unlockSources.bilibili) enabledSources.push('bilibili');
+      // 过滤出启用的音源并按配置顺序排序
+      const enabledSources: string[] = songUnlockServer
+        .filter(server => server.enabled)
+        .map(server => server.key);
 
       // 如果没有选择任何平台，直接返回null
       if (enabledSources.length === 0) {
         console.log("没有选择任何音频解锁来源");
         return null;
       }
+
+      console.log(`🎵 按优先级搜索音源: ${enabledSources.join(' → ')}`);
 
       // 获取用户设置的音质等级
       const { songLevel } = settingStore;
@@ -319,21 +319,36 @@ class Player {
         }
       }
 
-      // 按优先级排序，选择最佳链接
+      // 按用户配置的音源优先级选择第一个可用的链接
       if (availableUrls.length > 0) {
-        availableUrls.sort((a, b) => b.priority - a.priority);
-        const bestUrl = availableUrls[0];
+        // 按用户配置的顺序选择第一个可用的音源
+        let selectedUrl: { url: string; source: string; quality: string; priority: number; isFlac: boolean; duration?: number } | null = null;
+        for (const source of enabledSources) {
+          const urlData = availableUrls.find(item => item.source === source);
+          if (urlData) {
+            selectedUrl = urlData;
+            break;
+          }
+        }
 
-        (songData as any).cachedUnlockUrl = bestUrl.url;
-        (songData as any).cachedUnlockTime = Date.now();
+        // 如果没找到按顺序的，就按音质优先级选择最佳的
+        if (!selectedUrl) {
+          availableUrls.sort((a, b) => b.priority - a.priority);
+          selectedUrl = availableUrls[0];
+        }
 
-        console.log(`✅ 选择最佳链接: ${bestUrl.source} - ${bestUrl.quality}音质 ${bestUrl.isFlac ? '(FLAC)' : ''} - 优先级: ${bestUrl.priority}`);
+        if (selectedUrl) {
+          (songData as any).cachedUnlockUrl = selectedUrl.url;
+          (songData as any).cachedUnlockTime = Date.now();
 
-        return bestUrl.url;
+          console.log(`✅ 选择链接: ${selectedUrl.source} - ${selectedUrl.quality}音质 ${selectedUrl.isFlac ? '(FLAC)' : ''} - 优先级: ${selectedUrl.priority}`);
+
+          return selectedUrl.url;
+        }
       }
 
       // 所有选中的平台都解锁失败
-      console.log(`❌ 所有选中的平台都解锁失败: ${enabledSources.join(', ')}`);
+      console.log(`❌ 所有选中的平台都解锁失败: ${enabledSources.join(' → ')}`);
       return null;
     } catch (error) {
       console.error("Error in getUnlockSongUrl", error);
@@ -459,7 +474,7 @@ class Player {
 
       // 计算需要预缓存的索引
       const nextIndices: number[] = [];
-      let currentIndex = statusStore.playIndex;
+      const currentIndex = statusStore.playIndex;
 
       // 预缓存下一首歌曲
       const nextIndex = (currentIndex + 1) % playListLength;
@@ -1568,7 +1583,6 @@ class Player {
    * 获取音频DOM元素
    */
   private getAudioDom(): HTMLAudioElement | null {
-    // @ts-ignore - 访问audioManager的内部audioElement属性
     return audioManager.audioElement || null;
   }
 

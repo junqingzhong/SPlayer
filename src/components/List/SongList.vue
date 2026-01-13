@@ -114,42 +114,48 @@ import { useMusicStore, useStatusStore } from "@/stores";
 import { entries, isEmpty } from "lodash-es";
 import { sortOptions } from "@/utils/meta";
 import { renderIcon } from "@/utils/helper";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import SongListMenu from "@/components/Menu/SongListMenu.vue";
 
 const props = withDefaults(
   defineProps<{
-    // 列表数据
+    /** 列表数据 */
     data: SongType[];
-    // 列表类型
+    /** 列表类型 */
     type?: "song" | "radio";
-    // 列表高度
-    height?: number | "auto"; // px
-    // 是否加载
+    /** 列表高度 */
+    height?: number | "auto";
+    /** 是否加载 */
     loading?: boolean;
-    // 加载更多
+    /** 加载更多 */
     loadMore?: boolean;
+    /** 加载文本 */
     loadingText?: string;
-    // 隐藏元素
+    /** 隐藏专辑 */
     hiddenAlbum?: boolean;
+    /** 隐藏封面 */
     hiddenCover?: boolean;
+    /** 隐藏大小 */
     hiddenSize?: boolean;
-    // 隐藏滚动条
+    /** 隐藏滚动条 */
     hiddenScrollbar?: boolean;
-    // 禁用排序
+    /** 禁用排序 */
     disabledSort?: boolean;
-    // 播放歌单 ID
+    /** 播放歌单 ID */
     playListId?: number;
-    // 是否为每日推荐
+    /** 是否为每日推荐 */
     isDailyRecommend?: boolean;
-    // 双击播放操作
+    /** 双击播放操作 */
     doubleClickAction?: "all" | "add";
+    /** 列表版本 */
+    listVersion?: string | number;
   }>(),
   {
     type: "song",
     loadingText: "努力加载中...",
     playListId: 0,
     isDailyRecommend: false,
+    listVersion: 0,
   },
 );
 
@@ -162,9 +168,9 @@ const emit = defineEmits<{
   removeSong: [id: number[]];
 }>();
 
-const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+const player = usePlayerController();
 
 // 列表状态
 const scrollTop = ref<number>(0);
@@ -247,9 +253,13 @@ const listKey = computed(() => {
   }
   // 使用 playListId 作为主要 key
   if (props.playListId) {
-    return `playlist-${props.playListId}`;
+    return `playlist-${props.playListId}-${statusStore.listSort}`;
   }
-  return `type-${props.type}`;
+  // 对于本地音乐和没有特定ID的列表，使用数据的哈希值确保唯一性
+  // 这样当数据内容变化时，key会改变，触发虚拟列表重新渲染
+  // const dataHash = props.data?.map((song) => song.id).join("-") || "";
+  // return `type-${props.type}-${dataHash}`;
+  return `list-${props.listVersion}-${props.type}-${statusStore.listSort}`;
 });
 
 // 列表是否具有播放歌曲
@@ -299,7 +309,6 @@ const sortSelect = (key: SortType) => {
     player.updatePlayList(listData.value, musicStore.playSong, props.playListId, {
       showTip: false,
       play: false,
-      scrobble: false,
     });
   }
   // 滚动到当前播放歌曲或顶部

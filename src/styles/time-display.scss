@@ -1,0 +1,102 @@
+/**
+ * 统一时间显示样式
+ * 用于所有时间显示组件的一致性样式
+ */
+
+// 时间显示基础样式
+.time-display {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-variant-numeric: tabular-nums; // 等宽数字，防止时间跳动
+  letter-spacing: 0.5px;
+
+  // 主要时间显示（如播放器进度条）
+  &--primary {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--n-text-color);
+    opacity: 0.8;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  // 次要时间显示（如歌曲列表）
+  &--secondary {
+    font-size: 13px;
+    color: var(--n-text-color-disabled);
+    font-weight: 400;
+  }
+
+  // 迷你时间显示（如工具提示）
+  &--mini {
+    font-size: 11px;
+    color: var(--n-text-color-disabled);
+    font-weight: 400;
+  }
+}
+
+// 播放器时间显示样式
+.player-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  // 当前时间
+  &__current {
+    @extend .time-display--primary;
+  }
+
+  // 总时间
+  &__total {
+    @extend .time-display--primary;
+  }
+
+  // 分隔符
+  &__separator {
+    @extend .time-display--primary;
+    opacity: 0.5;
+    margin: 0 2px;
+  }
+}
+
+// 歌曲卡片时间显示
+.song-duration {
+  @extend .time-display--secondary;
+  text-align: center;
+  width: 50px;
+
+  // 悬停效果
+  &:hover {
+    color: var(--n-text-color);
+  }
+}
+
+// 自动关闭时间显示
+.auto-close-time {
+  @extend .time-display--primary;
+  font-weight: 600;
+  color: var(--n-primary-color);
+}
+
+// 响应式设计
+@media (max-width: 768px) {
+  .time-display {
+    &--primary {
+      font-size: 11px;
+    }
+
+    &--secondary {
+      font-size: 12px;
+    }
+
+    &--mini {
+      font-size: 10px;
+    }
+  }
+
+  .song-duration {
+    width: 45px;
+    font-size: 12px;
+  }
+}

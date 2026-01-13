@@ -39,16 +39,16 @@
 <script setup lang="ts">
 import { useStatusStore, useDataStore, useSettingStore } from "@/stores";
 import { searchDefault } from "@/api/search";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { songDetail } from "@/api/song";
 import { formatSongsList } from "@/utils/format";
 import SearchInpMenu from "@/components/Menu/SearchInpMenu.vue";
 
 const router = useRouter();
-const player = usePlayer();
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 // 右键菜单
 const searchInpMenuRef = ref<InstanceType<typeof SearchInpMenu> | null>(null);

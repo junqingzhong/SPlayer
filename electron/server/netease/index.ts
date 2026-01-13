@@ -25,7 +25,9 @@ const getHandler = (name: string, neteaseApi: (params: any) => any) => {
       if ([400, 301].includes(error.status)) {
         return reply.status(error.status).send(error.body);
       }
-      return reply.status(500);
+      return reply
+        .status(500)
+        .send(error.body || { error: error.message || "Internal Server Error" });
     }
   };
 };

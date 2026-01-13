@@ -72,7 +72,7 @@ const pointOpacity = (index: number) => {
     height: 28px;
     margin-right: 12px;
     border-radius: 50%;
-    background-color: rgb(var(--main-color));
+    background-color: rgb(var(--main-cover-color));
     transition: opacity 0.5s;
     @media (max-width: 900px) {
       width: 24px;

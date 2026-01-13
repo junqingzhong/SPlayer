@@ -31,6 +31,7 @@
         :key="chooseAlbum"
         :data="chooseAlbum ? albumData[chooseAlbum] : []"
         :loading="true"
+        @removeSong="handleRemoveSong"
         hidden-cover
       />
     </Transition>
@@ -39,10 +40,14 @@
 
 <script setup lang="ts">
 import type { SongType } from "@/types/main";
+import { useLocalStore } from "@/stores";
 import { some } from "lodash-es";
-import blob from "@/utils/blob";
+import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 
 const props = defineProps<{ data: SongType[] }>();
+
+const localStore = useLocalStore();
+const blobURLManager = useBlobURLManager();
 
 // 专辑数据
 const chooseAlbum = ref<string>("");
@@ -82,8 +87,15 @@ const loadAlbumCover = async (show: boolean, key: string) => {
   const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", path);
   if (!coverData) return;
   const { data, format } = coverData;
-  const blobURL = blob.createBlobURL(data, format, path);
+  const blobURL = blobURLManager.createBlobURL(data, format, path);
   if (blobURL) albumData.value[key][0].cover = blobURL;
+};
+
+// 处理删除歌曲
+const handleRemoveSong = (ids: number[]) => {
+  // 从本地歌曲列表中删除指定ID的歌曲
+  const updatedSongs = localStore.localSongs.filter((song) => !ids.includes(song.id));
+  localStore.updateLocalSong(updatedSongs);
 };
 
 watch(

@@ -263,7 +263,7 @@ const likeComment = debounce(async (data: CommentType) => {
   &.transparent {
     .comments {
       border-color: transparent;
-      background-color: rgba(var(--main-color), 0.08);
+      background-color: rgba(var(--main-cover-color), 0.08);
       .content {
         font-size: 16px;
       }

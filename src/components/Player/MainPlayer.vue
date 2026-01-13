@@ -70,8 +70,11 @@
     <!-- 控制 -->
     <div class="play-control">
       <!-- 不喜欢 -->
-      <div v-if="statusStore.personalFmMode" class="play-icon"
-        v-debounce="() => player.personalFMTrash(musicStore.personalFMSong?.id)">
+      <div
+        v-if="statusStore.personalFmMode"
+        class="play-icon"
+        v-debounce="() => songManager.personalFMTrash(musicStore.personalFMSong?.id)"
+      >
         <SvgIcon class="icon" :size="18" name="ThumbDown" />
       </div>
       <!-- 上一曲 -->
@@ -107,8 +110,8 @@
       <n-flex :key="statusStore.personalFmMode ? 'fm' : 'normal'" :size="[8, 0]" class="play-menu" justify="end">
         <!-- 播放时间 -->
         <div class="time">
-          <n-text depth="2">{{ secondsToTime(statusStore.currentTime) }}</n-text>
-          <n-text depth="2">{{ secondsToTime(statusStore.duration) }}</n-text>
+          <n-text class="time-display time-display--primary" depth="2">{{ formatTime(statusStore.currentTime / 1000, settingStore.timeDisplayFormat) }}</n-text>
+          <n-text class="time-display time-display--primary" depth="2">{{ formatTime(statusStore.duration / 1000, settingStore.timeDisplayFormat) }}</n-text>
         </div>
         <!-- 桌面歌词 -->
         <div v-if="isElectron" class="menu-icon" @click.stop="player.toggleDesktopLyric">
@@ -151,6 +154,7 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import { useMusicStore, useStatusStore, useDataStore, useSettingStore } from "@/stores";
+import { formatTime } from "@/utils/timeFormat";
 import { renderIcon, coverLoaded, copyData } from "@/utils/helper";
 import { toLikeSong } from "@/utils/auth";
 import {
@@ -158,14 +162,17 @@ import {
   openJumpArtist,
   openPlaylistAdd,
 } from "@/utils/modal";
-import { usePlayer } from "@/utils/player";
+import { useSongManager } from "@/core/player/SongManager";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 const router = useRouter();
-const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+
+const player = usePlayerController();
+const songManager = useSongManager();
 
 // 歌曲更多操作
 const songMoreOptions = computed<DropdownOption[]>(() => {
@@ -296,12 +303,10 @@ const sliderDragend = () => {
   player.play();
 };
 
-// 秒转时间
-const secondsToTime = (seconds: number) => {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.floor(seconds % 60);
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-};
+// 秒转时间 - 已废弃，使用formatTime替代
+// const secondsToTime = (seconds: number) => {
+//   return formatTime(seconds, settingStore.timeDisplayFormat);
+// };
 
 // 是否 Electron 环境
 const isElectron = window.electron !== undefined;
@@ -315,6 +320,7 @@ const playModeOptions = [
 </script>
 
 <style lang="scss" scoped>
+
 .main-player {
   position: fixed;
   left: 0;
@@ -343,14 +349,6 @@ const playModeOptions = [
     margin: 0;
     --n-rail-height: 3px;
     --n-handle-size: 14px;
-    // :deep(.n-slider-rail) {
-    //   .n-slider-rail__fill {
-    //     transition: width 0.3s;
-    //   }
-    //   .n-slider-handle-wrapper {
-    //     transition: left 0.3s;
-    //   }
-    // }
   }
   .play-data {
     display: flex;

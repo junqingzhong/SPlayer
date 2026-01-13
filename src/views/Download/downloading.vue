@@ -76,7 +76,7 @@
                 type="primary"
                 secondary
                 strong
-                @click="DownloadManager.retryDownload(item.song.id)"
+                @click="downloadManager.retryDownload(item.song.id)"
               >
                 <template #icon>
                   <SvgIcon name="Refresh" />
@@ -86,7 +86,7 @@
                 type="error"
                 secondary
                 strong
-                @click="DownloadManager.removeDownload(item.song.id)"
+                @click="downloadManager.removeDownload(item.song.id)"
               >
                 <template #icon>
                   <SvgIcon name="Close" />
@@ -103,10 +103,10 @@
 
 <script setup lang="ts">
 import { useDataStore } from "@/stores";
-import DownloadManager from "@/utils/downloadManager";
+import { useDownloadManager } from "@/core/resource/DownloadManager";
 
 const dataStore = useDataStore();
-
+const downloadManager = useDownloadManager();
 const sortedDownloadingSongs = computed(() => {
   return [...dataStore.downloadingSongs].sort((a, b) => {
     // 优先级: 下载中 (1) > 等待中 (2) > 失败 (3)

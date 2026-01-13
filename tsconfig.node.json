@@ -12,6 +12,10 @@
     "electron/preload/index.ts",
     "src/assets/data/*"
   ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts"
+  ],
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"],

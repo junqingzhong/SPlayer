@@ -1,3 +1,13 @@
+<!--
+ * @Author: ZJQ
+ * @Date: 2025-12-15 16:09:47
+ * @LastEditors: zjq zjq@xkb.com.cn
+ * @LastEditTime: 2025-12-15 18:36:55
+ * @FilePath: \tea\src\components\Modal\Setting\SongUnlockManager.vue
+ * @Description:
+ *
+ * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
+-->
 <template>
   <div class="song-unlock-manager">
     <n-alert title="免责声明" type="info">
@@ -16,7 +26,7 @@
         class="sortable-item"
       >
         <SvgIcon :depth="3" name="Menu" />
-        <n-text class="name">{{ item.key }}</n-text>
+        <n-text class="name">{{ getServerDisplayName(item.key) }}</n-text>
         <n-switch v-model:value="item.enabled" :round="false" />
       </n-card>
     </div>
@@ -25,13 +35,26 @@
 
 <script setup lang="ts">
 import { useSettingStore } from "@/stores";
-// 直接导入sortablejs来解决模块解析问题
-import Sortable from "sortablejs";
 import { useSortable } from "@vueuse/integrations/useSortable";
+import { SongUnlockServer } from "@/core/player/SongManager";
 
 const settingStore = useSettingStore();
 
 const sortableRef = ref<HTMLElement | null>(null);
+
+// 获取服务器显示名称
+const getServerDisplayName = (key: SongUnlockServer): string => {
+  const nameMap: Record<SongUnlockServer, string> = {
+    [SongUnlockServer.NETEASE]: "网易云音乐",
+    [SongUnlockServer.BODIAN]: "波点音乐",
+    [SongUnlockServer.GEQUBAO]: "歌曲宝",
+    [SongUnlockServer.QQ]: "QQ音乐",
+    [SongUnlockServer.KUGOU]: "酷狗音乐",
+    [SongUnlockServer.KUWO]: "酷我音乐",
+    [SongUnlockServer.BILIBILI]: "哔哩哔哩",
+  };
+  return nameMap[key] || key;
+};
 
 // 拖拽
 useSortable(sortableRef, settingStore.songUnlockServer, {

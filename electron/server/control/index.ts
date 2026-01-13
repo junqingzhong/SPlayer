@@ -78,9 +78,7 @@ export const initControlAPI = async (fastify: FastifyInstance) => {
             });
           }
 
-          // 这里可以根据当前播放状态来决定发送 play 还是 pause
-          // 暂时先发送 toggle 事件，如果渲染进程支持的话
-          mainWin.webContents.send("toggle");
+          mainWin.webContents.send("playOrPause");
 
           return reply.send({
             code: 200,

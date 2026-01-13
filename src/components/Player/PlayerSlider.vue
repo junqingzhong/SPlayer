@@ -8,7 +8,7 @@
     :format-tooltip="formatTooltip"
     :tooltip="showTooltip"
     :show-tooltip="showSliderTooltip"
-    class="player-slider"
+    :class="['player-slider', { drag: isDragging }]"
     @mouseenter="showSliderTooltip = true"
     @mouseleave="showSliderTooltip = false"
     @dragstart="startDrag"
@@ -18,13 +18,15 @@
 
 <script setup lang="ts">
 import { useStatusStore } from "@/stores";
-import { msToTime } from "@/utils/time";
-import { usePlayer } from "@/utils/player";
+import { useSettingStore } from "@/stores/setting";
+import { formatTime, millisecondsToSeconds } from "@/utils/timeFormat";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 withDefaults(defineProps<{ showTooltip?: boolean }>(), { showTooltip: true });
 
-const player = usePlayer();
+const player = usePlayerController();
 const statusStore = useStatusStore();
+const settingStore = useSettingStore();
 
 // 拖动时的临时值
 const dragValue = ref(0);
@@ -67,12 +69,25 @@ const endDrag = () => {
 
 // 格式化提示
 const formatTooltip = (value: number) => {
-  return `${msToTime(value)} / ${msToTime(statusStore.duration)}`;
+  const currentTime = formatTime(millisecondsToSeconds(value), settingStore.timeDisplayFormat);
+  const totalTime = formatTime(millisecondsToSeconds(statusStore.duration), settingStore.timeDisplayFormat);
+  return `${currentTime} / ${totalTime}`;
 };
 </script>
 
 <style scoped lang="scss">
 .player-slider {
   width: 100%;
+  &:not(.drag) {
+    :deep(.n-slider-rail) {
+      .n-slider-rail__fill {
+        transition: width 0.3s;
+      }
+      .n-slider-handle-wrapper {
+        will-change: left;
+        transition: left 0.3s;
+      }
+    }
+  }
 }
 </style>

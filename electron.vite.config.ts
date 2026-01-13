@@ -28,7 +28,6 @@ export default defineConfig(({ command, mode }) => {
         rollupOptions: {
           input: {
             index: resolve(__dirname, "electron/main/index.ts"),
-            lyric: resolve(__dirname, "web/lyric.html"),
           },
         },
       },

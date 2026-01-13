@@ -11,8 +11,11 @@ import { handleSongQuality } from "./helper";
 export enum SongUnlockServer {
   NETEASE = "netease",
   BODIAN = "bodian",
-  // KUWO = "kuwo",
   GEQUBAO = "gequbao",
+  QQ = "qq",
+  KUGOU = "kugou",
+  KUWO = "kuwo",
+  BILIBILI = "bilibili",
 }
 
 export type NextPrefetchSong = {

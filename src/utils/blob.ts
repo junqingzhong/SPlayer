@@ -1,64 +1,83 @@
-class BlobURLManager {
-  private blobURLs: Map<string, string>;
+/**
+ * Blob URL 管理器
+ * 提供Blob URL的创建和销毁功能
+ */
 
-  constructor() {
-    this.blobURLs = new Map();
-  }
-
+class BlobManager {
+  private blobUrls: Map<string, string> = new Map();
+  
   /**
-   * 从给定的 Buffer 数据生成 Blob URL
-   * @param data - 要转换为 Blob 的二进制数据
-   * @param format - 数据的 MIME 类型（'image/jpeg'）
-   * @param key - 用于标识 Blob URL 的唯一键（文件路径）
+   * 创建Blob URL
+   * @param data 数据
+   * @param format 格式
+   * @param path 路径
    * @returns Blob URL
    */
-  createBlobURL(data: Buffer, format: string, key: string): string {
+  createBlobURL(data: ArrayBuffer | Blob, format: string, path: string): string | null {
     try {
-      if (this.blobURLs.has(key)) {
-        // console.log("🌱 Blob URL already exists:", key);
-        return this.blobURLs.get(key)!;
+      let blob: Blob;
+      
+      if (data instanceof ArrayBuffer) {
+        blob = new Blob([data], { type: format });
+      } else {
+        blob = data;
       }
-      const blob = new Blob([new Uint8Array(data)], { type: format });
-      const blobURL = URL.createObjectURL(blob);
-      // 存储 Blob URL
-      this.blobURLs.set(key, blobURL);
-      return blobURL;
+      
+      const blobUrl = URL.createObjectURL(blob);
+      this.blobUrls.set(path, blobUrl);
+      
+      console.log('Created blob URL:', path, blobUrl);
+      return blobUrl;
     } catch (error) {
-      console.error("❌ Error creating Blob URL:", error);
-      throw error;
+      console.error('Failed to create blob URL:', error);
+      return null;
     }
   }
-
+  
   /**
-   * 清理 Blob URL
-   * @param key - 要清理的 Blob URL 对应的键
+   * 销毁Blob URL
+   * @param path 路径
    */
-  revokeBlobURL(key: string): void {
-    try {
-      const blobURL = this.blobURLs.get(key);
-      if (blobURL) {
-        URL.revokeObjectURL(blobURL);
-        this.blobURLs.delete(key);
-      }
-    } catch (error) {
-      console.error("❌ Error revoking Blob URL:", error);
+  revokeBlobURL(path: string): void {
+    const blobUrl = this.blobUrls.get(path);
+    if (blobUrl) {
+      URL.revokeObjectURL(blobUrl);
+      this.blobUrls.delete(path);
+      console.log('Revoked blob URL:', path, blobUrl);
     }
   }
-
+  
   /**
-   * 清理所有 Blob URL
+   * 销毁所有Blob URL
    */
   revokeAllBlobURLs(): void {
-    try {
-      this.blobURLs.forEach((blobURL) => {
-        URL.revokeObjectURL(blobURL);
-      });
-      // 清空存储
-      this.blobURLs.clear();
-    } catch (error) {
-      console.error("❌ Error revoking all Blob URLs:", error);
+    for (const [path, blobUrl] of this.blobUrls) {
+      URL.revokeObjectURL(blobUrl);
+      console.log('Revoked blob URL:', path, blobUrl);
     }
+    this.blobUrls.clear();
+  }
+  
+  /**
+   * 获取Blob URL
+   * @param path 路径
+   * @returns Blob URL
+   */
+  getBlobURL(path: string): string | undefined {
+    return this.blobUrls.get(path);
+  }
+  
+  /**
+   * 检查是否有Blob URL
+   * @param path 路径
+   * @returns 是否有Blob URL
+   */
+  hasBlobURL(path: string): boolean {
+    return this.blobUrls.has(path);
   }
 }
 
-export default new BlobURLManager();
+// 创建单例实例
+const blob = new BlobManager();
+
+export default blob;

@@ -7,6 +7,10 @@
       '--lrc-bold': settingStore.lyricFontBold ? 'bold' : 'normal',
       '--ja-font-family':
         settingStore.japaneseLyricFont !== 'follow' ? settingStore.japaneseLyricFont : '',
+      '--en-font-family':
+        settingStore.englishLyricFont !== 'follow' ? settingStore.englishLyricFont : '',
+      '--ko-font-family':
+        settingStore.koreanLyricFont !== 'follow' ? settingStore.koreanLyricFont : '',
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
       cursor: statusStore.playerMetaShow ? 'auto' : 'none',
     }"
@@ -173,15 +177,15 @@
 import { LyricWord } from "@applemusic-like-lyrics/lyric";
 import { NScrollbar } from "naive-ui";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { getLyricLanguage } from "@/utils/format";
 import { isElectron } from "@/utils/env";
 import LyricMenu from "./LyricMenu.vue";
 
-const player = usePlayer();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 const lrcMouseStatus = ref<boolean>(false);
 const lyricScroll = ref<InstanceType<typeof NScrollbar> | null>(null);
@@ -447,6 +451,12 @@ onBeforeUnmount(() => {
       &:lang(ja) {
         font-family: var(--ja-font-family);
       }
+      &:lang(en) {
+        font-family: var(--en-font-family);
+      }
+      &:lang(ko) {
+        font-family: var(--ko-font-family);
+      }
     }
     .tran {
       margin-top: 8px;
@@ -537,7 +547,7 @@ onBeforeUnmount(() => {
       width: 100%;
       height: 100%;
       border-radius: 8px;
-      background-color: rgba(var(--main-color), 0.14);
+      background-color: rgba(var(--main-cover-color), 0.14);
       opacity: 0;
       z-index: 0;
       transform: scale(1.05);

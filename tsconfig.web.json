@@ -8,6 +8,10 @@
     "electron/preload/index.d.ts",
     "dist/lastfm.ts"
   ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts"
+  ],
   "compilerOptions": {
     "composite": true,
     "esModuleInterop": true,

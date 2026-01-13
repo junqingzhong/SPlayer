@@ -35,14 +35,14 @@ import { openCreatePlaylist } from "@/utils/modal";
 import { debounce } from "lodash-es";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 
 const router = useRouter();
-const player = usePlayer();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 // 菜单数据
 const menuRef = ref<MenuInst | null>(null);
@@ -77,6 +77,7 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           key: "activities",
           link: "activities",
           label: "活动列表",
+          show: !settingStore.hideActivities,
           icon: renderIcon("Calendar", {
             style: {
               transform: "translateY(-1px)",
@@ -271,8 +272,7 @@ const menuUpdate = (key: string, item: MenuOption) => {
       // 更改播放模式
       statusStore.personalFmMode = true;
       statusStore.playHeartbeatMode = false;
-      player.resetStatus();
-      player.initPlayer();
+      player.playSong();
     }
     statusStore.showFullPlayer = true;
     window.$message.info("已开启私人漫游", { icon: renderIcon("Radio") });

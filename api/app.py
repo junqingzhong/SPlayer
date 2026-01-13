@@ -486,14 +486,14 @@ async def update_user(user_id: int ,User_update: UserBase,current_user: dict = D
 
     # 检查传入的 cookie 是否已存在于其他用户
     if User_update.cookie:
-        cursor.execute("SELECT id FROM users WHERE cookie = ?", (User_update.cookie,))
+        cursor.execute("SELECT id FROM users WHERE cookie = ? And id !=?", (User_update.cookie,user_id))
         if cursor.fetchone() is not None:
             conn.close()
             return make_response(400, {"message": "Cookie 已被其他用户使用"})
 
     # 检查传入的 name 是否已存在于其他用户
     if User_update.username:
-        cursor.execute("SELECT id FROM users WHERE username = ?", (User_update.username,))
+        cursor.execute("SELECT id FROM users WHERE username = ? And id !=?", (User_update.username,user_id))
         if cursor.fetchone() is not None:
             conn.close()
             return make_response(400, {"message": "用户名已存在"})

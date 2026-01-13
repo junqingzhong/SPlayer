@@ -3,8 +3,8 @@ import { isDev, isElectron } from "./env";
 import { useSettingStore } from "@/stores";
 import { getCookie } from "./cookie";
 import { isLogin } from "./auth";
+import axiosRetry from "axios-retry";
 import config from "@/config";
-// import axiosRetry from "axios-retry";
 
 // 全局地址
 const baseURL: string = String(isDev ? config.neteaseApiUrl : config.apiBaseUrl);
@@ -19,10 +19,10 @@ const server: AxiosInstance = axios.create({
 });
 
 // 请求重试
-// axiosRetry(server, {
-//   // 重试次数
-//   retries: 3,
-// });
+axiosRetry(server, {
+  // 重试次数
+  retries: 3,
+});
 
 // 请求拦截器
 server.interceptors.request.use(

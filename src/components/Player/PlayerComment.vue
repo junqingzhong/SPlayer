@@ -188,14 +188,14 @@ onMounted(() => {
   :deep(.n-text),
   :deep(.n-icon),
   :deep(.n-button) {
-    color: rgb(var(--main-color)) !important;
+    color: rgb(var(--main-cover-color)) !important;
   }
   .song-data {
     height: 90px;
     margin: 0 60px 12px;
     padding: 0 16px;
     border-radius: 12px;
-    background-color: rgba(var(--main-color), 0.08);
+    background-color: rgba(var(--main-cover-color), 0.08);
     .cover-img {
       width: 60px;
       height: 60px;
@@ -213,12 +213,12 @@ onMounted(() => {
       width: 40px;
       height: 40px;
       margin-left: auto;
-      background-color: rgba(var(--main-color), 0.08);
+      background-color: rgba(var(--main-cover-color), 0.08);
       border-radius: 8px;
       transition: background-color 0.3s;
       cursor: pointer;
       &:hover {
-        background-color: rgba(var(--main-color), 0.29);
+        background-color: rgba(var(--main-cover-color), 0.29);
       }
     }
   }
@@ -238,7 +238,7 @@ onMounted(() => {
       padding: 0 60px;
     }
     .n-skeleton {
-      background-color: rgba(var(--main-color), 0.08);
+      background-color: rgba(var(--main-cover-color), 0.08);
     }
   }
   .comment-list {

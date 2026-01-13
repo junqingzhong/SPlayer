@@ -1,13 +1,10 @@
 <template>
-  <div
-    :class="['background', settingStore.playerBackgroundType]"
-    :style="{ '--main-color': statusStore.mainColor }"
-  >
+  <div :class="['background', settingStore.playerBackgroundType]">
     <Transition name="fade" mode="out-in">
       <!-- 背景色 -->
       <div
         v-if="settingStore.playerBackgroundType === 'color'"
-        :key="statusStore.mainColor"
+        :key="musicStore.songCover"
         class="color"
       />
       <!-- 背景模糊 -->
@@ -31,11 +28,10 @@
 </template>
 
 <script setup lang="ts">
-import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { useMusicStore, useSettingStore } from "@/stores";
 import BackgroundRender from "../Special/BackgroundRender.vue";
 
 const musicStore = useMusicStore();
-const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 </script>
 
@@ -70,11 +66,11 @@ const settingStore = useSettingStore();
     }
   }
   &.color {
-    background-color: rgb(var(--main-color));
+    background-color: rgb(var(--main-cover-color));
     .color {
       width: 100%;
       height: 100%;
-      background-color: rgb(var(--main-color));
+      background-color: rgb(var(--main-cover-color));
     }
   }
   &.animation {

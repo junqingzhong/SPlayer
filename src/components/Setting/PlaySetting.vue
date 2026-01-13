@@ -80,32 +80,7 @@
         </div>
         <n-switch v-model:value="settingStore.useSongUnlock" class="set" :round="false" />
       </n-card>
-      <n-collapse-transition :show="settingStore.useSongUnlock && isElectron">
-        <n-card class="set-item">
-          <div class="label">
-            <n-text class="name">启用特定来源解锁</n-text>
-            <n-text class="tip" :depth="3">控制是否启用特定来源解锁音频功能，不勾选时跳过解锁流程</n-text>
-          </div>
-          <n-switch v-model:value="settingStore.useSpecificSourceUnlock" class="set" :round="false" />
-        </n-card>
-        <n-collapse-transition :show="settingStore.useSpecificSourceUnlock && settingStore.useSongUnlock">
-          <n-card class="set-item">
-            <div class="label">
-              <n-text class="name">音频解锁来源</n-text>
-              <n-text class="tip" :depth="3">选择用于音频解锁的平台来源</n-text>
-            </div>
-            <n-checkbox-group v-model:value="unlockSources" class="unlock-sources">
-              <n-space vertical>
-                <n-checkbox value="netease">网易云音乐</n-checkbox>
-                <n-checkbox value="bilibili">哔哩哔哩</n-checkbox>
-                <n-checkbox value="kuwo">酷我音乐</n-checkbox>
-                <n-checkbox value="kugou">酷狗音乐</n-checkbox>
-                <n-checkbox value="qq">QQ音乐</n-checkbox>
-              </n-space>
-            </n-checkbox-group>
-          </n-card>
-        </n-collapse-transition>
-      </n-collapse-transition>
+
       <n-card v-if="isElectron" class="set-item">
         <div class="label">
           <n-text class="name">音频输出设备</n-text>
@@ -245,6 +220,13 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">播放器元素自动隐藏</n-text>
+          <n-text class="tip" :depth="3">鼠标静止一段时间或者离开播放器时自动隐藏控制元素</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.autoHidePlayerMeta" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">展示播放状态信息</n-text>
           <n-text class="tip" :depth="3">展示当前歌曲及歌词的状态信息</n-text>
         </div>
@@ -303,31 +285,11 @@ import { isLogin } from "@/utils/auth";
 import { renderOption } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
 import { uniqBy } from "lodash";
-import { usePlayer } from "@/utils/player";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { openSongUnlockManager } from "@/utils/modal";
 
-const player = usePlayer();
+const player = usePlayerController();
 const settingStore = useSettingStore();
-
-// 音频解锁来源平台
-const unlockSources = computed({
-  get: () => {
-    const sources: string[] = [];
-    if (settingStore.unlockSources.netease) sources.push('netease');
-    if (settingStore.unlockSources.bilibili) sources.push('bilibili');
-    if (settingStore.unlockSources.kuwo) sources.push('kuwo');
-    if (settingStore.unlockSources.kugou) sources.push('kugou');
-    if (settingStore.unlockSources.qq) sources.push('qq');
-    return sources;
-  },
-  set: (values: string[]) => {
-    settingStore.unlockSources.netease = values.includes('netease');
-    settingStore.unlockSources.bilibili = values.includes('bilibili');
-    settingStore.unlockSources.kuwo = values.includes('kuwo');
-    settingStore.unlockSources.kugou = values.includes('kugou');
-    settingStore.unlockSources.qq = values.includes('qq');
-  }
-});
 
 // 输出设备数据
 const outputDevices = ref<SelectOption[]>([]);
@@ -406,59 +368,14 @@ const getOutputDevices = async () => {
 
 // 切换输出设备
 const playDeviceChange = (deviceId: string, option: SelectOption) => {
-  // if (settingStore.showSpectrums) {
-  //   window.$dialog.warning({
-  //     title: "音频通道占用",
-  //     content:
-  //       "由于系统限制，切换音频输出设备会导致音乐频谱失效，将会关闭音乐频谱，并将于热重载后生效（ 请点击右上角的设置菜单中的热重载按钮 ），是否继续？",
-  //     positiveText: "继续",
-  //     negativeText: "取消",
-  //     closeOnEsc: false,
-  //     closable: false,
-  //     maskClosable: false,
-  //     autoFocus: false,
-  //     onPositiveClick: () => {
-  //       showSpectrums.value = false;
-  //       settingStore.showSpectrums = false;
-  //       player.toggleOutputDevice(deviceId);
-  //       window.$message.success(`已切换输出设备为 ${option.label}`);
-  //     },
-  //     onNegativeClick: () => {
-  //       settingStore.playDevice = "default";
-  //     },
-  //   });
-  // } else {
-  //   player.toggleOutputDevice(deviceId);
-  //   window.$message.success(`已切换输出设备为 ${option.label}`);
-  // }
   player.toggleOutputDevice(deviceId);
   window.$message.success(`已切换输出设备为 ${option.label}`);
 };
 
 // 显示音乐频谱更改
 const showSpectrumsChange = (value: boolean) => {
-  if (value) {
-    // if (settingStore.playDevice !== "default") {
-    //   window.$dialog.warning({
-    //     title: "音频通道占用",
-    //     content: "开启音乐频谱会导致自定义音频输出设备失效，将会恢复默认输出设备，是否继续开启？",
-    //     positiveText: "开启",
-    //     negativeText: "取消",
-    //     onPositiveClick: () => {
-    //       showSpectrums.value = true;
-    //       settingStore.showSpectrums = true;
-    //       settingStore.playDevice = "default";
-    //       player.toggleOutputDevice("default");
-    //     },
-    //   });
-    //   return;
-    // }
-    showSpectrums.value = true;
-    settingStore.showSpectrums = true;
-  } else {
-    showSpectrums.value = false;
-    settingStore.showSpectrums = false;
-  }
+  showSpectrums.value = value;
+  settingStore.showSpectrums = value;
 };
 
 onMounted(() => {
