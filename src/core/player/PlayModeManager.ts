@@ -51,7 +51,7 @@ export class PlayModeManager {
       statusStore.toggleRepeat();
     }
 
-    this.syncSmtcPlayMode();
+    this.syncMediaPlayMode();
 
     // const modeText: Record<RepeatModeType, string> = {
     //   list: "列表循环",
@@ -200,7 +200,7 @@ export class PlayModeManager {
 
     const previousMode = statusStore.shuffleMode;
     statusStore.shuffleMode = nextMode;
-    this.syncSmtcPlayMode();
+    this.syncMediaPlayMode();
 
     // 将耗时的数据处理扔到 UI 图标更新后再进行，避免打乱庞大列表导致点击延迟
     setTimeout(async () => {
@@ -235,38 +235,22 @@ export class PlayModeManager {
   }
 
   /**
-   * 同步当前的播放模式到 SMTC / MPRIS
+   * 同步当前的播放模式到媒体控件
    */
-  public syncSmtcPlayMode() {
+  public syncMediaPlayMode() {
     const statusStore = useStatusStore();
 
     if (isElectron) {
       const shuffle = statusStore.shuffleMode !== "off";
       const repeat =
         statusStore.repeatMode === "list"
-          ? "list"
+          ? "List"
           : statusStore.repeatMode === "one"
-            ? "one"
-            : "off";
+            ? "Track"
+            : "None";
 
       playerIpc.sendMediaPlayMode(shuffle, repeat);
     }
-  }
-
-  /**
-   * 专门处理 SMTC 的随机按钮事件
-   */
-  public handleSmtcShuffle() {
-    const statusStore = useStatusStore();
-    const nextMode = statusStore.shuffleMode === "off" ? "on" : "off";
-    this.toggleShuffle(nextMode);
-  }
-
-  /**
-   * 专门处理 SMTC 的循环按钮事件
-   */
-  public handleSmtcRepeat() {
-    this.toggleRepeat();
   }
 
   /**

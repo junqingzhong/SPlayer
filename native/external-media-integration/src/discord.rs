@@ -246,10 +246,7 @@ impl RpcWorker {
 
         let buttons = vec![Button::new("🎧 Listen", &data.cached_song_url)];
 
-        // 根据显示模式设置左下角 "正在听 - XXX" 的显示内容
-        // StatusDisplayType::Name -> 显示应用名称 (SPlayer)
-        // StatusDisplayType::Details -> 显示 details 字段
-        // StatusDisplayType::State -> 显示 state 字段
+        // 不打开详细信息面板时，在用户名下方显示的小字
         let status_type = match display_mode {
             DiscordDisplayMode::Name => StatusDisplayType::Name,
             DiscordDisplayMode::State => StatusDisplayType::State,

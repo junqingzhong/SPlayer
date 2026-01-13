@@ -13,6 +13,7 @@ pub enum SystemMediaEventType {
     PreviousSong,
     ToggleShuffle,
     ToggleRepeat,
+    /// 绝对位置，毫秒
     Seek,
 }
 
@@ -79,15 +80,22 @@ pub struct MetadataParam {
     pub author_name: String,
     pub album_name: String,
 
-    /// 只用于 SMTC 更新
+    /// 封面的原始字节数据，适用于除 Discord RPC 之外的其他平台
     pub cover_data: Option<Buffer>,
 
-    /// `HTTP URL` 用于封面显示
+    /// 封面的 HTTP URL，更新 Discord RPC 时必传，其他平台可不传
+    ///
+    /// Linux 平台会优先使用 URL 来更新封面
     pub original_cover_url: Option<String>,
 
-    /// 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段
+    /// 网易云音乐 ID
+    ///
+    /// 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段，以及用来生成 Discord RPC 的按钮链接
     pub ncm_id: Option<i64>,
 
+    /// 当前歌曲时长，单位是毫秒
+    ///
+    /// 用于 Linux、MacOS、Discord RPC 的元数据更新。Windows 使用 [`TimelinePayload`] 的 `total_time` 字段。
     pub duration: Option<f64>,
 }
 

@@ -135,16 +135,16 @@
         </n-card>
         <n-card class="set-item">
           <div class="label">
-            <n-text class="name">显示模式</n-text>
-            <n-text class="tip" :depth="3">选择在 Discord 状态中展示的内容层级</n-text>
+            <n-text class="name">简略状态显示</n-text>
+            <n-text class="tip" :depth="3">不打开详细信息面板时，在用户名下方显示的小字</n-text>
           </div>
           <n-select
             class="set"
             v-model:value="settingStore.discordRpc.displayMode"
             :options="[
-              { label: '仅歌曲名', value: 'name' },
-              { label: '完整信息 (歌曲名/歌手)', value: 'details' },
-              { label: '仅播放状态', value: 'state' },
+              { label: '应用名', value: 'Name' },
+              { label: '歌曲名', value: 'Details' },
+              { label: '歌手名', value: 'State' },
             ]"
             @update:value="handleDiscordConfigUpdate"
           />
@@ -199,10 +199,10 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingStore } from "@/stores";
 import { getAuthToken, getAuthUrl, getSession } from "@/api/lastfm";
+import { disableDiscordRpc, enableDiscordRpc, updateDiscordConfig } from "@/core/player/PlayerIpc";
+import { useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
-import { enableDiscordRpc, disableDiscordRpc, updateDiscordConfig } from "@/core/player/PlayerIpc";
 
 const settingStore = useSettingStore();
 

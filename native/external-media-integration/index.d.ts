@@ -22,7 +22,8 @@ export interface DiscordConfigPayload {
 
 /**
  * Discord 显示模式枚举
- * 控制 Discord 左下角 "正在听 - XXX" 的显示内容
+ *
+ * 控制 Discord 左下角 "正在听 XXX" 的显示内容
  */
 export type DiscordDisplayMode = /** Listening to SPlayer */
 'Name'|
@@ -70,12 +71,25 @@ export interface MetadataParam {
   songName: string
   authorName: string
   albumName: string
-  /** 只用于 SMTC 更新 */
+  /** 封面的原始字节数据，适用于除 Discord RPC 之外的其他平台 */
   coverData?: Buffer
-  /** `HTTP URL` 用于封面显示 */
+  /**
+   * 封面的 HTTP URL，更新 Discord RPC 时必传，其他平台可不传
+   *
+   * Linux 平台会优先使用 URL 来更新封面
+   */
   originalCoverUrl?: string
-  /** 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段 */
+  /**
+   * 网易云音乐 ID
+   *
+   * 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段，以及用来生成 Discord RPC 的按钮链接
+   */
   ncmId?: number
+  /**
+   * 当前歌曲时长，单位是毫秒
+   *
+   * 用于 Linux、MacOS、Discord RPC 的元数据更新。Windows 使用 [`TimelinePayload`] 的 `total_time` 字段。
+   */
   duration?: number
 }
 
@@ -123,6 +137,7 @@ export type SystemMediaEventType =  'Play'|
 'PreviousSong'|
 'ToggleShuffle'|
 'ToggleRepeat'|
+/** 绝对位置，毫秒 */
 'Seek';
 
 export interface TimelinePayload {

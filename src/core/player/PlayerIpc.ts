@@ -1,8 +1,8 @@
 import { useSettingStore } from "@/stores/setting";
-import type { MediaMetadataParam, MediaPlaybackStatus, MediaPlayModeParam } from "@/types/global";
 import { PlayModePayload, RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
+import { DiscordConfigPayload, MetadataParam, PlaybackStatus, RepeatMode } from "@native";
 import { throttle } from "lodash-es";
 
 /**
@@ -111,55 +111,56 @@ export const sendPlayMode = (repeatMode: RepeatModeType, shuffleMode: ShuffleMod
 
 ///////////////////////////////////////////
 //
-// 统一媒体集成接口
+// 媒体控件
 //
 ///////////////////////////////////////////
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type NativeModule = typeof import("@native"); // 用于 JSDoc
+
 /**
- * 发送统一的媒体元数据
- * 会自动派发到 SMTC (Windows)、MPRIS (Linux) 和 Discord RPC
+ * @description 通过原生插件更新媒体控件和 Discord RPC 的元数据
+ * @note 仅在 Electron 上有效
+ * @param payload - 参见 {@link MetadataParam}
+ * @see {@link NativeModule.updateMetadata 原生模块的 `updateMetadata` 方法}
  */
-export const sendMediaMetadata = (payload: MediaMetadataParam) => {
+export const sendMediaMetadata = (payload: MetadataParam) => {
   if (isElectron) window.electron.ipcRenderer.send("media-update-metadata", payload);
 };
 
 /**
- * 发送统一的播放状态
- * 会自动派发到 SMTC (Windows)、MPRIS (Linux) 和 Discord RPC
+ * @description 通过原生插件更新媒体控件和 Discord RPC 的播放状态
+ * @note 仅在 Electron 上有效
+ * @param status - 参见 {@link PlaybackStatus}
+ * @see {@link NativeModule.updatePlayState 原生模块的 `updatePlayState` 方法}
  */
-export const sendMediaPlayState = (status: MediaPlaybackStatus) => {
+export const sendMediaPlayState = (status: PlaybackStatus) => {
   if (isElectron) window.electron.ipcRenderer.send("media-update-play-state", { status });
 };
 
 /**
- * 发送统一的进度信息
- * 会自动派发到 SMTC (Windows)、MPRIS (Linux) 和 Discord RPC
+ * @description 通过原生插件更新媒体控件和 Discord RPC 的播放状态
+ * @note 仅在 Electron 上有效
+ * @param currentTime - 当前的播放进度，单位是毫秒
+ * @param totalTime - 总时长，单位是毫秒
+ * @see {@link NativeModule.updateTimeline 原生模块的 `updateTimeline` 方法}
  */
-export const sendMediaTimeline: (currentTime: number, totalTime: number) => void = throttle(
-  (currentTime: number, totalTime: number) => {
-    if (isElectron) {
-      window.electron.ipcRenderer.send("media-update-timeline", { currentTime, totalTime });
-    }
-  },
-  1000,
-);
-
-/**
- * 发送统一的播放模式
- * 会自动派发到 SMTC (Windows) 和 MPRIS (Linux)
- */
-export const sendMediaPlayMode = (shuffle: boolean, repeat: "off" | "one" | "list") => {
+export const sendMediaTimeline = (currentTime: number, totalTime: number) => {
   if (isElectron) {
-    const payload: MediaPlayModeParam = { shuffle, repeat };
-    window.electron.ipcRenderer.send("media-update-play-mode", payload);
+    window.electron.ipcRenderer.send("media-update-timeline", { currentTime, totalTime });
   }
 };
 
 /**
- * 发送音量到 MPRIS (Linux only)
+ * @description 通过原生插件更新媒体控件的播放模式。不会更新 Discord RPC 的播放状态
+ * @note 仅在 Electron 上有效
+ * @param isShuffling - 当前是否是随机播放模式
+ * @param repeatMode - 当前的循环播放模式，参见 {@link RepeatMode}
+ * @see {@link NativeModule.updatePlayMode 原生模块的 `updatePlayMode` 方法}
  */
-export const sendMediaVolume = (volume: number) => {
-  if (isElectron) window.electron.ipcRenderer.send("media-update-volume", { volume });
+export const sendMediaPlayMode = (isShuffling: boolean, repeatMode: RepeatMode) => {
+  if (isElectron)
+    window.electron.ipcRenderer.send("media-update-play-mode", { isShuffling, repeatMode });
 };
 
 ///////////////////////////////////////////
@@ -169,43 +170,43 @@ export const sendMediaVolume = (volume: number) => {
 ///////////////////////////////////////////
 
 /**
- * 启用 Discord RPC
+ * @description 启用 Discord RPC
+ * @note 仅在 Electron 上有效
+ * @see {@link NativeModule.enableDiscordRpc 原生模块的 `enableDiscordRpc` 方法}
  */
 export const enableDiscordRpc = () => {
   if (isElectron) {
     window.electron.ipcRenderer.send("discord-enable");
-    // 立即发送当前配置，确保 Rust 模块使用正确的设置
+    // 立即发送当前配置，确保原生模块使用正确的设置
     const settingStore = useSettingStore();
-    // 转换字符串 displayMode 为数字枚举
-    const displayModeMap = { name: 0, state: 1, details: 2 } as const;
     window.electron.ipcRenderer.send("discord-update-config", {
       showWhenPaused: settingStore.discordRpc.showWhenPaused,
-      displayMode: displayModeMap[settingStore.discordRpc.displayMode],
+      displayMode: settingStore.discordRpc.displayMode,
     });
   }
 };
 
 /**
- * 禁用 Discord RPC
+ * @description 禁用 Discord RPC
+ * @note 仅在 Electron 上有效
+ * @see {@link NativeModule.disableDiscordRpc 原生模块的 `disableDiscordRpc` 方法}
  */
 export const disableDiscordRpc = () => {
   if (isElectron) window.electron.ipcRenderer.send("discord-disable");
 };
 
 /**
- * 更新 Discord RPC 配置
- * @param payload 配置信息
+ * @description 更新 Discord RPC 配置
+ * @note 仅在 Electron 上有效
+ * @param config 配置信息，参见 {@link DiscordConfigPayload}
+ * @see {@link NativeModule.updateDiscordConfig 原生模块的 `updateDiscordConfig` 方法}
  */
-export const updateDiscordConfig = (payload: {
-  showWhenPaused: boolean;
-  displayMode: "name" | "state" | "details";
-}) => {
+export const updateDiscordConfig = (config: DiscordConfigPayload) => {
   if (isElectron) {
-    // 转换字符串 displayMode 为数字枚举
-    const displayModeMap = { name: 0, state: 1, details: 2 } as const;
+    const { showWhenPaused, displayMode } = config;
     window.electron.ipcRenderer.send("discord-update-config", {
-      showWhenPaused: payload.showWhenPaused,
-      displayMode: displayModeMap[payload.displayMode],
+      showWhenPaused,
+      displayMode: displayMode,
     });
   }
 };

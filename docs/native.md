@@ -106,7 +106,7 @@ pnpm build:debug     # 构建 debug 版本
 pnpm build:native
 ```
 
-此命令会执行 `scripts/build-native.mjs` 脚本，依次构建：
+此命令会执行 `scripts/build-native.ts` 脚本，依次构建：
 
 1. Discord RPC 模块
 2. SMTC 模块
