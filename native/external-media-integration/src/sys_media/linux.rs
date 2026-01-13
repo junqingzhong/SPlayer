@@ -12,7 +12,7 @@ use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 use tempfile::NamedTempFile;
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
-use tracing::error;
+use tracing::{debug, error};
 
 use crate::model::{PlaybackStatus, RepeatMode, SystemMediaEventType};
 
@@ -82,18 +82,21 @@ fn setup_mpris_signals(
     // 播放
     let d = dispatch.clone();
     player.connect_play(move |_| {
+        debug!("收到 play 命令");
         d(SystemMediaEvent::new(SystemMediaEventType::Play));
     });
 
     // 暂停
     let d = dispatch.clone();
     player.connect_pause(move |_| {
+        debug!("收到 pause 命令");
         d(SystemMediaEvent::new(SystemMediaEventType::Pause));
     });
 
     // Toggle
     let d = dispatch.clone();
     player.connect_play_pause(move |p| {
+        debug!("收到 play_pause 命令");
         let status = p.playback_status();
         let evt_type = if status == MprisPlaybackStatus::Playing {
             SystemMediaEventType::Pause
@@ -106,25 +109,41 @@ fn setup_mpris_signals(
     // 上一首
     let d = dispatch.clone();
     player.connect_previous(move |_| {
+        debug!("收到 previous 命令");
         d(SystemMediaEvent::new(SystemMediaEventType::PreviousSong));
     });
 
     // 下一首
     let d = dispatch.clone();
     player.connect_next(move |_| {
+        debug!("收到 next 命令");
         d(SystemMediaEvent::new(SystemMediaEventType::NextSong));
     });
 
     // 停止
     let d = dispatch.clone();
     player.connect_stop(move |_| {
+        debug!("收到 stop 命令");
         d(SystemMediaEvent::new(SystemMediaEventType::Stop));
+    });
+
+    let d = dispatch.clone();
+    player.connect_set_loop_status(move |_, new_status| {
+        debug!(?new_status, "收到 set_loop_status 命令");
+        d(SystemMediaEvent::new(SystemMediaEventType::ToggleRepeat));
+    });
+
+    let d = dispatch.clone();
+    player.connect_set_shuffle(move |_, new_val| {
+        debug!(?new_val, "收到 set_shuffle 命令");
+        d(SystemMediaEvent::new(SystemMediaEventType::ToggleShuffle));
     });
 
     // 相对跳转
     // 这里通过 Player 内部维护的进度来计算绝对跳转位置
     let d = dispatch.clone();
     player.connect_seek(move |p, offset| {
+        debug!(?offset, "收到 seek 命令");
         let current_micros = p.position().as_micros();
         let delta_micros = offset.as_micros();
         let target_micros = current_micros.saturating_add(delta_micros);
@@ -135,7 +154,8 @@ fn setup_mpris_signals(
     });
 
     // 绝对跳转
-    player.connect_set_position(move |_, _, position| {
+    player.connect_set_position(move |_, trackid, position| {
+        debug!(?position, ?trackid, "收到 set_position 命令");
         let ms = position.as_micros() as f64 / 1000.0;
         dispatch(SystemMediaEvent::seek(ms));
     });
