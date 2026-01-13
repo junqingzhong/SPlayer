@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use anyhow::Result;
 use napi::Status;
 use napi::threadsafe_function::{ThreadsafeFunction, UnknownReturnValue};
@@ -8,6 +10,8 @@ use crate::model::{
 
 pub type SystemMediaThreadsafeFunction =
     ThreadsafeFunction<SystemMediaEvent, UnknownReturnValue, SystemMediaEvent, Status, false>;
+
+static CONTROLS: OnceLock<Box<dyn SystemMediaControls>> = OnceLock::new();
 
 /// 跨平台的媒体控制接口
 pub trait SystemMediaControls: Send + Sync {
@@ -58,27 +62,30 @@ pub mod linux;
 #[cfg(target_os = "macos")]
 mod macos;
 
-pub fn get_platform_controls() -> Box<dyn SystemMediaControls> {
-    #[cfg(target_os = "windows")]
-    {
-        Box::new(windows::WindowsImpl::new())
-    }
+pub fn get_platform_controls() -> &'static dyn SystemMediaControls {
+    CONTROLS
+        .get_or_init(|| {
+            #[cfg(target_os = "windows")]
+            {
+                Box::new(windows::WindowsImpl::new())
+            }
 
-    #[cfg(target_os = "linux")]
-    {
-        Box::new(linux::LinuxImpl::new())
-    }
+            #[cfg(target_os = "linux")]
+            {
+                Box::new(linux::LinuxImpl::new())
+            }
 
-    #[cfg(target_os = "macos")]
-    {
-        return Box::new(macos::MacosImpl::new());
-    }
+            #[cfg(target_os = "macos")]
+            {
+                Box::new(macos::MacosImpl::new())
+            }
 
-    #[cfg(not(any(target_os = "windows", target_os = "linux")))]
-    #[allow(unreachable_code)]
-    {
-        Box::new(NoOpControls)
-    }
+            #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
+            {
+                Box::new(NoOpControls)
+            }
+        })
+        .as_ref()
 }
 
 #[cfg(not(any(target_os = "windows", target_os = "linux")))]

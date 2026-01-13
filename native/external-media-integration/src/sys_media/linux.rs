@@ -1,8 +1,10 @@
 use std::io::Write;
 use std::sync::{Arc, RwLock};
-use std::thread;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::{process, thread};
 
 use anyhow::Result;
+use mpris_server::zbus::zvariant::ObjectPath;
 use mpris_server::{
     LoopStatus as MprisLoopStatus, Metadata, PlaybackStatus as MprisPlaybackStatus, Player, Time,
 };
@@ -177,6 +179,26 @@ async fn process_metadata_update(
         .artist([payload.author_name])
         .album(payload.album_name);
 
+    let track_id_str = payload.ncm_id.map_or_else(
+        || {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis()
+                .to_string()
+        },
+        // 以免上层传入负数的 ncm_id
+        |id| id.to_string().replace('-', "_"),
+    );
+
+    let track_path = format!("/com/splayer/track/{track_id_str}");
+
+    if let Ok(op) = ObjectPath::try_from(track_path.as_str()) {
+        mb = mb.trackid(op);
+    } else {
+        error!("生成的 Track ID 不符合 D-Bus 路径规范: {track_path}");
+    }
+
     if let Some(dur) = payload.duration {
         mb = mb.length(Time::from_millis(dur as i64));
     }
@@ -251,7 +273,11 @@ async fn run_mpris_loop(mut rx: UnboundedReceiver<MprisCommand>) -> Result<()> {
     let event_handler = Arc::new(RwLock::new(None::<SystemMediaThreadsafeFunction>));
     let mut current_cover_file_guard: Option<NamedTempFile> = None;
 
-    let player = Player::builder("splayer")
+    let pid = process::id();
+    // 使用唯一标识符以避免多个实例冲突
+    let identity = format!("splayer.instance{pid}");
+
+    let player = Player::builder(&identity)
         .can_play(true)
         .can_pause(true)
         .can_go_next(true)
