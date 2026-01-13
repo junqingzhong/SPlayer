@@ -608,6 +608,21 @@
           @update:value="saveDesktopLyricConfig"
         />
       </n-card>
+      <n-collapse-transition :show="desktopLyricConfig.textBackgroundMask">
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">遮罩颜色</n-text>
+            <n-text class="tip" :depth="3">设置背景遮罩的颜色和透明度</n-text>
+          </div>
+          <n-color-picker
+            v-model:value="desktopLyricConfig.backgroundMaskColor"
+            :show-alpha="true"
+            :modes="['rgb', 'hex']"
+            class="set"
+            @complete="saveDesktopLyricConfig"
+          />
+        </n-card>
+      </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">始终展示播放信息</n-text>

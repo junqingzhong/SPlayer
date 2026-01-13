@@ -144,9 +144,6 @@ onMounted(() => {
     }
   }
   &.show-player {
-    // #main-sider {
-    //   margin-bottom: 80px;
-    // }
     #main-content {
       bottom: 80px;
     }
