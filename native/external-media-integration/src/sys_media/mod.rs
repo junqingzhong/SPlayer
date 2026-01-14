@@ -88,10 +88,10 @@ pub fn get_platform_controls() -> &'static dyn SystemMediaControls {
         .as_ref()
 }
 
-#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
 struct NoOpControls;
 
-#[cfg(not(any(target_os = "windows", target_os = "linux")))]
+#[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
 impl SystemMediaControls for NoOpControls {
     fn initialize(&self) -> Result<()> {
         Ok(())
