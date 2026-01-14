@@ -4,6 +4,7 @@
       'main-player',
       {
         show: musicStore.isHasPlayer && statusStore.showPlayBar,
+        player: statusStore.showFullPlayer,
       },
     ]"
   >
