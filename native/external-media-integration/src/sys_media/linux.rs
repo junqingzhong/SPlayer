@@ -167,10 +167,7 @@ async fn process_metadata_update(
     payload: MetadataPayload,
     cover_guard: &mut Option<NamedTempFile>,
 ) {
-    let art_url = if let Some(url) = payload.original_cover_url {
-        *cover_guard = None;
-        Some(url)
-    } else if let Some(data) = payload.cover_data {
+    let art_url = if let Some(data) = payload.cover_data {
         match tempfile::Builder::new().suffix(".jpg").tempfile() {
             Ok(mut file) => {
                 if file.write_all(&data).is_ok() {
@@ -189,6 +186,9 @@ async fn process_metadata_update(
                 None
             }
         }
+    } else if let Some(url) = payload.original_cover_url {
+        *cover_guard = None;
+        Some(url)
     } else {
         *cover_guard = None;
         None
@@ -228,6 +228,7 @@ async fn process_metadata_update(
     }
 
     player.set_metadata(mb.build()).await.ok();
+    player.set_position(Time::from_millis(0));
 }
 
 #[allow(clippy::future_not_send)]

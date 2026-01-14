@@ -75,6 +75,7 @@ impl fmt::Debug for MetadataPayload {
 }
 
 #[napi(object)]
+#[allow(clippy::doc_markdown)]
 pub struct MetadataParam {
     pub song_name: String,
     pub author_name: String,
@@ -85,12 +86,15 @@ pub struct MetadataParam {
 
     /// 封面的 HTTP URL，更新 Discord RPC 时必传，其他平台可不传
     ///
-    /// Linux 平台会优先使用 URL 来更新封面
+    /// Linux 平台在没有提供 `cover_data` 时会使用它
     pub original_cover_url: Option<String>,
 
-    /// 网易云音乐 ID
+    /// 网易云音乐中对应的曲目 ID
     ///
-    /// 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段，以及用来生成 Discord RPC 的按钮链接
+    /// ### 用途
+    /// - 以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段
+    /// - 生成 Discord RPC 的按钮链接
+    /// - MacOS 和 Linux 会使用此值来填充唯一的曲目 ID
     pub ncm_id: Option<i64>,
 
     /// 当前歌曲时长，单位是毫秒
