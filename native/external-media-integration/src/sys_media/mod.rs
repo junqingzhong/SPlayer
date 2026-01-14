@@ -1,11 +1,20 @@
 use std::sync::OnceLock;
 
 use anyhow::Result;
-use napi::Status;
-use napi::threadsafe_function::{ThreadsafeFunction, UnknownReturnValue};
+use napi::{
+    Status,
+    threadsafe_function::{
+        ThreadsafeFunction,
+        UnknownReturnValue,
+    },
+};
 
 use crate::model::{
-    MetadataPayload, PlayModePayload, PlayStatePayload, SystemMediaEvent, TimelinePayload,
+    MetadataPayload,
+    PlayModePayload,
+    PlayStatePayload,
+    SystemMediaEvent,
+    TimelinePayload,
 };
 
 pub type SystemMediaThreadsafeFunction =

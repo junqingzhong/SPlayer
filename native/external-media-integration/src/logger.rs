@@ -1,11 +1,27 @@
-use anyhow::{Context, Result};
-use std::fs;
-use std::path::PathBuf;
-use std::sync::OnceLock;
-use tracing::{error, trace};
-use tracing_appender::non_blocking::WorkerGuard;
-use tracing_appender::rolling::RollingFileAppender;
-use tracing_subscriber::{filter::LevelFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::OnceLock,
+};
+
+use anyhow::{
+    Context,
+    Result,
+};
+use tracing::{
+    error,
+    trace,
+};
+use tracing_appender::{
+    non_blocking::WorkerGuard,
+    rolling::RollingFileAppender,
+};
+use tracing_subscriber::{
+    filter::LevelFilter,
+    fmt,
+    layer::SubscriberExt,
+    util::SubscriberInitExt,
+};
 
 static LOG_GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 

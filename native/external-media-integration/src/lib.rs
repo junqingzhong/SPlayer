@@ -1,10 +1,17 @@
 #![deny(missing_docs)]
 
 //! 一个 Electron 的原生插件，用于将播放信息同步到系统的媒体控件和/或 Discord RPC
+//!
+//! 目前支持 Windows、Linux 和 MacOS 的媒体控件交互
 
-use napi::Result;
-use napi::bindgen_prelude::{Function, Unknown};
-use napi::threadsafe_function::UnknownReturnValue;
+use napi::{
+    Result,
+    bindgen_prelude::{
+        Function,
+        Unknown,
+    },
+    threadsafe_function::UnknownReturnValue,
+};
 use napi_derive::napi;
 
 mod discord;
@@ -13,10 +20,14 @@ mod model;
 mod sys_media;
 
 use model::{
-    DiscordConfigPayload, MetadataPayload, PlayModePayload, PlayStatePayload, TimelinePayload,
+    DiscordConfigPayload,
+    MetadataParam,
+    MetadataPayload,
+    PlayModePayload,
+    PlayStatePayload,
+    SystemMediaEvent,
+    TimelinePayload,
 };
-
-use crate::model::{MetadataParam, SystemMediaEvent};
 
 /// 初始化插件
 ///
@@ -167,7 +178,8 @@ pub fn disable_discord_rpc() {
 ///
 /// ### 参数
 ///
-/// * `payload` - 配置信息，可以配置是否在暂停后也显示 Discord Activity 和 状态显示风格。详情请查看 [`DiscordConfigPayload`]
+/// * `payload` - 配置信息，可以配置是否在暂停后也显示 Discord Activity 和 状态显示风格。详情请查看
+///   [`DiscordConfigPayload`]
 #[napi]
 pub fn update_discord_config(payload: DiscordConfigPayload) {
     discord::update_config(payload);

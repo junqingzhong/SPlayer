@@ -75,7 +75,6 @@ impl fmt::Debug for MetadataPayload {
 }
 
 #[napi(object)]
-#[allow(clippy::doc_markdown)]
 pub struct MetadataParam {
     pub song_name: String,
     pub author_name: String,
@@ -99,7 +98,8 @@ pub struct MetadataParam {
 
     /// 当前歌曲时长，单位是毫秒
     ///
-    /// 用于 Linux、MacOS、Discord RPC 的元数据更新。Windows 使用 [`TimelinePayload`] 的 `total_time` 字段。
+    /// 用于 Linux、MacOS、Discord RPC 的元数据更新。Windows 使用 [`TimelinePayload`] 的
+    /// `total_time` 字段。
     pub duration: Option<f64>,
 }
 
@@ -116,6 +116,9 @@ impl From<MetadataParam> for MetadataPayload {
         }
     }
 }
+
+// 使用 string_enum 加上 --no-const-enum 编译参数可以神奇地让 napi-rs
+// 把枚举生成为字符串联合类型，这样就可以直接从 index.d.ts 导入它们而不用再复制一份了
 
 #[napi(string_enum)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -157,9 +160,8 @@ pub struct PlayModePayload {
 
 /// Discord 显示模式枚举
 ///
-/// 控制 Discord 左下角 "正在听 XXX" 的显示内容
+/// 不打开详细信息面板时，在用户名下方显示的小字
 #[napi(string_enum)]
-#[allow(clippy::doc_markdown)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiscordDisplayMode {
     /// Listening to SPlayer
@@ -175,7 +177,10 @@ pub enum DiscordDisplayMode {
 #[derive(Debug, Clone)]
 pub struct DiscordConfigPayload {
     /// 暂停时是否显示
+    ///
+    /// 注意暂停时进度会固定为 0
     pub show_when_paused: bool,
-    /// 显示模式
+
+    /// 显示模式，参考 [`DiscordDisplayMode`]
     pub display_mode: Option<DiscordDisplayMode>,
 }

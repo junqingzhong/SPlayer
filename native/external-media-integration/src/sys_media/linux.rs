@@ -1,24 +1,56 @@
-use std::io::Write;
-use std::sync::{Arc, RwLock};
-use std::time::{SystemTime, UNIX_EPOCH};
-use std::{process, thread};
+use std::{
+    io::Write,
+    process,
+    sync::{
+        Arc,
+        RwLock,
+    },
+    thread,
+    time::{
+        SystemTime,
+        UNIX_EPOCH,
+    },
+};
 
 use anyhow::Result;
-use mpris_server::zbus::zvariant::ObjectPath;
 use mpris_server::{
-    LoopStatus as MprisLoopStatus, Metadata, PlaybackStatus as MprisPlaybackStatus, Player, Time,
+    LoopStatus as MprisLoopStatus,
+    Metadata,
+    PlaybackStatus as MprisPlaybackStatus,
+    Player,
+    Time,
+    zbus::zvariant::ObjectPath,
 };
 use napi::threadsafe_function::ThreadsafeFunctionCallMode;
 use tempfile::NamedTempFile;
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
-use tracing::{debug, error};
+use tokio::{
+    runtime::Runtime,
+    sync::mpsc::{
+        UnboundedReceiver,
+        UnboundedSender,
+        unbounded_channel,
+    },
+};
+use tracing::{
+    debug,
+    error,
+};
 
-use crate::model::{PlaybackStatus, RepeatMode, SystemMediaEventType};
-
-use super::{
-    MetadataPayload, PlayModePayload, PlayStatePayload, SystemMediaControls, SystemMediaEvent,
-    SystemMediaThreadsafeFunction, TimelinePayload,
+use crate::{
+    model::{
+        MetadataPayload,
+        PlayModePayload,
+        PlayStatePayload,
+        PlaybackStatus,
+        RepeatMode,
+        SystemMediaEvent,
+        SystemMediaEventType,
+        TimelinePayload,
+    },
+    sys_media::{
+        SystemMediaControls,
+        SystemMediaThreadsafeFunction,
+    },
 };
 
 /// 主线程和后台 D-Bus 现成通信的指令
