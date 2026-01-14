@@ -2,7 +2,7 @@ import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
 import { msToS } from "@/utils/time";
-import { SystemMediaEvent } from "@native";
+import { SystemMediaEvent } from "@emi";
 import axios from "axios";
 import { throttle } from "lodash-es";
 import { usePlayerController } from "./PlayerController";

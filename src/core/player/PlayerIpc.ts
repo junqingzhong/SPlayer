@@ -2,7 +2,7 @@ import { useSettingStore } from "@/stores/setting";
 import { PlayModePayload, RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
-import { DiscordConfigPayload, MetadataParam, PlaybackStatus, RepeatMode } from "@native";
+import { DiscordConfigPayload, MetadataParam, PlaybackStatus, RepeatMode } from "@emi";
 import { throttle } from "lodash-es";
 
 /**
@@ -116,34 +116,34 @@ export const sendPlayMode = (repeatMode: RepeatModeType, shuffleMode: ShuffleMod
 ///////////////////////////////////////////
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-type NativeModule = typeof import("@native"); // 用于 JSDoc
+type EmiModule = typeof import("@emi"); // 用于 JSDoc
 
 /**
- * @description 通过原生插件更新媒体控件和 Discord RPC 的元数据
+ * @description 通过外部媒体集成模块更新媒体控件和 Discord RPC 的元数据
  * @note 仅在 Electron 上有效
  * @param payload - 参见 {@link MetadataParam}
- * @see {@link NativeModule.updateMetadata 原生模块的 `updateMetadata` 方法}
+ * @see {@link EmiModule.updateMetadata 外部媒体集成模块的 `updateMetadata` 方法}
  */
 export const sendMediaMetadata = (payload: MetadataParam) => {
   if (isElectron) window.electron.ipcRenderer.send("media-update-metadata", payload);
 };
 
 /**
- * @description 通过原生插件更新媒体控件和 Discord RPC 的播放状态
+ * @description 通过外部媒体集成模块更新媒体控件和 Discord RPC 的播放状态
  * @note 仅在 Electron 上有效
  * @param status - 参见 {@link PlaybackStatus}
- * @see {@link NativeModule.updatePlayState 原生模块的 `updatePlayState` 方法}
+ * @see {@link EmiModule.updatePlayState 外部媒体集成模块的 `updatePlayState` 方法}
  */
 export const sendMediaPlayState = (status: PlaybackStatus) => {
   if (isElectron) window.electron.ipcRenderer.send("media-update-play-state", { status });
 };
 
 /**
- * @description 通过原生插件更新媒体控件和 Discord RPC 的播放状态
+ * @description 通过外部媒体集成模块更新媒体控件和 Discord RPC 的播放状态
  * @note 仅在 Electron 上有效
  * @param currentTime - 当前的播放进度，单位是毫秒
  * @param totalTime - 总时长，单位是毫秒
- * @see {@link NativeModule.updateTimeline 原生模块的 `updateTimeline` 方法}
+ * @see {@link EmiModule.updateTimeline 外部媒体集成模块的 `updateTimeline` 方法}
  */
 export const sendMediaTimeline = (currentTime: number, totalTime: number) => {
   if (isElectron) {
@@ -152,11 +152,11 @@ export const sendMediaTimeline = (currentTime: number, totalTime: number) => {
 };
 
 /**
- * @description 通过原生插件更新媒体控件的播放模式。不会更新 Discord RPC 的播放状态
+ * @description 通过外部媒体集成模块更新媒体控件的播放模式。不会更新 Discord RPC 的播放状态
  * @note 仅在 Electron 上有效
  * @param isShuffling - 当前是否是随机播放模式
  * @param repeatMode - 当前的循环播放模式，参见 {@link RepeatMode}
- * @see {@link NativeModule.updatePlayMode 原生模块的 `updatePlayMode` 方法}
+ * @see {@link EmiModule.updatePlayMode 外部媒体集成模块的 `updatePlayMode` 方法}
  */
 export const sendMediaPlayMode = (isShuffling: boolean, repeatMode: RepeatMode) => {
   if (isElectron)
@@ -172,12 +172,12 @@ export const sendMediaPlayMode = (isShuffling: boolean, repeatMode: RepeatMode) 
 /**
  * @description 启用 Discord RPC
  * @note 仅在 Electron 上有效
- * @see {@link NativeModule.enableDiscordRpc 原生模块的 `enableDiscordRpc` 方法}
+ * @see {@link EmiModule.enableDiscordRpc 外部媒体集成模块的 `enableDiscordRpc` 方法}
  */
 export const enableDiscordRpc = () => {
   if (isElectron) {
     window.electron.ipcRenderer.send("discord-enable");
-    // 立即发送当前配置，确保原生模块使用正确的设置
+    // 立即发送当前配置，确保外部媒体集成模块使用正确的设置
     const settingStore = useSettingStore();
     window.electron.ipcRenderer.send("discord-update-config", {
       showWhenPaused: settingStore.discordRpc.showWhenPaused,
@@ -189,7 +189,7 @@ export const enableDiscordRpc = () => {
 /**
  * @description 禁用 Discord RPC
  * @note 仅在 Electron 上有效
- * @see {@link NativeModule.disableDiscordRpc 原生模块的 `disableDiscordRpc` 方法}
+ * @see {@link EmiModule.disableDiscordRpc 外部媒体集成模块的 `disableDiscordRpc` 方法}
  */
 export const disableDiscordRpc = () => {
   if (isElectron) window.electron.ipcRenderer.send("discord-disable");
@@ -199,7 +199,7 @@ export const disableDiscordRpc = () => {
  * @description 更新 Discord RPC 配置
  * @note 仅在 Electron 上有效
  * @param config 配置信息，参见 {@link DiscordConfigPayload}
- * @see {@link NativeModule.updateDiscordConfig 原生模块的 `updateDiscordConfig` 方法}
+ * @see {@link EmiModule.updateDiscordConfig 外部媒体集成模块的 `updateDiscordConfig` 方法}
  */
 export const updateDiscordConfig = (config: DiscordConfigPayload) => {
   if (isElectron) {

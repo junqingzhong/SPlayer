@@ -6,6 +6,9 @@ SPlayer 使用 Rust 编写的原生插件来实现更深度的系统集成。你
 
 ## 外部媒体集成模块 (external-media-integration)
 
+> [!NOTE]
+> 在项目中可能会以 EMI 的缩写形式出现
+
 ### 功能介绍
 
 该插件主要提供两大核心功能：系统级媒体控件集成和 Discord Rich Presence (RPC) 支持。

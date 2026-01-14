@@ -5,18 +5,19 @@ import {
   PlayModePayload,
   SystemMediaEvent,
   TimelinePayload,
-} from "@native";
+} from "@emi";
 import { app, ipcMain } from "electron";
 import { join } from "path";
 import { processLog } from "../logger";
 import { loadNativeModule } from "../utils/native-loader";
 import mainWindow from "../windows/main-window";
 
-// 原生模块类型
-type NativeMediaModule = typeof import("@native");
+type EmiModule = typeof import("@emi");
 
-// 原生模块实例
-let nativeMedia: NativeMediaModule | null = null;
+/**
+ * 外部媒体集成模块
+ */
+let emi: EmiModule | null = null;
 
 /**
  * 派发事件到主窗口渲染进程
@@ -28,24 +29,24 @@ const emitMediaEvent = (event: SystemMediaEvent) => {
   }
 };
 
-/** 初始化原生媒体插件 */
+/** 初始化 EMI */
 const initNativeMedia = () => {
-  nativeMedia = loadNativeModule("external-media-integration.node", "external-media-integration");
-  if (!nativeMedia) {
-    processLog.warn("[Media] 找不到原生插件，媒体集成功能将不可用");
+  emi = loadNativeModule("external-media-integration.node", "external-media-integration");
+  if (!emi) {
+    processLog.warn("[Media] 找不到 EMI 模块，媒体集成功能将不可用");
     return;
   }
 
   try {
     const logDir = join(app.getPath("userData"), "logs", "external-media-integration");
-    nativeMedia.initialize(logDir);
-    processLog.info("[Media] 原生插件已初始化");
+    emi.initialize(logDir);
+    processLog.info("[Media] EMI 已初始化");
 
-    nativeMedia.registerEventHandler((event) => {
+    emi.registerEventHandler((event) => {
       emitMediaEvent(event);
     });
 
-    nativeMedia.enableSystemMedia();
+    emi.enableSystemMedia();
   } catch (e) {
     processLog.error("[Media] 初始化时失败", e);
   }
@@ -58,9 +59,9 @@ const initMediaIpc = () => {
 
   // 元数据更新
   ipcMain.on("media-update-metadata", (_, payload: MetadataParam) => {
-    if (!nativeMedia) return;
+    if (!emi) return;
     try {
-      nativeMedia.updateMetadata(payload);
+      emi.updateMetadata(payload);
     } catch (e) {
       processLog.error("[Media] 更新元数据失败", e);
     }
@@ -68,9 +69,9 @@ const initMediaIpc = () => {
 
   // 播放状态更新
   ipcMain.on("media-update-play-state", (_, payload: { status: PlaybackStatus }) => {
-    if (!nativeMedia) return;
+    if (!emi) return;
     try {
-      nativeMedia.updatePlayState(payload);
+      emi.updatePlayState(payload);
     } catch (e) {
       processLog.error("[Media] 更新播放状态失败", e);
     }
@@ -78,9 +79,9 @@ const initMediaIpc = () => {
 
   // 进度更新
   ipcMain.on("media-update-timeline", (_, payload: TimelinePayload) => {
-    if (!nativeMedia) return;
+    if (!emi) return;
     try {
-      nativeMedia.updateTimeline(payload);
+      emi.updateTimeline(payload);
     } catch (e) {
       processLog.error("[Media] 更新进度失败", e);
     }
@@ -88,9 +89,9 @@ const initMediaIpc = () => {
 
   // 播放模式更新
   ipcMain.on("media-update-play-mode", (_, payload: PlayModePayload) => {
-    if (!nativeMedia) return;
+    if (!emi) return;
     try {
-      nativeMedia.updatePlayMode(payload);
+      emi.updatePlayMode(payload);
     } catch (e) {
       processLog.error("[Media] 更新播放模式失败", e);
     }
@@ -98,9 +99,9 @@ const initMediaIpc = () => {
 
   // Discord 启用
   ipcMain.on("discord-enable", () => {
-    if (nativeMedia) {
+    if (emi) {
       try {
-        nativeMedia.enableDiscordRpc();
+        emi.enableDiscordRpc();
       } catch (e) {
         processLog.error("[Discord RPC] 启用失败", e);
       }
@@ -109,9 +110,9 @@ const initMediaIpc = () => {
 
   // Discord 禁用
   ipcMain.on("discord-disable", () => {
-    if (nativeMedia) {
+    if (emi) {
       try {
-        nativeMedia.disableDiscordRpc();
+        emi.disableDiscordRpc();
       } catch (e) {
         processLog.error("[Discord RPC] 禁用失败", e);
       }
@@ -120,9 +121,9 @@ const initMediaIpc = () => {
 
   // Discord 更新配置
   ipcMain.on("discord-update-config", (_, payload: DiscordConfigPayload) => {
-    if (nativeMedia) {
+    if (emi) {
       try {
-        nativeMedia.updateDiscordConfig(payload);
+        emi.updateDiscordConfig(payload);
       } catch (e) {
         processLog.error("[Discord RPC] 更新配置失败", e);
       }
@@ -136,9 +137,9 @@ const initMediaIpc = () => {
  * 关闭媒体 IPC
  */
 export const shutdownMedia = () => {
-  if (nativeMedia) {
+  if (emi) {
     try {
-      nativeMedia.shutdown();
+      emi.shutdown();
     } catch (e) {
       processLog.error("[Media] 关闭时出错", e);
     }

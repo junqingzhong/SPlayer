@@ -69,7 +69,7 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           "@": resolve(__dirname, "src/"),
-          "@native": resolve(__dirname, "native/external-media-integration"),
+          "@emi": resolve(__dirname, "native/external-media-integration"),
           "@shared": resolve(__dirname, "src/types/shared.ts"),
         },
       },

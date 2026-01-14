@@ -42,7 +42,7 @@ class MainProcess {
   constructor() {
     processLog.info("🚀 Main process startup");
 
-    // 在 Windows、Linux 和 MacOS 上禁用自带的媒体控件功能，因为我们已经通过原生插件实现 SMTC 的集成了
+    // 在 Windows、Linux 和 MacOS 上禁用自带的媒体控件功能，因为我们已经通过原生插件实现媒体控件的集成了
     const platform = process.platform;
     const hasNativeMediaSupport = ["win32", "linux", "darwin"].includes(platform);
 

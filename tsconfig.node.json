@@ -19,7 +19,7 @@
     "composite": true,
     "types": ["electron-vite/node"],
     "paths": {
-      "@native": ["./native/external-media-integration"],
+      "@emi": ["./native/external-media-integration"],
       "@shared": ["./src/types/shared.ts"]
     }
   }
