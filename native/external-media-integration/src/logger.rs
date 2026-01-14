@@ -8,6 +8,7 @@ use anyhow::{
     Context,
     Result,
 };
+use time::macros::format_description;
 use tracing::{
     error,
     trace,
@@ -17,8 +18,12 @@ use tracing_appender::{
     rolling::RollingFileAppender,
 };
 use tracing_subscriber::{
+    Layer,
     filter::LevelFilter,
-    fmt,
+    fmt::{
+        self,
+        time::LocalTime,
+    },
     layer::SubscriberExt,
     util::SubscriberInitExt,
 };
@@ -36,7 +41,7 @@ pub fn init(log_dir_str: String) -> Result<()> {
         .rotation(tracing_appender::rolling::Rotation::DAILY)
         .filename_prefix("external-media-integration")
         .filename_suffix("log")
-        .max_log_files(3)
+        .max_log_files(5)
         .build(&log_path)
         .context("无法创建日志文件 Appender")?;
 
@@ -47,21 +52,24 @@ pub fn init(log_dir_str: String) -> Result<()> {
         return Ok(());
     }
 
+    let time_format = format_description!("[hour]:[minute]:[second]");
+    let local_timer = LocalTime::new(time_format);
+
     let file_layer = fmt::layer()
         .with_writer(non_blocking)
         .with_ansi(false)
-        .with_file(true)
-        .with_line_number(true)
-        .with_thread_ids(true)
-        .with_target(true);
+        .with_target(true)
+        .with_timer(local_timer.clone())
+        .with_filter(LevelFilter::TRACE);
 
     let stdout_layer = fmt::layer()
         .with_writer(std::io::stdout)
         .with_ansi(true)
-        .pretty();
+        .pretty()
+        .with_timer(local_timer)
+        .with_filter(LevelFilter::WARN);
 
     tracing_subscriber::registry()
-        .with(LevelFilter::INFO)
         .with(file_layer)
         .with(stdout_layer)
         .try_init()

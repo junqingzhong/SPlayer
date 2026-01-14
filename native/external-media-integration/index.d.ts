@@ -14,16 +14,20 @@ export declare function disableSystemMedia(): void
 
 /** Discord 配置参数 */
 export interface DiscordConfigPayload {
-  /** 暂停时是否显示 */
+  /**
+   * 暂停时是否显示
+   *
+   * 注意暂停时进度会固定为 0
+   */
   showWhenPaused: boolean
-  /** 显示模式 */
+  /** 显示模式，参考 [`DiscordDisplayMode`] */
   displayMode?: DiscordDisplayMode
 }
 
 /**
  * Discord 显示模式枚举
  *
- * 控制 Discord 左下角 "正在听 XXX" 的显示内容
+ * 不打开详细信息面板时，在用户名下方显示的小字
  */
 export type DiscordDisplayMode = /** Listening to SPlayer */
 'Name'|
@@ -76,19 +80,23 @@ export interface MetadataParam {
   /**
    * 封面的 HTTP URL，更新 Discord RPC 时必传，其他平台可不传
    *
-   * Linux 平台会优先使用 URL 来更新封面
+   * Linux 平台在没有提供 `cover_data` 时会使用它
    */
   originalCoverUrl?: string
   /**
-   * 网易云音乐 ID
+   * 网易云音乐中对应的曲目 ID
    *
-   * 会以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段，以及用来生成 Discord RPC 的按钮链接
+   * ### 用途
+   * - 以 "NCM-{ID}" 的格式上传到 SMTC 的 “流派” 字段
+   * - 生成 Discord RPC 的按钮链接
+   * - MacOS 和 Linux 会使用此值来填充唯一的曲目 ID
    */
   ncmId?: number
   /**
    * 当前歌曲时长，单位是毫秒
    *
-   * 用于 Linux、MacOS、Discord RPC 的元数据更新。Windows 使用 [`TimelinePayload`] 的 `total_time` 字段。
+   * 用于 Linux、MacOS、Discord RPC 的元数据更新。Windows 使用 [`TimelinePayload`] 的
+   * `total_time` 字段。
    */
   duration?: number
 }
@@ -152,7 +160,8 @@ export interface TimelinePayload {
  *
  * ### 参数
  *
- * * `payload` - 配置信息，可以配置是否在暂停后也显示 Discord Activity 和 状态显示风格。详情请查看 [`DiscordConfigPayload`]
+ * * `payload` - 配置信息，可以配置是否在暂停后也显示 Discord Activity 和 状态显示风格。详情请查看
+ *   [`DiscordConfigPayload`]
  */
 export declare function updateDiscordConfig(payload: DiscordConfigPayload): void
 
