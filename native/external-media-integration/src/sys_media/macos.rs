@@ -11,10 +11,11 @@ use objc2_foundation::{NSData, NSMutableDictionary, NSNumber, NSSize, NSString};
 use objc2_media_player::{
     MPChangePlaybackPositionCommandEvent, MPChangeRepeatModeCommandEvent,
     MPChangeShuffleModeCommandEvent, MPMediaItemArtwork, MPMediaItemPropertyAlbumTitle,
-    MPMediaItemPropertyArtist, MPMediaItemPropertyArtwork, MPMediaItemPropertyPlaybackDuration,
-    MPMediaItemPropertyTitle, MPNowPlayingInfoCenter, MPNowPlayingInfoPropertyElapsedPlaybackTime,
-    MPNowPlayingPlaybackState, MPRemoteCommand, MPRemoteCommandCenter, MPRemoteCommandEvent,
-    MPRemoteCommandHandlerStatus, MPRepeatType, MPShuffleType,
+    MPMediaItemPropertyArtist, MPMediaItemPropertyArtwork, MPMediaItemPropertyPersistentID,
+    MPMediaItemPropertyPlaybackDuration, MPMediaItemPropertyTitle, MPNowPlayingInfoCenter,
+    MPNowPlayingInfoPropertyElapsedPlaybackTime, MPNowPlayingPlaybackState, MPRemoteCommand,
+    MPRemoteCommandCenter, MPRemoteCommandEvent, MPRemoteCommandHandlerStatus, MPRepeatType,
+    MPShuffleType,
 };
 use tracing::{debug, error, trace};
 
@@ -323,6 +324,25 @@ impl SystemMediaControls for MacosImpl {
             info.setObject_forKey(
                 &NSString::from_str(&payload.album_name),
                 ProtocolObject::from_ref(MPMediaItemPropertyAlbumTitle),
+            );
+
+            // 重置已播放时间
+            info.setObject_forKey(
+                &NSNumber::new_f64(0.0),
+                ProtocolObject::from_ref(MPNowPlayingInfoPropertyElapsedPlaybackTime),
+            );
+
+            // 设置唯一 PersistentID
+            let persistent_id = payload.ncm_id.unwrap_or_else(|| {
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as i64
+            });
+
+            info.setObject_forKey(
+                &NSNumber::new_i64(persistent_id),
+                ProtocolObject::from_ref(MPMediaItemPropertyPersistentID),
             );
 
             // 时长
