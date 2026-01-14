@@ -37,7 +37,7 @@ const initNativeMedia = () => {
   }
 
   try {
-    const logDir = join(app.getPath("userData"), "logs", "media-integration");
+    const logDir = join(app.getPath("userData"), "logs", "external-media-integration");
     nativeMedia.initialize(logDir);
     processLog.info("[Media] 原生插件已初始化");
 
