@@ -15,6 +15,7 @@ export class MpvService {
   private commandQueue: string[] = [];
   private observationMap: Map<number, string> = new Map();
   private currentAudioDevice: string = "auto";
+  private pendingInitialVolume: number | null = null;
 
   private playNonce = 0;
   private mpvProcessNonce: number | null = null;
@@ -137,6 +138,7 @@ export class MpvService {
             this.isConnected = true;
             this.setupEventListeners();
             this.flushQueue();
+            this.applyPendingVolume();
             resolve();
           });
 
@@ -192,6 +194,14 @@ export class MpvService {
     this.observeProperty(3, "volume");
     this.observeProperty(4, "metadata");
     this.observeProperty(5, "duration");
+  }
+
+  private applyPendingVolume() {
+    if (!this.isConnected || !this.client) return;
+    if (this.pendingInitialVolume != null) {
+      const volume = this.pendingInitialVolume;
+      this.sendCommand("set_property", ["volume", volume]);
+    }
   }
 
   private handleMpvEvent(event: any) {
@@ -397,6 +407,21 @@ export class MpvService {
   }
 
   public setVolume(volume: number) {
+    // 记录待应用的初始音量
+    this.pendingInitialVolume = volume;
+
+    // 尚未建立连接
+    if (!this.isConnected || !this.client) {
+      if (this.mpvProcess) {
+        // 进程已启动但仍在连接中，交给 sendCommand 入队
+        this.sendCommand("set_property", ["volume", volume]);
+      } else {
+        // 进程未启动，记录日志
+        processLog.info(`记录待应用的 MPV 初始音量: ${volume}`);
+      }
+      return;
+    }
+
     this.sendCommand("set_property", ["volume", volume]);
   }
 
