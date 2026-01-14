@@ -194,19 +194,8 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">自动暂停滚动</n-text>
-          <n-text class="tip" :depth="3"> 鼠标移入歌词区域时是否暂停滚动 </n-text>
-        </div>
-        <n-switch
-          v-model:value="settingStore.lrcMousePause"
-          :disabled="settingStore.useAMLyrics"
-          :round="false"
-          class="set"
-        />
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
           <n-text class="name">显示逐字歌词</n-text>
+          <n-text class="tip" :depth="3"> 对性能要求较高，若发生卡顿请关闭 </n-text>
         </div>
         <n-switch v-model:value="settingStore.showYrc" class="set" :round="false" />
       </n-card>
@@ -229,18 +218,6 @@
             v-model:value="settingStore.localLyricQQMusicMatch"
             class="set"
             :round="false"
-          />
-        </n-card>
-        <n-card class="set-item">
-          <div class="label">
-            <n-text class="name">显示逐字歌词动画</n-text>
-            <n-text class="tip" :depth="3"> 可能会造成性能问题，如遇卡顿请关闭 </n-text>
-          </div>
-          <n-switch
-            v-model:value="settingStore.showYrcAnimation"
-            :disabled="settingStore.useAMLyrics"
-            :round="false"
-            class="set"
           />
         </n-card>
       </n-collapse-transition>

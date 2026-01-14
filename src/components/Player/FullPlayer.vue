@@ -55,8 +55,7 @@
                 :light="pureLyricMode"
               />
               <!-- 歌词 -->
-              <MainAMLyric v-if="settingStore.useAMLyrics" />
-              <MainLyric v-else />
+              <PlayerLyric />
             </div>
           </div>
         </Transition>

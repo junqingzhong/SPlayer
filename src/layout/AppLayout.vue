@@ -69,7 +69,7 @@
       </n-layout>
     </n-layout>
     <!-- 播放列表 -->
-    <MainPlayList />
+    <SongPlayList />
     <!-- 全局播放器 -->
     <MainPlayer />
     <!-- 全屏播放器 -->

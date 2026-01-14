@@ -61,8 +61,6 @@ export interface SettingState {
   lyricFontWeight: number;
   /** 显示逐字歌词 */
   showYrc: boolean;
-  /** 显示逐字歌词动画 */
-  showYrcAnimation: boolean;
   /** 显示歌词翻译 */
   showTran: boolean;
   /** 显示歌词音译 */
@@ -167,8 +165,6 @@ export interface SettingState {
   smtcOpen: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
-  /** 鼠标悬停暂停 */
-  lrcMousePause: boolean;
   /** 播放试听 */
   playSongDemo: boolean;
   /** 显示搜索历史 */
@@ -390,14 +386,12 @@ export const useSettingStore = defineStore("setting", {
     localLyricQQMusicMatch: false,
     amllDbServer: defaultAMLLDbServer,
     showYrc: true,
-    showYrcAnimation: true,
     showTran: true,
     showRoma: true,
     showWordsRoma: true,
     lyricsPosition: "flex-start",
     lyricsBlur: false,
     lyricsScrollPosition: "start",
-    lrcMousePause: false,
     enableExcludeLyrics: true,
     enableExcludeTTML: false,
     enableExcludeLocalLyrics: false,
