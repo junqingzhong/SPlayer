@@ -343,16 +343,11 @@ const smoothScrollTo = (container: HTMLElement, targetY: number, duration = 300)
   const startY = container.scrollTop;
   const diff = targetY - startY;
   // 如果差值很小，直接设置
-  if (Math.abs(diff) < 1) {
+  if (Math.abs(diff) < 0.5) {
     container.scrollTop = targetY;
     return;
   }
   const startTime = performance.now();
-  /**
-   * easeOutCubic 缓动函数
-   * @param t 时间
-   */
-  const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
   /**
    * 平滑滚动动画
    * @param currentTime 当前时间
@@ -360,7 +355,9 @@ const smoothScrollTo = (container: HTMLElement, targetY: number, duration = 300)
   const step = (currentTime: number) => {
     const elapsed = currentTime - startTime;
     const progress = Math.min(elapsed / duration, 1);
-    const easedProgress = easeOutCubic(progress);
+    // easeInOutQuad 缓动
+    const easedProgress =
+      progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
     container.scrollTop = startY + diff * easedProgress;
     if (progress < 1) {
       scrollAnimationId = requestAnimationFrame(step);
@@ -382,18 +379,11 @@ const lyricsScroll = (index: number) => {
   const lrcItemDom = document.getElementById(index >= 0 ? `lrc-${index}` : "lrc-placeholder");
   if (!lrcItemDom) return;
   // 计算目标滚动位置
-  let targetY: number;
-  // 居中滚动
-  if (settingStore.lyricsScrollPosition === "center") {
-    const containerHeight = container.clientHeight;
-    const elementTop = lrcItemDom.offsetTop;
-    const elementHeight = lrcItemDom.offsetHeight;
-    targetY = elementTop - (containerHeight - elementHeight) / 2;
-  }
-  // 顶部对齐
-  else {
-    targetY = lrcItemDom.offsetTop - 100;
-  }
+  const containerHeight = container.clientHeight;
+  const elementTop = lrcItemDom.offsetTop;
+  const elementHeight = lrcItemDom.offsetHeight;
+  // 居中偏移滚动
+  let targetY = elementTop - (containerHeight - elementHeight) * settingStore.lyricsScrollOffset;
   // 确保不超出边界
   targetY = Math.max(0, Math.min(targetY, container.scrollHeight - container.clientHeight));
   // 执行平滑滚动

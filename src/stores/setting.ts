@@ -69,8 +69,8 @@ export interface SettingState {
   showWordsRoma: boolean;
   /** 歌词位置 */
   lyricsPosition: "flex-start" | "center" | "flex-end";
-  /** 歌词滚动位置 */
-  lyricsScrollPosition: "start" | "center";
+  /** 歌词滚动位置偏移量 */
+  lyricsScrollOffset: number;
   /** 下载路径 */
   downloadPath: string;
   /** 是否启用缓存 */
@@ -391,7 +391,7 @@ export const useSettingStore = defineStore("setting", {
     showWordsRoma: true,
     lyricsPosition: "flex-start",
     lyricsBlur: false,
-    lyricsScrollPosition: "start",
+    lyricsScrollOffset: 0.25,
     enableExcludeLyrics: true,
     enableExcludeTTML: false,
     enableExcludeLocalLyrics: false,

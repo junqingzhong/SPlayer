@@ -175,20 +175,15 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">歌词滚动位置</n-text>
-          <n-text class="tip" :depth="3">歌词高亮时所处的位置</n-text>
+          <n-text class="tip" :depth="3">歌词高亮时在屏幕中的垂直位置</n-text>
         </div>
-        <n-select
-          v-model:value="settingStore.lyricsScrollPosition"
-          :options="[
-            {
-              label: '靠近顶部',
-              value: 'start',
-            },
-            {
-              label: '水平居中',
-              value: 'center',
-            },
-          ]"
+        <n-slider
+          v-model:value="settingStore.lyricsScrollOffset"
+          :min="0.1"
+          :max="0.9"
+          :step="0.05"
+          :format-tooltip="(value: number) => `${(value * 100).toFixed(0)}%`"
+          :marks="{ '0.1': '靠上', '0.9': '靠下' }"
           class="set"
         />
       </n-card>
