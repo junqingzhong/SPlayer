@@ -11,6 +11,7 @@
     >
       <!-- 侧边栏 -->
       <n-layout-sider
+        v-if="isDesktop"
         id="main-sider"
         :style="{
           height:
@@ -81,6 +82,7 @@
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { isElectron } from "@/utils/env";
+import { useMobile } from "@/composables/useMobile";
 import init from "@/utils/init";
 
 const musicStore = useMusicStore();
@@ -88,6 +90,8 @@ const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
 const blobURLManager = useBlobURLManager();
+
+const { isDesktop } = useMobile();
 
 // 主内容
 const contentRef = ref<HTMLElement | null>(null);
