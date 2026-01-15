@@ -51,6 +51,8 @@ export interface LyricConfig {
   limitBounds: boolean;
   /** 文本背景遮罩 */
   textBackgroundMask: boolean;
+  /** 文本背景遮罩颜色 */
+  backgroundMaskColor: string;
   /** 始终展示播放信息 */
   alwaysShowPlayInfo: boolean;
 }
