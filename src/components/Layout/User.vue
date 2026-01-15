@@ -3,8 +3,12 @@
     <template #trigger>
       <div class="user" :style="{ pointerEvents: userMenuShow ? 'none' : 'auto' }" @click="openMenu">
         <div class="avatar">
-          <n-avatar v-if="dataStore.userLoginStatus" :src="dataStore.userData?.avatarUrl"
-            fallback-src="/images/avatar.jpg?assest" round />
+          <n-avatar
+            v-if="dataStore.userLoginStatus"
+            :src="dataStore.userData?.avatarUrl"
+            fallback-src="/images/avatar.jpg?asset"
+            round
+          />
           <n-avatar v-else round>
             <SvgIcon name="Person" :depth="3" size="26" />
           </n-avatar>
@@ -14,8 +18,11 @@
             {{ dataStore.userLoginStatus ? dataStore.userData.name || "未知用户名" : "未登录" }}
           </n-text>
           <!-- VIP -->
-          <img v-if="dataStore.userLoginStatus && dataStore.userData.vipType !== 0" class="vip"
-            src="/images/vip.png?assest" />
+          <img
+            v-if="dataStore.userLoginStatus && dataStore.userData.vipType !== 0"
+            class="vip"
+            src="/images/vip.png?asset"
+          />
           <SvgIcon :class="['down', { open: userMenuShow }]" name="DropDown" :depth="3" />
         </div>
       </div>

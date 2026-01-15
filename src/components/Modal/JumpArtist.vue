@@ -13,7 +13,7 @@
           hoverable
           @click="jumpArtist(item.id)"
         >
-          <n-avatar :src="item.cover || '/images/artist.jpg?assest'" class="cover" round />
+          <n-avatar :src="item.cover || '/images/artist.jpg?asset'" class="cover" round />
           <n-text class="name">{{ item.name }}</n-text>
         </n-card>
       </div>
@@ -99,7 +99,7 @@ const getArtistData = async () => {
         return {
           id: ar.id,
           name: ar.name,
-          cover: artist?.cover || artist?.img1v1Url || artist?.picUrl,
+          cover: artist?.avatar || artist?.img1v1Url || artist?.picUrl,
         };
       } catch (error) {
         console.error(`获取歌手 ${ar.name} (${ar.id}) 的详情失败:`, error);

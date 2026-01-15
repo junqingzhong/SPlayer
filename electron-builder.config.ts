@@ -23,6 +23,35 @@ const config: Configuration = {
   ],
   // 哪些文件将不会被压缩，而是解压到构建目录
   asarUnpack: ["public/**"],
+  // 将原生插件作为外部资源复制
+  extraResources: [
+    // Discord RPC
+    {
+      from: "native/discord-rpc-for-splayer",
+      to: "native",
+      filter: ["*.node"],
+    },
+    // SMTC - 仅 Windows
+    ...(process.platform === "win32"
+      ? [
+          {
+            from: "native/smtc-for-splayer",
+            to: "native",
+            filter: ["*.node"],
+          },
+        ]
+      : []),
+    // MPRIS - 仅 Linux
+    ...(process.platform === "linux"
+      ? [
+          {
+            from: "native/mpris-for-splayer",
+            to: "native",
+            filter: ["*.node"],
+          },
+        ]
+      : []),
+  ],
   win: {
     // 可执行文件名
     executableName: "SPlayer",
@@ -84,7 +113,7 @@ const config: Configuration = {
     // 可执行文件名
     executableName: "SPlayer",
     // 应用程序的图标文件路径
-    icon: "public/icons/favicon-512x512.png",
+    icon: "public/icons/icon.icns",
     // 权限继承的文件路径
     entitlementsInherit: "build/entitlements.mac.plist",
     // macOS 平台全局文件名模板

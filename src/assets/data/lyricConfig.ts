@@ -7,7 +7,7 @@ const config: LyricConfig = {
   shadowColor: "rgba(0, 0, 0, 0.5)",
   fontFamily: "system-ui",
   fontSize: 24,
-  fontIsBold: false,
+  fontWeight: 400,
   showTran: true,
   showYrc: true,
   isDoubleLine: true,

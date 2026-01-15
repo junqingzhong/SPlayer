@@ -14,6 +14,7 @@ import { serverLog } from "../main/logger";
 import { initNcmAPI } from "./netease";
 import { initUnblockAPI } from "./unblock";
 import { initControlAPI } from "./control";
+import { initQQMusicAPI } from "./qqmusic";
 import fastifyCookie from "@fastify/cookie";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
@@ -65,6 +66,10 @@ const initAppServer = async () => {
             name: "ControlAPI",
             url: "/api/control",
           },
+          {
+            name: "QQMusicAPI",
+            url: "/api/qqmusic",
+          },
         ],
       });
     });
@@ -72,6 +77,7 @@ const initAppServer = async () => {
     server.register(initNcmAPI, { prefix: "/api" });
     server.register(initUnblockAPI, { prefix: "/api" });
     server.register(initControlAPI, { prefix: "/api" });
+    server.register(initQQMusicAPI, { prefix: "/api" });
     // 启动端口
     const port = await getServerPort();
     await server.listen({ port });

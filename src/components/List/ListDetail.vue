@@ -15,7 +15,7 @@
           >
             <template #placeholder>
               <div class="cover-loading">
-                <img src="/images/album.jpg?assest" class="loading-img" alt="loading-img" />
+                <img src="/images/album.jpg?asset" class="loading-img" alt="loading-img" />
               </div>
             </template>
           </n-image>
@@ -63,23 +63,27 @@
               {{ detailData.description }}
             </n-text>
             <!-- 信息 -->
-            <n-flex class="meta">
+            <n-flex class="meta" v-if="!settingStore.isMobileMode">
               <!-- 艺术家/创建者 -->
               <div v-if="config.showArtist || config.showCreator" class="item">
                 <SvgIcon name="Person" :depth="3" />
                 <div
                   v-if="config.showArtist && Array.isArray(detailData.artists)"
                   class="artists text-hidden"
-                  @click="handleArtistClick(detailData.artists)"
                 >
-                  <n-text v-for="(ar, arIndex) in detailData.artists" :key="arIndex" class="ar">
+                  <n-text
+                    v-for="(ar, arIndex) in detailData.artists"
+                    :key="arIndex"
+                    class="ar"
+                    @click="openJumpArtist(detailData.artists, ar.id)"
+                  >
                     {{ ar.name || "未知艺术家" }}
                   </n-text>
                 </div>
                 <div
                   v-else-if="config.showArtist"
                   class="artists text-hidden"
-                  @click="handleArtistClick(detailData.artists || '')"
+                  @click="openJumpArtist(detailData.artists || '')"
                 >
                   <n-text class="ar"> {{ detailData.artists || "未知艺术家" }} </n-text>
                 </div>
@@ -103,7 +107,7 @@
                 <n-text>{{ formatTimestamp(detailData.createTime) }}</n-text>
               </div>
               <!-- 标签 -->
-              <div v-if="detailData.tags?.length" class="item">
+              <div v-if="!settingStore.isMobileMode && detailData.tags?.length" class="item">
                 <SvgIcon name="Tag" :depth="3" />
                 <n-flex class="tags">
                   <n-tag
@@ -156,7 +160,7 @@
             <n-flex class="right" :align="config.searchAlign || 'center'">
               <!-- 模糊搜索 -->
               <n-input
-                v-if="showSearch && listData?.length"
+                v-if="!settingStore.isMobileMode && showSearch && listData?.length"
                 :value="searchValue"
                 :input-props="{ autocomplete: 'off' }"
                 class="search"
@@ -171,7 +175,7 @@
               </n-input>
               <!-- 查看评论 -->
               <n-tabs
-                v-if="showCommentTab"
+                v-if="showCommentTab && !settingStore.isMobileMode"
                 v-model:value="currentTab"
                 class="tabs"
                 type="segment"
@@ -201,7 +205,9 @@ import { coverLoaded, formatNumber } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
 import { formatTimestamp } from "@/utils/time";
 import { openDescModal, openJumpArtist } from "@/utils/modal";
+import { useSettingStore } from "@/stores";
 
+const settingStore = useSettingStore();
 interface ListDetailConfig {
   // 标题类型
   titleType?: "ellipsis" | "normal";
@@ -265,11 +271,6 @@ const handleSearch = (val: string) => {
   emit("update:searchValue", val);
 };
 
-// 处理艺术家点击
-const handleArtistClick = (artists: any) => {
-  openJumpArtist(artists);
-};
-
 // 处理标签点击
 const handleTagClick = (tag: string) => {
   router.push({
@@ -299,11 +300,11 @@ const handleTabChange = (value: "songs" | "comments") => {
   display: flex;
   flex-direction: column;
   .detail {
-    position: absolute;
+    position: relative;
     display: flex;
     height: 240px;
     width: 100%;
-    padding: 12px 0 30px 0;
+    padding: 12px 0 24px 0;
     will-change: height, opacity;
     z-index: 1;
     transition:
@@ -514,6 +515,38 @@ const handleTabChange = (value: "songs" | "comments") => {
             --n-icon-size: 16px;
             --n-tab-font-size: 13px;
             --n-tab-padding: 2px 0;
+          }
+        }
+      }
+    }
+  }
+  @media (max-width: 768px) {
+    .detail {
+      height: 160px;
+      .cover {
+        margin-right: 12px;
+      }
+      .data {
+        .name {
+          font-size: 20px;
+          margin-bottom: 6px;
+        }
+        .meta {
+          .item {
+            .n-icon {
+              font-size: 16px;
+            }
+            font-size: 13px;
+          }
+        }
+      }
+    }
+    &.small {
+      .detail {
+        height: 80px;
+        .data {
+          .name {
+            font-size: 18px;
           }
         }
       }

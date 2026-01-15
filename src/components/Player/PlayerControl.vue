@@ -21,7 +21,11 @@
             <SvgIcon name="AddList" />
           </div>
           <!-- 下载 -->
-          <div class="menu-icon" @click.stop="openDownloadSong(musicStore.playSong)">
+          <div
+            class="menu-icon"
+            v-if="!musicStore.playSong.path && statusStore.isDeveloperMode"
+            @click.stop="openDownloadSong(musicStore.playSong)"
+          >
             <SvgIcon name="Download" />
           </div>
           <!-- 显示评论 -->
@@ -76,9 +80,9 @@
           </div>
           <!-- 进度条 -->
           <div class="slider">
-            <span class="time-display time-display--primary">{{ formatTime(millisecondsToSeconds(statusStore.currentTime), settingStore.timeDisplayFormat) }}</span>
+            <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
             <PlayerSlider :show-tooltip="false" />
-            <span class="time-display time-display--primary">{{ formatTime(millisecondsToSeconds(statusStore.duration), settingStore.timeDisplayFormat) }}</span>
+            <span @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
           </div>
         </div>
         <n-flex class="right" align="center" justify="end">
@@ -91,21 +95,21 @@
 </template>
 
 <script setup lang="ts">
-import { useMusicStore, useStatusStore, useDataStore } from "@/stores";
-import { useSettingStore } from "@/stores/setting";
-import { formatTime, millisecondsToSeconds } from "@/utils/timeFormat";
-import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
-import { toLikeSong } from "@/utils/auth";
-import { useSongManager } from "@/core/player/SongManager";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { useSongManager } from "@/core/player/SongManager";
+import { useDataStore, useMusicStore, useStatusStore } from "@/stores";
+import { toLikeSong } from "@/utils/auth";
+import { useTimeFormat } from "@/composables/useTimeFormat";
+import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
-const settingStore = useSettingStore();
 
 const songManager = useSongManager();
 const player = usePlayerController();
+
+const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 </script>
 
 <style lang="scss" scoped>
@@ -113,7 +117,6 @@ const player = usePlayerController();
   width: 100%;
   height: 80px;
   overflow: hidden;
-  cursor: pointer;
   .control-content {
     width: 100%;
     height: 100%;
@@ -179,6 +182,8 @@ const player = usePlayerController();
           background-color 0.3s,
           transform 0.3s;
         cursor: pointer;
+        margin: 0 4px;
+
         .n-icon {
           color: rgb(var(--main-cover-color));
         }
@@ -224,19 +229,14 @@ const player = usePlayerController();
       width: 100%;
       max-width: 480px;
       font-size: 12px;
-      cursor: pointer;
       .n-slider {
         margin: 6px 8px;
         --n-handle-size: 12px;
         --n-rail-height: 4px;
       }
       span {
-        opacity: 0.8;
-        transition: opacity 0.2s ease;
-
-        &:hover {
-          opacity: 1;
-        }
+        opacity: 0.6;
+        cursor: pointer;
       }
     }
   }

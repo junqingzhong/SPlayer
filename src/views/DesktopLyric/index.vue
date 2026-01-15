@@ -24,7 +24,7 @@
           </div>
         </n-flex>
         <n-flex :wrap="false" align="center" justify="flex-end" size="small" @pointerdown.stop>
-          <div class="menu-btn" @click.stop="sendToMain('open-setting', 'lyrics')">
+          <div class="menu-btn" @click.stop="sendToMain('open-setting', 'lyrics', 'desktop')">
             <SvgIcon name="Settings" />
           </div>
           <div
@@ -35,7 +35,7 @@
           >
             <SvgIcon :name="lyricConfig.isLock ? 'LockOpen' : 'Lock'" />
           </div>
-          <div class="menu-btn" @click.stop="sendToMain('closeDesktopLyric')">
+          <div class="menu-btn" @click.stop="sendToMain('close-desktop-lyric')">
             <SvgIcon name="Close" />
           </div>
         </n-flex>
@@ -55,7 +55,7 @@
         :style="{
           fontSize: lyricConfig.fontSize + 'px',
           fontFamily: lyricConfig.fontFamily,
-          fontWeight: lyricConfig.fontIsBold ? 'bold' : 'normal',
+          fontWeight: lyricConfig.fontWeight,
           textShadow: `0 0 4px ${lyricConfig.shadowColor}`,
         }"
         :class="['lyric-container', lyricConfig.position]"
@@ -619,12 +619,12 @@ const sendToMain = (eventName: string, ...args: any[]) => {
 
 // 发送至主窗口
 const sendToMainWin = (eventName: string, ...args: any[]) => {
-  window.electron.ipcRenderer.send("send-to-mainWin", eventName, ...args);
+  window.electron.ipcRenderer.send("send-to-main-win", eventName, ...args);
 };
 
 // 切换桌面歌词锁定状态
 const toggleLyricLock = () => {
-  sendToMain("toogleDesktopLyricLock", !lyricConfig.isLock);
+  sendToMain("toggle-desktop-lyric-lock", !lyricConfig.isLock);
   lyricConfig.isLock = !lyricConfig.isLock;
 };
 
@@ -635,38 +635,56 @@ const toggleLyricLock = () => {
 const tempToggleLyricLock = (isLock: boolean) => {
   // 是否已经解锁
   if (!lyricConfig.isLock) return;
-  window.electron.ipcRenderer.send("toogleDesktopLyricLock", isLock, true);
+  window.electron.ipcRenderer.send("toggle-desktop-lyric-lock", isLock, true);
 };
 
 onMounted(() => {
   // 接收歌词数据
-  window.electron.ipcRenderer.on("update-desktop-lyric-data", (_event, data: LyricData) => {
-    Object.assign(lyricData, data);
-    // 更新锚点：以传入的 currentTime + songOffset 建立毫秒级基准，并重置帧时间
-    if (typeof lyricData.currentTime === "number") {
-      const offset = Number(lyricData.songOffset ?? 0);
-      baseMs = Math.floor(lyricData.currentTime + offset);
-      anchorTick = performance.now();
-    }
-    // 按播放状态节能：暂停时暂停 RAF，播放时恢复 RAF
-    if (typeof lyricData.playStatus === "boolean") {
-      if (lyricData.playStatus) {
-        resumeSeek();
-      } else {
-        // 重置锚点到当前毫秒游标，避免因暂停后时间推进造成误差
-        baseMs = playSeekMs.value;
-        anchorTick = performance.now();
-        pauseSeek();
+  window.electron.ipcRenderer.on(
+    "update-desktop-lyric-data",
+    (_event, data: LyricData & { sendTimestamp?: number }) => {
+      Object.assign(lyricData, data);
+      // 更新锚点：以传入的 currentTime + songOffset 建立毫秒级基准，并重置帧时间
+      if (typeof lyricData.currentTime === "number") {
+        const offset = Number(lyricData.songOffset ?? 0);
+        let newBaseMs = Math.floor(lyricData.currentTime + offset);
+        // 补偿传输延迟
+        if (typeof data.sendTimestamp === "number") {
+          const ipcDelay = performance.now() - data.sendTimestamp;
+          // 正延迟才补偿
+          if (ipcDelay > 0 && ipcDelay < 1000) {
+            newBaseMs += ipcDelay;
+          }
+        }
+        // 阈值检测：只有当新时间与当前插值时间差距超过阈值时才重置锚点
+        // 这样可以避免在正常播放时频繁重置导致的微小抖动
+        const SYNC_THRESHOLD = 300; // 300ms 阈值
+        const drift = Math.abs(newBaseMs - playSeekMs.value);
+        if (drift > SYNC_THRESHOLD) {
+          baseMs = newBaseMs;
+          anchorTick = performance.now();
+        }
       }
-    }
-  });
+      // 按播放状态节能：暂停时暂停 RAF，播放时恢复 RAF
+      if (typeof lyricData.playStatus === "boolean") {
+        if (lyricData.playStatus) {
+          resumeSeek();
+        } else {
+          // 重置锚点到当前毫秒游标，避免因暂停后时间推进造成误差
+          baseMs = playSeekMs.value;
+          anchorTick = performance.now();
+          pauseSeek();
+        }
+      }
+    },
+  );
   window.electron.ipcRenderer.on("update-desktop-lyric-option", (_event, config: LyricConfig) => {
     Object.assign(lyricConfig, config);
     // 根据文字大小改变一次高度
     const height = fontSizeToHeight(config.fontSize);
     if (height) pushWindowHeight(height);
     // 是否锁定
-    sendToMain("toogleDesktopLyricLock", config.isLock);
+    sendToMain("toggle-desktop-lyric-lock", config.isLock);
   });
   // 请求歌词数据及配置
   window.electron.ipcRenderer.send("request-desktop-lyric-data");

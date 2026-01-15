@@ -190,8 +190,7 @@ export const formatFileSize = (bytes: number): string => {
  */
 export const copyData = async (text: any, message?: string) => {
   if (!text) return;
-  const content =
-    typeof text === "string" ? text.trim() : JSON.stringify(text, null, 2);
+  const content = typeof text === "string" ? text.trim() : JSON.stringify(text, null, 2);
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(content);
@@ -226,7 +225,6 @@ export const copyData = async (text: any, message?: string) => {
     console.error("复制出错：", error);
   }
 };
-
 
 /*
  * 获取剪贴板内容
@@ -290,56 +288,94 @@ export const getUpdateLog = async (): Promise<UpdateLogType[]> => {
   return updateLogs;
 };
 
+/** 更改本地目录选项 */
+type ChangeLocalPathOptions = {
+  /** 设置项 key */
+  settingsKey: string;
+  /** 标题 */
+  title: string;
+  /** 是否包含子文件夹 */
+  includeSubFolders: boolean;
+  /** 控制台输出的错误信息 */
+  errorConsole: string;
+  /** 错误信息 */
+  errorMessage: string;
+};
+
 /**
- * 获取 更改本地目录 函数
+ * 获取 更改本地目录
  * @param settingsKey 设置项 key
  * @param includeSubFolders 是否包含子文件夹
  * @param errorConsole 控制台输出的错误信息
  * @param errorMessage 错误信息
- * @param needDefaultMusicPath 是否需要获取默认音乐路径
  */
 const changeLocalPath =
   (
-    settingsKey: string,
-    includeSubFolders: boolean,
-    errorConsole: string,
-    errorMessage: string,
-    needDefaultMusicPath: boolean = false,
+    options: ChangeLocalPathOptions = {
+      settingsKey: "localFilesPath",
+      includeSubFolders: true,
+      title: "选择文件夹",
+      errorConsole: "Error changing local path",
+      errorMessage: "更改本地歌曲文件夹出错，请重试",
+    },
   ) =>
   async (delIndex?: number) => {
+    const { settingsKey, includeSubFolders, title, errorConsole, errorMessage } = options;
     try {
       if (!isElectron) return;
       const settingStore = useSettingStore();
+      // 删除目录
       if (typeof delIndex === "number" && delIndex >= 0) {
         settingStore[settingsKey].splice(delIndex, 1);
-      } else {
-        const selectedDir = await window.electron.ipcRenderer.invoke("choose-path");
-        if (!selectedDir) return;
-        // 动态获取默认路径
-        let allPath = [...settingStore[settingsKey]];
-        if (needDefaultMusicPath) {
-          const defaultDir = await window.electron.ipcRenderer.invoke("get-default-dir", "music");
-          if (defaultDir) allPath = [defaultDir, ...allPath];
+        return;
+      }
+      // 添加目录（支持多选）
+      const selectedDirs = await window.electron.ipcRenderer.invoke("choose-path", title, true);
+      if (!selectedDirs || selectedDirs.length === 0) return;
+      // 转换为数组（兼容单选返回字符串的情况）
+      const dirsToAdd = Array.isArray(selectedDirs) ? selectedDirs : [selectedDirs];
+      // 记录成功添加的数量
+      let addedCount = 0;
+      let skippedCount = 0;
+      // 用于追踪本次批量添加中已添加的路径
+      const newlyAddedPaths: string[] = [];
+      for (const selectedDir of dirsToAdd) {
+        // 检查时需要包含原有路径和本次已添加的路径
+        const pathsToCheck = [...settingStore[settingsKey], ...newlyAddedPaths];
+        // 是否是完全相同的路径
+        const isExactMatch = await window.electron.ipcRenderer.invoke(
+          "check-if-same-path",
+          pathsToCheck,
+          selectedDir,
+        );
+        if (isExactMatch) {
+          skippedCount++;
+          continue;
         }
-        // 检查是否为子文件夹
+        // 检查是否为子文件夹关系
         if (includeSubFolders) {
           const isSubfolder = await window.electron.ipcRenderer.invoke(
             "check-if-subfolder",
-            allPath,
+            pathsToCheck,
             selectedDir,
           );
-          if (!isSubfolder) {
-            settingStore[settingsKey].push(selectedDir);
-          } else {
-            window.$message.error("添加的目录与现有目录有重叠，请重新选择");
-          }
-        } else {
-          if (allPath.includes(selectedDir)) {
-            window.$message.error("添加的目录已存在");
-          } else {
-            settingStore[settingsKey].push(selectedDir);
+          if (isSubfolder) {
+            skippedCount++;
+            continue;
           }
         }
+        // 通过所有检查，添加目录
+        settingStore[settingsKey].push(selectedDir);
+        newlyAddedPaths.push(selectedDir);
+        addedCount++;
+      }
+      // 显示结果提示
+      if (addedCount > 0 && skippedCount > 0) {
+        window.$message.success(`成功添加 ${addedCount} 个目录，跳过 ${skippedCount} 个重复目录`);
+      } else if (addedCount > 0) {
+        window.$message.success(`成功添加 ${addedCount} 个目录`);
+      } else if (skippedCount > 0) {
+        window.$message.warning(`所选目录已存在或有重叠，已跳过`);
       }
     } catch (error) {
       console.error(`${errorConsole}: `, error);
@@ -351,25 +387,25 @@ const changeLocalPath =
  * 更改本地音乐目录
  * @param delIndex 删除文件夹路径的索引
  */
-export const changeLocalMusicPath = changeLocalPath(
-  "localFilesPath",
-  true,
-  "Error changing local path",
-  "更改本地歌曲文件夹出错，请重试",
-  true,
-);
+export const changeLocalMusicPath = changeLocalPath({
+  settingsKey: "localFilesPath",
+  includeSubFolders: true,
+  title: "选择本地歌曲文件夹",
+  errorConsole: "Error changing local path",
+  errorMessage: "更改本地歌曲文件夹出错，请重试",
+});
 
 /**
  * 更改本地歌词目录
  * @param delIndex 删除文件夹路径的索引
  */
-export const changeLocalLyricPath = changeLocalPath(
-  "localLyricPath",
-  true,
-  "Error changing local lyric path",
-  "更改本地歌词文件夹出错，请重试",
-  false,
-);
+export const changeLocalLyricPath = changeLocalPath({
+  settingsKey: "localLyricPath",
+  includeSubFolders: true,
+  title: "选择本地歌词文件夹",
+  errorConsole: "Error changing local lyric path",
+  errorMessage: "更改本地歌词文件夹出错，请重试",
+});
 
 /**
  * 洗牌数组（Fisher-Yates）
@@ -400,16 +436,39 @@ export const handleSongQuality = (
     if (song >= 160000) return QualityType.MQ;
     return QualityType.LQ;
   }
-  // 含有 level 特殊处理
-  if (typeof song === "object" && "level" in song) {
-    if (song.level === "hires") return QualityType.HiRes;
-    if (song.level === "lossless") return QualityType.SQ;
-    if (song.level === "exhigh") return QualityType.HQ;
-    if (song.level === "higher") return QualityType.MQ;
-    if (song.level === "standard") return QualityType.LQ;
-    return undefined;
+
+  const levelQualityMap = {
+    "jymaster": QualityType.Master,
+    "dolby": QualityType.Dolby,
+    "sky": QualityType.Spatial,
+    "jyeffect": QualityType.Surround,
+    "hires": QualityType.HiRes,
+    "lossless": QualityType.SQ,
+    "exhigh": QualityType.HQ,
+    "higher": QualityType.MQ,
+    "standard": QualityType.LQ,
   }
+
+  if (typeof song === "object" && song) {
+    // 含有 level 特殊处理
+    if ("level" in song) {
+      const quality = levelQualityMap[song.level];
+      if (quality) return quality;
+    }
+    // 云盘歌曲适配
+    if ("privilege" in song) {
+      const privilege = song.privilege;
+      const quality = levelQualityMap[privilege?.playMaxBrLevel]
+        ?? levelQualityMap[privilege?.plLevel];
+      if (quality) return quality;
+    }
+  }
+
   const order = [
+    { key: "jm", type: QualityType.Master },
+    { key: "db", type: QualityType.Dolby },
+    { key: "sk", type: QualityType.Spatial },
+    { key: "je", type: QualityType.Surround },
     { key: "hr", type: QualityType.HiRes },
     { key: "sq", type: QualityType.SQ },
     { key: "h", type: QualityType.HQ },

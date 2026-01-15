@@ -27,6 +27,8 @@ import SidebarHideManager from "@/components/Modal/Setting/SidebarHideManager.vu
 import HomePageSectionManager from "@/components/Modal/Setting/HomePageSectionManager.vue";
 import CopyLyrics from "@/components/Modal/CopyLyrics.vue";
 import AMLLServer from "@/components/Modal/Setting/AMLLServer.vue";
+import FontManager from "@/components/Modal/Setting/FontManager.vue";
+import CustomCode from "@/components/Modal/Setting/CustomCode.vue";
 
 export const openUserAgreement = () => {
   const settingStore = useSettingStore();
@@ -61,33 +63,47 @@ export const openUserAgreement = () => {
 // 用户登录
 export const openUserLogin = (showTip: boolean = false) => {
   if (showTip) window.$message.warning("请登录后使用");
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    maskClosable: false,
-    closeOnEsc: false,
-    closable: false,
-    style: { width: "400px" },
+    maskClosable: settingStore.isMobileMode ? true : false,
+    closeOnEsc: settingStore.isMobileMode ? true : false,
+    closable: settingStore.isMobileMode ? true : false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "400px" },
     content: () => {
       return h(Login, { onClose: () => modal.destroy() });
     },
   });
 };
 
-// 跳转到歌手
-export const openJumpArtist = (data: SongType["artists"]) => {
+/**
+ * 跳转到歌手
+ * @param data 歌手信息
+ * @param id 歌手 id
+ * @returns
+ */
+export const openJumpArtist = (data: SongType["artists"], id?: number) => {
   // 若 data 为数组且只有一个元素，则直接跳转
-  if (isArray(data) && data.length === 1) {
-    const id = data[0].id;
+  if (isArray(data) && data.length <= 2 && id) {
     router.push({ name: "artist", query: { id } });
     return;
   }
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "跳转到歌手",
     content: () => {
       return h(JumpArtist, { artist: data, onClose: () => modal.destroy() });
@@ -97,13 +113,19 @@ export const openJumpArtist = (data: SongType["artists"]) => {
 
 // 编辑歌曲信息
 export const openSongInfoEditor = (song: SongType) => {
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
     trapFocus: false,
-    // contentStyle: { padding: 0 },
-    style: { width: "600px" },
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "编辑歌曲信息",
     content: () => {
       return h(SongInfoEditor, { song, onClose: () => modal.destroy() });
@@ -115,12 +137,19 @@ export const openSongInfoEditor = (song: SongType) => {
 export const openPlaylistAdd = (data: SongType[], isLocal: boolean) => {
   if (!data.length) return window.$message.warning("请正确选择歌曲");
   if (!isLogin() && !isLocal) return openUserLogin();
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
-    title: "添加到歌单",
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
+    title: isLocal ? "添加到本地歌单" : "添加到歌单",
     content: () => {
       return h(PlaylistAdd, { data, isLocal, onClose: () => modal.destroy() });
     },
@@ -134,13 +163,18 @@ export const openPlaylistAdd = (data: SongType[], isLocal: boolean) => {
  * @param playListId 歌单 id
  */
 export const openBatchList = (data: SongType[], isLocal: boolean, playListId?: number) => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: {
-      maxWidth: "70vw",
-    },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { maxWidth: "70vw" },
     title: "批量操作",
     content: () => h(BatchList, { data, isLocal, playListId }),
   });
@@ -148,11 +182,18 @@ export const openBatchList = (data: SongType[], isLocal: boolean, playListId?: n
 
 // 云盘歌曲纠正
 export const openCloudMatch = (id: number, index: number) => {
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "云盘歌曲纠正",
     content: () => {
       return h(CloudMatch, { id, index, onClose: () => modal.destroy() });
@@ -161,26 +202,40 @@ export const openCloudMatch = (id: number, index: number) => {
 };
 
 // 新建歌单
-export const openCreatePlaylist = () => {
+export const openCreatePlaylist = (isLocal: boolean = false) => {
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
-    title: "新建歌单",
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
+    title: isLocal ? "新建本地歌单" : "新建歌单",
     content: () => {
-      return h(CreatePlaylist, { onClose: () => modal.destroy() });
+      return h(CreatePlaylist, { isLocal, onClose: () => modal.destroy() });
     },
   });
 };
 
 // 编辑歌单
 export const openUpdatePlaylist = (id: number, data: CoverType, func: () => Promise<void>) => {
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "编辑歌单",
     content: () => {
       return h(UpdatePlaylist, {
@@ -205,11 +260,18 @@ export const openDownloadSong = (song: SongType) => {
   if (song.free !== 0 && dataStore.userData.vipType === 0 && !song?.pc) {
     return window.$message.warning("账号会员等级不足，请提升权限");
   }
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "下载歌曲",
     content: () => {
       return h(DownloadModal, { songId: song.id, onClose: () => modal.destroy() });
@@ -224,11 +286,18 @@ export const openDownloadSongs = (songs: SongType[]): void => {
     window.$message.warning("请选择要下载的歌曲");
     return;
   }
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "批量下载",
     content: () => {
       return h(DownloadModal, { songs, onClose: () => modal.destroy() });
@@ -236,29 +305,61 @@ export const openDownloadSongs = (songs: SongType[]): void => {
   });
 };
 
+// 设置页面是否已打开
+let isSettingOpen = false;
+
 // 打开设置
-export const openSetting = (type: SettingType = "general") => {
+export const openSetting = (type: SettingType = "general", scrollTo?: string) => {
+  // 如果设置页面已打开，显示提醒
+  if (isSettingOpen) {
+    window.$message.warning("设置页面已打开");
+    return;
+  }
+  isSettingOpen = true;
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    maskClosable: false,
-    closeOnEsc: false,
+    maskClosable: true,
+    closable: true,
+    closeOnEsc: true,
+    blockScroll: false,
     bordered: true,
     class: "main-setting",
+    style: settingStore.isMobileMode
+      ? {
+          width: "100vw",
+          maxWidth: "100vw",
+          height: "100vh",
+          maxHeight: "100vh",
+          margin: "0",
+          borderRadius: "0",
+        }
+      : undefined,
     content: () => {
-      return h(MainSetting, { type });
+      return h(MainSetting, { type, scrollTo });
+    },
+    onAfterLeave: () => {
+      isSettingOpen = false;
     },
   });
 };
 
 // 软件更新
 export const openUpdateApp = (data: UpdateInfoType) => {
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "发现新版本",
     content: () => {
       return h(UpdateApp, { data, onClose: () => modal.destroy() });
@@ -268,11 +369,18 @@ export const openUpdateApp = (data: UpdateInfoType) => {
 
 // 歌词排除内容
 export const openLyricExclude = () => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "歌词排除内容",
     content: () => {
       return h(ExcludeLyrics);
@@ -282,11 +390,18 @@ export const openLyricExclude = () => {
 
 /** 打开播放速度弹窗 */
 export const openChangeRate = () => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "播放速度",
     content: () => {
       return h(ChangeRate);
@@ -296,11 +411,18 @@ export const openChangeRate = () => {
 
 /** 打开自动关闭弹窗 */
 export const openAutoClose = () => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "自动关闭",
     content: () => {
       return h(AutoClose);
@@ -310,11 +432,18 @@ export const openAutoClose = () => {
 
 /** 打开均衡器弹窗 */
 export const openEqualizer = () => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "620px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "620px" },
     title: "均衡器",
     content: () => {
       return h(Equalizer);
@@ -327,11 +456,18 @@ export const openEqualizer = () => {
  * @param content 简介内容
  */
 export const openDescModal = (content: string, title: string = "歌单简介") => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title,
     content: () => {
       return h(
@@ -348,11 +484,18 @@ export const openDescModal = (content: string, title: string = "歌单简介") =
 
 /** 打开音源管理弹窗 */
 export const openSongUnlockManager = () => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "500px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "500px" },
     title: "音源管理",
     content: () => {
       return h(SongUnlockManager);
@@ -362,11 +505,18 @@ export const openSongUnlockManager = () => {
 
 /** 打开侧边栏隐藏管理弹窗 */
 export const openSidebarHideManager = () => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "500px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "500px" },
     title: "侧边栏隐藏管理",
     content: () => {
       return h(SidebarHideManager);
@@ -376,11 +526,18 @@ export const openSidebarHideManager = () => {
 
 /** 打开首页栏目配置弹窗 */
 export const openHomePageSectionManager = () => {
+  const settingStore = useSettingStore();
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "500px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "500px" },
     title: "首页栏目配置",
     content: () => {
       return h(HomePageSectionManager);
@@ -390,11 +547,18 @@ export const openHomePageSectionManager = () => {
 
 /** 打开复制歌词弹窗 */
 export const openCopyLyrics = () => {
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "500px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "500px" },
     title: "复制歌词",
     content: () => {
       return h(CopyLyrics, {
@@ -406,16 +570,65 @@ export const openCopyLyrics = () => {
 
 /** 打开 AMLL 服务器配置弹窗 */
 export const openAMLLServer = () => {
+  const settingStore = useSettingStore();
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "600px" },
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "600px" },
     title: "AMLL TTML DB 服务器配置",
     content: () => {
       return h(AMLLServer, {
         onClose: () => modal.destroy(),
       });
+    },
+  });
+};
+
+/** 打开字体管理弹窗 */
+export const openFontManager = () => {
+  const settingStore = useSettingStore();
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "700px" },
+    title: "字体设置",
+    content: () => {
+      return h(FontManager);
+    },
+  });
+};
+
+/** 打开自定义代码弹窗 */
+export const openCustomCode = () => {
+  const settingStore = useSettingStore();
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    maskClosable: true,
+    closeOnEsc: true,
+    closable: true,
+    blockScroll: false,
+    style: settingStore.isMobileMode
+      ? { width: "90vw", maxWidth: "380px", height: "70vh", maxHeight: "600px" }
+      : { width: "700px" },
+    title: "自定义代码注入",
+    content: () => {
+      return h(CustomCode);
     },
   });
 };

@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import type { SongType } from "@/types/main";
 import { NAlert, type DropdownOption } from "naive-ui";
-import { useStatusStore, useDataStore, useMusicStore } from "@/stores";
+import { useStatusStore, useDataStore, useMusicStore, useSettingStore } from "@/stores";
 import { useDownloadManager } from "@/core/resource/DownloadManager";
 import { renderIcon, copyData } from "@/utils/helper";
 import { deleteCloudSong, importCloudSong } from "@/api/cloud";
@@ -43,6 +43,7 @@ const statusStore = useStatusStore();
 
 const player = usePlayerController();
 const downloadManager = useDownloadManager();
+const settingStore = useSettingStore();
 
 // 右键菜单数据
 const dropdownX = ref<number>(0);
@@ -242,6 +243,7 @@ const openDropdown = (
         {
           key: "search",
           label: "同名搜索",
+          show: settingStore.useOnlineService,
           props: {
             onClick: () => router.push({ name: "search", query: { keyword: song.name } }),
           },
@@ -250,14 +252,14 @@ const openDropdown = (
         {
           key: "download",
           label: "下载歌曲",
-          show: !isLocal && type === "song" && !isDownloading,
+          show: statusStore.isDeveloperMode && !isLocal && type === "song" && !isDownloading,
           props: { onClick: () => openDownloadSong(song) },
           icon: renderIcon("Download"),
         },
         {
           key: "retry-download",
           label: "重试下载",
-          show: isDownloading,
+          show: statusStore.isDeveloperMode && isDownloading,
           props: { onClick: () => downloadManager.retryDownload(song.id) },
           icon: renderIcon("Refresh"),
         },

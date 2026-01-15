@@ -1,8 +1,12 @@
+---
+alwaysApply: false
+description:
+---
 <!--
  * @Author: ZJQ
  * @Date: 2025-05-28 10:37:49
  * @LastEditors: zjq zjq@xkb.com.cn
- * @LastEditTime: 2025-05-28 10:38:13
+ * @LastEditTime: 2026-01-13 12:10:15
  * @FilePath: \tea\.trae\rules\project_rules.md
  * @Description:
  *

@@ -15,6 +15,7 @@ import { BrowserWindow } from "electron";
  * @param _parentWindow 父窗口
  */
 const openLoginWin = (_parentWindow?: BrowserWindow): BrowserWindow | null => {
+  void _parentWindow;
   // 实现登录窗口逻辑
   return null;
 };

@@ -11,11 +11,14 @@ import { unregisterShortcuts } from "./shortcut";
 import { initTray, MainTray } from "./tray";
 import { processLog } from "./logger";
 import { existsSync, mkdirSync } from "fs";
+import { trySendCustomProtocol } from "./utils/protocol";
+import { SocketService } from "./services/SocketService";
 import initAppServer from "../server";
 import loadWindow from "./windows/load-window";
 import mainWindow from "./windows/main-window";
 import initIpc from "./ipc";
-import { trySendCustomProtocol } from "./utils/protocol";
+import { shutdownMedia } from "./ipc/ipc-media";
+import { MpvService } from "./services/MpvService";
 
 // 屏蔽报错
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -42,6 +45,22 @@ class MainProcess {
   isQuit: boolean = false;
   constructor() {
     processLog.info("🚀 Main process startup");
+    // 在 Windows 上禁用自带的媒体控件功能，因为我们已经通过原生插件实现 SMTC 的集成了
+    if (process.platform === "win32") {
+      app.commandLine.appendSwitch(
+        "disable-features",
+        "HardwareMediaKeyHandling,MediaSessionService",
+      );
+      // GPU 稳定性配置：禁用 GPU 进程崩溃次数限制，允许 GPU 进程自动恢复
+      app.commandLine.appendSwitch("disable-gpu-process-crash-limit");
+    }
+    // 在 Linux 上禁用 Chromium 内置的 MPRIS 服务，使用原生 MPRIS 插件
+    if (process.platform === "linux") {
+      app.commandLine.appendSwitch("disable-features", "MediaSessionService");
+    }
+    // 防止后台时渲染进程被休眠
+    app.commandLine.appendSwitch("disable-renderer-backgrounding");
+    app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
     // 程序单例锁
     initSingleLock();
     // 监听应用事件
@@ -61,6 +80,8 @@ class MainProcess {
       this.mainTray = initTray(this.mainWindow!);
       // 注册 IPC 通信
       initIpc();
+      // 自动启动 WebSocket
+      SocketService.tryAutoStart();
     });
   }
   // 应用程序事件
@@ -86,15 +107,30 @@ class MainProcess {
       trySendCustomProtocol(url);
     });
 
-      // 将要退出
-      app.on("will-quit", () => {
+    // 退出前
+    app.on("before-quit", (event) => {
+      if (this.isQuit) return;
+      event.preventDefault();
+      this.isQuit = true;
+      (async () => {
         // 注销全部快捷键
         unregisterShortcuts();
-      });
-
-    // 退出前
-    app.on("before-quit", () => {
-      this.isQuit = true;
+        // 清理媒体集成资源
+        shutdownMedia();
+        // 停止 MPV 服务
+        const mpvService = MpvService.getInstance();
+        try {
+          await mpvService.stop();
+          processLog.info("MPV 进程已停止");
+        } catch (err) {
+          processLog.error("停止 MPV 进程失败", err);
+        } finally {
+          mpvService.terminate();
+          processLog.info("MPV 进程已终止");
+        }
+        processLog.info("全部服务已停止，退出应用...");
+        app.exit(0);
+      })();
     });
   }
 }
@@ -106,6 +142,10 @@ class MainProcess {
 export const applyProxyFromMain = (proxyConfig: any) => {
   // 实现代理配置逻辑
   processLog.info("🌐 Applying proxy configuration:", proxyConfig);
+};
+
+export const applyGlobalProxyFromMain = (globalProxyConfig: any) => {
+  applyProxyFromMain(globalProxyConfig);
 };
 
 export default new MainProcess();

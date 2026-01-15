@@ -36,7 +36,7 @@
             class="hot-item"
             @click="emit('toSearch', item.searchWord)"
           >
-            <n-text class="num" depth="3">{{ index + 1 }}</n-text>
+            <n-text class="num" depth="3">{{ Number(index) + 1 }}</n-text>
             <div class="data">
               <div class="name">
                 <n-text class="text">{{ item.searchWord }}</n-text>

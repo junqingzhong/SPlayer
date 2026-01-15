@@ -24,6 +24,7 @@ export default [
       "**/.gitignore",
       "**/auto-imports.d.ts",
       "**/components.d.ts",
+      "**/src/utils/player.ts",
     ],
   },
   ...compat.extends("eslint:recommended", "plugin:@typescript-eslint/recommended"),

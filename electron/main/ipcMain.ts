@@ -9,17 +9,16 @@ import {
   net,
 } from "electron";
 import { File, Picture, Id3v2Settings } from "node-taglib-sharp";
-// @ts-ignore
-const { parseFile } = require("music-metadata");
+import { parseFile } from "music-metadata";
 import { getFonts } from "font-list";
 import { MainTray } from "./tray";
 import { Thumbar } from "./thumbar";
 import { type StoreType } from "./store"; // Import StoreType
-import { applyProxyFromMain } from "./index"; // Import applyProxyFromMain
+import { applyGlobalProxyFromMain, applyProxyFromMain } from "./index"; // Import applyProxyFromMain
 import { isDev, getFileID, getFileMD5 } from "./utils";
 import { isShortcutRegistered, registerShortcut, unregisterShortcuts } from "./shortcut";
 import { join, basename, resolve, relative, isAbsolute } from "path";
-import { download } from "electron-dl";
+import { type PlayModePayload } from "@shared";
 import { checkUpdate, startDownloadUpdate } from "./update";
 import fs from "fs/promises";
 import { serverLog } from "../main/logger";
@@ -392,97 +391,9 @@ const initWinIpcMain = (
     }
   });
 
-  // 下载文件
-  ipcMain.handle(
-    "download-file",
-    async (
-      _,
-      url: string,
-      options: {
-        fileName: string;
-        fileType: string;
-        path: string;
-        downloadMeta?: boolean;
-        downloadCover?: boolean;
-        downloadLyric?: boolean;
-        saveMetaFile?: boolean;
-        lyric?: string;
-        songData?: any;
-      } = {
-        fileName: "未知文件名",
-        fileType: "mp3",
-        path: app.getPath("downloads"),
-      },
-    ): Promise<boolean> => {
-      try {
-        if (!win) return false;
-        // 获取配置
-        const {
-          fileName,
-          fileType,
-          path,
-          lyric,
-          downloadMeta,
-          downloadCover,
-          downloadLyric,
-          saveMetaFile,
-          songData,
-        } = options;
-        // 规范化路径
-        const downloadPath = resolve(path);
-        // 检查文件夹是否存在
-        try {
-          await fs.access(downloadPath);
-        } catch {
-          throw new Error("❌ Folder not found");
-        }
-        // 下载文件
-        const songDownload = await download(win, url, {
-          directory: downloadPath,
-          filename: `${fileName}.${fileType}`,
-        });
-        if (!downloadMeta || !songData?.cover) return true;
-        // 下载封面
-        const coverUrl = songData?.coverSize?.l || songData.cover;
-        const coverDownload = await download(win, coverUrl, {
-          directory: downloadPath,
-          filename: `${fileName}.jpg`,
-        });
-        // 读取歌曲文件
-        const songFile = File.createFromPath(songDownload.getSavePath());
-        // 生成图片信息
-        const songCover = Picture.fromPath(coverDownload.getSavePath());
-        // 保存修改后的元数据
-        Id3v2Settings.forceDefaultVersion = true;
-        Id3v2Settings.defaultVersion = 3;
-        songFile.tag.title = songData?.name || "未知曲目";
-        songFile.tag.album = songData?.album?.name || "未知专辑";
-        songFile.tag.performers = songData?.artists?.map((ar: any) => ar.name) || ["未知艺术家"];
-        songFile.tag.albumArtists = songData?.artists?.map((ar: any) => ar.name) || ["未知艺术家"];
-        if (lyric && downloadLyric) songFile.tag.lyrics = lyric;
-        if (songCover && downloadCover) songFile.tag.pictures = [songCover];
-        // 保存元信息
-        songFile.save();
-        songFile.dispose();
-        // 创建同名歌词文件
-        if (lyric && saveMetaFile && downloadLyric) {
-          const lrcPath = join(downloadPath, `${fileName}.lrc`);
-          await fs.writeFile(lrcPath, lyric, "utf-8");
-        }
-        // 是否删除封面
-        if (!saveMetaFile || !downloadCover) await fs.unlink(coverDownload.getSavePath());
-        return true;
-      } catch (error) {
-        serverLog.error("❌ Error downloading file:", error);
-        return false;
-      }
-    },
-  );
-
   // New IPC handler for updating and applying proxy settings
   ipcMain.on("update-proxy-config", (_, newProxyConfig: StoreType["proxyConfig"]) => {
     if (store) {
-      // @ts-ignore
       store.set("proxyConfig", newProxyConfig);
       serverLog.log("Proxy config updated in store:", newProxyConfig);
       applyProxyFromMain(newProxyConfig);
@@ -495,8 +406,6 @@ const initWinIpcMain = (
   ipcMain.on("apply-global-proxy", (_, globalProxyConfig) => {
     try {
       serverLog.log("Received global proxy configuration from renderer");
-      // 导入applyGlobalProxyFromMain函数
-      const { applyGlobalProxyFromMain } = require("./index");
       applyGlobalProxyFromMain(globalProxyConfig);
     } catch (error) {
       serverLog.error("Error applying global proxy configuration:", error);
@@ -538,7 +447,6 @@ const initWinIpcMain = (
       // Revert to original proxy settings
       serverLog.log("Reverting to original proxy configuration after test");
       if (originalProxyConfig) {
-        // @ts-ignore
         applyProxyFromMain(originalProxyConfig);
       } else {
         // If no original config, turn off proxy
@@ -549,8 +457,7 @@ const initWinIpcMain = (
 
   // 重置全部设置
   ipcMain.on("reset-setting", () => {
-    // @ts-ignore
-    store.reset();
+    (store as unknown as { reset: () => void }).reset();
     serverLog.log("✅ Reset setting successfully");
   });
 
@@ -597,9 +504,8 @@ const initLyricIpcMain = (
   ipcMain.on("move-window", (_, x, y, width, height) => {
     lyricWin?.setBounds({ x, y, width, height });
     // 保存配置
-    // @ts-ignore
-    store.set("lyric", { // @ts-ignore
-                          ...store.get("lyric"), x, y, width, height });
+    const currentLyric = store.get("lyric");
+    store.set("lyric", { ...currentLyric, x, y, width, height });
     // 保持置顶
     lyricWin?.setAlwaysOnTop(true, "screen-saver");
   });
@@ -614,13 +520,11 @@ const initLyricIpcMain = (
 
   // 获取配置
   ipcMain.handle("get-desktop-lyric-option", () => {
-    // @ts-ignore
     return store.get("lyric");
   });
 
   // 保存配置
   ipcMain.on("set-desktop-lyric-option", (_, option, callback: boolean = false) => {
-    // @ts-ignore
     store.set("lyric", option);
     // 触发窗口更新
     if (callback && lyricWin) {
@@ -684,8 +588,8 @@ const initTrayIpcMain = (
   });
 
   // 播放模式切换
-  ipcMain.on("play-mode-change", (_, mode) => {
-    tray?.setPlayMode(mode);
+  ipcMain.on("play-mode-change", (_, data: PlayModePayload) => {
+    tray?.setPlayMode(data.repeatMode, data.shuffleMode);
   });
 
   // 喜欢状态切换

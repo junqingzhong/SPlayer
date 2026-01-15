@@ -248,6 +248,14 @@ import { updateUserData } from "@/utils/auth";
 const message = useMessage();
 const router = useRouter();
 
+const goToCategoryManagement = () => {
+  router.push({ name: "category-management" });
+};
+
+const goToUserManagement = () => {
+  router.push({ name: "UserManagement" });
+};
+
 // 状态管理
 const activities = ref<any[]>([]);
 const searchKeyword = ref<string | undefined>(undefined);
@@ -360,16 +368,11 @@ const checkToken = async () => {
       // 获取用户信息
       await updateUserData();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Cookie 登录出错：", error);
     }
   }
   return autoLoginCookie;
-};
-
-// 小工具：判断活动是否处于激活（未完成）状态
-const isActive = (activity: any) => {
-  return activity && activity.status !== '已完成';
 };
 
 // 小工具：统一解析活动日期字段，返回 Date 或 null
@@ -428,7 +431,7 @@ const yearOptions = computed(() => {
             years.add(date.getFullYear());
           }
         }
-      } catch (dateError) {
+      } catch (dateError: any) {
         console.warn('解析活动日期失败:', dateError, activity);
       }
     });
@@ -440,7 +443,7 @@ const yearOptions = computed(() => {
       { label: '全部年份', value: undefined, type: 'ignored' as const },
       ...sortedYears.map(year => ({ label: `${year}年`, value: year }))
     ];
-  } catch (error) {
+  } catch (error: any) {
     console.error('生成年份选项失败:', error);
     return [{ label: '全部年份', value: undefined, type: 'ignored' as const }];
   }
@@ -592,7 +595,8 @@ const filteredActivities = computed(() => {
 });
 
 // 获取活动列表
-const fetchActivities = async (retryCount = 0) => {
+const fetchActivities = async (retryCountOrEvent: number | MouseEvent = 0) => {
+  const retryCount = typeof retryCountOrEvent === "number" ? retryCountOrEvent : 0;
   loading.value = true;
   try {
     const token = await checkToken(); // 添加 await
@@ -674,7 +678,7 @@ const fetchActivities = async (retryCount = 0) => {
       categories.value = [];
       userId.value = null;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("获取活动列表失败:", error);
 
     // 网络错误或超时，尝试重试
@@ -753,7 +757,7 @@ const addActivity = async () => {
       message.error(response.data.data.message || "添加活动失败");
       return false;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("添加活动失败:", error);
     message.error("添加活动失败，请检查网络连接或API域名配置");
     return false;
@@ -808,7 +812,7 @@ const updateActivity = async () => {
       message.error(response.data.data.message || "更新活动失败");
       return false;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("更新活动失败:", error);
     message.error("更新活动失败，请检查网络连接或API域名配置");
     return false;
@@ -848,7 +852,7 @@ const updateActivityStatus = async (id: number, currentStatus: string) => {
     } else {
       message.error(response.data.data.message || "更新活动状态失败");
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error("更新活动状态失败:", error);
     message.error("更新活动状态失败，请检查网络连接或API域名配置");
   }
@@ -1096,7 +1100,7 @@ const confirmDelete = async () => {
       } else {
         message.error(response.data.data.message || "删除活动失败");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("删除活动失败:", error);
       message.error("删除活动失败，请检查网络连接或API域名配置");
     }

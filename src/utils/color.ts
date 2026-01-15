@@ -27,11 +27,6 @@ export const setGlobalColor = (name: string, colorValue: string): void => {
     throw new Error("Variable name must start with '--'");
   }
   const root = document.body;
-  // const root = document.documentElement;
-  // 检查变量是否已经存在
-  const existingValue = getComputedStyle(root).getPropertyValue(name).trim();
-  if (existingValue === colorValue) return;
-  // 设置变量
   root.style.setProperty(name, colorValue);
 };
 
@@ -158,6 +153,7 @@ export const getCoverColorData = (dom: HTMLImageElement) => {
 export const getCoverColor = async (coverUrl: string) => {
   if (!coverUrl) return;
   const statusStore = useStatusStore();
+  const settingStore = useSettingStore();
   // 创建图像元素
   const image = new Image();
   image.crossOrigin = "Anonymous";
@@ -167,6 +163,9 @@ export const getCoverColor = async (coverUrl: string) => {
     // 获取图片数据
     const coverColorData = getCoverColorData(image);
     if (coverColorData) statusStore.songCoverTheme = coverColorData;
+    if (!settingStore.playerFollowCoverColor) {
+      statusStore.songCoverTheme.main = { r: 239, g: 239, b: 239 };
+    }
     // 移除元素
     image.remove();
   };

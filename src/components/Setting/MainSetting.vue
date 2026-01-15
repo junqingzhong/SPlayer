@@ -19,7 +19,7 @@
           {{ packageJson.author }}
         </n-text>
         <n-text class="name">SPlayer</n-text>
-        <n-tag v-if="isDevBuild" class="version" size="small" type="warning" round>
+        <n-tag v-if="statusStore.isDeveloperMode" class="version" size="small" type="warning" round>
           DEV · v{{ packageJson.version }}
         </n-tag>
         <n-text v-else class="version" depth="3">v{{ packageJson.version }}</n-text>
@@ -36,11 +36,13 @@
         <!-- 播放 -->
         <PlaySetting v-else-if="activeKey === 'play'" key="play" />
         <!-- 歌词 -->
-        <LyricsSetting v-else-if="activeKey === 'lyrics'" key="lyrics" />
+        <LyricsSetting v-else-if="activeKey === 'lyrics'" :scroll-to="props.scrollTo" />
         <!-- 快捷键 -->
         <KeyboardSetting v-else-if="activeKey === 'keyboard'" key="keyboard" />
         <!-- 本地 -->
-        <LocalSetting v-else-if="activeKey === 'local'" key="local" />
+        <LocalSetting v-else-if="activeKey === 'local'" />
+        <!-- 第三方 -->
+        <ThirdSetting v-else-if="activeKey === 'third'" />
         <!-- 其他 -->
         <OtherSetting v-else-if="activeKey === 'other'" key="other" />
         <!-- 关于 -->
@@ -56,10 +58,13 @@
 import type { MenuOption, NScrollbar } from "naive-ui";
 import type { SettingType } from "@/types/main";
 import { renderIcon } from "@/utils/helper";
-import { isDevBuild, isElectron } from "@/utils/env";
+import { isElectron } from "@/utils/env";
+import { useStatusStore } from "@/stores";
 import packageJson from "@/../package.json";
 
-const props = defineProps<{ type: SettingType }>();
+const props = defineProps<{ type: SettingType; scrollTo?: string }>();
+
+const statusStore = useStatusStore();
 
 // 设置内容
 const setScrollbar = ref<InstanceType<typeof NScrollbar> | null>(null);
@@ -92,9 +97,14 @@ const menuOptions: MenuOption[] = [
   },
   {
     key: "local",
-    label: "本地与下载",
+    label: "本地与缓存",
     show: isElectron,
     icon: renderIcon("Storage"),
+  },
+  {
+    key: "third",
+    label: "连接与集成",
+    icon: renderIcon("Extension"),
   },
   {
     key: "other",
@@ -120,6 +130,11 @@ const toGithub = () => {
   width: 100%;
   height: 75vh;
   min-height: 75vh;
+  @media (max-width: 768px) {
+    flex-direction: column;
+    height: 100vh;
+    min-height: 100vh;
+  }
   .set-left {
     display: flex;
     flex-direction: column;
@@ -127,6 +142,12 @@ const toGithub = () => {
     height: 100%;
     padding: 20px;
     background-color: var(--surface-container-hex);
+    @media (max-width: 768px) {
+      width: 100%;
+      height: auto;
+      padding: 12px 12px 0;
+      border-bottom: 1px solid rgba(var(--outline), 0.12);
+    }
     .title {
       margin: 10px 0 20px 10px;
       .n-h1 {
@@ -136,13 +157,26 @@ const toGithub = () => {
         line-height: normal;
         margin-bottom: 6px;
       }
+      @media (max-width: 768px) {
+        margin: 4px 0 10px 6px;
+        .n-h1 {
+          font-size: 20px;
+          margin-bottom: 2px;
+        }
+      }
     }
     .n-menu {
       width: 100%;
       padding: 0;
+      @media (max-width: 768px) {
+        margin-top: 6px;
+      }
     }
     .power {
       margin: auto 0 0 10px;
+      @media (max-width: 768px) {
+        display: none;
+      }
       .name {
         font-weight: bold;
         margin-right: 6px;
@@ -171,12 +205,21 @@ const toGithub = () => {
   width: calc(100vw - 40px);
   max-width: 1024px !important;
   overflow: hidden;
+  @media (max-width: 768px) {
+    width: 100vw;
+    max-width: 100vw !important;
+    height: 100vh;
+    max-height: 100vh;
+  }
   .n-card-header {
     position: absolute;
     top: 0;
     right: 0;
     padding: 20px;
     z-index: 1;
+    @media (max-width: 768px) {
+      padding: 12px;
+    }
   }
   .n-card__content {
     padding: 0;
@@ -187,7 +230,10 @@ const toGithub = () => {
       flex: 1;
       padding: 0 40px;
       background-color: var(--background-hex);
-      // background-color: rgba(var(--surface-container), 0.28);
+      @media (max-width: 768px) {
+        padding: 0 12px;
+        height: calc(100vh - 170px);
+      }
     }
     .set-list {
       margin-bottom: 30px;
@@ -221,6 +267,11 @@ const toGithub = () => {
         align-items: center;
         justify-content: space-between;
         padding: 16px;
+        @media (max-width: 768px) {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
+        }
       }
       .label {
         display: flex;
@@ -229,19 +280,27 @@ const toGithub = () => {
         .name {
           font-size: 16px;
         }
+        @media (max-width: 768px) {
+          padding-right: 0;
+          .name {
+            font-size: 15px;
+          }
+        }
       }
       .n-flex {
         flex-flow: nowrap !important;
       }
       .set {
         justify-content: flex-end;
+        min-width: 200px;
         width: 200px;
         &.n-switch {
           width: max-content;
         }
         @media (max-width: 768px) {
-          width: 140px;
-          min-width: 140px;
+          width: 100%;
+          min-width: 0;
+          justify-content: flex-start;
         }
       }
     }

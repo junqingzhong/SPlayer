@@ -16,7 +16,7 @@
                   type === 'video' ? `${item.cover}?param=464y260` : item.coverSize?.m || item.cover
                 "
                 :default-src="
-                  type !== 'video' ? '/images/album.jpg?assest' : '/images/video.jpg?assest'
+                  type !== 'video' ? '/images/album.jpg?asset' : '/images/video.jpg?asset'
                 "
                 class="cover-img"
                 once
@@ -391,6 +391,43 @@ const getListData = async (id: number): Promise<SongType[]> => {
   &.loading {
     .cover {
       box-shadow: none;
+    }
+  }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .cover-list {
+    padding: 12px 8px;
+    
+    .n-grid {
+      width: 100% !important;
+      max-width: 100vw !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      box-sizing: border-box !important;
+    }
+    
+    .cover-item {
+      width: 100% !important;
+      margin-bottom: 16px !important;
+      
+      .cover {
+        height: auto !important;
+        aspect-ratio: 1 / 1 !important;
+        border-radius: 12px !important;
+      }
+      
+      .cover-data {
+        padding: 8px 4px !important;
+        
+        .name {
+          font-size: 14px !important;
+          line-height: 1.4 !important;
+          max-width: 100% !important;
+          word-wrap: break-word !important;
+        }
+      }
     }
   }
 }

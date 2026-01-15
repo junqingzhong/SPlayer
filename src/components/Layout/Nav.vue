@@ -8,12 +8,12 @@
           <SvgIcon name="Menu" :size="26" />
         </template>
       </n-button>
-      <n-button :focusable="false" tertiary circle @click="router.go(-1)">
+      <n-button :focusable="false" tertiary circle @click="goBack">
         <template #icon>
           <SvgIcon name="NavigateBefore" :size="26" />
         </template>
       </n-button>
-      <n-button :focusable="false" tertiary circle @click="router.go(1)">
+      <n-button :focusable="false" tertiary circle @click="goForward">
         <template #icon>
           <SvgIcon name="NavigateNext" :size="26" />
         </template>
@@ -22,13 +22,13 @@
     <!-- 主内容 -->
     <n-flex class="nav-main" :wrap="false">
       <!-- 搜索 -->
-      <SearchInp />
+      <SearchInp v-if="settingStore.useOnlineService" />
       <!-- 可拖拽 -->
       <div class="nav-drag" />
       <!-- 用户 -->
       <User v-if="settingStore.useOnlineService && !settingStore.isMobileMode" />
       <!-- 设置菜单 -->
-      <n-dropdown :options="setOptions" trigger="click" show-arrow @select="setSelect">
+      <n-dropdown :options="setOptions" trigger="click" :show-arrow="false" @select="setSelect">
         <n-button :focusable="false" title="设置" tertiary circle>
           <template #icon>
             <SvgIcon name="Settings" />
@@ -37,18 +37,30 @@
       </n-dropdown>
     </n-flex>
     <!-- 客户端控制 -->
-    <n-flex v-if="isElectron" align="center" class="client-control">
+    <n-flex v-if="isElectron && useBorderless" align="center" class="client-control">
       <n-divider class="divider" vertical />
-      <n-button :focusable="false" title="最小化" tertiary circle @click="min">
-        <template #icon>
-          <SvgIcon name="WindowMinimize" />
-        </template>
-      </n-button>
-      <n-button :focusable="false" :title="isMax ? '还原' : '最大化'" tertiary circle @click="maxOrRes">
-        <template #icon>
-          <SvgIcon :name="isMax ? 'WindowRestore' : 'WindowMaximize'" />
-        </template>
-      </n-button>
+      <div class="min-button-wrapper" @click="min" title="最小化">
+        <n-button :focusable="false" title="最小化" tertiary circle @click.stop="min">
+          <template #icon>
+            <SvgIcon name="WindowMinimize" />
+          </template>
+        </n-button>
+        <div class="min-expanded-area"></div>
+      </div>
+      <div class="max-button-wrapper" @click="maxOrRes" :title="isMax ? '还原' : '最大化'">
+        <n-button
+          :focusable="false"
+          :title="isMax ? '还原' : '最大化'"
+          tertiary
+          circle
+          @click.stop="maxOrRes"
+        >
+          <template #icon>
+            <SvgIcon :name="isMax ? 'WindowRestore' : 'WindowMaximize'" />
+          </template>
+        </n-button>
+        <div class="max-expanded-area"></div>
+      </div>
       <div class="close-button-wrapper" @click="tryClose" title="关闭">
         <n-button :focusable="false" title="关闭" tertiary circle @click.stop="tryClose">
           <template #icon>
@@ -106,6 +118,9 @@ const toggleSidebar = () => {
 };
 // 是否记住
 const rememberNotAsk = ref(false);
+
+// 是否启用无边框窗口
+const useBorderless = ref(true);
 
 // 当前窗口状态
 const isMax = ref(false);
@@ -189,6 +204,19 @@ const setOptions = computed<DropdownOption[]>(() => [
   },
 ]);
 
+// 页面导航
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back();
+  } else {
+    router.push("/");
+  }
+};
+
+const goForward = () => {
+  router.forward();
+};
+
 // 菜单选择
 const setSelect = (key: string) => {
   switch (key) {
@@ -218,9 +246,13 @@ const handleResize = () => {
   }
 };
 
-onMounted(() => {
+onMounted(async () => {
   // 获取窗口状态并监听主进程的状态变更
   if (isElectron) {
+    // 获取无边框窗口配置
+    const windowConfig = await window.api.store.get("window");
+    useBorderless.value = windowConfig?.useBorderless ?? true;
+    // 获取窗口状态
     isMax.value = window.electron.ipcRenderer.sendSync("win-state");
     window.electron.ipcRenderer.on("win-state-change", (_event, value: boolean) => {
       isMax.value = value;
@@ -277,20 +309,32 @@ onUnmounted(() => {
     .divider {
       margin: 0 0 0 12px;
     }
+    .min-button-wrapper,
+    .max-button-wrapper,
     .close-button-wrapper {
       position: relative;
       cursor: pointer;
-      .close-expanded-area {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 60px;
-        height: 70px;
-        background-color: transparent;
-        cursor: pointer;
-        -webkit-app-region: no-drag;
-        z-index: 1000;
-      }
+    }
+    .min-expanded-area,
+    .max-expanded-area,
+    .close-expanded-area {
+      position: fixed;
+      top: 0;
+      width: 50px;
+      height: 70px;
+      background-color: transparent;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+      z-index: 1000;
+    }
+    .close-expanded-area {
+      right: 0;
+    }
+    .max-expanded-area {
+      right: 50px;
+    }
+    .min-expanded-area {
+      right: 100px;
     }
   }
 }

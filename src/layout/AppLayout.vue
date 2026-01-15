@@ -119,6 +119,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
 }
+
 #main {
   flex: 1;
   height: 100%;

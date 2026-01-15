@@ -3,6 +3,7 @@
     <SongList
       :data="songData"
       :loading="loading"
+      disableHeightTransition
       loadMore
       @reachBottom="reachBottom"
       @scroll="emit('scroll', $event)"
@@ -70,7 +71,7 @@ const reachBottom = () => {
   }
 };
 
-defineExpose({ playAllSongs });
+defineExpose({ playAllSongs, songData });
 
 onMounted(getArtistAllSongs);
 </script>

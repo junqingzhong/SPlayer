@@ -40,6 +40,10 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
       # 清理旧的构建产物
       - name: Clean workspace on Windows
         if: runner.os == 'Windows'

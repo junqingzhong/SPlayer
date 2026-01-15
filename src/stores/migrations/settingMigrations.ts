@@ -1,11 +1,12 @@
+import { SongUnlockServer } from "@/core/player/SongManager";
 import type { SettingState } from "../setting";
 import { defaultAMLLDbServer } from "@/utils/meta";
-import { SongUnlockServer } from "@/core/player/SongManager";
+import { keywords, regexes } from "@/assets/data/exclude";
 
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 4;
+export const CURRENT_SETTING_SCHEMA_VERSION = 6;
 
 /**
  * 迁移函数类型
@@ -26,36 +27,93 @@ export const settingMigrations: Record<number, MigrationFunction> = {
       amllDbServer: defaultAMLLDbServer,
     };
   },
-  4: (state) => {
-    // 确保 songUnlockServer 包含所有音源
-    const defaultServers = [
-      { key: SongUnlockServer.NETEASE, enabled: true },
-      { key: SongUnlockServer.QQ, enabled: true },
-      { key: SongUnlockServer.KUGOU, enabled: true },
-      { key: SongUnlockServer.KUWO, enabled: true },
-      { key: SongUnlockServer.BILIBILI, enabled: true },
-      { key: SongUnlockServer.BODIAN, enabled: true },
-      { key: SongUnlockServer.GEQUBAO, enabled: true },
-    ];
-
-    // 如果当前配置缺少音源，使用完整的默认配置
-    if (!state.songUnlockServer || state.songUnlockServer.length < defaultServers.length) {
-      return {
-        songUnlockServer: defaultServers,
-      };
+  4: () => {
+    return {
+      songUnlockServer: [
+        { key: SongUnlockServer.BODIAN, enabled: true },
+        { key: SongUnlockServer.GEQUBAO, enabled: true },
+        { key: SongUnlockServer.NETEASE, enabled: true },
+        { key: SongUnlockServer.KUWO, enabled: false },
+      ],
+    };
+  },
+  5: (state) => {
+    // 迁移排除歌词关键字和正则表达式到用户自定义字段
+    // 如果旧字段存在且不为空，则迁移到新字段
+    // 定义旧版本的设置状态类型（包含已废弃的字段）
+    interface OldSettingState extends Partial<SettingState> {
+      excludeKeywords?: string[];
+      excludeRegexes?: string[];
     }
 
-    // 如果配置存在但可能缺少某些音源，合并现有配置与默认配置
-    const existingKeys = state.songUnlockServer.map(s => s.key);
-    const missingServers = defaultServers.filter(s => !existingKeys.includes(s.key));
+    const oldState = state as OldSettingState;
+    const oldKeywords = oldState.excludeKeywords;
+    const oldRegexes = oldState.excludeRegexes;
 
-    if (missingServers.length > 0) {
-      return {
-        songUnlockServer: [...state.songUnlockServer, ...missingServers],
-      };
+    // 如果旧字段包含默认值，则只保留用户自定义的部分
+    const userKeywords: string[] = [];
+    const userRegexes: string[] = [];
+
+    if (oldKeywords && Array.isArray(oldKeywords)) {
+      // 过滤掉默认关键字，只保留用户自定义的
+      oldKeywords.forEach((keyword) => {
+        if (!keywords.includes(keyword)) {
+          userKeywords.push(keyword);
+        }
+      });
     }
 
-    return {};
+    if (oldRegexes && Array.isArray(oldRegexes)) {
+      // 过滤掉默认正则，只保留用户自定义的
+      oldRegexes.forEach((regex) => {
+        if (!regexes.includes(regex)) {
+          userRegexes.push(regex);
+        }
+      });
+    }
+
+    return {
+      excludeUserKeywords: userKeywords,
+      excludeUserRegexes: userRegexes,
+    };
+  },
+  6: (state) => {
+    interface OldSettingState extends Partial<SettingState> {
+      enableTTMLLyric?: boolean;
+
+      hideDiscover?: boolean;
+      hidePersonalFM?: boolean;
+      hideRadioHot?: boolean;
+      hideLike?: boolean;
+      hideCloud?: boolean;
+      hideDownload?: boolean;
+      hideLocal?: boolean;
+      hideHistory?: boolean;
+      hideUserPlaylists?: boolean;
+      hideLikedPlaylists?: boolean;
+      hideHeartbeatMode?: boolean;
+      hideActivities?: boolean;
+    }
+    const oldState = state as OldSettingState;
+
+    return {
+      enableOnlineTTMLLyric: oldState.enableTTMLLyric,
+
+      sidebarHide: {
+        hideDiscover: oldState.hideDiscover || false,
+        hidePersonalFM: oldState.hidePersonalFM || false,
+        hideRadioHot: oldState.hideRadioHot || false,
+        hideLike: oldState.hideLike || false,
+        hideCloud: oldState.hideCloud || false,
+        hideDownload: oldState.hideDownload || false,
+        hideLocal: oldState.hideLocal || false,
+        hideHistory: oldState.hideHistory || false,
+        hideUserPlaylists: oldState.hideUserPlaylists || false,
+        hideLikedPlaylists: oldState.hideLikedPlaylists || false,
+        hideHeartbeatMode: oldState.hideHeartbeatMode || false,
+        hideActivities: oldState.hideActivities || false,
+      },
+    };
   },
 };
 

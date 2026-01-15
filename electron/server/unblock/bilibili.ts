@@ -147,7 +147,7 @@ const getBilibiliCookies = async (): Promise<string> => {
       }
     });
     return 'buvid3=1; b_nut=1; _uuid=1; CURRENT_FNVAL=4048; rpdid=1; PVID=1';
-  } catch (error) {
+  } catch {
     return '';
   }
 };
