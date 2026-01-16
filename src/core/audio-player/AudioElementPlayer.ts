@@ -110,6 +110,7 @@ export class AudioElementPlayer extends BaseAudioPlayer {
    */
   public setRate(value: number): void {
     this.audioElement.playbackRate = value;
+    this.audioElement.defaultPlaybackRate = value;
   }
 
   /**
