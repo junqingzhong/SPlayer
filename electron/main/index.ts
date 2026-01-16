@@ -1,20 +1,20 @@
-import { app, BrowserWindow } from "electron";
 import { electronApp } from "@electron-toolkit/utils";
-import { isMac } from "./utils/config";
-import { initSingleLock } from "./utils/single-lock";
-import { unregisterShortcuts } from "./shortcut";
-import { initTray, MainTray } from "./tray";
-import { processLog } from "./logger";
+import { app, BrowserWindow } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import { trySendCustomProtocol } from "./utils/protocol";
-import { SocketService } from "./services/SocketService";
 import initAppServer from "../server";
-import loadWindow from "./windows/load-window";
-import mainWindow from "./windows/main-window";
 import initIpc from "./ipc";
 import { shutdownMedia } from "./ipc/ipc-media";
+import { processLog } from "./logger";
 import { MpvService } from "./services/MpvService";
+import { SocketService } from "./services/SocketService";
+import { unregisterShortcuts } from "./shortcut";
+import { initTray, MainTray } from "./tray";
+import { isMac } from "./utils/config";
+import { trySendCustomProtocol } from "./utils/protocol";
+import { initSingleLock } from "./utils/single-lock";
+import loadWindow from "./windows/load-window";
+import mainWindow from "./windows/main-window";
 
 // 屏蔽报错
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
@@ -41,22 +41,27 @@ class MainProcess {
   isQuit: boolean = false;
   constructor() {
     processLog.info("🚀 Main process startup");
-    // 在 Windows 上禁用自带的媒体控件功能，因为我们已经通过原生插件实现 SMTC 的集成了
-    if (process.platform === "win32") {
+
+    // 在 Windows、Linux 和 MacOS 上禁用自带的媒体控件功能，因为我们已经通过原生插件实现媒体控件的集成了
+    const platform = process.platform;
+    const hasNativeMediaSupport = ["win32", "linux", "darwin"].includes(platform);
+
+    if (hasNativeMediaSupport) {
       app.commandLine.appendSwitch(
         "disable-features",
         "HardwareMediaKeyHandling,MediaSessionService",
       );
+    }
+
+    if (platform === "win32") {
       // GPU 稳定性配置：禁用 GPU 进程崩溃次数限制，允许 GPU 进程自动恢复
       app.commandLine.appendSwitch("disable-gpu-process-crash-limit");
     }
-    // 在 Linux 上禁用 Chromium 内置的 MPRIS 服务，使用原生 MPRIS 插件
-    if (process.platform === "linux") {
-      app.commandLine.appendSwitch("disable-features", "MediaSessionService");
-    }
+
     // 防止后台时渲染进程被休眠
     app.commandLine.appendSwitch("disable-renderer-backgrounding");
     app.commandLine.appendSwitch("disable-backgrounding-occluded-windows");
+
     // 程序单例锁
     initSingleLock();
     // 监听应用事件

@@ -306,7 +306,7 @@ export interface SettingState {
     /** 暂停时显示 */
     showWhenPaused: boolean;
     /** 显示模式 */
-    displayMode: "name" | "state" | "details";
+    displayMode: "Name" | "State" | "Details";
   };
   /** 播放引擎 */
   playbackEngine: "web-audio" | "mpv";
@@ -473,7 +473,7 @@ export const useSettingStore = defineStore("setting", {
     discordRpc: {
       enabled: false,
       showWhenPaused: true,
-      displayMode: "name",
+      displayMode: "Name",
     },
     playbackEngine: "web-audio",
     customCss: "",

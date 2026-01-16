@@ -1,3 +1,4 @@
+import { AudioErrorCode } from "@/core/audio-player/BaseAudioPlayer";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { type SongType } from "@/types/main";
@@ -11,7 +12,6 @@ import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { calculateProgress } from "@/utils/time";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { DebouncedFunc, throttle } from "lodash-es";
-import { AudioErrorCode } from "@/core/audio-player/BaseAudioPlayer";
 import { useAudioManager } from "./AudioManager";
 import { useLyricManager } from "./LyricManager";
 import { mediaSessionManager } from "./MediaSessionManager";
@@ -665,6 +665,7 @@ class PlayerController {
     const safeTime = Math.max(0, Math.min(time, this.getDuration()));
     audioManager.seek(safeTime / 1000);
     statusStore.currentTime = safeTime;
+    mediaSessionManager.updateState(this.getDuration(), safeTime, true);
   }
 
   /**
@@ -893,20 +894,6 @@ class PlayerController {
   }
 
   /**
-   * 专门处理 SMTC 的随机按钮事件
-   */
-  public handleSmtcShuffle() {
-    this.playModeManager.handleSmtcShuffle();
-  }
-
-  /**
-   * 专门处理 SMTC 的循环按钮事件
-   */
-  public handleSmtcRepeat() {
-    this.playModeManager.handleSmtcRepeat();
-  }
-
-  /**
    * 移除指定歌曲
    * @param index 歌曲索引
    */
@@ -1054,10 +1041,10 @@ class PlayerController {
   }
 
   /**
-   * 同步当前的播放模式到 SMTC
+   * 同步当前的播放模式到媒体控件
    */
-  public syncSmtcPlayMode() {
-    this.playModeManager.syncSmtcPlayMode();
+  public syncMediaPlayMode() {
+    this.playModeManager.syncMediaPlayMode();
   }
 
   /**

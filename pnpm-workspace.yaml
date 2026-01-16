@@ -1,5 +1,3 @@
 packages:
   - "."
-  - "native/smtc-for-splayer"
-  - "native/discord-rpc-for-splayer"
-  - "native/mpris-for-splayer"
+  - "native/external-media-integration"

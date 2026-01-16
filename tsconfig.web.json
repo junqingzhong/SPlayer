@@ -16,7 +16,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@native": ["./native/smtc-for-splayer"]
+      "@emi": ["native/external-media-integration"]
     },
     "types": ["node", "electron", "electron-vite/node", "./auto-imports.d.ts", "./components.d.ts"],
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
