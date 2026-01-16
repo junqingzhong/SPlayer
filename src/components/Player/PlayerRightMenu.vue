@@ -1,7 +1,7 @@
 <template>
   <n-flex :size="8" align="center" class="right-menu">
     <n-badge v-if="isElectron" value="ON" :show="statusStore.showDesktopLyric">
-      <div class="menu-icon" @click.stop="player.toggleDesktopLyric()">
+      <div class="menu-icon hidden" @click.stop="player.toggleDesktopLyric()">
         <SvgIcon name="DesktopLyric2" :depth="statusStore.showDesktopLyric ? 1 : 3" />
       </div>
     </n-badge>
@@ -12,7 +12,7 @@
       :class="{ player: statusStore.showFullPlayer }"
       @select="handleControls"
     >
-      <div class="menu-icon">
+      <div class="menu-icon hidden">
         <SvgIcon name="Controls" />
       </div>
     </n-dropdown>
@@ -23,7 +23,7 @@
       :class="{ player: statusStore.showFullPlayer }"
     >
       <template #trigger>
-        <div class="menu-icon" @click.stop="player.toggleMute" @wheel="player.setVolume">
+        <div class="menu-icon hidden" @click.stop="player.toggleMute" @wheel="player.setVolume">
           <SvgIcon :name="statusStore.playVolumeIcon" />
         </div>
       </template>
@@ -37,7 +37,7 @@
           vertical
           @update:value="(val: number) => player.setVolume(val)"
         />
-        <n-text class="slider-num">{{ statusStore.playVolumePercent }}%</n-text>
+        <n-text class="slider-num hidden">{{ statusStore.playVolumePercent }}%</n-text>
       </div>
     </n-popover>
     <!-- 播放列表 -->
@@ -141,6 +141,11 @@ const handleControls = (key: string) => {
     // font-size: 10px;
     .n-base-slot-machine {
       color: var(--primary-hex);
+    }
+  }
+  @media (max-width: 810px) {
+    .hidden {
+      display: none;
     }
   }
 }

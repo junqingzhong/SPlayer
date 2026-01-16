@@ -25,6 +25,14 @@
       <n-flex align="center">
         <!-- 用户 -->
         <User v-if="settingStore.useOnlineService" />
+        <!-- 设置菜单 -->
+        <n-dropdown :options="setOptions" trigger="click" show-arrow @select="setSelect">
+          <n-button :focusable="false" title="设置" tertiary circle>
+            <template #icon>
+              <SvgIcon name="Settings" />
+            </template>
+          </n-button>
+        </n-dropdown>
         <!-- 移动端菜单 -->
         <n-button
           v-if="!isDesktop"
@@ -48,14 +56,6 @@
             <Menu @menu-click="showAside = false" />
           </n-drawer-content>
         </n-drawer>
-        <!-- 设置菜单 -->
-        <n-dropdown :options="setOptions" trigger="click" show-arrow @select="setSelect">
-          <n-button :focusable="false" title="设置" tertiary circle>
-            <template #icon>
-              <SvgIcon name="Settings" />
-            </template>
-          </n-button>
-        </n-dropdown>
       </n-flex>
     </n-flex>
     <!-- 客户端控制 -->

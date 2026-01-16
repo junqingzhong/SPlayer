@@ -110,7 +110,7 @@
         </n-flex>
       </div>
       <!-- 专辑 -->
-      <div v-if="song.type !== 'radio' && !hiddenAlbum" class="album text-hidden">
+      <div v-if="song.type !== 'radio' && !hiddenAlbum && !isSmallScreen" class="album text-hidden">
         <n-text
           v-if="isObject(song.album)"
           class="album-text"
@@ -138,17 +138,21 @@
         />
       </div>
       <!-- 更新日期 -->
-      <n-text v-if="song.type === 'radio'" class="meta date" depth="3">
+      <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta date" depth="3">
         {{ formatTimestamp(song.updateTime) }}
       </n-text>
       <!-- 播放量 -->
-      <n-text v-if="song.type === 'radio'" class="meta" depth="3">
+      <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta" depth="3">
         {{ formatNumber(song.playCount || 0) }}
       </n-text>
       <!-- 时长 -->
-      <n-text class="meta" depth="3">{{ msToTime(song.duration) }}</n-text>
+      <n-text v-if="!isSmallScreen" class="meta" depth="3">{{ msToTime(song.duration) }}</n-text>
       <!-- 大小 -->
-      <n-text v-if="song.path && song.size && !hiddenSize" class="meta size" depth="3">
+      <n-text
+        v-if="song.path && song.size && !hiddenSize && !isSmallScreen"
+        class="meta size"
+        depth="3"
+      >
         {{ song.size }}M
       </n-text>
     </div>
@@ -166,6 +170,7 @@ import { formatTimestamp, msToTime } from "@/utils/time";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { isElectron } from "@/utils/env";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
+import { useMobile } from "@/composables/useMobile";
 
 const props = defineProps<{
   // 歌曲
@@ -178,6 +183,7 @@ const props = defineProps<{
   hiddenSize?: boolean;
 }>();
 
+const { isSmallScreen } = useMobile();
 const router = useRouter();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();

@@ -29,12 +29,16 @@
               </div>
             </n-dropdown>
             <n-text v-else class="title">标题</n-text>
-            <n-text v-if="type !== 'radio' && !hiddenAlbum" class="album">专辑</n-text>
+            <n-text v-if="type !== 'radio' && !hiddenAlbum && !isSmallScreen" class="album"
+              >专辑</n-text
+            >
             <n-text v-if="type !== 'radio'" class="actions">操作</n-text>
-            <n-text v-if="type === 'radio'" class="meta date">更新日期</n-text>
-            <n-text v-if="type === 'radio'" class="meta">播放量</n-text>
-            <n-text class="meta">时长</n-text>
-            <n-text v-if="data?.[0].size && !hiddenSize" class="meta size">大小</n-text>
+            <n-text v-if="type === 'radio' && !isSmallScreen" class="meta date">更新日期</n-text>
+            <n-text v-if="type === 'radio' && !isSmallScreen" class="meta">播放量</n-text>
+            <n-text v-if="!isSmallScreen" class="meta">时长</n-text>
+            <n-text v-if="data?.[0].size && !hiddenSize && !isSmallScreen" class="meta size">
+              大小
+            </n-text>
           </div>
           <!-- 虚拟列表 -->
           <VirtualScroll
@@ -54,11 +58,8 @@
                 :hiddenCover="hiddenCover"
                 :hiddenAlbum="hiddenAlbum"
                 :hiddenSize="hiddenSize"
-                @dblclick.stop="
-                  doubleClickAction === 'add'
-                    ? player.addNextSong(item.data, true)
-                    : player.updatePlayList(listData, item.data, playListId)
-                "
+                @click.stop="handleSongClick(item.data)"
+                @dblclick.stop="handleSongPlay(item.data)"
                 @contextmenu.stop="
                   songListMenuRef?.openDropdown(
                     $event,
@@ -118,6 +119,7 @@ import { entries, isEmpty } from "lodash-es";
 import { sortOptions } from "@/utils/meta";
 import { renderIcon } from "@/utils/helper";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { useMobile } from "@/composables/useMobile";
 import SongListMenu from "@/components/Menu/SongListMenu.vue";
 import VirtualScroll from "@/components/UI/VirtualScroll.vue";
 
@@ -177,6 +179,23 @@ const emit = defineEmits<{
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const player = usePlayerController();
+const { isSmallScreen } = useMobile();
+
+// 处理移动端单击播放
+const handleSongClick = (song: SongType) => {
+  if (isSmallScreen.value) {
+    handleSongPlay(song);
+  }
+};
+
+// 处理歌曲播放
+const handleSongPlay = (song: SongType) => {
+  if (props.doubleClickAction === "add") {
+    player.addNextSong(song, true);
+  } else {
+    player.updatePlayList(listData.value, song, props.playListId);
+  }
+};
 
 // 列表状态
 const scrollTop = ref<number>(0);
