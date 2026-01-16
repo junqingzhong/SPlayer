@@ -290,7 +290,8 @@ class SongManager {
         console.error("❌ 本地文件不存在");
         return { id: song.id, url: undefined };
       }
-      return { id: song.id, url: `file://${song.path}` };
+      const encodedPath = song.path.replace(/#/g, "%23").replace(/\?/g, "%3F");
+      return { id: song.id, url: `file://${encodedPath}` };
     }
 
     // 在线歌曲
