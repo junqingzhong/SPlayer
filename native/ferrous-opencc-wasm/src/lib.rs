@@ -20,10 +20,10 @@ impl TextConverter {
     #[wasm_bindgen(constructor)]
     #[allow(clippy::missing_errors_doc)] // 有了
     pub fn new(config_name: &str) -> Result<Self, JsValue> {
-        let config_enum = BuiltinConfig::from_filename(config_name)
-            .map_err(|e| JsValue::from_str(&e.to_string()))?;
-        let inner =
-            OpenCC::from_config(config_enum).map_err(|e| JsValue::from_str(&e.to_string()))?;
+        let to_js_err = |e: ferrous_opencc::error::OpenCCError| JsValue::from_str(&e.to_string());
+
+        let config_enum = BuiltinConfig::from_filename(config_name).map_err(to_js_err)?;
+        let inner = OpenCC::from_config(config_enum).map_err(to_js_err)?;
         Ok(Self { inner })
     }
 

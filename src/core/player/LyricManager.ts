@@ -750,20 +750,20 @@ class LyricManager {
    */
   private async applyChineseVariant(lyricData: SongLyric): Promise<SongLyric> {
     const settingStore = useSettingStore();
-    const mode = settingStore.preferTraditionalChinese
-      ? settingStore.traditionalChineseVariant
-      : "off";
+    if (!settingStore.preferTraditionalChinese) {
+      return lyricData;
+    }
 
     try {
-      // 获取转换函数
+      const mode = settingStore.traditionalChineseVariant;
       const convert = await getConverter(mode);
 
       // 深拷贝以避免副作用
       const newLyricData = cloneDeep(lyricData);
 
-      // LRC
-      if (newLyricData.lrcData) {
-        newLyricData.lrcData.forEach((line) => {
+      const convertLines = (lines: LyricLine[] | undefined) => {
+        if (!lines) return;
+        lines.forEach((line) => {
           line.words.forEach((word) => {
             if (word.word) word.word = convert(word.word);
           });
@@ -771,19 +771,13 @@ class LyricManager {
             line.translatedLyric = convert(line.translatedLyric);
           }
         });
-      }
+      };
+
+      // LRC
+      convertLines(newLyricData.lrcData);
 
       // YRC / QRC / TTML
-      if (newLyricData.yrcData) {
-        newLyricData.yrcData.forEach((line) => {
-          line.words.forEach((word) => {
-            if (word.word) word.word = convert(word.word);
-          });
-          if (line.translatedLyric) {
-            line.translatedLyric = convert(line.translatedLyric);
-          }
-        });
-      }
+      convertLines(newLyricData.yrcData);
 
       return newLyricData;
     } catch (e) {
