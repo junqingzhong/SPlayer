@@ -1,88 +1,88 @@
 <template>
   <Transition name="fade" mode="out-in">
     <div v-if="data.length > 0" :class="['cover-list', type]">
-      <n-grid :cols="cols" x-gap="20" y-gap="20">
-        <n-gi v-for="(item, index) in data" :key="index">
-          <div
-            class="cover-item"
-            @click="goDetail(item)"
-            @contextmenu="coverMenuRef?.openDropdown($event, item, type)"
-          >
-            <!-- 封面 -->
-            <div class="cover">
-              <s-image
-                :key="item.cover"
-                :src="
-                  type === 'video' ? `${item.cover}?param=464y260` : item.coverSize?.m || item.cover
-                "
-                :default-src="
-                  type !== 'video' ? '/images/album.jpg?asset' : '/images/video.jpg?asset'
-                "
-                class="cover-img"
-                once
-              />
-              <template v-if="item.playCount">
-                <!-- 遮罩 -->
-                <div v-if="type !== 'album'" class="cover-mask" />
-                <!-- 播放量 -->
-                <div v-if="type !== 'album'" class="play-count">
-                  <SvgIcon name="Play" />
-                  <span class="num">{{ formatNumber(item.playCount || 0) }}</span>
-                </div>
-              </template>
-              <!-- 简介 -->
-              <div v-if="item.description" class="description">
-                <n-text class="text-hidden"> {{ item.description }}</n-text>
+      <div class="cover-grid">
+        <div
+          v-for="(item, index) in data"
+          :key="index"
+          class="cover-item"
+          @click="goDetail(item)"
+          @contextmenu="coverMenuRef?.openDropdown($event, item, type)"
+        >
+          <!-- 封面 -->
+          <div class="cover">
+            <s-image
+              :key="item.cover"
+              :src="
+                type === 'video' ? `${item.cover}?param=464y260` : item.coverSize?.m || item.cover
+              "
+              :default-src="
+                type !== 'video' ? '/images/album.jpg?asset' : '/images/video.jpg?asset'
+              "
+              class="cover-img"
+              once
+            />
+            <template v-if="item.playCount">
+              <!-- 遮罩 -->
+              <div v-if="type !== 'album'" class="cover-mask" />
+              <!-- 播放量 -->
+              <div v-if="type !== 'album'" class="play-count">
+                <SvgIcon name="Play" />
+                <span class="num">{{ formatNumber(item.playCount || 0) }}</span>
               </div>
-              <!-- 播放按钮 -->
-              <div class="play-btn" @click.stop>
-                <n-button
-                  :focusable="false"
-                  :loading="item.loading"
-                  secondary
-                  circle
-                  class="play"
-                  @click.stop="playList(item)"
-                >
-                  <template #icon>
-                    <SvgIcon :size="32" :name="isPlaying(item.id) ? 'Pause' : 'Play'" />
-                  </template>
-                </n-button>
-              </div>
+            </template>
+            <!-- 简介 -->
+            <div v-if="item.description" class="description">
+              <n-text class="text-hidden"> {{ item.description }}</n-text>
             </div>
-            <!-- 信息 -->
-            <div class="cover-data">
-              <n-text class="name text-hidden">{{ item.name }}</n-text>
-              <!-- 创建者 -->
-              <n-text
-                v-if="(type === 'playlist' || type === 'radio') && item?.creator?.id"
-                class="creator"
-                depth="3"
+            <!-- 播放按钮 -->
+            <div class="play-btn" @click.stop>
+              <n-button
+                :focusable="false"
+                :loading="item.loading"
+                secondary
+                circle
+                class="play"
+                @click.stop="playList(item)"
               >
-                {{ item.creator?.name || item.creator || "未知" }}
-              </n-text>
-              <!-- 更新提示 -->
-              <n-text v-if="item.updateTip" class="tip" depth="3">{{ item.updateTip }}</n-text>
-              <!-- 专辑信息 -->
-              <div v-if="type === 'album'" class="meta">
-                <n-text class="count" depth="3">{{ item.count || 0 }}首</n-text>
-                <n-text class="date" depth="3">{{ formatTimestamp(item.createTime) }}</n-text>
-              </div>
-              <!-- 歌手 -->
-              <template v-if="type === 'video' && item.artists">
-                <div v-if="Array.isArray(item.artists)" class="artists text-hidden">
-                  <n-text v-for="(ar, arIndex) in item.artists" :key="arIndex" class="ar">
-                    {{ ar.name || "未知艺术家" }}
-                  </n-text>
-                </div>
-                <div v-else class="artists text-hidden">
-                  <n-text class="ar"> {{ item.artists || "未知艺术家" }} </n-text>
-                </div>
-              </template>
+                <template #icon>
+                  <SvgIcon :size="32" :name="isPlaying(item.id) ? 'Pause' : 'Play'" />
+                </template>
+              </n-button>
             </div>
           </div>
-        </n-gi>
-      </n-grid>
+          <!-- 信息 -->
+          <div class="cover-data">
+            <n-text class="name text-hidden">{{ item.name }}</n-text>
+            <!-- 创建者 -->
+            <n-text
+              v-if="(type === 'playlist' || type === 'radio') && item?.creator?.id"
+              class="creator"
+              depth="3"
+            >
+              {{ item.creator?.name || item.creator || "未知" }}
+            </n-text>
+            <!-- 更新提示 -->
+            <n-text v-if="item.updateTip" class="tip" depth="3">{{ item.updateTip }}</n-text>
+            <!-- 专辑信息 -->
+            <div v-if="type === 'album'" class="meta">
+              <n-text class="count" depth="3">{{ item.count || 0 }}首</n-text>
+              <n-text class="date" depth="3">{{ formatTimestamp(item.createTime) }}</n-text>
+            </div>
+            <!-- 歌手 -->
+            <template v-if="type === 'video' && item.artists">
+              <div v-if="Array.isArray(item.artists)" class="artists text-hidden">
+                <n-text v-for="(ar, arIndex) in item.artists" :key="arIndex" class="ar">
+                  {{ ar.name || "未知艺术家" }}
+                </n-text>
+              </div>
+              <div v-else class="artists text-hidden">
+                <n-text class="ar"> {{ item.artists || "未知艺术家" }} </n-text>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
       <!-- 加载更多 -->
       <n-flex v-if="loadMore" class="load-more" justify="center">
         <n-button :loading="loading" size="large" strong secondary round @click="emit('loadMore')">
@@ -93,18 +93,16 @@
       <CoverMenu ref="coverMenuRef" @toPlay="playList" />
     </div>
     <div v-else-if="loading" :class="['cover-list', 'loading', type]">
-      <n-grid :cols="cols" x-gap="20" y-gap="20">
-        <n-gi v-for="item in loadingNum || 50" :key="item">
-          <div class="cover-item">
-            <div class="cover">
-              <n-skeleton class="cover-img" />
-            </div>
-            <div class="cover-data">
-              <n-skeleton text round :repeat="2" />
-            </div>
+      <div class="cover-grid">
+        <div v-for="item in loadingNum || 50" :key="item" class="cover-item">
+          <div class="cover">
+            <n-skeleton class="cover-img" />
           </div>
-        </n-gi>
-      </n-grid>
+          <div class="cover-data">
+            <n-skeleton text round :repeat="2" />
+          </div>
+        </div>
+      </div>
     </div>
     <!-- 空列表 -->
     <n-empty v-else description="空空如也，怎么什么都没有啊" size="large" />
@@ -125,19 +123,14 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { formatTimestamp } from "@/utils/time";
 import CoverMenu from "@/components/Menu/CoverMenu.vue";
 
-interface Props {
+const props = defineProps<{
   data: CoverType[];
   type: "playlist" | "album" | "video" | "radio";
-  cols?: string;
   loadMore?: boolean;
   loading?: boolean;
   loadingNum?: number;
   loadingText?: string;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  cols: "3 600:3 800:4 900:5 1200:6 1400:7",
-});
+}>();
 
 const emit = defineEmits<{
   // 加载更多
@@ -216,6 +209,15 @@ const getListData = async (id: number): Promise<SongType[]> => {
 .cover-list {
   width: 100%;
   padding: 20px 4px;
+  .cover-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    @media (max-width: 600px) {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+  }
   .cover-item {
     position: relative;
     height: auto;
@@ -382,6 +384,9 @@ const getListData = async (id: number): Promise<SongType[]> => {
     margin: 20px 0;
   }
   &.video {
+    .cover-grid {
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
     .cover-item {
       .cover {
         aspect-ratio: 16/9;

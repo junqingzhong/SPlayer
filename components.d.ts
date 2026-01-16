@@ -45,6 +45,7 @@ declare module 'vue' {
     LoginPhone: typeof import('./src/components/Modal/Login/LoginPhone.vue')['default']
     LoginQRCode: typeof import('./src/components/Modal/Login/LoginQRCode.vue')['default']
     LoginUID: typeof import('./src/components/Modal/Login/LoginUID.vue')['default']
+    Logo: typeof import('./src/components/Layout/Logo.vue')['default']
     LyricMenu: typeof import('./src/components/Player/LyricMenu.vue')['default']
     LyricPlayer: typeof import('./src/components/AMLL/LyricPlayer.vue')['default']
     LyricsSetting: typeof import('./src/components/Setting/LyricsSetting.vue')['default']
