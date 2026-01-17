@@ -60,6 +60,7 @@ class LyricWindow {
       x,
       y,
       transparent: true,
+      hasShadow: false,
       backgroundColor: "rgba(0, 0, 0, 0)",
       alwaysOnTop: true,
       resizable: true,
