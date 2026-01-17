@@ -10,7 +10,7 @@
       :config="listConfig"
       :play-button-text="playButtonText"
       :more-options="moreOptions"
-      :show-comment-tab="!isLocalPlaylist"
+      :hide-comment-tab="isLocalPlaylist || detailData?.privacy === 10"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
       @tab-change="handleTabChange"

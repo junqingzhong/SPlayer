@@ -89,7 +89,7 @@ const dailySongsTitle = computed(() => {
       h(SvgIcon, { name: "Calendar-Empty", size: 30, depth: 2 }),
       h(NText, null, () => day),
     ]),
-    h(NText, { class: "name" }, () => ["每日推荐"]),
+    h(NText, { class: "name text-hidden" }, () => ["每日推荐"]),
   ]);
 });
 
@@ -245,6 +245,15 @@ onMounted(() => {
     .name {
       font-size: 18px;
       font-weight: bold;
+    }
+  }
+  @media (max-width: 768px) {
+    .main-rec-grid {
+      grid-template-columns: repeat(1, 1fr);
+    }
+    .rec-list {
+      display: grid !important;
+      grid-template-columns: repeat(2, 1fr);
     }
   }
 }

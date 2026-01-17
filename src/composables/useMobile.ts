@@ -19,6 +19,9 @@ export const useMobile = () => {
   // 大于等于 lg (1024px) 为桌面端
   const isDesktop = breakpoints.greaterOrEqual("lg");
 
+  // 大于等于 xl (1280px) 为大桌面端
+  const isLargeDesktop = breakpoints.greaterOrEqual("xl");
+
   return {
     /** 是否为移动端 (< 640px) */
     isMobile,
@@ -28,6 +31,8 @@ export const useMobile = () => {
     isTablet,
     /** 是否为桌面端 (>= 1024px) */
     isDesktop,
+    /** 是否为大桌面端 (>= 1280px) */
+    isLargeDesktop,
     /** 断点实例 */
     breakpoints,
   };

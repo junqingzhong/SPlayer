@@ -36,7 +36,7 @@
           </n-text>
         </div>
         <!-- 功能 -->
-        <n-flex class="menu" align="center">
+        <n-flex :wrap="false" class="menu" align="center">
           <!-- 播放暂停 -->
           <n-button
             :loading="statusStore.personalFmMode && statusStore.playLoading"
@@ -119,16 +119,16 @@ onMounted(() => songManager.initPersonalFM());
 .personal-fm {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: 200px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 16px;
   overflow: hidden;
-  height: 200px;
   cursor: pointer;
   :deep(.n-card__content) {
     display: flex;
+    align-items: center;
     padding: 20px;
     width: 100%;
   }
@@ -151,8 +151,12 @@ onMounted(() => songManager.initPersonalFM());
     }
   }
   .info {
+    height: 100%;
     display: flex;
     flex-direction: column;
+    .n-text {
+      line-height: normal;
+    }
     .name {
       font-size: 22px;
       font-weight: bold;
@@ -195,8 +199,8 @@ onMounted(() => songManager.initPersonalFM());
     .menu {
       margin-top: auto;
       .play {
-        --n-width: 46px;
-        --n-height: 46px;
+        width: 46px;
+        height: 46px;
         .n-icon {
           color: var(--primary-hex);
           transition: opacity 0.1s ease-in-out;
@@ -237,6 +241,41 @@ onMounted(() => songManager.initPersonalFM());
   }
   &:hover {
     border-color: rgba(var(--primary), 0.6);
+  }
+  @media (max-width: 1200px) and (min-width: 769px) {
+    .radio {
+      display: none;
+    }
+  }
+  @media (max-width: 768px) {
+    height: 120px;
+    .cover {
+      min-width: 80px;
+      height: 80px;
+      width: 80px;
+    }
+    .info {
+      .name {
+        font-size: 16px;
+      }
+      .album {
+        display: none;
+      }
+      .menu {
+        margin-top: 8px;
+        .play {
+          width: 36px;
+          height: 36px;
+          .n-icon {
+            font-size: 28px !important;
+          }
+        }
+        .menu-icon {
+          width: 26px;
+          height: 26px;
+        }
+      }
+    }
   }
 }
 </style>

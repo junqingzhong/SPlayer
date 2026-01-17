@@ -8,9 +8,10 @@
       :list-scrolling="listScrolling"
       :search-value="searchValue"
       :config="listConfig"
-      title-text="我喜欢的音乐"
       :play-button-text="playButtonText"
       :more-options="moreOptions"
+      title-text="我喜欢的音乐"
+      hide-comment-tab
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
     />

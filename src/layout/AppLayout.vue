@@ -48,7 +48,7 @@
             display: 'grid',
             gridTemplateRows: '1fr',
             minHeight: '100%',
-            padding: '0 24px',
+            padding: isMobile ? '0 12px' : '0 24px',
           }"
           position="absolute"
           embedded
@@ -91,7 +91,7 @@ const settingStore = useSettingStore();
 
 const blobURLManager = useBlobURLManager();
 
-const { isDesktop } = useMobile();
+const { isDesktop, isMobile } = useMobile();
 
 // 主内容
 const contentRef = ref<HTMLElement | null>(null);
