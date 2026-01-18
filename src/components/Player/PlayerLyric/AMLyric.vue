@@ -145,14 +145,19 @@ watch(lyricPlayerRef, (player) => {
     top: 0;
     padding-left: 10px;
     padding-right: 80px;
-
     div {
       div[class^="_interludeDots"] {
         display: var(--display-count-down-show);
       }
     }
+    @media (max-width: 990px) {
+      padding: 0;
+      margin-left: -20px;
+    }
+    @media (max-width: 500px) {
+      margin-left: 0;
+    }
   }
-
   &.pure {
     &:not(.duet) {
       text-align: center;

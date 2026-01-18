@@ -29,9 +29,9 @@
               </div>
             </n-dropdown>
             <n-text v-else class="title">标题</n-text>
-            <n-text v-if="type !== 'radio' && !hiddenAlbum && !isSmallScreen" class="album"
-              >专辑</n-text
-            >
+            <n-text v-if="type !== 'radio' && !hiddenAlbum && !isSmallScreen" class="album">
+              专辑
+            </n-text>
             <n-text v-if="type !== 'radio'" class="actions">操作</n-text>
             <n-text v-if="type === 'radio' && !isSmallScreen" class="meta date">更新日期</n-text>
             <n-text v-if="type === 'radio' && !isSmallScreen" class="meta">播放量</n-text>
@@ -60,17 +60,8 @@
                 :hiddenSize="hiddenSize"
                 @click.stop="handleSongClick(item.data)"
                 @dblclick.stop="handleSongPlay(item.data)"
-                @contextmenu.stop="
-                  songListMenuRef?.openDropdown(
-                    $event,
-                    listData,
-                    item.data,
-                    index,
-                    type,
-                    playListId,
-                    isDailyRecommend,
-                  )
-                "
+                @contextmenu.stop="handleShowMenu($event, item.data, index)"
+                @show-menu="handleShowMenu($event, item.data, index)"
               />
               <!-- 加载更多 -->
               <div v-else-if="item.type === 'footer'" class="load-more">
@@ -86,6 +77,7 @@
       </Transition>
       <!-- 右键菜单 -->
       <SongListMenu ref="songListMenuRef" @removeSong="removeSong" />
+      <MobileSongMenu ref="mobileSongMenuRef" @removeSong="removeSong" />
       <!-- 列表操作 -->
       <Teleport to="body">
         <Transition name="fade" mode="out-in">
@@ -121,6 +113,7 @@ import { renderIcon } from "@/utils/helper";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { useMobile } from "@/composables/useMobile";
 import SongListMenu from "@/components/Menu/SongListMenu.vue";
+import MobileSongMenu from "@/components/Menu/MobileSongMenu.vue";
 import VirtualScroll from "@/components/UI/VirtualScroll.vue";
 
 const props = withDefaults(
@@ -210,6 +203,29 @@ const floatToolShow = ref<boolean>(true);
 
 // 右键菜单
 const songListMenuRef = ref<InstanceType<typeof SongListMenu> | null>(null);
+const mobileSongMenuRef = ref<InstanceType<typeof MobileSongMenu> | null>(null);
+
+const handleShowMenu = (e: MouseEvent, song: SongType, index: number) => {
+  if (isSmallScreen.value) {
+    mobileSongMenuRef.value?.open(
+      song,
+      index,
+      props.type,
+      props.playListId,
+      props.isDailyRecommend,
+    );
+  } else {
+    songListMenuRef.value?.openDropdown(
+      e,
+      listData.value,
+      song,
+      index,
+      props.type,
+      props.playListId,
+      props.isDailyRecommend,
+    );
+  }
+};
 
 // 列表数据
 const listData = computed<SongType[]>(() => {

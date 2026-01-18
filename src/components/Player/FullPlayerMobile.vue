@@ -277,6 +277,26 @@ const { direction } = useSwipe(mobileStart, {
         :deep(.player-cover) {
           width: min(100%, 45vh);
           // height: min(85vw, 45vh);
+          &.record {
+            width: 40vh;
+            .cover-img {
+              width: 40vh;
+              height: 40vh;
+              min-width: 40vh;
+            }
+            .pointer {
+              width: 10vh;
+              top: -9.5vh;
+            }
+            @media (max-width: 512px) {
+              width: 36vh;
+              .cover-img {
+                width: 36vh;
+                height: 36vh;
+                min-width: 36vh;
+              }
+            }
+          }
         }
       }
       .info-group {
@@ -302,7 +322,7 @@ const { direction } = useSwipe(mobileStart, {
           }
           .info-actions {
             display: flex;
-            padding-top: 30px;
+            padding-top: 24px;
             gap: 16px;
             flex-shrink: 0;
             .action-btn {

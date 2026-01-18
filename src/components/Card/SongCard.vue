@@ -131,11 +131,14 @@
       <div v-if="song.type !== 'radio'" class="actions" @click.stop @dblclick.stop>
         <!-- 喜欢歌曲 -->
         <SvgIcon
+          v-if="!isSmallScreen"
           :name="dataStore.isLikeSong(song.id) ? 'Favorite' : 'FavoriteBorder'"
           :size="20"
           @click.stop="toLikeSong(song, !dataStore.isLikeSong(song.id))"
           @delclick.stop
         />
+        <!-- 移动端菜单 -->
+        <SvgIcon v-else name="More" :size="20" @click.stop="emit('show-menu', $event)" />
       </div>
       <!-- 更新日期 -->
       <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta date" depth="3">
@@ -181,6 +184,10 @@ const props = defineProps<{
   hiddenCover?: boolean;
   hiddenAlbum?: boolean;
   hiddenSize?: boolean;
+}>();
+
+const emit = defineEmits<{
+  "show-menu": [event: MouseEvent];
 }>();
 
 const { isSmallScreen } = useMobile();

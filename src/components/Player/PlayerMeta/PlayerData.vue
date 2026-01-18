@@ -445,6 +445,9 @@ const jumpPage = debounce(
         justify-content: center;
       }
     }
+    @media (max-width: 990px) {
+      padding: 0 2px;
+    }
   }
   &.center {
     align-items: center;

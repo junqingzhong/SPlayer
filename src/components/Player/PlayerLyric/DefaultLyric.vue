@@ -575,6 +575,9 @@ onBeforeUnmount(() => {
     &::-webkit-scrollbar {
       display: none;
     }
+    @media (max-width: 990px) {
+      padding-right: 20px;
+    }
   }
   .placeholder {
     width: 100%;
