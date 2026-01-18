@@ -97,7 +97,7 @@ const mainCoverColor = useCssVar("--main-cover-color", document.documentElement)
 
 // 是否显示评论
 const isShowComment = computed<boolean>(
-  () => !musicStore.playSong.path && statusStore.showPlayerComment && !isTablet,
+  () => !musicStore.playSong.path && statusStore.showPlayerComment && !isTablet.value,
 );
 
 /** 没有歌词 */

@@ -27,7 +27,7 @@ export const useMobile = () => {
     isMobile,
     /** 是否为小屏设备 (< 768px) */
     isSmallScreen,
-    /** 是否为中等屏幕 (< 1024px) */
+    /** 是否为中等屏幕 (< 990px) */
     isTablet,
     /** 是否为桌面端 (>= 1024px) */
     isDesktop,
