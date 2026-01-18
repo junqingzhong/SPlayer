@@ -3,10 +3,7 @@
     <Transition name="fade" mode="out-in">
       <!-- 背景色 -->
       <div
-        v-if="
-          settingStore.playerBackgroundType === 'color' ||
-          (delayAnimation && settingStore.playerBackgroundType === 'animation')
-        "
+        v-if="settingStore.playerBackgroundType === 'color'"
         :key="musicStore.songCover"
         class="color"
       />
@@ -20,7 +17,7 @@
       />
       <!-- 流体效果 -->
       <BackgroundRender
-        v-else-if="settingStore.playerBackgroundType === 'animation' && !props.delayAnimation"
+        v-else-if="settingStore.playerBackgroundType === 'animation'"
         :album="musicStore.songCover"
         :fps="settingStore.playerBackgroundFps ?? 60"
         :flowSpeed="flowSpeed"
@@ -35,11 +32,6 @@
 <script setup lang="ts">
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { usePlayerController } from "@/core/player/PlayerController";
-
-const props = defineProps<{
-  /** 是否延迟加载动画背景 */
-  delayAnimation?: boolean;
-}>();
 
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();

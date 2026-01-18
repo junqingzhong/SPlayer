@@ -194,15 +194,15 @@
         </div>
         <n-switch v-model:value="settingStore.showYrc" class="set" :round="false" />
       </n-card>
-      <n-collapse-transition :show="settingStore.showYrc">
-        <n-card v-if="isElectron" class="set-item">
+      <n-collapse-transition v-if="isElectron" :show="settingStore.showYrc">
+        <n-card class="set-item">
           <div class="label">
             <n-text class="name">优先使用 QM 歌词</n-text>
             <n-text class="tip" :depth="3"> 优先从 QM 获取逐字歌词，模糊搜索，可能不准确 </n-text>
           </div>
           <n-switch v-model:value="settingStore.preferQQMusicLyric" class="set" :round="false" />
         </n-card>
-        <n-card v-if="isElectron" class="set-item">
+        <n-card class="set-item">
           <div class="label">
             <n-text class="name">本地歌曲使用 QM 歌词</n-text>
             <n-text class="tip" :depth="3">

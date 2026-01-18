@@ -256,11 +256,11 @@ const toGithub = () => {
       display: flex;
       flex-direction: column;
       .mobile-title {
-        display: block;
+        display: flex !important;
         padding: 20px 12px 16px;
         gap: 12px;
         .n-h1 {
-          font-size: 26px;
+          font-size: 24px;
           font-weight: bold;
           margin-bottom: 0;
           line-height: normal;

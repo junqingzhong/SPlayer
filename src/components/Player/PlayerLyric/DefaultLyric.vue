@@ -770,16 +770,18 @@ onBeforeUnmount(() => {
         opacity 0.35s ease;
       pointer-events: none;
     }
-    &:hover {
-      opacity: 1;
-      &::before {
-        transform: scale(1);
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
         opacity: 1;
+        &::before {
+          transform: scale(1);
+          opacity: 1;
+        }
       }
-    }
-    &:active {
-      &::before {
-        transform: scale(0.95);
+      &:active {
+        &::before {
+          transform: scale(0.95);
+        }
       }
     }
   }

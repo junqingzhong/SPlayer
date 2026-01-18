@@ -33,6 +33,7 @@ declare module 'vue' {
     ExcludeLyrics: typeof import('./src/components/Modal/Setting/ExcludeLyrics.vue')['default']
     FontManager: typeof import('./src/components/Modal/Setting/FontManager.vue')['default']
     FullPlayer: typeof import('./src/components/Player/FullPlayer.vue')['default']
+    FullPlayerMobile: typeof import('./src/components/Player/FullPlayerMobile.vue')['default']
     GeneralSetting: typeof import('./src/components/Setting/GeneralSetting.vue')['default']
     HomePageSectionManager: typeof import('./src/components/Modal/Setting/HomePageSectionManager.vue')['default']
     JumpArtist: typeof import('./src/components/Modal/JumpArtist.vue')['default']

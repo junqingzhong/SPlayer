@@ -142,17 +142,20 @@ onBeforeUnmount(() => {
     hsla(0, 0%, 100%, 0.6) 85%,
     hsla(0, 0%, 100%, 0)
   );
-
-  &:hover {
-    .lyric-menu {
-      &.show {
-        opacity: 0.6;
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      .lyric-menu {
+        pointer-events: auto;
+        &.show {
+          opacity: 0.6;
+        }
       }
     }
   }
 }
 .lyric-menu {
   position: absolute;
+  pointer-events: none;
   top: 0;
   right: 0;
   display: flex;

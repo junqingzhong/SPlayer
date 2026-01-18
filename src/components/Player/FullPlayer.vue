@@ -10,74 +10,79 @@
         @mouseleave="playerLeave"
       >
         <!-- 背景 -->
-        <PlayerBackground :delayAnimation="!isBackgroundReady" />
-        <!-- 独立歌词 -->
-        <Transition name="fade" mode="out-in">
-          <div
-            v-if="isShowComment && !statusStore.pureLyricMode"
-            :key="instantLyrics.content"
-            class="lrc-instant"
-          >
-            <span class="lrc">{{ instantLyrics.content }}</span>
-            <span v-if="instantLyrics.tran" class="lrc-tran">{{ instantLyrics.tran }}</span>
-          </div>
-        </Transition>
-        <!-- 菜单 -->
-        <PlayerMenu @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
-        <!-- 主内容 -->
-        <Transition name="zoom" mode="out-in">
-          <div
-            v-if="isContentReady"
-            :key="playerContentKey"
-            :class="[
-              'player-content',
-              {
-                'no-lrc': noLrc,
-                pure: statusStore.pureLyricMode && musicStore.isHasLrc,
-              },
-            ]"
-            @mousemove="playerMove"
-          >
-            <Transition name="zoom">
-              <div v-if="!pureLyricMode" :key="musicStore.playSong.id" class="content-left">
-                <!-- 封面 -->
-                <PlayerCover />
-                <!-- 数据 -->
-                <PlayerData :center="playerDataCenter" />
-              </div>
-            </Transition>
-            <!-- 歌词 -->
-            <div class="content-right">
-              <!-- 数据 -->
-              <PlayerData
-                v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
-                :center="statusStore.pureLyricMode"
-                :light="pureLyricMode"
-              />
-              <!-- 歌词 -->
-              <PlayerLyric />
+        <PlayerBackground />
+        <!-- 移动端 -->
+        <FullPlayerMobile v-if="isTablet" />
+        <!-- 桌面端 -->
+        <template v-else>
+          <!-- 独立歌词 -->
+          <Transition name="fade" mode="out-in">
+            <div
+              v-if="isShowComment && !statusStore.pureLyricMode"
+              :key="instantLyrics.content"
+              class="lrc-instant"
+            >
+              <span class="lrc">{{ instantLyrics.content }}</span>
+              <span v-if="instantLyrics.tran" class="lrc-tran">{{ instantLyrics.tran }}</span>
             </div>
-          </div>
-        </Transition>
-        <!-- 评论 -->
-        <Transition name="zoom" mode="out-in">
-          <PlayerComment v-show="isShowComment && !statusStore.pureLyricMode" />
-        </Transition>
-        <!-- 控制中心 -->
-        <PlayerControl @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
-        <!-- 音乐频谱 -->
-        <PlayerSpectrum
-          v-if="settingStore.showSpectrums"
-          :color="statusStore.mainColor ? `rgb(${statusStore.mainColor})` : 'rgb(239 239 239)'"
-          :show="!statusStore.playerMetaShow"
-          :height="60"
-        />
+          </Transition>
+          <!-- 菜单 -->
+          <PlayerMenu @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
+          <!-- 主内容 -->
+          <Transition name="zoom" mode="out-in">
+            <div
+              :key="playerContentKey"
+              :class="[
+                'player-content',
+                {
+                  'no-lrc': noLrc,
+                  pure: statusStore.pureLyricMode && musicStore.isHasLrc,
+                },
+              ]"
+              @mousemove="playerMove"
+            >
+              <Transition name="zoom">
+                <div v-if="!pureLyricMode" :key="musicStore.playSong.id" class="content-left">
+                  <!-- 封面 -->
+                  <PlayerCover />
+                  <!-- 数据 -->
+                  <PlayerData :center="playerDataCenter" />
+                </div>
+              </Transition>
+              <!-- 歌词 -->
+              <div class="content-right">
+                <!-- 数据 -->
+                <PlayerData
+                  v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
+                  :center="statusStore.pureLyricMode"
+                  :light="pureLyricMode"
+                />
+                <!-- 歌词 -->
+                <PlayerLyric />
+              </div>
+            </div>
+          </Transition>
+          <!-- 评论 -->
+          <Transition name="zoom" mode="out-in">
+            <PlayerComment v-show="isShowComment && !statusStore.pureLyricMode" />
+          </Transition>
+          <!-- 控制中心 -->
+          <PlayerControl @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
+          <!-- 音乐频谱 -->
+          <PlayerSpectrum
+            v-if="settingStore.showSpectrums"
+            :color="statusStore.mainColor ? `rgb(${statusStore.mainColor})` : 'rgb(239 239 239)'"
+            :show="!statusStore.playerMetaShow"
+            :height="60"
+          />
+        </template>
       </div>
     </Transition>
   </Teleport>
 </template>
 
 <script setup lang="ts">
+import { useMobile } from "@/composables/useMobile";
 import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 
@@ -85,16 +90,14 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
-/** 延迟渲染控制 */
-const isContentReady = ref(false);
-const isBackgroundReady = ref(false);
+const { isTablet } = useMobile();
 
 /** 封面主颜色 */
 const mainCoverColor = useCssVar("--main-cover-color", document.documentElement);
 
 // 是否显示评论
 const isShowComment = computed<boolean>(
-  () => !musicStore.playSong.path && statusStore.showPlayerComment,
+  () => !musicStore.playSong.path && statusStore.showPlayerComment && !isTablet,
 );
 
 /** 没有歌词 */
@@ -186,11 +189,6 @@ onMounted(() => {
   if (isElectron && settingStore.preventSleep) {
     window.electron.ipcRenderer.send("prevent-sleep", true);
   }
-  // 延迟渲染
-  setTimeout(() => {
-    isContentReady.value = true;
-    isBackgroundReady.value = true;
-  }, 300);
 });
 
 onBeforeUnmount(() => {

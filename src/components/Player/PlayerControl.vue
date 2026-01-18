@@ -3,6 +3,10 @@
     <Transition name="fade" mode="out-in">
       <div v-show="statusStore.playerMetaShow" class="control-content" @click.stop>
         <n-flex class="left" align="center">
+          <!-- 收起 -->
+          <div class="menu-icon" @click.stop="statusStore.showFullPlayer = false">
+            <SvgIcon name="Down" />
+          </div>
           <!-- 喜欢歌曲 -->
           <div
             v-if="musicStore.playSong.type !== 'radio'"
