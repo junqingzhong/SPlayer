@@ -16,7 +16,50 @@ const isMacOS = platform === "darwin";
 console.log(`🚀 检测到操作系统: ${platform}`);
 
 // 设置环境变量
-const env = { ...process.env };
+const env: NodeJS.ProcessEnv = { ...process.env };
+
+const startElectronVite = (): void => {
+  console.log("🔧 正在启动 Electron Vite 开发服务器...");
+
+  // 设置 Node.js 选项
+  env.NODE_OPTIONS = "--max-old-space-size=4096";
+
+  // 传递给 electron-vite 的参数
+  const runArgs = ["dev"];
+  // 前两个参数分别是 node 和此脚本的路径，丢弃它们
+  const args = process.argv.slice(2);
+  // 添加参数
+  if (args.length > 0) {
+    runArgs.push(...args);
+  }
+
+  const electronVite = spawn("electron-vite", runArgs, {
+    stdio: "inherit",
+    shell: true,
+    env,
+  });
+
+  electronVite.on("close", (code) => {
+    console.log(`\n🏁 开发服务器已停止 (退出码: ${code})`);
+    process.exit(code ?? 0);
+  });
+
+  electronVite.on("error", (err) => {
+    console.error("❌ 启动失败:", err.message);
+    process.exit(1);
+  });
+
+  // 优雅退出处理
+  process.on("SIGINT", () => {
+    console.log("\n🛑 正在停止开发服务器...");
+    electronVite.kill("SIGINT");
+  });
+
+  process.on("SIGTERM", () => {
+    console.log("\n🛑 正在停止开发服务器...");
+    electronVite.kill("SIGTERM");
+  });
+};
 
 if (isWindows) {
   console.log("Windows 环境 - 正在设置代码页为 UTF-8");
@@ -39,7 +82,7 @@ if (isWindows) {
 } else {
   // macOS 和 Linux 环境
   console.log(`🐧 ${isMacOS ? "macOS" : "Linux"} 环境 - 正在设置 UTF-8 编码`);
-  const langVar = env.LC_ALL || env.LANG;
+  const langVar = env.LC_ALL || env.LANG || "";
   if (langVar.endsWith("UTF-8")) {
     console.log("✅ 当前环境已设置 UTF-8 编码");
   } else {
@@ -53,47 +96,3 @@ if (isWindows) {
   }
   setTimeout(() => startElectronVite(), 0);
 }
-
-
-const startElectronVite = () => {
-  console.log("🔧 正在启动 Electron Vite 开发服务器...");
-
-  // 设置 Node.js 选项
-  env.NODE_OPTIONS = "--max-old-space-size=4096";
-
-  // 传递给 electron-vite 的参数
-  const runArgs = ["dev"];
-  // 前两个参数分别是 node 和此脚本的路径，丢弃其
-  const args = process.argv.slice(2);
-  // 添加参数
-  if (args.length > 0) {
-    runArgs.push(...args);
-  }
-
-  const electronVite = spawn("electron-vite", runArgs, {
-    stdio: "inherit",
-    shell: true,
-    env,
-  });
-
-  electronVite.on("close", (code) => {
-    console.log(`\n🏁 开发服务器已停止 (退出码: ${code})`);
-    process.exit(code);
-  });
-
-  electronVite.on("error", (err) => {
-    console.error("❌ 启动失败:", err.message);
-    process.exit(1);
-  });
-
-  // 优雅退出处理
-  process.on("SIGINT", () => {
-    console.log("\n🛑 正在停止开发服务器...");
-    electronVite.kill("SIGINT");
-  });
-
-  process.on("SIGTERM", () => {
-    console.log("\n🛑 正在停止开发服务器...");
-    electronVite.kill("SIGTERM");
-  });
-};

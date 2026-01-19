@@ -191,18 +191,6 @@ const lineContextMenuHandler = (e: Event) => emit("lineContextmenu", e as LyricL
 // 底部行元素
 const bottomLineEl = computed(() => playerRef.value?.getBottomLineElement());
 
-// 延迟销毁
-const { start: delayedDispose } = useTimeoutFn(
-  () => {
-    if (playerRef.value) {
-      playerRef.value.dispose();
-      playerRef.value = undefined;
-    }
-  },
-  500,
-  { immediate: false },
-);
-
 // 组件挂载时初始化
 onMounted(() => {
   const wrapper = wrapperRef.value;
@@ -214,12 +202,25 @@ onMounted(() => {
   }
 });
 
+let disposeTimer: ReturnType<typeof setTimeout> | null = null;
+
 // 组件卸载时清理
 onUnmounted(() => {
-  if (playerRef.value) {
-    playerRef.value.removeEventListener("line-click", lineClickHandler);
-    playerRef.value.removeEventListener("line-contextmenu", lineContextMenuHandler);
-    delayedDispose();
+  // 清理未完成的定时器
+  if (disposeTimer) {
+    clearTimeout(disposeTimer);
+    disposeTimer = null;
+  }
+  const player = playerRef.value;
+  if (player) {
+    player.removeEventListener("line-click", lineClickHandler);
+    player.removeEventListener("line-contextmenu", lineContextMenuHandler);
+    playerRef.value = undefined;
+    // 延迟销毁
+    disposeTimer = setTimeout(() => {
+      player.dispose();
+      disposeTimer = null;
+    }, 500);
   }
 });
 

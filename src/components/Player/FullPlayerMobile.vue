@@ -10,8 +10,8 @@
 
     <!-- 主内容 -->
     <div
-      class="mobile-content"
-      :style="{ transform: `translateX(-${pageIndex * 50}%)` }"
+      :class="['mobile-content', { swiping: isSwiping }]"
+      :style="{ transform: contentTransform }"
       @click.stop
     >
       <!-- 歌曲信息页 -->
@@ -58,7 +58,7 @@
           <!-- 进度条 -->
           <div class="progress-section">
             <span class="time" @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
-            <PlayerSlider :show-tooltip="false" />
+            <PlayerSlider class="player" :show-tooltip="false" />
             <span class="time" @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
           </div>
 
@@ -197,17 +197,46 @@ watch(hasLyric, (val) => {
   if (!val) pageIndex.value = 0;
 });
 
-const { direction } = useSwipe(mobileStart, {
-  threshold: 50,
-  onSwipeEnd: () => {
-    if (!hasLyric.value) return;
+// 滑动偏移量
+const swipeOffset = ref(0);
 
-    if (direction.value === "left") {
+const { direction, isSwiping, lengthX } = useSwipe(mobileStart, {
+  threshold: 10,
+  onSwipe: () => {
+    if (!hasLyric.value) return;
+    // 为正表示向左滑，为负表示向右滑
+    swipeOffset.value = lengthX.value;
+  },
+  onSwipeEnd: () => {
+    if (!hasLyric.value) {
+      swipeOffset.value = 0;
+      return;
+    }
+    // 超过阈值则切换页面
+    if (direction.value === "left" && lengthX.value > 100) {
       pageIndex.value = 1;
-    } else if (direction.value === "right") {
+    } else if (direction.value === "right" && lengthX.value < -100) {
       pageIndex.value = 0;
     }
+    swipeOffset.value = 0;
   },
+});
+
+// 计算实时的变换位置
+const contentTransform = computed(() => {
+  const baseOffset = pageIndex.value * 50; // 百分比
+  if (!isSwiping.value || !hasLyric.value) {
+    return `translateX(-${baseOffset}%)`;
+  }
+  let pixelOffset = lengthX.value;
+  // 限制滑动范围
+  if (pageIndex.value === 0 && pixelOffset < 0) {
+    pixelOffset = pixelOffset * 0.3;
+  }
+  if (pageIndex.value === 1 && pixelOffset > 0) {
+    pixelOffset = pixelOffset * 0.3;
+  }
+  return `translateX(calc(-${baseOffset}% - ${pixelOffset}px))`;
 });
 </script>
 
@@ -254,6 +283,9 @@ const { direction } = useSwipe(mobileStart, {
     width: 200%;
     height: 100%;
     transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    &.swiping {
+      transition: none;
+    }
     .page {
       width: 50%;
       height: 100%;
@@ -363,12 +395,8 @@ const { direction } = useSwipe(mobileStart, {
             color: rgb(var(--main-cover-color));
             font-variant-numeric: tabular-nums;
           }
-          :deep(.n-slider) {
+          .n-slider {
             margin: 0 12px;
-            --n-fill-color: rgb(var(--main-cover-color));
-            --n-handle-color: rgb(var(--main-cover-color));
-            --n-rail-color: rgba(var(--main-cover-color), 0.2);
-            --n-rail-color-hover: rgba(var(--main-cover-color), 0.3);
           }
         }
         .control-section {

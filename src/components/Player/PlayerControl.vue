@@ -105,7 +105,7 @@
           <!-- 进度条 -->
           <div class="slider">
             <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
-            <PlayerSlider :show-tooltip="false" />
+            <PlayerSlider class="player" :show-tooltip="false" />
             <span @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
           </div>
         </div>
@@ -270,13 +270,5 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
       opacity: 1;
     }
   }
-}
-// slider
-.n-slider {
-  --n-rail-color: rgba(var(--main-cover-color), 0.14);
-  --n-rail-color-hover: rgba(var(--main-cover-color), 0.3);
-  --n-fill-color: rgb(var(--main-cover-color));
-  --n-handle-color: rgb(var(--main-cover-color));
-  --n-fill-color-hover: rgb(var(--main-cover-color));
 }
 </style>
