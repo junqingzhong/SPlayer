@@ -106,121 +106,124 @@ const changeGlobalTheme = () => {
     // 全局字体
     const fontFamily = `${settingStore.globalFont === "default" ? "v-sans" : settingStore.globalFont}, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"`;
 
+    // 预计算颜色值
+    const colors = {
+      primary: `rgb(${primaryRGB})`,
+      primary78: toRGBA(primaryRGB, 0.78),
+      primary58: toRGBA(primaryRGB, 0.58),
+      primary52: toRGBA(primaryRGB, 0.52),
+      primary20: toRGBA(primaryRGB, 0.2),
+      primary12: toRGBA(primaryRGB, 0.12),
+      primary09: toRGBA(primaryRGB, 0.09),
+      primary08: toRGBA(primaryRGB, 0.08),
+      surface: `rgb(${surfaceContainerRGB})`,
+    };
+
     // 通用样式基座
     const commonBase = {
       fontFamily,
-      primaryColor: `rgb(${primaryRGB})`,
-      primaryColorHover: toRGBA(primaryRGB, 0.78),
+      primaryColor: colors.primary,
+      primaryColorHover: colors.primary78,
       primaryColorPressed: toRGBA(primaryRGB, 0.26),
-      primaryColorSuppl: toRGBA(primaryRGB, 0.12),
+      primaryColorSuppl: colors.primary12,
     } as GlobalThemeOverrides["common"];
+
+    /**
+     * 获取组件样式
+     * @param isGlobal 是否全局着色
+     */
+    const getComponentStyles = (isGlobal: boolean) => ({
+      Slider: {
+        handleColor: colors.primary,
+        fillColor: colors.primary,
+        fillColorHover: colors.primary,
+        railColor: colors.primary20,
+        railColorHover: toRGBA(primaryRGB, 0.3),
+        indicatorColor: colors.surface,
+        indicatorTextColor: colors.primary,
+      },
+      Icon: {
+        color: colors.primary,
+      },
+      Tooltip: {
+        color: colors.surface,
+      },
+      ...(isGlobal
+        ? {
+            Card: { borderColor: colors.primary09 },
+            Button: {
+              textColorHover: colors.primary78,
+              textColorFocus: colors.primary58,
+              colorPrimary: toRGBA(primaryRGB, 0.9),
+              colorHoverPrimary: colors.primary,
+              colorPressedPrimary: toRGBA(primaryRGB, 0.8),
+              colorFocusPrimary: colors.primary,
+            },
+            Switch: { railColorActive: toRGBA(primaryRGB, 0.8) },
+            Input: {
+              color: toRGBA(primaryRGB, 0.1),
+              colorFocus: colors.surface,
+              placeholderColor: colors.primary58,
+              border: `1px solid ${toRGBA(primaryRGB, 0.1)}`,
+              clearColor: toRGBA(primaryRGB, 0.38),
+              clearColorHover: toRGBA(primaryRGB, 0.48),
+              clearColorPressed: toRGBA(primaryRGB, 0.3),
+            },
+            Empty: { textColor: toRGBA(primaryRGB, 0.38) },
+            Divider: { color: colors.primary09 },
+            Dropdown: { dividerColor: colors.primary09 },
+            Layout: { siderBorderColor: colors.primary09 },
+            Tabs: {
+              colorSegment: colors.primary08,
+              tabColorSegment: colors.primary12,
+            },
+            Drawer: {
+              headerBorderBottom: `1px solid ${colors.primary09}`,
+              footerBorderTop: `1px solid ${colors.primary09}`,
+            },
+            Menu: { dividerColor: colors.primary09 },
+            Progress: { railColor: toRGBA(primaryRGB, 0.16) },
+            Popover: {
+              color: colors.surface,
+            },
+          }
+        : {}),
+    });
+
+    // 获取组件样式
+    const specificStyles = getComponentStyles(settingStore.themeGlobalColor);
 
     if (settingStore.themeGlobalColor) {
       themeOverrides.value = {
         common: {
           ...commonBase,
           textColorBase: primaryRGB,
-          textColor1: `rgb(${primaryRGB})`,
+          textColor1: colors.primary,
           textColor2: toRGBA(primaryRGB, 0.82),
-          textColor3: toRGBA(primaryRGB, 0.52),
+          textColor3: colors.primary52,
           bodyColor: `rgb(${colorSchemes.background})`,
-          cardColor: `rgb(${surfaceContainerRGB})`,
-          tagColor: `rgb(${surfaceContainerRGB})`,
-          modalColor: `rgb(${surfaceContainerRGB})`,
-          popoverColor: `rgb(${surfaceContainerRGB})`,
-          buttonColor2: toRGBA(primaryRGB, 0.08),
-          buttonColor2Hover: toRGBA(primaryRGB, 0.12),
-          buttonColor2Pressed: toRGBA(primaryRGB, 0.08),
-          iconColor: `rgb(${primaryRGB})`,
+          cardColor: colors.surface,
+          tagColor: colors.surface,
+          modalColor: colors.surface,
+          popoverColor: colors.surface,
+          buttonColor2: colors.primary08,
+          buttonColor2Hover: colors.primary12,
+          buttonColor2Pressed: colors.primary08,
+          iconColor: colors.primary,
           iconColorHover: toRGBA(primaryRGB, 0.475),
-          closeIconColor: toRGBA(primaryRGB, 0.58),
-          hoverColor: toRGBA(primaryRGB, 0.09),
-          borderColor: toRGBA(primaryRGB, 0.09),
+          closeIconColor: colors.primary58,
+          hoverColor: colors.primary09,
+          borderColor: colors.primary09,
           textColorDisabled: toRGBA(primaryRGB, 0.3),
           placeholderColorDisabled: toRGBA(primaryRGB, 0.3),
           iconColorDisabled: toRGBA(primaryRGB, 0.3),
         },
-        Card: {
-          borderColor: toRGBA(primaryRGB, 0.09),
-        },
-        Button: {
-          textColorHover: toRGBA(primaryRGB, 0.78),
-          textColorFocus: toRGBA(primaryRGB, 0.58),
-          colorPrimary: toRGBA(primaryRGB, 0.9),
-          colorHoverPrimary: `rgb(${primaryRGB})`,
-          colorPressedPrimary: toRGBA(primaryRGB, 0.8),
-          colorFocusPrimary: `rgb(${primaryRGB})`,
-        },
-        Slider: {
-          handleColor: `rgb(${primaryRGB})`,
-          fillColor: `rgb(${primaryRGB})`,
-          fillColorHover: `rgb(${primaryRGB})`,
-          railColor: toRGBA(primaryRGB, 0.2),
-          railColorHover: toRGBA(primaryRGB, 0.3),
-        },
-        Switch: {
-          railColorActive: toRGBA(primaryRGB, 0.8),
-        },
-        Input: {
-          color: toRGBA(primaryRGB, 0.1),
-          colorFocus: `rgb(${surfaceContainerRGB})`,
-          placeholderColor: toRGBA(primaryRGB, 0.58),
-          border: `1px solid ${toRGBA(primaryRGB, 0.1)}`,
-          clearColor: toRGBA(primaryRGB, 0.38),
-          clearColorHover: toRGBA(primaryRGB, 0.48),
-          clearColorPressed: toRGBA(primaryRGB, 0.3),
-        },
-        Icon: {
-          color: `rgb(${primaryRGB})`,
-        },
-        Empty: {
-          textColor: toRGBA(primaryRGB, 0.38),
-        },
-        Divider: {
-          color: toRGBA(primaryRGB, 0.09),
-        },
-        Dropdown: {
-          dividerColor: toRGBA(primaryRGB, 0.09),
-        },
-        Layout: {
-          siderBorderColor: toRGBA(primaryRGB, 0.09),
-        },
-        Tabs: {
-          colorSegment: toRGBA(primaryRGB, 0.08),
-          tabColorSegment: toRGBA(primaryRGB, 0.12),
-        },
-        Drawer: {
-          headerBorderBottom: `1px solid ${toRGBA(primaryRGB, 0.09)}`,
-          footerBorderTop: `1px solid ${toRGBA(primaryRGB, 0.09)}`,
-        },
-        Menu: {
-          dividerColor: toRGBA(primaryRGB, 0.09),
-        },
-        Progress: {
-          railColor: toRGBA(primaryRGB, 0.16),
-        },
-        Popover: {
-          color: `rgb(${surfaceContainerRGB})`,
-        },
+        ...specificStyles,
       };
     } else {
       themeOverrides.value = {
-        common: {
-          ...commonBase,
-        },
-        Icon: {
-          color: `rgb(${primaryRGB})`,
-        },
-        Slider: {
-          handleColor: `rgb(${primaryRGB})`,
-          fillColor: `rgb(${primaryRGB})`,
-          fillColorHover: `rgb(${primaryRGB})`,
-          railColor: toRGBA(primaryRGB, 0.2),
-          railColorHover: toRGBA(primaryRGB, 0.3),
-        },
-        Popover: {
-          color: `rgb(${surfaceContainerRGB})`,
-        },
+        common: commonBase,
+        ...specificStyles,
       };
     }
   } catch (error) {

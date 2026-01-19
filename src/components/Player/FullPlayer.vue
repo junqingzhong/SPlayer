@@ -42,7 +42,15 @@
               @mousemove="playerMove"
             >
               <Transition name="zoom">
-                <div v-if="!pureLyricMode" :key="musicStore.playSong.id" class="content-left">
+                <div
+                  v-if="!pureLyricMode"
+                  :key="musicStore.playSong.id"
+                  class="content-left"
+                  :style="{
+                    width: `${settingStore.playerStyleRatio}%`,
+                    minWidth: `${settingStore.playerStyleRatio}%`,
+                  }"
+                >
                   <!-- 封面 -->
                   <PlayerCover />
                   <!-- 数据 -->
@@ -50,7 +58,13 @@
                 </div>
               </Transition>
               <!-- 歌词 -->
-              <div class="content-right">
+              <div
+                class="content-right"
+                :style="{
+                  width: `${100 - settingStore.playerStyleRatio}%`,
+                  maxWidth: `${100 - settingStore.playerStyleRatio}%`,
+                }"
+              >
                 <!-- 数据 -->
                 <PlayerData
                   v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
@@ -246,8 +260,6 @@ onBeforeUnmount(() => {
       position: absolute;
       left: 0;
       flex: 1;
-      min-width: 50%;
-      width: 50%;
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -262,8 +274,6 @@ onBeforeUnmount(() => {
       right: 0;
       flex: 1;
       height: 100%;
-      width: 50%;
-      max-width: 50%;
       display: flex;
       flex-direction: column;
       transition: opacity 0.3s;

@@ -310,6 +310,8 @@ export interface SettingState {
   customCss: string;
   /** 自定义 JS */
   customJs: string;
+  /** 播放器封面/歌词占比 (0-100) */
+  playerStyleRatio: number;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -472,6 +474,7 @@ export const useSettingStore = defineStore("setting", {
     playbackEngine: "web-audio",
     customCss: "",
     customJs: "",
+    playerStyleRatio: 50,
   }),
   getters: {
     /**
