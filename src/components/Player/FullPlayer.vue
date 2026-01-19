@@ -245,7 +245,7 @@ onBeforeUnmount(() => {
     }
   }
   .player-content {
-    position: relative;
+    position: absolute;
     display: flex;
     flex-direction: row;
     justify-content: center;
@@ -266,6 +266,7 @@ onBeforeUnmount(() => {
       align-items: center;
       justify-content: center;
       transition:
+        width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
         opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
         transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
@@ -276,7 +277,9 @@ onBeforeUnmount(() => {
       height: 100%;
       display: flex;
       flex-direction: column;
-      transition: opacity 0.3s;
+      transition:
+        width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+        opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
       transition-delay: 0.5s;
       .player-data {
         margin-top: 0;
@@ -286,13 +289,14 @@ onBeforeUnmount(() => {
     &.pure {
       .content-right {
         align-items: center;
-        width: 100%;
-        max-width: 100%;
+        width: 100% !important;
+        max-width: 100% !important;
       }
     }
     // 无歌词
     &.no-lrc {
       .content-left {
+        width: 50% !important;
         transform: translateX(50%);
       }
       .content-right {
@@ -304,7 +308,7 @@ onBeforeUnmount(() => {
   &.show-comment {
     .player-content {
       &:not(.pure) {
-        transform: scale(0.8);
+        transform: scale(0.95);
         opacity: 0;
       }
     }

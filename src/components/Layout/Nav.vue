@@ -150,6 +150,23 @@ const useBorderless = ref(true);
 const isMax = ref(false);
 // 是否显示侧边栏
 const showAside = ref(false);
+// 当前缩放系数
+const currentZoomFactor = ref(1.0);
+
+// 缩放系数选项
+const zoomFactorList = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2];
+
+// 缩放选项列表
+const zoomOptions = computed<DropdownOption[]>(() =>
+  zoomFactorList.map((factor) => {
+    const isSelected = Math.abs(currentZoomFactor.value - factor) < 0.01;
+    return {
+      label: `${Math.round(factor * 100)}%`,
+      key: `zoom-${factor}`,
+      icon: isSelected ? renderIcon("Check") : undefined,
+    };
+  }),
+);
 
 // 最小化
 const min = () => window.electron.ipcRenderer.send("win-min");
@@ -201,6 +218,13 @@ const setOptions = computed<DropdownOption[]>(() => [
     ),
   },
   {
+    key: "zoom",
+    label: "界面缩放",
+    icon: renderIcon("ZoomIn"),
+    show: isElectron,
+    children: zoomOptions.value,
+  },
+  {
     key: "divider-1",
     type: "divider",
   },
@@ -238,6 +262,14 @@ const setSelect = (key: string) => {
       window.electron.ipcRenderer.send("open-dev-tools");
       break;
     default:
+      // 处理缩放选项
+      if (key.startsWith("zoom-")) {
+        const factor = parseFloat(key.replace("zoom-", ""));
+        if (!isNaN(factor)) {
+          window.electron.ipcRenderer.invoke("set-zoom-factor", factor);
+          currentZoomFactor.value = factor;
+        }
+      }
       break;
   }
 };
@@ -248,6 +280,8 @@ onMounted(async () => {
     // 获取无边框窗口配置
     const windowConfig = await window.api.store.get("window");
     useBorderless.value = windowConfig?.useBorderless ?? true;
+    // 获取当前缩放系数
+    currentZoomFactor.value = await window.electron.ipcRenderer.invoke("get-zoom-factor");
     // 获取窗口状态
     isMax.value = window.electron.ipcRenderer.sendSync("win-state");
     window.electron.ipcRenderer.on("win-state-change", (_event, value: boolean) => {

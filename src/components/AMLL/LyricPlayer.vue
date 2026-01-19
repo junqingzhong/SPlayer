@@ -202,25 +202,13 @@ onMounted(() => {
   }
 });
 
-let disposeTimer: ReturnType<typeof setTimeout> | null = null;
-
 // 组件卸载时清理
 onUnmounted(() => {
-  // 清理未完成的定时器
-  if (disposeTimer) {
-    clearTimeout(disposeTimer);
-    disposeTimer = null;
-  }
   const player = playerRef.value;
   if (player) {
     player.removeEventListener("line-click", lineClickHandler);
     player.removeEventListener("line-contextmenu", lineContextMenuHandler);
-    playerRef.value = undefined;
-    // 延迟销毁
-    disposeTimer = setTimeout(() => {
-      player.dispose();
-      disposeTimer = null;
-    }, 500);
+    player.dispose();
   }
 });
 

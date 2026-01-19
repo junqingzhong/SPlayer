@@ -1110,13 +1110,17 @@ class PlayerController {
   }
 }
 
-let instance: PlayerController | null = null;
+const PLAYER_CONTROLLER_KEY = "__SPLAYER_PLAYER_CONTROLLER__";
 
 /**
  * 获取 PlayerController 实例
  * @returns PlayerController
  */
 export const usePlayerController = (): PlayerController => {
-  if (!instance) instance = new PlayerController();
-  return instance;
+  const win = window as Window & { [PLAYER_CONTROLLER_KEY]?: PlayerController };
+  if (!win[PLAYER_CONTROLLER_KEY]) {
+    win[PLAYER_CONTROLLER_KEY] = new PlayerController();
+    console.log("[PlayerController] 创建新实例");
+  }
+  return win[PLAYER_CONTROLLER_KEY];
 };

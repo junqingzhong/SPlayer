@@ -138,6 +138,8 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 
 <style lang="scss" scoped>
 .player-control {
+  position: absolute;
+  bottom: 0;
   width: 100%;
   height: 80px;
   overflow: hidden;
