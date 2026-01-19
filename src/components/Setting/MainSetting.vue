@@ -294,9 +294,9 @@ const toGithub = () => {
       padding: 0 40px;
     }
     .set-list {
-      margin-bottom: 30px;
-      &:last-child {
-        margin-bottom: 0;
+      padding-top: 30px;
+      &:first-child {
+        padding-top: 0;
       }
     }
     .n-h {

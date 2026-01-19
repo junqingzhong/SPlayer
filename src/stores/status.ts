@@ -1,5 +1,5 @@
 import type { ColorScheme, RGB } from "@/types/main";
-import { QualityType, type SortType } from "@/types/main";
+import { QualityType, type SortField, type SortOrder } from "@/types/main";
 import { RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isDevBuild } from "@/utils/env";
 import { defineStore } from "pinia";
@@ -74,8 +74,10 @@ interface StatusState {
   playUblock: boolean;
   /** 主内容高度 */
   mainContentHeight: number;
-  /** 列表排序 */
-  listSort: SortType;
+  /** 列表排序字段 */
+  listSortField: SortField;
+  /** 列表排序顺序 */
+  listSortOrder: SortOrder;
   /** 桌面歌词 */
   showDesktopLyric: boolean;
   /** 播放器评论 */
@@ -137,7 +139,8 @@ export const useStatusStore = defineStore("status", {
     shuffleMode: "off",
     personalFmMode: false,
     mainContentHeight: 0,
-    listSort: "default",
+    listSortField: "default",
+    listSortOrder: "default",
     showDesktopLyric: false,
     showPlayerComment: false,
     updateCheck: false,
@@ -307,6 +310,8 @@ export const useStatusStore = defineStore("status", {
         playIndex: -1,
         repeatMode: "off",
         shuffleMode: "off",
+        listSortField: "default",
+        listSortOrder: "default",
       });
     },
   },
@@ -329,7 +334,8 @@ export const useStatusStore = defineStore("status", {
       "repeatMode",
       "shuffleMode",
       "songCoverTheme",
-      "listSort",
+      "listSortField",
+      "listSortOrder",
       "showDesktopLyric",
       "personalFmMode",
       "autoClose",

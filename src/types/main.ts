@@ -1,4 +1,4 @@
-import { songLevelData, sortOptions } from "@/utils/meta";
+import { songLevelData } from "@/utils/meta";
 
 export type MetaData = {
   id: number;
@@ -275,7 +275,17 @@ export interface UserLikeDataType {
 }
 
 // sort
-export type SortType = keyof typeof sortOptions;
+export type SortField =
+  | "default"
+  | "title"
+  | "artist"
+  | "album"
+  | "duration"
+  | "size"
+  | "createTime"
+  | "updateTime";
+
+export type SortOrder = "default" | "asc" | "desc";
 
 /** 歌曲元素音质类型 */
 export type SongLevelType = keyof typeof songLevelData;

@@ -43,10 +43,8 @@ const openDropdown = (
   try {
     e.preventDefault();
     dropdownShow.value = false;
-
     // 当前歌曲信息
     const songData = getPlayerInfoObj(song);
-
     // 生成基础菜单选项
     const baseOptions = getMenuOptions(
       song,
@@ -56,8 +54,7 @@ const openDropdown = (
       isDailyRecommend,
       (event, args) => emit(event, args),
     );
-
-    // 头部信息卡片选项
+    // 头部信息
     const headerOption: DropdownOption = {
       key: "data",
       type: "render",
@@ -69,35 +66,33 @@ const openDropdown = (
             wrap: false,
             class: "song-list-card",
           },
-          [
-            h(SImage, { src: song.coverSize?.s }),
-            h(NFlex, { vertical: true, size: 0 }, [
-              h(NText, { class: "text-hidden", depth: 1 }, songData?.name),
+          {
+            default: () => [
+              h(SImage, { src: song.coverSize?.s }),
               h(
-                NText,
-                { depth: 3, class: "text-hidden", style: { fontSize: "12px" } },
-                songData?.artist,
+                NFlex,
+                { vertical: true, size: 0 },
+                {
+                  default: () => [
+                    h(NText, { class: "text-hidden", depth: 1 }, { default: () => songData?.name }),
+                    h(
+                      NText,
+                      { depth: 3, class: "text-hidden", style: { fontSize: "12px" } },
+                      { default: () => songData?.artist },
+                    ),
+                  ],
+                },
               ),
-            ]),
-          ],
+            ],
+          },
         ),
     };
-
-    // 组合菜单
-    // 注意：useSongMenu 返回的列表通常不包含分割线，我们需要根据原有的逻辑添加分割线
-    // 但为了简化，我们可以直接在合适的位置插入，或者让 useSongMenu 返回更结构化的数据
-    // 目前简单处理：头部信息 + 分割线 + 功能选项 (功能选项中可能已经包含了一些逻辑)
-    // 观察 useSongMenu 的实现，它包含了很多选项。
-    // 原来的实现中，头部卡片后有一个 divider。
-
-    // 我们手动构建最终列表
     nextTick().then(() => {
       dropdownOptions.value = [
         headerOption,
         { key: "header-line", type: "divider" },
         ...baseOptions,
       ];
-
       // 显示菜单
       dropdownX.value = e.clientX;
       dropdownY.value = e.clientY;
