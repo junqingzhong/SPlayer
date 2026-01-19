@@ -12,6 +12,7 @@ import initCacheIpc from "./ipc-cache";
 import initSocketIpc from "./ipc-socket";
 import initMediaIpc from "./ipc-media";
 import initMpvIpc from "./ipc-mpv";
+import initRendererLogIpc from "./ipc-renderer-log";
 
 /**
  * 初始化全部 IPC 通信
@@ -32,6 +33,7 @@ const initIpc = (): void => {
   initSocketIpc();
   initMediaIpc();
   initMpvIpc();
+  initRendererLogIpc();
 };
 
 export default initIpc;

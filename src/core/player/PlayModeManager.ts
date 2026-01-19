@@ -117,14 +117,21 @@ export class PlayModeManager {
     const musicStore = useMusicStore();
     const dataStore = useDataStore();
 
+    // 检查登录状态
     if (isLogin() !== 1) {
-      // 未登录，回滚状态
       statusStore.shuffleMode = previousMode;
       if (isLogin() === 0) {
         openUserLogin(true);
       } else {
         window.$message.warning("该登录模式暂不支持该操作");
       }
+      return;
+    }
+
+    // 检查是否有播放歌曲
+    if (!musicStore.playSong) {
+      statusStore.shuffleMode = previousMode;
+      window.$message.warning("请先播放一首歌曲后再开启心动模式");
       return;
     }
 
@@ -135,27 +142,63 @@ export class PlayModeManager {
     try {
       const pid =
         musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
-      if (!musicStore.playSong) throw new Error("无播放歌曲");
-      // 获取当前歌曲ID，如果不是纯数字则生成随机10位数
-      let currentSongId = musicStore.playSong.id;
-      if (!Number.isInteger(currentSongId) || currentSongId <= 0) {
-        currentSongId = Math.floor(Math.random() * 9000000000) + 1000000000;
+      // 获取当前歌曲ID，强制转换为数字
+      let currentSongId: number;
+      const rawId = musicStore.playSong.id;
+      // 字符串ID，尝试解析为数字
+      if (typeof rawId === "string") {
+        const parsed = parseInt(rawId, 10);
+        if (Number.isNaN(parsed) || parsed <= 0) {
+          // 无法解析为有效数字ID，使用喜欢列表中的随机歌曲ID
+          const likePlaylist = await dataStore.getUserLikePlaylist();
+          if (likePlaylist?.data && likePlaylist.data.length > 0) {
+            const randomIndex = Math.floor(Math.random() * likePlaylist.data.length);
+            currentSongId = likePlaylist.data[randomIndex].id as number;
+          } else {
+            throw new Error("无法获取有效的歌曲ID，请确保喜欢列表中有歌曲");
+          }
+        } else {
+          currentSongId = parsed;
+        }
+      } else if (typeof rawId === "number" && Number.isInteger(rawId) && rawId > 0) {
+        currentSongId = rawId;
+      } else {
+        // 无效ID，使用喜欢列表中的随机歌曲ID
+        const likePlaylist = await dataStore.getUserLikePlaylist();
+        if (likePlaylist?.data && likePlaylist.data.length > 0) {
+          const randomIndex = Math.floor(Math.random() * likePlaylist.data.length);
+          currentSongId = likePlaylist.data[randomIndex].id as number;
+        } else {
+          throw new Error("无法获取有效的歌曲ID，请确保喜欢列表中有歌曲");
+        }
       }
-
+      if (signal.aborted) return;
       const res = await heartRateList(currentSongId, pid, undefined, signal);
-      if (res.code !== 200) throw new Error("获取推荐失败");
-
+      if (res.code !== 200) throw new Error("获取心动模式推荐失败，请稍后重试");
       const recList = formatSongsList(res.data);
-
-      // 混合列表
+      if (!recList || recList.length === 0) {
+        throw new Error("心动模式推荐列表为空");
+      }
+      // 备份当前播放列表
       const currentList = [...dataStore.playList];
-      const mixedList = interleaveLists(currentList, recList);
-
-      await dataStore.setPlayList(mixedList);
-
-      const idx = mixedList.findIndex((s) => s.id === currentSongId);
-      if (idx !== -1) statusStore.playIndex = idx;
+      await dataStore.setOriginalPlayList(currentList);
+      if (signal.aborted) return;
+      // 构建新的心动播放列表
+      const currentSong = musicStore.playSong;
+      // 过滤掉推荐列表中可能重复的当前歌曲
+      const filteredRec = recList.filter((s) => s.id !== currentSong.id);
+      const finalList = [
+        { ...currentSong, isRecommendation: true },
+        ...filteredRec.map((s) => ({ ...s, isRecommendation: true })),
+      ];
+      // 直接替换播放列表
+      await dataStore.setPlayList(finalList);
+      // 设置播放索引为第一首
+      statusStore.playIndex = 0;
       window.$message.success("心动模式已开启");
+    } catch (e) {
+      statusStore.shuffleMode = previousMode;
+      throw e;
     } finally {
       this.clearLoadingMessage();
     }
