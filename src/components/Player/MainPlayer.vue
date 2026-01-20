@@ -120,7 +120,7 @@
         </div>
       </n-dropdown>
       <n-badge
-        v-if="!statusStore.personalFmMode"
+        v-if="!statusStore.personalFmMode && settingStore.isMobileMode"
         :value="dataStore.playList?.length ?? 0"
         :show="settingStore.showPlaylistCount"
         :max="999"
@@ -163,6 +163,18 @@
             <n-text class="slider-num">{{ statusStore.playVolumePercent }}%</n-text>
           </n-flex>
         </Transition>
+        <!-- 列表按钮（PC放到时间后面） -->
+        <n-badge
+          v-if="!statusStore.personalFmMode && !settingStore.isMobileMode"
+          :value="dataStore.playList?.length ?? 0"
+          :show="settingStore.showPlaylistCount"
+          :max="999"
+          class="playlist-toggle"
+        >
+          <div class="menu-icon" @click.stop="togglePlayList">
+            <SvgIcon :size="20" name="PlayList" />
+          </div>
+        </n-badge>
       </n-flex>
     </Transition>
   </div>
@@ -454,18 +466,21 @@ const togglePlayList = () => {
       .data {
         display: flex;
         align-items: center;
+        gap: 8px;
         margin-top: 2px;
         .name {
           font-weight: bold;
           font-size: 16px;
           transition: color 0.3s;
+          flex: 1;
+          min-width: 0;
         }
         .n-tag {
           margin-left: 8px;
           transform: scale(0.9);
         }
         .like {
-          display: none;
+          display: inline-flex;
           color: var(--primary-hex);
           margin-left: 8px;
           transition: transform 0.3s;
@@ -478,9 +493,20 @@ const togglePlayList = () => {
           }
         }
         .more {
-          display: none;
+          display: inline-flex;
           margin-left: 8px;
           cursor: pointer;
+        }
+      }
+      @media (min-width: 769px) {
+        .info {
+          .data {
+            gap: 4px;
+            .like,
+            .more {
+              margin-left: 4px;
+            }
+          }
         }
       }
       .artists {

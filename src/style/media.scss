@@ -290,6 +290,7 @@
 
 .mobile-mode .main-player .play-data .info .data {
   margin-top: 0 !important;
+  flex-wrap: wrap !important;
 }
 
 .mobile-mode .main-player .play-data .info .name {
@@ -303,8 +304,8 @@
 }
 
 /* 隐藏不喜欢、更多按钮 */
-.mobile-mode .main-player .play-data .info .like,
-.mobile-mode .main-player .play-data .info .more,
+// .mobile-mode .main-player .play-data .info .like,
+// .mobile-mode .main-player .play-data .info .more,
 .mobile-mode .main-player .play-data .info .n-tag {
   display: none !important;
 }
@@ -679,11 +680,11 @@
 /* 设置项在移动端的适配 */
 .mobile-mode .main-setting .set-item {
   margin-bottom: 8px !important;
-  
+
   .label {
     padding-right: 12px !important;
   }
-  
+
   .set {
     width: 120px !important;
     min-width: 120px !important;
@@ -694,7 +695,7 @@
 .mobile-mode .main-setting .set-left {
   width: 200px !important;
   padding: 16px !important;
-  
+
   .title {
     margin: 0 0 16px 0 !important;
   }
@@ -776,7 +777,7 @@
     width: 95vw !important;
     max-width: 95vw !important;
   }
-  
+
   .mobile-mode .cover-list .cover-item .cover {
     height: auto !important;
     aspect-ratio: 1 / 1 !important;
