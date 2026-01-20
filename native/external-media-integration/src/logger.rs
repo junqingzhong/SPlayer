@@ -58,9 +58,10 @@ pub fn init(log_dir_str: String) -> Result<()> {
     let time_format = format_description!("[hour]:[minute]:[second]");
     let local_timer = LocalTime::new(time_format);
 
-    let file_filter = Targets::new().with_target("external_media_integration", LevelFilter::TRACE);
+    let crate_name = env!("CARGO_PKG_NAME").replace('-', "_");
+    let file_filter = Targets::new().with_target(&crate_name, LevelFilter::TRACE);
 
-    let stdout_filter = Targets::new().with_target("external_media_integration", LevelFilter::WARN);
+    let stdout_filter = Targets::new().with_target(&crate_name, LevelFilter::WARN);
 
     let file_layer = fmt::layer()
         .with_writer(non_blocking)
