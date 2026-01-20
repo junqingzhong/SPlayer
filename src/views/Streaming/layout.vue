@@ -54,6 +54,18 @@
             </template>
           </n-button>
         </n-dropdown>
+        <!-- 服务器选择 -->
+        <Transition name="fade" mode="out-in">
+          <n-select
+            v-if="streamingStore.servers.value.length > 0"
+            v-model:value="currentServerId"
+            :options="serverOptions"
+            class="server-select"
+            size="medium"
+            style="width: 200px"
+            placeholder="选择服务器"
+          />
+        </Transition>
       </n-flex>
       <n-flex class="right" justify="end">
         <!-- Tab 切换 -->
@@ -99,87 +111,27 @@
     <n-flex v-else align="center" justify="center" vertical class="router-view">
       <n-empty size="large" :description="emptyDescription">
         <template #extra>
-          <n-button type="primary" strong secondary @click="serverConfigShow = true">
+          <n-button type="primary" strong secondary @click="openServerConfig">
             <template #icon>
-              <SvgIcon name="Cloud" />
+              <SvgIcon name="Stream" />
             </template>
-            绑定流媒体服务
+            开始流媒体连接
           </n-button>
         </template>
       </n-empty>
     </n-flex>
-    <!-- 服务器配置弹窗 -->
-    <n-modal
-      v-model:show="serverConfigShow"
-      :close-on-esc="false"
-      :mask-closable="false"
-      preset="card"
-      title="流媒体服务配置"
-      transform-origin="center"
-      style="width: 500px"
-    >
-      <n-form
-        ref="formRef"
-        :model="serverForm"
-        :rules="formRules"
-        label-placement="left"
-        label-width="auto"
-        require-mark-placement="right-hanging"
-      >
-        <n-form-item label="服务类型" path="type">
-          <n-select
-            v-model:value="serverForm.type"
-            :options="serverTypeOptions"
-            placeholder="选择服务类型"
-          />
-        </n-form-item>
-        <n-form-item label="服务器名称" path="name">
-          <n-input
-            v-model:value="serverForm.name"
-            placeholder="为服务器取个名字（如：我的音乐库）"
-          />
-        </n-form-item>
-        <n-form-item label="服务器地址" path="url">
-          <n-input v-model:value="serverForm.url" placeholder="https://music.example.com" />
-        </n-form-item>
-        <n-form-item label="用户名" path="username">
-          <n-input v-model:value="serverForm.username" placeholder="输入用户名" />
-        </n-form-item>
-        <n-form-item label="密码" path="password">
-          <n-input
-            v-model:value="serverForm.password"
-            type="password"
-            show-password-on="click"
-            placeholder="输入密码"
-          />
-        </n-form-item>
-      </n-form>
-      <template #footer>
-        <n-flex justify="space-between">
-          <n-button v-if="isConnected" type="error" secondary @click="handleDisconnect">
-            断开连接
-          </n-button>
-          <div v-else></div>
-          <n-flex>
-            <n-button @click="serverConfigShow = false">取消</n-button>
-            <n-button type="primary" :loading="connecting" @click="handleConnect">
-              {{ editingServerId ? "保存并连接" : "添加并连接" }}
-            </n-button>
-          </n-flex>
-        </n-flex>
-      </template>
-    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { StreamingServerType } from "@/types/streaming";
+import type { StreamingServerConfig } from "@/types/streaming";
 import type { SongType } from "@/types/main";
-import type { DropdownOption, FormInst, FormRules } from "naive-ui";
+import type { DropdownOption } from "naive-ui";
 import { useStreamingStore, useSettingStore } from "@/stores";
 import { useMobile } from "@/composables/useMobile";
 import { renderIcon } from "@/utils/helper";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { openStreamingServerConfig, openSetting } from "@/utils/modal";
 
 const router = useRouter();
 const streamingStore = useStreamingStore();
@@ -188,40 +140,9 @@ const player = usePlayerController();
 const { isLargeDesktop } = useMobile();
 
 const loading = ref<boolean>(false);
-const connecting = ref<boolean>(false);
 
 // 路由类型
 const streamingType = ref<string>((router.currentRoute.value?.name as string) || "streaming-songs");
-
-// 服务器配置弹窗
-const serverConfigShow = ref<boolean>(false);
-const formRef = ref<FormInst | null>(null);
-const editingServerId = ref<string | null>(null);
-
-// 服务器表单
-const serverForm = reactive({
-  type: "navidrome" as StreamingServerType,
-  name: "",
-  url: "",
-  username: "",
-  password: "",
-});
-
-// 服务器类型选项
-const serverTypeOptions = [
-  { label: "Navidrome", value: "navidrome" },
-  { label: "Jellyfin", value: "jellyfin" },
-  { label: "OpenSubsonic", value: "opensubsonic" },
-];
-
-// 表单验证规则
-const formRules: FormRules = {
-  type: { required: true, message: "请选择服务类型" },
-  name: { required: true, message: "请输入服务器名称" },
-  url: { required: true, message: "请输入服务器地址" },
-  username: { required: true, message: "请输入用户名" },
-  password: { required: true, message: "请输入密码" },
-};
 
 // 页面标题
 const pageTitle = computed<string>(() => "流媒体");
@@ -282,117 +203,121 @@ const tabDropdownOptions = computed<DropdownOption[]>(() => [
 // 当前 Tab 标签
 const currentTabLabel = computed(() => tabLabels[streamingType.value] || "单曲");
 
+// 当前选中的服务器ID
+const currentServerId = computed({
+  get: () => streamingStore.activeServer.value?.id || null,
+  set: (val) => {
+    if (val) handleServerChange(val);
+  },
+});
+
+// 服务器选项
+const serverOptions = computed(() => {
+  return streamingStore.servers.value.map((server) => ({
+    label: server.name,
+    value: server.id,
+  }));
+});
+
+// 切换服务器
+const handleServerChange = async (serverId: string) => {
+  if (serverId === streamingStore.activeServer.value?.id) return;
+
+  loading.value = true;
+  try {
+    const success = await streamingStore.connectToServer(serverId);
+    if (success) {
+      window.$message.success("已切换服务器");
+      await loadData();
+    } else {
+      window.$message.error(streamingStore.connectionStatus.value.error || "切换失败");
+    }
+  } catch (error) {
+    window.$message.error("切换失败：" + (error instanceof Error ? error.message : "未知错误"));
+  } finally {
+    loading.value = false;
+  }
+};
+
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
   {
-    label: "服务器配置",
+    label: "修改当前配置",
     key: "config",
+    show: streamingStore.isConnected.value,
     props: {
       onClick: () => openServerConfig(),
     },
     icon: renderIcon("Cloud"),
   },
   {
+    label: "流媒体设置",
+    key: "setting",
+    props: {
+      onClick: () => openSetting("streaming"),
+    },
+    icon: renderIcon("Settings"),
+  },
+  {
     label: "断开连接",
     key: "disconnect",
-    disabled: !streamingStore.isConnected.value,
-    props: {
-      onClick: () => handleDisconnect(),
-    },
-    icon: renderIcon("CloudOff"),
+    show: streamingStore.isConnected.value,
+    props: { onClick: () => handleDisconnect() },
+    icon: renderIcon("Disconnect"),
   },
 ]);
 
 // 打开服务器配置
 const openServerConfig = () => {
-  // 如果已有服务器，填充表单
+  // 如果已有服务器，传入活动服务器或第一个服务器
+  let editingServer: StreamingServerConfig | null = null;
   if (streamingStore.activeServer.value) {
-    const server = streamingStore.activeServer.value;
-    editingServerId.value = server.id;
-    serverForm.type = server.type;
-    serverForm.name = server.name;
-    serverForm.url = server.url;
-    serverForm.username = server.username;
-    serverForm.password = server.password;
+    editingServer = streamingStore.activeServer.value;
   } else if (streamingStore.servers.value.length > 0) {
-    const server = streamingStore.servers.value[0];
-    editingServerId.value = server.id;
-    serverForm.type = server.type;
-    serverForm.name = server.name;
-    serverForm.url = server.url;
-    serverForm.username = server.username;
-    serverForm.password = server.password;
-  } else {
-    editingServerId.value = null;
-    serverForm.type = "navidrome";
-    serverForm.name = "";
-    serverForm.url = "";
-    serverForm.username = "";
-    serverForm.password = "";
+    editingServer = streamingStore.servers.value[0];
   }
-  serverConfigShow.value = true;
-};
-
-// 处理连接
-const handleConnect = async () => {
-  await formRef.value?.validate();
-
-  connecting.value = true;
-  try {
-    let serverId: string;
-
-    if (editingServerId.value) {
-      // 更新现有服务器
-      await streamingStore.updateServer(editingServerId.value, {
-        type: serverForm.type,
-        name: serverForm.name,
-        url: serverForm.url,
-        username: serverForm.username,
-        password: serverForm.password,
-      });
-      serverId = editingServerId.value;
-    } else {
-      // 添加新服务器
-      const newServer = await streamingStore.addServer({
-        type: serverForm.type,
-        name: serverForm.name,
-        url: serverForm.url,
-        username: serverForm.username,
-        password: serverForm.password,
-      });
-      serverId = newServer.id;
+  openStreamingServerConfig(editingServer, async (config) => {
+    try {
+      let serverId: string;
+      if (editingServer) {
+        await streamingStore.updateServer(editingServer.id, config);
+        serverId = editingServer.id;
+      } else {
+        const newServer = await streamingStore.addServer(config);
+        serverId = newServer.id;
+      }
+      const success = await streamingStore.connectToServer(serverId);
+      if (success) {
+        window.$message.success("连接成功");
+        await loadData();
+      } else {
+        window.$message.error(streamingStore.connectionStatus.value.error || "连接失败");
+      }
+    } catch (error) {
+      window.$message.error("连接失败：" + (error instanceof Error ? error.message : "未知错误"));
     }
-
-    // 连接到服务器
-    const success = await streamingStore.connectToServer(serverId);
-
-    if (success) {
-      window.$message.success("连接成功");
-      serverConfigShow.value = false;
-      // 加载数据
-      await loadData();
-    } else {
-      window.$message.error(streamingStore.connectionStatus.value.error || "连接失败");
-    }
-  } catch (error) {
-    window.$message.error("连接失败：" + (error instanceof Error ? error.message : "未知错误"));
-  } finally {
-    connecting.value = false;
-  }
+  });
 };
 
 // 断开连接
 const handleDisconnect = () => {
-  streamingStore.disconnect();
-  serverConfigShow.value = false;
-  window.$message.info("已断开连接");
+  window.$dialog.warning({
+    title: "断开连接",
+    content: "确定要断开与流媒体服务器的连接吗？",
+    positiveText: "确定",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      streamingStore.disconnect();
+      window.$message.info("已断开连接");
+    },
+  });
 };
 
 // 加载数据
 const loadData = async () => {
   loading.value = true;
   try {
-    await streamingStore.fetchRandomSongs(100);
+    await streamingStore.fetchSongs(0, 500);
   } catch (error) {
     console.error("Failed to load data:", error);
   } finally {
@@ -516,6 +441,17 @@ onMounted(async () => {
     @media (max-width: 678px) {
       .search {
         display: none;
+      }
+    }
+    .server-select {
+      height: 40px;
+      :deep(.n-base-selection) {
+        height: 40px;
+        border-radius: 25px;
+        .n-base-selection-label {
+          height: 40px;
+          line-height: 40px;
+        }
       }
     }
   }

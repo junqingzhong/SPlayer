@@ -162,6 +162,8 @@ declare module 'vue' {
     SongListMenu: typeof import('./src/components/Menu/SongListMenu.vue')['default']
     SongPlayList: typeof import('./src/components/List/SongPlayList.vue')['default']
     SongUnlockManager: typeof import('./src/components/Modal/Setting/SongUnlockManager.vue')['default']
+    StreamingServerConfig: typeof import('./src/components/Modal/Setting/StreamingServerConfig.vue')['default']
+    StreamingSetting: typeof import('./src/components/Setting/StreamingSetting.vue')['default']
     SvgIcon: typeof import('./src/components/Global/SvgIcon.vue')['default']
     TextContainer: typeof import('./src/components/Global/TextContainer.vue')['default']
     ThirdSetting: typeof import('./src/components/Setting/ThirdSetting.vue')['default']

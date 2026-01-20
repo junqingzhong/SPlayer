@@ -159,28 +159,78 @@ const inferQuality = (song: SubsonicSong): QualityType => {
 };
 
 /**
- * 获取歌词
+ * 获取歌词 (Legacy)
  */
 export const getLyrics = async (
   config: StreamingServerConfig,
   artist?: string,
   title?: string,
-  id?: string,
 ): Promise<string> => {
   const params: Record<string, string> = {};
   if (artist) params.artist = artist;
   if (title) params.title = title;
-  if (id) params.id = id;
 
-  const result = await request<{
-    lyricsList?: { lyrics: { content: string }[] };
-    lyrics?: { content: string };
-  }>(config, "getLyrics", params);
+  try {
+    const result = await request<{
+      lyricsList?: { lyrics: { content: string }[] };
+      lyrics?: { content: string };
+    }>(config, "getLyrics", params);
 
-  if (result.lyrics?.content) return result.lyrics.content;
-  if (result.lyricsList?.lyrics?.[0]?.content) return result.lyricsList.lyrics[0].content;
+    if (result.lyrics?.content) return result.lyrics.content;
+    if (result.lyricsList?.lyrics?.[0]?.content) return result.lyricsList.lyrics[0].content;
+  } catch (e) {
+    console.warn("getLyrics failed:", e);
+  }
 
   return "";
+};
+
+/**
+ * 根据 ID 获取歌词 (推荐)
+ */
+// 格式化时间戳 [mm:ss.xx]
+const formatLrcTime = (ms: number) => {
+  const m = Math.floor(ms / 60000)
+    .toString()
+    .padStart(2, "0");
+  const s = Math.floor((ms % 60000) / 1000)
+    .toString()
+    .padStart(2, "0");
+  const cs = Math.floor((ms % 1000) / 10)
+    .toString()
+    .padStart(2, "0");
+  return `${m}:${s}.${cs}`;
+};
+
+/**
+ * 根据 ID 获取歌词 (推荐)
+ */
+export const getLyricsBySongId = async (
+  config: StreamingServerConfig,
+  id: string,
+): Promise<string> => {
+  try {
+    const result = await request<{
+      lyricsList?: {
+        lyrics?: { content: string }[];
+        structuredLyrics?: { line: { start: number; value: string }[]; synced: boolean }[];
+      };
+    }>(config, "getLyricsBySongId", { id });
+    // 处理结构化歌词
+    if (result.lyricsList?.structuredLyrics?.[0]?.line) {
+      const lines = result.lyricsList.structuredLyrics[0].line;
+      return lines
+        .map((l) => {
+          const time = formatLrcTime(l.start);
+          return `[${time}]${l.value}`;
+        })
+        .join("\n");
+    }
+    return result.lyricsList?.lyrics?.[0]?.content || "";
+  } catch (e) {
+    console.warn("getLyricsBySongId failed:", e);
+    return "";
+  }
 };
 
 /**
@@ -216,6 +266,7 @@ export const convertSubsonicSong = (
     streamUrl: getStreamUrl(config, song.id),
     isStreaming: true,
     source: "streaming",
+    path: song.path || "",
   };
 };
 
@@ -471,16 +522,43 @@ export const search = async (
   };
 };
 
+/**
+ * 获取歌曲列表（支持分页）
+ */
+export const getSongs = async (
+  config: StreamingServerConfig,
+  offset: number = 0,
+  size: number = 50,
+): Promise<SongType[]> => {
+  // 尝试使用空字符串搜索获取所有歌曲
+  const result = await request<{
+    searchResult3: {
+      song?: SubsonicSong[];
+    };
+  }>(config, "search3", {
+    query: "",
+    songCount: size.toString(),
+    songOffset: offset.toString(),
+    artistCount: "0",
+    albumCount: "0",
+  });
+
+  if (!result.searchResult3?.song) return [];
+  return result.searchResult3.song.map((song) => convertSubsonicSong(song, config));
+};
+
 export default {
   ping,
   getArtists,
   getAlbumList,
   getAlbum,
   getRandomSongs,
+  getSongs,
   getPlaylists,
   getPlaylist,
   search,
   getCoverArtUrl,
   getStreamUrl,
   getLyrics,
+  getLyricsBySongId,
 };

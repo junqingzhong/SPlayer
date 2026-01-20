@@ -1,9 +1,13 @@
 <template>
   <div class="local-playlists">
     <!-- 歌单列表 -->
-    <CoverList :data="playlistData" :loading="false" type="playlist" :show-size="false" />
-    <!-- 空状态 -->
-    <n-empty v-if="!playlistData.length" class="empty" description="暂无本地歌单" />
+    <CoverList
+      :data="playlistData"
+      :loading="false"
+      type="playlist"
+      :show-size="false"
+      empty-description="暂无本地歌单"
+    />
   </div>
 </template>
 

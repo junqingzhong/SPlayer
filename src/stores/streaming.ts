@@ -6,11 +6,11 @@
 import type {
   StreamingServerConfig,
   StreamingConnectionStatus,
-  StreamingSongType,
   StreamingAlbumType,
   StreamingArtistType,
   StreamingPlaylistType,
 } from "@/types/streaming";
+import { SongType } from "@/types/main";
 import { subsonic, jellyfin } from "@/api/streaming";
 import localforage from "localforage";
 
@@ -38,7 +38,7 @@ const createStreamingStore = () => {
   const activeServerId = ref<string | null>(null);
   const connectionStatus = ref<StreamingConnectionStatus>({ connected: false });
   const loading = ref(false);
-  const songs = ref<StreamingSongType[]>([]);
+  const songs = ref<SongType[]>([]);
   const artists = ref<StreamingArtistType[]>([]);
   const albums = ref<StreamingAlbumType[]>([]);
   const playlists = ref<StreamingPlaylistType[]>([]);
@@ -68,6 +68,12 @@ const createStreamingStore = () => {
       const savedActiveId = await streamingDB.getItem<string>("activeServerId");
       if (savedActiveId && servers.value.some((s) => s.id === savedActiveId)) {
         activeServerId.value = savedActiveId;
+      }
+
+      // 自动连接
+      if (servers.value.length > 0) {
+        const targetId = activeServerId.value || servers.value[0].id;
+        connectToServer(targetId);
       }
     } catch (error) {
       console.error("Failed to load streaming servers:", error);
@@ -243,13 +249,13 @@ const createStreamingStore = () => {
   /**
    * 获取随机歌曲
    */
-  const fetchRandomSongs = async (count: number = 50): Promise<StreamingSongType[]> => {
+  const fetchRandomSongs = async (count: number = 50): Promise<SongType[]> => {
     const server = activeServer.value;
     if (!server || !isConnected.value) return [];
 
     loading.value = true;
     try {
-      let result: StreamingSongType[];
+      let result: SongType[];
 
       if (server.type === "jellyfin") {
         result = await jellyfin.getRandomSongs(server, count);
@@ -261,6 +267,44 @@ const createStreamingStore = () => {
       return result;
     } catch (error) {
       console.error("Failed to fetch random songs:", error);
+      return [];
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  /**
+   * 获取歌曲列表（支持分页）
+   * @param offset 偏移量
+   * @param size 数量
+   * @param append 是否追加到现有列表
+   */
+  const fetchSongs = async (
+    offset: number = 0,
+    size: number = 50,
+    append: boolean = false,
+  ): Promise<SongType[]> => {
+    const server = activeServer.value;
+    if (!server || !isConnected.value) return [];
+
+    loading.value = true;
+    try {
+      let result: SongType[];
+
+      if (server.type === "jellyfin") {
+        result = await jellyfin.getSongs(server, offset, size);
+      } else {
+        result = await subsonic.getSongs(server, offset, size);
+      }
+
+      if (append) {
+        songs.value = [...songs.value, ...result];
+      } else {
+        songs.value = result;
+      }
+      return result;
+    } catch (error) {
+      console.error("Failed to fetch songs:", error);
       return [];
     } finally {
       loading.value = false;
@@ -351,7 +395,7 @@ const createStreamingStore = () => {
   /**
    * 获取专辑歌曲
    */
-  const fetchAlbumSongs = async (albumId: string): Promise<StreamingSongType[]> => {
+  const fetchAlbumSongs = async (albumId: string): Promise<SongType[]> => {
     const server = activeServer.value;
     if (!server || !isConnected.value) return [];
 
@@ -371,7 +415,7 @@ const createStreamingStore = () => {
   /**
    * 获取歌单歌曲
    */
-  const fetchPlaylistSongs = async (playlistId: string): Promise<StreamingSongType[]> => {
+  const fetchPlaylistSongs = async (playlistId: string): Promise<SongType[]> => {
     const server = activeServer.value;
     if (!server || !isConnected.value) return [];
 
@@ -396,7 +440,7 @@ const createStreamingStore = () => {
   ): Promise<{
     artists: StreamingArtistType[];
     albums: StreamingAlbumType[];
-    songs: StreamingSongType[];
+    songs: SongType[];
   }> => {
     const server = activeServer.value;
     if (!server || !isConnected.value) {
@@ -412,6 +456,30 @@ const createStreamingStore = () => {
     } catch (error) {
       console.error("Failed to search:", error);
       return { artists: [], albums: [], songs: [] };
+    }
+  };
+
+  /**
+   * 获取歌词
+   */
+  const fetchLyrics = async (song: SongType): Promise<string> => {
+    const server = activeServer.value;
+    if (!server || !isConnected.value) return "";
+
+    try {
+      if (server.type === "jellyfin") {
+        return "";
+      } else {
+        // 优先使用 ID 获取
+        if (song.originalId) {
+          const lyrics = await subsonic.getLyricsBySongId(server, song.originalId);
+          if (lyrics) return lyrics;
+        }
+        return "";
+      }
+    } catch (error) {
+      console.error("Failed to fetch lyrics:", error);
+      return "";
     }
   };
 
@@ -443,12 +511,14 @@ const createStreamingStore = () => {
     disconnect,
     clearCache,
     fetchRandomSongs,
+    fetchSongs,
     fetchArtists,
     fetchAlbums,
     fetchPlaylists,
     fetchAlbumSongs,
     fetchPlaylistSongs,
     search,
+    fetchLyrics,
   };
 };
 

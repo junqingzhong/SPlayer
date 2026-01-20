@@ -74,8 +74,8 @@
                 (cat) => cat.category === Number(key),
               )"
               :key="catIndex"
-              :bordered="false"
-              :class="{ choose: catName === cat.name }"
+              :bordered="catName === cat.name"
+              :type="catName === cat.name ? 'primary' : 'default'"
               size="large"
               round
               @click="changeCatName(cat.name)"

@@ -293,7 +293,7 @@ class SongManager {
     const settingStore = useSettingStore();
 
     // 本地文件直接返回
-    if (song.path) {
+    if (song.path && song.type !== "streaming") {
       // 检查本地文件是否存在
       const result = await window.electron.ipcRenderer.invoke("file-exists", song.path);
       if (!result) {

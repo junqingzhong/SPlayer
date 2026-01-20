@@ -406,6 +406,34 @@ export const search = async (
   return { artists, albums, songs };
 };
 
+/**
+ * 获取歌曲列表（支持分页）
+ */
+export const getSongs = async (
+  config: StreamingServerConfig,
+  offset: number = 0,
+  limit: number = 50,
+): Promise<SongType[]> => {
+  if (!config.userId) throw new Error("User ID is required");
+
+  const params = new URLSearchParams({
+    userId: config.userId,
+    IncludeItemTypes: "Audio",
+    Recursive: "true",
+    SortBy: "DateCreated", // 默认按添加时间排序
+    SortOrder: "Descending",
+    StartIndex: offset.toString(),
+    Limit: limit.toString(),
+  });
+
+  const result = await request<JellyfinItemsResponse>(
+    config,
+    `Users/${config.userId}/Items?${params.toString()}`,
+  );
+
+  return result.Items.map((item) => convertJellyfinSong(item, config));
+};
+
 export default {
   authenticate,
   ping,
@@ -413,6 +441,7 @@ export default {
   getAlbums,
   getAlbumItems,
   getRandomSongs,
+  getSongs,
   getPlaylists,
   getPlaylistItems,
   search,

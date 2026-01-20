@@ -319,6 +319,7 @@ export type SettingType =
   | "keyboard"
   | "local"
   | "third"
+  | "streaming"
   | "other"
   | "about";
 

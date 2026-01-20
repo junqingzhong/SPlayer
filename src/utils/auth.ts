@@ -203,9 +203,9 @@ export const toLikeSong: DebouncedFunc<(song: SongType, like: boolean) => Promis
         return;
       }
       const dataStore = useDataStore();
-      const { id, path } = song;
-      if (path) {
-        window.$message.warning("本地歌曲暂不支持该操作");
+      const { id, path, type } = song;
+      if (path || type === "streaming") {
+        window.$message.warning("该类型歌曲暂未实现");
         return;
       }
       const likeList = dataStore.userLikeData.songs;

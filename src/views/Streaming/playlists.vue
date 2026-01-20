@@ -1,9 +1,13 @@
 <template>
   <div class="streaming-playlists">
     <!-- 歌单列表 -->
-    <CoverList :data="playlistData" :loading="loading" type="playlist" :show-size="false" />
-    <!-- 空状态 -->
-    <n-empty v-if="!loading && !playlistData.length" class="empty" description="暂无歌单" />
+    <CoverList
+      :data="playlistData"
+      :loading="loading"
+      type="playlist"
+      :show-size="false"
+      empty-description="暂无歌单"
+    />
   </div>
 </template>
 

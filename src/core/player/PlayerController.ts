@@ -128,6 +128,7 @@ class PlayerController {
     } catch (error) {
       if (requestToken === this.currentRequestToken) {
         console.error("❌ 播放初始化失败:", error);
+        this.handlePlaybackError(undefined);
       }
     }
   }
@@ -248,7 +249,7 @@ class PlayerController {
     // 记录播放历史 (非电台)
     if (song.type !== "radio") dataStore.setHistory(song);
     // 更新歌曲数据
-    if (!song.path) {
+    if (!song.path || song.type === "streaming") {
       mediaSessionManager.updateMetadata();
       getCoverColor(musicStore.songCover);
     }
@@ -275,6 +276,7 @@ class PlayerController {
   private async parseLocalMusicInfo(path: string) {
     try {
       const musicStore = useMusicStore();
+      if (musicStore.playSong.type === "streaming") return;
       const statusStore = useStatusStore();
       const blobURLManager = useBlobURLManager();
 
@@ -486,8 +488,8 @@ class PlayerController {
       await this.skipToNextWithDelay();
       return;
     }
-    // 本地文件错误 (直接跳过)
-    if (musicStore.playSong.path) {
+    // 本地文件错误
+    if (musicStore.playSong.path && musicStore.playSong.type !== "streaming") {
       console.error("❌ 本地文件加载失败");
       window.$message.error("本地文件无法播放");
       statusStore.playLoading = false;

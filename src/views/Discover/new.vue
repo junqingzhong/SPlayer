@@ -5,7 +5,7 @@
         <n-tag
           v-for="(item, index) in newTypeNames"
           :key="index"
-          :class="{ choose: index === newTypeChoose }"
+          :type="index === newTypeChoose ? 'primary' : 'default'"
           :bordered="false"
           round
           @click="newQueryChange(index, newAreaChoose)"
@@ -17,8 +17,8 @@
         <n-tag
           v-for="(item, index) in newAreaNames"
           :key="index"
-          :class="{ choose: index === newAreaChoose }"
-          :bordered="false"
+          :type="index === newAreaChoose ? 'primary' : 'default'"
+          :bordered="index === newAreaChoose"
           round
           @click="newQueryChange(newTypeChoose, index)"
         >

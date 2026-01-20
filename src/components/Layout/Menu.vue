@@ -163,17 +163,18 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           icon: renderIcon("Download"),
         },
         {
+          key: "streaming",
+          link: "streaming",
+          label: "流媒体",
+          show: settingStore.streamingEnabled,
+          icon: renderIcon("Stream"),
+        },
+        {
           key: "local",
           link: "local",
           label: "本地歌曲",
           show: isElectron && !settingStore.sidebarHide.hideLocal,
           icon: renderIcon("FolderMusic"),
-        },
-        {
-          key: "streaming",
-          link: "streaming",
-          label: "流媒体",
-          icon: renderIcon("Stream"),
         },
         {
           key: "history",

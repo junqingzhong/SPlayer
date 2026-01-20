@@ -1,5 +1,4 @@
 import { songLyric, songLyricTTML } from "@/api/song";
-import { subsonic } from "@/api/streaming";
 import { qqMusicMatch } from "@/api/qqmusic";
 import { keywords as defaultKeywords, regexes as defaultRegexes } from "@/assets/data/exclude";
 import { useCacheManager } from "@/core/resource/CacheManager";
@@ -834,12 +833,7 @@ class LyricManager {
     }
     try {
       const streamingStore = useStreamingStore();
-      const server = streamingStore.servers.value.find((s) => s.id === song.serverId);
-      if (!server) {
-        console.warn("未找到对应的流媒体服务器:", song.serverId);
-        return result;
-      }
-      const lyricContent = await subsonic.getLyrics(server, undefined, undefined, song.originalId);
+      const lyricContent = await streamingStore.fetchLyrics(song);
       if (lyricContent) {
         const { format, lines } = parseSmartLrc(lyricContent);
         if (lines.length > 0) {
