@@ -148,6 +148,10 @@ const changeGlobalTheme = () => {
       Tooltip: {
         color: colors.surface,
       },
+      Tabs: {
+        colorSegment: colors.surface,
+        tabColorSegment: colors.primary12,
+      },
       ...(isGlobal
         ? {
             Card: { borderColor: colors.primary09 },

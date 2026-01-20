@@ -113,7 +113,7 @@
 import type { CoverType, SongType } from "@/types/main";
 import { albumDetail } from "@/api/album";
 import { formatNumber } from "@/utils/helper";
-import { useMusicStore, useStatusStore } from "@/stores";
+import { useMusicStore, useStatusStore, useLocalStore } from "@/stores";
 import { debounce } from "lodash-es";
 import { formatSongsList } from "@/utils/format";
 import { songDetail } from "@/api/song";
@@ -140,6 +140,7 @@ const emit = defineEmits<{
 const router = useRouter();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+const localStore = useLocalStore();
 const player = usePlayerController();
 
 // 右键菜单
@@ -183,6 +184,9 @@ const playList = debounce(
 
 // 获取列表数据
 const getListData = async (id: number): Promise<SongType[]> => {
+  // 判断是否为本地歌单
+  const isLocalPlaylist = id.toString().length === 16;
+
   switch (props.type) {
     case "album": {
       const result = await albumDetail(id);
@@ -191,7 +195,16 @@ const getListData = async (id: number): Promise<SongType[]> => {
       return formatSongsList(songRes.songs);
     }
     case "playlist": {
-      // 仅请求 100 首
+      // 本地歌单
+      if (isLocalPlaylist) {
+        const result = localStore.getLocalPlaylistDetail(id);
+        if (!result) {
+          window.$message.error("本地歌单不存在");
+          return [];
+        }
+        return result.songs;
+      }
+      // 在线歌单：仅请求 100 首
       const result = await playlistAllSongs(id, 100);
       return formatSongsList(result.songs);
     }
