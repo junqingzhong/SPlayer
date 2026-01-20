@@ -170,6 +170,12 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           icon: renderIcon("FolderMusic"),
         },
         {
+          key: "streaming",
+          link: "streaming",
+          label: "流媒体",
+          icon: renderIcon("Stream"),
+        },
+        {
           key: "history",
           link: "history",
           label: "最近播放",
@@ -435,6 +441,7 @@ const checkMenuItem = () => {
     { prefix: "local-", name: "local", skipInLocalMode: true },
     { prefix: "like-", name: "like", exclude: "like-songs" },
     { prefix: "download-", name: "download" },
+    { prefix: "streaming-", name: "streaming" },
   ];
   for (const item of prefixMap) {
     if (item.skipInLocalMode && !settingStore.useOnlineService) continue;

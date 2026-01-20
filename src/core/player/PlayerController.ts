@@ -7,7 +7,7 @@ import { calculateLyricIndex } from "@/utils/calc";
 import { getCoverColor } from "@/utils/color";
 import { isElectron } from "@/utils/env";
 import { getPlayerInfoObj, getPlaySongData } from "@/utils/format";
-import { handleSongQuality, shuffleArray } from "@/utils/helper";
+import { handleSongQuality, shuffleArray, sleep } from "@/utils/helper";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { calculateProgress } from "@/utils/time";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
@@ -108,7 +108,7 @@ class PlayerController {
         });
       }
       // 获取歌词
-      lyricManager.handleLyric(playSongData.id, playSongData.path);
+      lyricManager.handleLyric(playSongData);
       // 获取音频
       const audioSource = await songManager.getAudioSource(playSongData);
       if (requestToken !== this.currentRequestToken) {
@@ -125,10 +125,9 @@ class PlayerController {
       if (requestToken !== this.currentRequestToken) return;
       // 后置处理
       await this.afterPlaySetup(playSongData);
-    } catch (error: any) {
+    } catch (error) {
       if (requestToken === this.currentRequestToken) {
         console.error("❌ 播放初始化失败:", error);
-        await this.handlePlaybackError(error?.code || 0, options.seek || 0);
       }
     }
   }
@@ -357,7 +356,7 @@ class PlayerController {
       window.document.title = `${playTitle} | SPlayer`;
       // 只有真正播放了才重置重试计数
       if (this.retryInfo.count > 0) this.retryInfo.count = 0;
-      this.failSkipCount = 0;
+      // 注意：failSkipCount 的重置移至 onTimeUpdate，确保有实际进度
       // Last.fm Scrobbler
       lastfmScrobbler.resume();
       // IPC 通知
@@ -413,6 +412,10 @@ class PlayerController {
         progress: calculateProgress(currentTime, duration),
         lyricIndex,
       });
+      // 成功播放一段距离后，重置失败跳过计数
+      if (currentTime > 500 && this.failSkipCount > 0) {
+        this.failSkipCount = 0;
+      }
       // 更新系统 MediaSession
       mediaSessionManager.updateState(duration, currentTime);
       // 更新桌面歌词
@@ -446,80 +449,99 @@ class PlayerController {
    * @param currentSeek 当前播放位置 (用于恢复)
    */
   private async handlePlaybackError(errCode: number | undefined, currentSeek: number = 0) {
-    const dataStore = useDataStore();
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();
-
     // 清除预加载缓存
     songManager.clearPrefetch();
-
-    // 是否为本地歌曲
-    const isLocalSong = musicStore.playSong.path;
-    if (isLocalSong) {
-      console.error("❌ 本地文件加载失败，停止重试");
-      window.$message.error("本地文件无法播放");
+    // 当前歌曲 ID
+    const currentSongId = musicStore.playSong?.id || 0;
+    // 检查是否为同一首歌
+    if (this.retryInfo.songId !== currentSongId) {
+      // 新歌曲，重置重试计数
+      this.retryInfo = { songId: currentSongId, count: 0 };
+    }
+    // 防止无限重试
+    const ABSOLUTE_MAX_RETRY = 3;
+    if (this.retryInfo.count >= ABSOLUTE_MAX_RETRY) {
+      console.error(`❌ 歌曲 ${currentSongId} 已重试 ${this.retryInfo.count} 次，强制跳过`);
+      window.$message.error("播放失败，已自动跳过");
       statusStore.playLoading = false;
       this.retryInfo.count = 0;
-      // 如果列表只有一首，直接停止
-      if (dataStore.playList.length <= 1) {
-        this.pause(true);
-        return;
-      }
-      await this.nextOrPrev("next");
+      await this.skipToNextWithDelay();
       return;
     }
-
-    this.retryInfo.count++;
-    console.warn(
-      `⚠️ 播放出错 (Code: ${errCode}), 重试: ${this.retryInfo.count}/${this.MAX_RETRY_COUNT}`,
-    );
-
-    // 用户主动中止 (Code 1) 或 AbortError (Code 20) - 不重试
+    // 用户主动中止
     if (errCode === AudioErrorCode.ABORTED || errCode === AudioErrorCode.DOM_ABORT) {
       statusStore.playLoading = false;
       this.retryInfo.count = 0;
       return;
     }
-
-    // 达到最大重试次数 -> 切歌
-    if (this.retryInfo.count > this.MAX_RETRY_COUNT) {
-      console.error("❌ 超过最大重试次数，跳过当前歌曲");
-
+    // 格式不支持
+    if (errCode === AudioErrorCode.SRC_NOT_SUPPORTED || errCode === 9) {
+      console.warn(`⚠️ 音频格式不支持 (Code: ${errCode}), 跳过`);
+      window.$message.error("该歌曲无法播放，已自动跳过");
+      statusStore.playLoading = false;
       this.retryInfo.count = 0;
-      this.failSkipCount++;
-
-      // 连续跳过 3 首直接暂停
-      if (this.failSkipCount >= 3) {
-        window.$message.error("播放失败次数过多，已停止播放");
-        statusStore.playLoading = false;
-        this.pause(true);
-        this.failSkipCount = 0;
-        return;
-      }
-
-      // 列表只有一首，或连续跳过所有歌曲
-      if (dataStore.playList.length <= 1 || this.failSkipCount >= dataStore.playList.length) {
-        window.$message.error("当前已无可播放歌曲");
-        this.cleanPlayList();
-        this.failSkipCount = 0;
-        return;
-      }
-      window.$message.error("播放失败，已自动跳过");
-      await this.nextOrPrev("next");
+      await this.skipToNextWithDelay();
       return;
     }
-
-    // 尝试重试
-    setTimeout(async () => {
-      // 只有第一次重试时提示用户
+    // 本地文件错误 (直接跳过)
+    if (musicStore.playSong.path) {
+      console.error("❌ 本地文件加载失败");
+      window.$message.error("本地文件无法播放");
+      statusStore.playLoading = false;
+      this.retryInfo.count = 0;
+      await this.skipToNextWithDelay();
+      return;
+    }
+    // 在线/流媒体错误处理
+    this.retryInfo.count++;
+    console.warn(
+      `⚠️ 播放出错 (Code: ${errCode}), 重试: ${this.retryInfo.count}/${this.MAX_RETRY_COUNT}`,
+    );
+    // 未超过重试次数 -> 尝试重新获取 URL（可能是过期）
+    if (this.retryInfo.count <= this.MAX_RETRY_COUNT) {
+      await sleep(1000);
       if (this.retryInfo.count === 1) {
         statusStore.playLoading = true;
         window.$message.warning("播放异常，正在尝试恢复...");
       }
-      // 重新调用 playSong，尝试恢复进度
       await this.playSong({ autoPlay: true, seek: currentSeek });
-    }, 1000);
+      return;
+    }
+    // 超过重试次数 -> 跳下一首
+    console.error("❌ 超过最大重试次数，跳过当前歌曲");
+    this.retryInfo.count = 0;
+    window.$message.error("播放失败，已自动跳过");
+    await this.skipToNextWithDelay();
+  }
+
+  /**
+   * 带延迟的跳转下一首
+   */
+  private async skipToNextWithDelay() {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+    this.failSkipCount++;
+    // 连续跳过 3 首 -> 停止播放
+    if (this.failSkipCount >= 3) {
+      window.$message.error("播放失败次数过多，已停止播放");
+      statusStore.playLoading = false;
+      this.pause(true);
+      this.failSkipCount = 0;
+      return;
+    }
+    // 列表只有一首 -> 停止播放
+    if (dataStore.playList.length <= 1) {
+      window.$message.error("当前已无可播放歌曲");
+      this.cleanPlayList();
+      this.failSkipCount = 0;
+      return;
+    }
+    // 添加延迟，避免快速切歌导致卡死
+    await sleep(500);
+    await this.nextOrPrev("next");
   }
 
   /** 播放 */

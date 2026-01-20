@@ -280,6 +280,35 @@ const appRoutes: Array<RouteRecordRaw> = [
       },
     ],
   },
+  // 流媒体
+  {
+    path: "/streaming",
+    name: "streaming",
+    component: () => import("@/views/Streaming/layout.vue"),
+    redirect: "/streaming/songs",
+    children: [
+      {
+        path: "songs",
+        name: "streaming-songs",
+        component: () => import("@/views/Streaming/song.vue"),
+      },
+      {
+        path: "artists",
+        name: "streaming-artists",
+        component: () => import("@/views/Streaming/artists.vue"),
+      },
+      {
+        path: "albums",
+        name: "streaming-albums",
+        component: () => import("@/views/Streaming/albums.vue"),
+      },
+      {
+        path: "playlists",
+        name: "streaming-playlists",
+        component: () => import("@/views/Streaming/playlists.vue"),
+      },
+    ],
+  },
   // 最近播放
   {
     path: "/history",

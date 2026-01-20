@@ -1,7 +1,7 @@
 import { personalFm, personalFmToTrash } from "@/api/rec";
 import { songUrl, unlockSongUrl } from "@/api/song";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import type { QualityType, SongType } from "@/types/main";
+import { QualityType, type SongType } from "@/types/main";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
 import { formatSongsList } from "@/utils/format";
@@ -228,6 +228,17 @@ class SongManager {
       // 本地歌曲跳过
       if (nextSong.path) return;
 
+      // 流媒体歌曲
+      if (nextSong.type === "streaming" && nextSong.streamUrl) {
+        this.nextPrefetch = {
+          id: nextSong.id,
+          url: nextSong.streamUrl,
+          isUnlocked: false,
+          quality: QualityType.SQ,
+        };
+        return this.nextPrefetch;
+      }
+
       // 在线歌曲：优先官方，其次解灰
       const songId = nextSong.type === "radio" ? nextSong.dj?.id : nextSong.id;
       if (!songId) return;
@@ -292,6 +303,16 @@ class SongManager {
       }
       const encodedPath = song.path.replace(/#/g, "%23").replace(/\?/g, "%3F");
       return { id: song.id, url: `file://${encodedPath}` };
+    }
+
+    // Stream songs (Subsonic / Jellyfin)
+    if (song.type === "streaming" && song.streamUrl) {
+      return {
+        id: song.id,
+        url: song.streamUrl,
+        isUnlocked: false,
+        quality: QualityType.SQ, // Default to standard or handle quality if available
+      };
     }
 
     // 在线歌曲
