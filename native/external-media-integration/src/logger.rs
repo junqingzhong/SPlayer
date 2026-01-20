@@ -19,7 +19,10 @@ use tracing_appender::{
 };
 use tracing_subscriber::{
     Layer,
-    filter::LevelFilter,
+    filter::{
+        LevelFilter,
+        Targets,
+    },
     fmt::{
         self,
         time::LocalTime,
@@ -55,19 +58,23 @@ pub fn init(log_dir_str: String) -> Result<()> {
     let time_format = format_description!("[hour]:[minute]:[second]");
     let local_timer = LocalTime::new(time_format);
 
+    let file_filter = Targets::new().with_target("external_media_integration", LevelFilter::TRACE);
+
+    let stdout_filter = Targets::new().with_target("external_media_integration", LevelFilter::WARN);
+
     let file_layer = fmt::layer()
         .with_writer(non_blocking)
         .with_ansi(false)
         .with_target(true)
         .with_timer(local_timer.clone())
-        .with_filter(LevelFilter::TRACE);
+        .with_filter(file_filter);
 
     let stdout_layer = fmt::layer()
         .with_writer(std::io::stdout)
         .with_ansi(true)
         .pretty()
         .with_timer(local_timer)
-        .with_filter(LevelFilter::WARN);
+        .with_filter(stdout_filter);
 
     tracing_subscriber::registry()
         .with(file_layer)
