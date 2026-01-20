@@ -8,7 +8,7 @@
 import type { SongType } from "@/types/main";
 import SongList from "@/components/List/SongList.vue";
 
-const props = defineProps<{
+defineProps<{
   data: SongType[];
   loading: boolean;
 }>();
