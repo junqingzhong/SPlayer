@@ -36,7 +36,6 @@ const openDropdown = (
   _data: SongType[],
   song: SongType,
   index: number,
-  type: "song" | "radio",
   playListId?: number,
   isDailyRecommend: boolean = false,
 ) => {
@@ -49,7 +48,6 @@ const openDropdown = (
     const baseOptions = getMenuOptions(
       song,
       index,
-      type,
       playListId || 0,
       isDailyRecommend,
       (event, args) => emit(event, args),

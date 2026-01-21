@@ -142,6 +142,16 @@ const appRoutes: Array<RouteRecordRaw> = [
     },
     component: () => import("@/views/List/playlist.vue"),
   },
+  // 流媒体歌单
+  {
+    path: "/streaming-playlist",
+    name: "streaming-playlist",
+    beforeEnter: (to, _, next) => {
+      if (!to.query.id) next({ path: "/403" });
+      else next();
+    },
+    component: () => import("@/views/List/streaming-playlist.vue"),
+  },
   // 播客
   {
     path: "/radio",

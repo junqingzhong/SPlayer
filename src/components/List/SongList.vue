@@ -238,20 +238,13 @@ const mobileSongMenuRef = ref<InstanceType<typeof MobileSongMenu> | null>(null);
 
 const handleShowMenu = (e: MouseEvent, song: SongType, index: number) => {
   if (isSmallScreen.value) {
-    mobileSongMenuRef.value?.open(
-      song,
-      index,
-      props.type,
-      props.playListId,
-      props.isDailyRecommend,
-    );
+    mobileSongMenuRef.value?.open(song, index, props.playListId, props.isDailyRecommend);
   } else {
     songListMenuRef.value?.openDropdown(
       e,
       listData.value,
       song,
       index,
-      props.type,
       props.playListId,
       props.isDailyRecommend,
     );

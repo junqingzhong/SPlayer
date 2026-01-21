@@ -320,6 +320,7 @@ const loadData = async () => {
     await streamingStore.fetchSongs(0, 500);
   } catch (error) {
     console.error("Failed to load data:", error);
+    window.$message.error("加载流媒体数据失败");
   } finally {
     loading.value = false;
   }
@@ -368,6 +369,8 @@ onMounted(async () => {
     const success = await streamingStore.connectToServer(lastServer.id);
     if (success) {
       await loadData();
+    } else if (streamingStore.connectionStatus.value.error) {
+      window.$message.error("连接失败：" + streamingStore.connectionStatus.value.error);
     }
   } else if (streamingStore.isConnected.value) {
     await loadData();

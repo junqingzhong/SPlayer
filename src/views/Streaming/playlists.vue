@@ -4,8 +4,9 @@
     <CoverList
       :data="playlistData"
       :loading="loading"
-      type="playlist"
       :show-size="false"
+      type="playlist"
+      is-streaming
       empty-description="暂无歌单"
     />
   </div>
@@ -23,7 +24,7 @@ const loading = ref<boolean>(false);
 // 歌单数据
 const playlistData = computed<CoverType[]>(() => {
   return streamingStore.playlists.value.map((playlist) => ({
-    id: Number(playlist.id) || 0,
+    id: playlist.id,
     name: playlist.name,
     cover: playlist.cover || "/images/album.jpg?asset",
     description: playlist.description,

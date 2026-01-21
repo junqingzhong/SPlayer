@@ -115,7 +115,7 @@ export type SongType = {
 
 // Cover
 export type CoverType = {
-  id: number;
+  id: number | string;
   name: string;
   cover: string;
   coverSize?: CoverSize;

@@ -144,7 +144,6 @@ export const useSongMenu = () => {
   const getMenuOptions = (
     song: SongType,
     index: number,
-    type: "song" | "radio",
     playListId: number = 0,
     isDailyRecommend: boolean = false,
     emit: (event: "removeSong", args: any[]) => void,
@@ -152,6 +151,7 @@ export const useSongMenu = () => {
     const userPlaylistsData = dataStore.userLikeData.playlists?.filter(
       (pl) => pl.userId === dataStore.userData.userId,
     );
+    const type = song.type || "song";
     const isHasMv = !!song?.mv && song.mv !== 0;
     const isCloud = router.currentRoute.value.name === "cloud";
     const isLocal = !!song?.path;
@@ -181,6 +181,7 @@ export const useSongMenu = () => {
       {
         key: "playlist-add",
         label: "添加到歌单",
+        show: type !== "streaming",
         props: {
           onClick: () => openPlaylistAdd([song], isLocal),
         },
@@ -215,7 +216,7 @@ export const useSongMenu = () => {
         children: [
           {
             key: "code-name",
-            label: `复制${type === "song" ? "歌曲" : "节目"}名称`,
+            label: `复制${type === "song" ? "歌曲" : type === "streaming" ? "流媒体" : "节目"}名称`,
             props: {
               onClick: () => copyData(song.name),
             },
@@ -223,7 +224,7 @@ export const useSongMenu = () => {
           },
           {
             key: "code-id",
-            label: `复制${type === "song" ? "歌曲" : "节目"} ID`,
+            label: `复制${type === "song" ? "歌曲" : type === "streaming" ? "流媒体" : "节目"} ID`,
             show: !isLocal,
             props: {
               onClick: () => copyData(song.id),
@@ -233,7 +234,7 @@ export const useSongMenu = () => {
           {
             key: "share",
             label: `分享${type === "song" ? "歌曲" : "节目"}链接`,
-            show: !isLocal,
+            show: !isLocal && type !== "streaming",
             props: {
               onClick: () =>
                 copyData(`https://music.163.com/#/${type}?id=${song.id}`, "已复制分享链接到剪切板"),

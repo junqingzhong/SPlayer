@@ -305,7 +305,7 @@ const createStreamingStore = () => {
       return result;
     } catch (error) {
       console.error("Failed to fetch songs:", error);
-      return [];
+      throw error;
     } finally {
       loading.value = false;
     }
