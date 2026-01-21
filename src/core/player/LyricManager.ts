@@ -918,6 +918,7 @@ class LyricManager {
         lyricData = await this.handleStreamingLyric(song);
         // 排除内容
         lyricData = this.handleLyricExclude(lyricData);
+        lyricData = await this.applyChineseVariant(lyricData);
         this.setFinalLyric(lyricData, req);
         return;
       }
@@ -930,6 +931,7 @@ class LyricManager {
         if (settingStore.enableExcludeLocalLyrics) {
           lyricData = this.handleLyricExclude(lyricData);
         }
+        lyricData = await this.applyChineseVariant(lyricData);
       } else if (song.path) {
         lyricData = await this.handleLocalLyric(song.path);
         // 排除本地歌词内容
