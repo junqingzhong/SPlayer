@@ -140,8 +140,11 @@ export class PlayModeManager {
     });
 
     try {
-      const pid =
-        musicStore.playPlaylistId || (await dataStore.getUserLikePlaylist())?.detail?.id || 0;
+      let pid = Number(musicStore.playPlaylistId);
+      if (!pid) {
+        const likedPlaylist = await dataStore.getUserLikePlaylist();
+        pid = likedPlaylist?.detail?.id ? Number(likedPlaylist.detail.id) : 0;
+      }
       // 获取当前歌曲ID，强制转换为数字
       let currentSongId: number;
       const rawId = musicStore.playSong.id;

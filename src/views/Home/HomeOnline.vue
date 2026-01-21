@@ -60,20 +60,28 @@ import { sleep } from "@/utils/helper";
 import { isLogin } from "@/utils/auth";
 import SvgIcon from "@/components/Global/SvgIcon.vue";
 
-interface RecItemType {
+interface RecItemTypeBase {
   name: string;
-  list: ArtistType[] | CoverType[];
-  type: "playlist" | "artist" | "video" | "radio" | "album";
   path?: string;
 }
 
+interface RecItemArtist extends RecItemTypeBase {
+  type: "artist";
+  list: ArtistType[];
+}
+
+interface RecItemCover extends RecItemTypeBase {
+  type: "playlist" | "video" | "radio" | "album";
+  list: CoverType[];
+}
+
 interface RecDataType {
-  playlist: RecItemType;
-  radar: RecItemType;
-  artist: RecItemType;
-  video: RecItemType;
-  radio: RecItemType;
-  album: RecItemType;
+  playlist: RecItemCover;
+  radar: RecItemCover;
+  artist: RecItemArtist;
+  video: RecItemCover;
+  radio: RecItemCover;
+  album: RecItemCover;
 }
 
 const router = useRouter();
