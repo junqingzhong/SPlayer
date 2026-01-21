@@ -1,65 +1,83 @@
 <template>
-  <n-flex :class="['menu', { show: statusStore.playerMetaShow }]" justify="center" vertical>
-    <div class="menu-icon" @click="openCopyLyrics">
-      <SvgIcon name="Copy" />
-    </div>
-    <div class="divider" />
-    <div class="menu-icon" @click="changeOffset(-settingStore.lyricOffsetStep)">
-      <SvgIcon name="Replay5" />
-    </div>
-    <n-popover class="player" trigger="click" placement="left" style="padding: 8px">
-      <template #trigger>
-        <span class="time">
-          {{ currentTimeOffsetValue }}
-        </span>
-      </template>
-      <n-flex class="offset-menu" :size="4" vertical>
-        <span class="title"> 歌词偏移 </span>
-        <span class="tip"> 正值为歌词提前，单位毫秒 </span>
-        <n-input-number
-          v-model:value="offsetMilliseconds"
-          class="offset-input"
-          :precision="0"
-          :step="100"
-          placeholder="0"
-          size="small"
-        >
-          <template #suffix>ms</template>
-        </n-input-number>
-        <n-button
-          class="player"
-          size="small"
-          secondary
-          strong
-          @click="resetOffset"
-          :disabled="offsetMilliseconds == 0"
-        >
-          清零
-        </n-button>
-      </n-flex>
-    </n-popover>
-    <div class="menu-icon" @click="changeOffset(settingStore.lyricOffsetStep)">
-      <SvgIcon name="Forward5" />
-    </div>
-    <div class="divider" />
-    <div class="menu-icon" @click="openSetting('lyrics')">
-      <SvgIcon name="Settings" />
-    </div>
-  </n-flex>
+  <div class="player-lyric">
+    <!-- 歌词内容 -->
+    <AMLyric v-if="settingStore.useAMLyrics" :currentTime="playSeek" />
+    <DefaultLyric v-else :currentTime="playSeek" />
+    <!-- 歌词菜单 -->
+    <n-flex :class="['lyric-menu', { show: statusStore.playerMetaShow }]" justify="center" vertical>
+      <div class="menu-icon" @click="openCopyLyrics">
+        <SvgIcon name="Copy" />
+      </div>
+      <div class="divider" />
+      <div class="menu-icon" @click="changeOffset(-settingStore.lyricOffsetStep)">
+        <SvgIcon name="Replay5" />
+      </div>
+      <n-popover class="player" trigger="click" placement="left" style="padding: 8px">
+        <template #trigger>
+          <span class="time">
+            {{ currentTimeOffsetValue }}
+          </span>
+        </template>
+        <n-flex class="offset-menu" :size="4" vertical>
+          <span class="title"> 歌词偏移 </span>
+          <span class="tip"> 正值为歌词提前，单位毫秒 </span>
+          <n-input-number
+            v-model:value="offsetMilliseconds"
+            class="offset-input"
+            :precision="0"
+            :step="100"
+            placeholder="0"
+            size="small"
+          >
+            <template #suffix>ms</template>
+          </n-input-number>
+          <n-button
+            :disabled="offsetMilliseconds == 0"
+            class="player"
+            size="small"
+            secondary
+            strong
+            @click="resetOffset"
+          >
+            清零
+          </n-button>
+        </n-flex>
+      </n-popover>
+      <div class="menu-icon" @click="changeOffset(settingStore.lyricOffsetStep)">
+        <SvgIcon name="Forward5" />
+      </div>
+      <div class="divider" />
+      <div class="menu-icon" @click="openSetting('lyrics')">
+        <SvgIcon name="Settings" />
+      </div>
+    </n-flex>
+  </div>
 </template>
 
 <script setup lang="ts">
+import { usePlayerController } from "@/core/player/PlayerController";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { openSetting, openCopyLyrics } from "@/utils/modal";
 
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
+const player = usePlayerController();
 
 /**
  * 当前歌曲 id
  */
 const currentSongId = computed(() => musicStore.playSong?.id as number | undefined);
+
+// 实时播放进度
+const playSeek = ref<number>(player.getSeek() + statusStore.getSongOffset(musicStore.playSong?.id));
+
+// 实时更新播放进度
+const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
+  const songId = musicStore.playSong?.id;
+  const offsetTime = statusStore.getSongOffset(songId);
+  playSeek.value = player.getSeek() + offsetTime;
+});
 
 /**
  * 当前进度偏移值
@@ -72,6 +90,9 @@ const currentTimeOffsetValue = computed(() => {
   return currentTimeOffset > 0 ? `+${offsetSeconds}` : `${offsetSeconds}`;
 });
 
+/**
+ * 当前进度偏移值（毫秒）
+ */
 const offsetMilliseconds = computed({
   get: () => {
     return statusStore.getSongOffset(currentSongId.value);
@@ -95,11 +116,46 @@ const changeOffset = (delta: number) => {
 const resetOffset = () => {
   statusStore.resetSongOffset(currentSongId.value);
 };
+
+onMounted(() => {
+  resumeSeek();
+});
+
+onBeforeUnmount(() => {
+  pauseSeek();
+});
 </script>
 
 <style lang="scss" scoped>
-.menu {
+.player-lyric {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));
+  mask: linear-gradient(
+    180deg,
+    hsla(0, 0%, 100%, 0) 0,
+    hsla(0, 0%, 100%, 0.6) 5%,
+    #fff 10%,
+    #fff 75%,
+    hsla(0, 0%, 100%, 0.6) 85%,
+    hsla(0, 0%, 100%, 0)
+  );
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      .lyric-menu {
+        pointer-events: auto;
+        &.show {
+          opacity: 0.6;
+        }
+      }
+    }
+  }
+}
+.lyric-menu {
   position: absolute;
+  pointer-events: none;
   top: 0;
   right: 0;
   display: flex;
@@ -161,7 +217,6 @@ const resetOffset = () => {
     }
   }
 }
-
 .offset-menu {
   width: 180px;
   .title {
@@ -189,16 +244,6 @@ const resetOffset = () => {
     }
     .n-button {
       --n-text-color: rgb(var(--main-cover-color));
-    }
-  }
-}
-.lyric,
-.lyric-am {
-  &:hover {
-    .menu {
-      &.show {
-        opacity: 0.6;
-      }
     }
   }
 }

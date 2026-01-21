@@ -1,5 +1,10 @@
 <template>
-  <n-popover trigger="manual" :show="userMenuShow" @clickoutside="userMenuShow = false">
+  <n-popover
+    :show="userMenuShow"
+    style="padding: 12px; max-width: 160px"
+    trigger="manual"
+    @clickoutside="userMenuShow = false"
+  >
     <template #trigger>
       <div
         class="user"
@@ -17,21 +22,37 @@
             <SvgIcon name="Person" :depth="3" size="26" />
           </n-avatar>
         </div>
-        <div class="user-data">
+        <n-flex v-if="isDesktop" class="user-data" size="small">
           <n-text class="name">
             {{ dataStore.userLoginStatus ? dataStore.userData.name || "未知用户名" : "未登录" }}
           </n-text>
           <!-- VIP -->
           <img
             v-if="dataStore.userLoginStatus && dataStore.userData.vipType !== 0"
-            class="vip"
+            class="vip-img"
             src="/images/vip.png?asset"
           />
           <SvgIcon :class="['down', { open: userMenuShow }]" name="DropDown" :depth="3" />
-        </div>
+        </n-flex>
       </div>
     </template>
     <div class="user-menu" @click="userMenuShow = false">
+      <!-- 用户信息 -->
+      <n-flex class="user-info" align="center" justify="center" vertical>
+        <n-text class="nickname text-hidden">{{ dataStore.userData.name || "未知用户名" }}</n-text>
+        <n-flex align="center" size="small">
+          <n-tag :bordered="false" size="small" round type="warning">
+            Lv.{{ dataStore.userData.level ?? 0 }}
+          </n-tag>
+          <!-- VIP -->
+          <img
+            v-if="dataStore.userLoginStatus && dataStore.userData.vipType !== 0"
+            class="vip-img"
+            src="/images/vip.png?asset"
+          />
+        </n-flex>
+      </n-flex>
+      <n-divider />
       <!-- 喜欢数量 -->
       <div v-if="dataStore.loginType !== 'uid'" class="like-num">
         <div
@@ -71,9 +92,12 @@ import {
   updateUserData,
   updateSpecialUserData,
 } from "@/utils/auth";
+import { useMobile } from "@/composables/useMobile";
 
 const router = useRouter();
 const dataStore = useDataStore();
+
+const { isDesktop } = useMobile();
 
 // 用户菜单展示
 const userMenuShow = ref<boolean>(false);
@@ -183,10 +207,6 @@ onBeforeMount(() => {
     align-items: center;
     padding-left: 8px;
     max-width: 200px;
-    .vip {
-      margin-left: 6px;
-      height: 18px;
-    }
     .down {
       font-size: 26px;
       margin-right: 4px;
@@ -203,11 +223,23 @@ onBeforeMount(() => {
     background-color: rgba(var(--primary), 0.12);
   }
 }
+.vip-img {
+  height: 18px;
+}
 .user-menu {
   display: flex;
   justify-content: center;
   flex-direction: column;
-  padding: 6px 0;
+  .user-info {
+    .nickname {
+      font-weight: bold;
+    }
+    .n-tag {
+      height: 18px;
+      font-size: 12px;
+      pointer-events: none;
+    }
+  }
   .like-num {
     display: flex;
     justify-content: space-around;

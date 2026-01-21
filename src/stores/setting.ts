@@ -65,8 +65,6 @@ export interface SettingState {
   lyricFontWeight: number;
   /** 显示逐字歌词 */
   showYrc: boolean;
-  /** 显示逐字歌词动画 */
-  showYrcAnimation: boolean;
   /** 显示歌词翻译 */
   showTran: boolean;
   /** 显示歌词音译 */
@@ -75,8 +73,8 @@ export interface SettingState {
   showWordsRoma: boolean;
   /** 歌词位置 */
   lyricsPosition: "flex-start" | "center" | "flex-end";
-  /** 歌词滚动位置 */
-  lyricsScrollPosition: "start" | "center";
+  /** 歌词滚动位置偏移量 */
+  lyricsScrollOffset: number;
   /** 下载路径 */
   downloadPath: string;
   /** 是否启用缓存 */
@@ -171,8 +169,6 @@ export interface SettingState {
   smtcOpen: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
-  /** 鼠标悬停暂停 */
-  lrcMousePause: boolean;
   /** 播放试听 */
   playSongDemo: boolean;
   /** 显示搜索历史 */
@@ -318,6 +314,8 @@ export interface SettingState {
   customCss: string;
   /** 自定义 JS */
   customJs: string;
+  /** 播放器封面/歌词占比 (0-100) */
+  playerStyleRatio: number;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -396,14 +394,12 @@ export const useSettingStore = defineStore("setting", {
     localLyricQQMusicMatch: false,
     amllDbServer: defaultAMLLDbServer,
     showYrc: true,
-    showYrcAnimation: true,
     showTran: true,
     showRoma: true,
     showWordsRoma: true,
     lyricsPosition: "flex-start",
     lyricsBlur: false,
-    lyricsScrollPosition: "start",
-    lrcMousePause: false,
+    lyricsScrollOffset: 0.25,
     enableExcludeLyrics: true,
     enableExcludeTTML: false,
     enableExcludeLocalLyrics: false,
@@ -484,6 +480,7 @@ export const useSettingStore = defineStore("setting", {
     playbackEngine: "web-audio",
     customCss: "",
     customJs: "",
+    playerStyleRatio: 50,
   }),
   getters: {
     /**

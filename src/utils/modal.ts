@@ -259,7 +259,7 @@ export const openSetting = (type: SettingType = "general", scrollTo?: string) =>
     autoFocus: false,
     maskClosable: false,
     closeOnEsc: false,
-    bordered: true,
+    bordered: false,
     class: "main-setting",
     content: () => {
       return h(MainSetting, { type, scrollTo });

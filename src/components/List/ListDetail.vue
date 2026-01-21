@@ -107,7 +107,7 @@
                 <n-text>{{ formatTimestamp(detailData.createTime) }}</n-text>
               </div>
               <!-- 标签 -->
-              <div v-if="detailData.tags?.length" class="item">
+              <div v-if="detailData.tags?.length" class="item hidden">
                 <SvgIcon name="Tag" :depth="3" />
                 <n-flex class="tags">
                   <n-tag
@@ -175,13 +175,18 @@
               </n-input>
               <!-- 查看评论 -->
               <n-tabs
-                v-if="showCommentTab"
+                v-if="!hideCommentTab"
                 v-model:value="currentTab"
                 class="tabs"
                 type="segment"
                 @update:value="handleTabChange"
               >
-                <n-tab name="songs"> 歌曲 </n-tab>
+                <n-tab name="songs">
+                  歌曲
+                  <n-text v-if="detailData?.count" class="count" depth="3">
+                    {{ detailData?.count }}
+                  </n-text>
+                </n-tab>
                 <n-tab name="comments"> 评论 </n-tab>
               </n-tabs>
             </n-flex>
@@ -226,7 +231,7 @@ interface Props {
   listScrolling: boolean;
   searchValue: string;
   showSearch?: boolean;
-  showCommentTab?: boolean;
+  hideCommentTab?: boolean;
   config: ListDetailConfig;
   titleText?: string;
   playButtonText?: string;
@@ -235,7 +240,7 @@ interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
   showSearch: true,
-  showCommentTab: false,
+  hideCommentTab: false,
   titleText: "",
   playButtonText: "播放",
   moreOptions: () => [],
@@ -484,6 +489,46 @@ const handleTabChange = (value: "songs" | "comments") => {
           --n-tab-border-radius: 25px !important;
           :deep(.n-tabs-rail) {
             outline: 1px solid var(--n-tab-color-segment);
+          }
+          .count {
+            line-height: normal;
+            font-size: 12px;
+            margin-left: 2px;
+            transform: translateY(-4px);
+          }
+        }
+      }
+      @media (max-width: 1200px) {
+        .right {
+          display: none !important;
+        }
+      }
+      @media (max-width: 768px) {
+        .hidden {
+          display: none !important;
+        }
+      }
+    }
+    @media (max-width: 768px) {
+      height: 180px;
+      .cover {
+        margin-right: 12px;
+      }
+      .data {
+        padding-right: 20px;
+        .name {
+          font-size: 22px;
+          margin-bottom: 8px;
+        }
+        .collapse {
+          top: 42px;
+        }
+        .menu {
+          :deep(.n-button) {
+            height: 34px;
+            --n-font-size: 13px;
+            --n-padding: 0 14px;
+            --n-icon-size: 16px;
           }
         }
       }

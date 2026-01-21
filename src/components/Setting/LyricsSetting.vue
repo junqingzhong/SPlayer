@@ -175,50 +175,34 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">歌词滚动位置</n-text>
-          <n-text class="tip" :depth="3">歌词高亮时所处的位置</n-text>
+          <n-text class="tip" :depth="3">歌词高亮时在屏幕中的垂直位置</n-text>
         </div>
-        <n-select
-          v-model:value="settingStore.lyricsScrollPosition"
-          :options="[
-            {
-              label: '靠近顶部',
-              value: 'start',
-            },
-            {
-              label: '水平居中',
-              value: 'center',
-            },
-          ]"
-          class="set"
-        />
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">自动暂停滚动</n-text>
-          <n-text class="tip" :depth="3"> 鼠标移入歌词区域时是否暂停滚动 </n-text>
-        </div>
-        <n-switch
-          v-model:value="settingStore.lrcMousePause"
-          :disabled="settingStore.useAMLyrics"
-          :round="false"
+        <n-slider
+          v-model:value="settingStore.lyricsScrollOffset"
+          :min="0.1"
+          :max="0.9"
+          :step="0.05"
+          :format-tooltip="(value: number) => `${(value * 100).toFixed(0)}%`"
+          :marks="{ '0.1': '靠上', '0.9': '靠下' }"
           class="set"
         />
       </n-card>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">显示逐字歌词</n-text>
+          <n-text class="tip" :depth="3"> 对性能要求较高，若发生卡顿请关闭 </n-text>
         </div>
         <n-switch v-model:value="settingStore.showYrc" class="set" :round="false" />
       </n-card>
-      <n-collapse-transition :show="settingStore.showYrc">
-        <n-card v-if="isElectron" class="set-item">
+      <n-collapse-transition v-if="isElectron" :show="settingStore.showYrc">
+        <n-card class="set-item">
           <div class="label">
             <n-text class="name">优先使用 QM 歌词</n-text>
             <n-text class="tip" :depth="3"> 优先从 QM 获取逐字歌词，模糊搜索，可能不准确 </n-text>
           </div>
           <n-switch v-model:value="settingStore.preferQQMusicLyric" class="set" :round="false" />
         </n-card>
-        <n-card v-if="isElectron" class="set-item">
+        <n-card class="set-item">
           <div class="label">
             <n-text class="name">本地歌曲使用 QM 歌词</n-text>
             <n-text class="tip" :depth="3">
@@ -229,18 +213,6 @@
             v-model:value="settingStore.localLyricQQMusicMatch"
             class="set"
             :round="false"
-          />
-        </n-card>
-        <n-card class="set-item">
-          <div class="label">
-            <n-text class="name">显示逐字歌词动画</n-text>
-            <n-text class="tip" :depth="3"> 可能会造成性能问题，如遇卡顿请关闭 </n-text>
-          </div>
-          <n-switch
-            v-model:value="settingStore.showYrcAnimation"
-            :disabled="settingStore.useAMLyrics"
-            :round="false"
-            class="set"
           />
         </n-card>
       </n-collapse-transition>

@@ -10,7 +10,6 @@
       :config="listConfig"
       :play-button-text="playButtonText"
       :more-options="moreOptions"
-      :show-comment-tab="true"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
       @tab-change="handleTabChange"
@@ -141,7 +140,7 @@ const playButtonText = computed(() => {
 
 // 更多操作
 const moreOptions = computed<DropdownOption[]>(() => [
-    {
+  {
     label: "刷新缓存",
     key: "refresh",
     props: {

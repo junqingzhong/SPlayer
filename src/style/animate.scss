@@ -157,6 +157,16 @@
   transform: translateY(20px) scale(0.96);
 }
 
+// 侧边栏滑入动画
+.slideLeft-enter-active,
+.slideLeft-leave-active {
+  transition: transform 0.3s ease;
+}
+.slideLeft-enter-from,
+.slideLeft-leave-to {
+  transform: translateX(-100%);
+}
+
 @keyframes skeleton-loading {
   0% {
     background-position: 100% 50%;

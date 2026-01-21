@@ -186,7 +186,7 @@ importers:
         version: 8.48.1(eslint@9.39.1)(typescript@5.9.3)
       '@vitejs/plugin-vue':
         specifier: ^6.0.2
-        version: 6.0.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))(vue@3.5.25(typescript@5.9.3))
+        version: 6.0.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))(vue@3.5.25(typescript@5.9.3))
       ajv:
         specifier: ^8.17.1
         version: 8.17.1
@@ -204,7 +204,7 @@ importers:
         version: 5.4.3
       electron-vite:
         specifier: ^5.0.0
-        version: 5.0.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))
+        version: 5.0.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))
       eslint:
         specifier: ^9.39.1
         version: 9.39.1
@@ -235,6 +235,9 @@ importers:
       terser:
         specifier: ^5.44.1
         version: 5.44.1
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -246,19 +249,19 @@ importers:
         version: 29.2.0(@babel/parser@7.28.5)(vue@3.5.25(typescript@5.9.3))
       vite:
         specifier: ^7.3.0
-        version: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
+        version: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
       vite-plugin-compression:
         specifier: ^0.5.1
-        version: 0.5.1(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))
+        version: 0.5.1(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))
       vite-plugin-vue-devtools:
         specifier: ^8.0.5
-        version: 8.0.5(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))(vue@3.5.25(typescript@5.9.3))
+        version: 8.0.5(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))(vue@3.5.25(typescript@5.9.3))
       vite-plugin-wasm:
         specifier: ^3.5.0
-        version: 3.5.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))
+        version: 3.5.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))
       vitepress:
         specifier: 2.0.0-alpha.15
-        version: 2.0.0-alpha.15(@algolia/client-search@5.46.2)(@types/node@24.10.1)(async-validator@4.2.5)(axios@1.13.2)(change-case@5.4.4)(fuse.js@7.1.0)(postcss@8.5.6)(qrcode@1.5.4)(react@19.2.3)(sass@1.94.2)(search-insights@2.17.3)(sortablejs@1.15.6)(terser@5.44.1)(typescript@5.9.3)
+        version: 2.0.0-alpha.15(@algolia/client-search@5.46.2)(@types/node@24.10.1)(async-validator@4.2.5)(axios@1.13.2)(change-case@5.4.4)(fuse.js@7.1.0)(postcss@8.5.6)(qrcode@1.5.4)(react@19.2.3)(sass@1.94.2)(search-insights@2.17.3)(sortablejs@1.15.6)(terser@5.44.1)(tsx@4.21.0)(typescript@5.9.3)
       vue:
         specifier: ^3.5.25
         version: 3.5.25(typescript@5.9.3)
@@ -3756,6 +3759,9 @@ packages:
     resolution: {integrity: sha512-kVCxPF3vQM/N0B1PmoqVUqgHP+EeVjmZSQn+1oCRPxd2P21P2F19lIgbR3HBosbB1PUhOAoctJnfEn2GbN2eZA==}
     engines: {node: '>=18'}
 
+  get-tsconfig@4.13.0:
+    resolution: {integrity: sha512-1VKTZJCwBrvbd+Wn3AOgQP/2Av+TfTCOlE4AcRJE72W1ksZXbAx8PPBR9RzgTeSPzlPMHrbANMH3LbltH73wxQ==}
+
   get-uri@6.0.5:
     resolution: {integrity: sha512-b1O07XYq8eRuVzBNgJLstU6FYc1tS6wnMtF1I1D9lE8LxZSOGZ7LhxN54yPP6mGw5f2CkXY2BQUL9Fx41qvcIg==}
     engines: {node: '>= 14'}
@@ -5023,6 +5029,9 @@ packages:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
     engines: {node: '>=4'}
 
+  resolve-pkg-maps@1.0.0:
+    resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
+
   responselike@2.0.1:
     resolution: {integrity: sha512-4gl03wn3hj1HP3yzgdI7d3lCkF95F21Pz4BPGvKHinyQzALR5CapwC8yIi0Rh58DEMQ/SguC03wFj2k0M/mHhw==}
 
@@ -5476,6 +5485,11 @@ packages:
 
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
+
+  tsx@4.21.0:
+    resolution: {integrity: sha512-5C1sg4USs1lfG0GFb2RLXsdpXqBSEhAaA/0kPL01wxzpMqLILNxIxIOKiILz+cdg/pLnOUxFYOR5yhHU666wbw==}
+    engines: {node: '>=18.0.0'}
+    hasBin: true
 
   tunnel-agent@0.6.0:
     resolution: {integrity: sha512-McnNiV1l8RYeY8tBgEpuodCC1mLUdbSN+CYBL7kJsJNInOP8UjDDEwdk6Mw60vdLLrr5NHKZhMAOSrR2NZuQ+w==}
@@ -7882,10 +7896,10 @@ snapshots:
 
   '@vercel/oidc@3.0.5': {}
 
-  '@vitejs/plugin-vue@6.0.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))(vue@3.5.25(typescript@5.9.3))':
+  '@vitejs/plugin-vue@6.0.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))(vue@3.5.25(typescript@5.9.3))':
     dependencies:
       '@rolldown/pluginutils': 1.0.0-beta.50
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
       vue: 3.5.25(typescript@5.9.3)
 
   '@volar/language-core@2.4.15':
@@ -7974,14 +7988,14 @@ snapshots:
     dependencies:
       '@vue/devtools-kit': 8.0.5
 
-  '@vue/devtools-core@8.0.5(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))(vue@3.5.25(typescript@5.9.3))':
+  '@vue/devtools-core@8.0.5(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))(vue@3.5.25(typescript@5.9.3))':
     dependencies:
       '@vue/devtools-kit': 8.0.5
       '@vue/devtools-shared': 8.0.5
       mitt: 3.0.1
       nanoid: 5.1.6
       pathe: 2.0.3
-      vite-hot-client: 2.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))
+      vite-hot-client: 2.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))
       vue: 3.5.25(typescript@5.9.3)
     transitivePeerDependencies:
       - vite
@@ -8971,7 +8985,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron-vite@5.0.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)):
+  electron-vite@5.0.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)):
     dependencies:
       '@babel/core': 7.28.5
       '@babel/plugin-transform-arrow-functions': 7.27.1(@babel/core@7.28.5)
@@ -8979,7 +8993,7 @@ snapshots:
       esbuild: 0.25.12
       magic-string: 0.30.21
       picocolors: 1.1.1
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -9589,6 +9603,10 @@ snapshots:
     dependencies:
       '@sec-ant/readable-stream': 0.4.1
       is-stream: 4.0.1
+
+  get-tsconfig@4.13.0:
+    dependencies:
+      resolve-pkg-maps: 1.0.0
 
   get-uri@6.0.5:
     dependencies:
@@ -10910,6 +10928,8 @@ snapshots:
 
   resolve-from@4.0.0: {}
 
+  resolve-pkg-maps@1.0.0: {}
+
   responselike@2.0.1:
     dependencies:
       lowercase-keys: 2.0.0
@@ -11467,6 +11487,13 @@ snapshots:
 
   tslib@2.8.1: {}
 
+  tsx@4.21.0:
+    dependencies:
+      esbuild: 0.27.2
+      get-tsconfig: 4.13.0
+    optionalDependencies:
+      fsevents: 2.3.3
+
   tunnel-agent@0.6.0:
     dependencies:
       safe-buffer: 5.2.1
@@ -11661,26 +11688,26 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite-dev-rpc@1.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)):
+  vite-dev-rpc@1.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)):
     dependencies:
       birpc: 2.9.0
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
-      vite-hot-client: 2.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
+      vite-hot-client: 2.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))
 
-  vite-hot-client@2.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)):
+  vite-hot-client@2.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)):
     dependencies:
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
 
-  vite-plugin-compression@0.5.1(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)):
+  vite-plugin-compression@0.5.1(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)):
     dependencies:
       chalk: 4.1.2
       debug: 4.4.3
       fs-extra: 10.1.0
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-inspect@11.3.3(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)):
+  vite-plugin-inspect@11.3.3(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)):
     dependencies:
       ansis: 4.2.0
       debug: 4.4.3
@@ -11690,26 +11717,26 @@ snapshots:
       perfect-debounce: 2.0.0
       sirv: 3.0.2
       unplugin-utils: 0.3.1
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
-      vite-dev-rpc: 1.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
+      vite-dev-rpc: 1.1.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-vue-devtools@8.0.5(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))(vue@3.5.25(typescript@5.9.3)):
+  vite-plugin-vue-devtools@8.0.5(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))(vue@3.5.25(typescript@5.9.3)):
     dependencies:
-      '@vue/devtools-core': 8.0.5(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))(vue@3.5.25(typescript@5.9.3))
+      '@vue/devtools-core': 8.0.5(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))(vue@3.5.25(typescript@5.9.3))
       '@vue/devtools-kit': 8.0.5
       '@vue/devtools-shared': 8.0.5
       sirv: 3.0.2
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
-      vite-plugin-inspect: 11.3.3(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))
-      vite-plugin-vue-inspector: 5.3.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
+      vite-plugin-inspect: 11.3.3(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))
+      vite-plugin-vue-inspector: 5.3.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))
     transitivePeerDependencies:
       - '@nuxt/kit'
       - supports-color
       - vue
 
-  vite-plugin-vue-inspector@5.3.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)):
+  vite-plugin-vue-inspector@5.3.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)):
     dependencies:
       '@babel/core': 7.28.5
       '@babel/plugin-proposal-decorators': 7.28.0(@babel/core@7.28.5)
@@ -11720,15 +11747,15 @@ snapshots:
       '@vue/compiler-dom': 3.5.25
       kolorist: 1.8.0
       magic-string: 0.30.21
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
     transitivePeerDependencies:
       - supports-color
 
-  vite-plugin-wasm@3.5.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)):
+  vite-plugin-wasm@3.5.0(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)):
     dependencies:
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
 
-  vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1):
+  vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0):
     dependencies:
       esbuild: 0.27.2
       fdir: 6.5.0(picomatch@4.0.3)
@@ -11741,8 +11768,9 @@ snapshots:
       fsevents: 2.3.3
       sass: 1.94.2
       terser: 5.44.1
+      tsx: 4.21.0
 
-  vitepress@2.0.0-alpha.15(@algolia/client-search@5.46.2)(@types/node@24.10.1)(async-validator@4.2.5)(axios@1.13.2)(change-case@5.4.4)(fuse.js@7.1.0)(postcss@8.5.6)(qrcode@1.5.4)(react@19.2.3)(sass@1.94.2)(search-insights@2.17.3)(sortablejs@1.15.6)(terser@5.44.1)(typescript@5.9.3):
+  vitepress@2.0.0-alpha.15(@algolia/client-search@5.46.2)(@types/node@24.10.1)(async-validator@4.2.5)(axios@1.13.2)(change-case@5.4.4)(fuse.js@7.1.0)(postcss@8.5.6)(qrcode@1.5.4)(react@19.2.3)(sass@1.94.2)(search-insights@2.17.3)(sortablejs@1.15.6)(terser@5.44.1)(tsx@4.21.0)(typescript@5.9.3):
     dependencies:
       '@docsearch/css': 4.4.0
       '@docsearch/js': 4.4.0(@algolia/client-search@5.46.2)(react@19.2.3)(search-insights@2.17.3)
@@ -11751,7 +11779,7 @@ snapshots:
       '@shikijs/transformers': 3.20.0
       '@shikijs/types': 3.20.0
       '@types/markdown-it': 14.1.2
-      '@vitejs/plugin-vue': 6.0.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1))(vue@3.5.25(typescript@5.9.3))
+      '@vitejs/plugin-vue': 6.0.2(vite@7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0))(vue@3.5.25(typescript@5.9.3))
       '@vue/devtools-api': 8.0.5
       '@vue/shared': 3.5.25
       '@vueuse/core': 14.1.0(vue@3.5.25(typescript@5.9.3))
@@ -11760,7 +11788,7 @@ snapshots:
       mark.js: 8.11.1
       minisearch: 7.2.0
       shiki: 3.20.0
-      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)
+      vite: 7.3.0(@types/node@24.10.1)(sass@1.94.2)(terser@5.44.1)(tsx@4.21.0)
       vue: 3.5.25(typescript@5.9.3)
     optionalDependencies:
       postcss: 8.5.6

@@ -11,6 +11,7 @@
     >
       <!-- 侧边栏 -->
       <n-layout-sider
+        v-if="isDesktop"
         id="main-sider"
         :style="{
           height:
@@ -47,7 +48,7 @@
             display: 'grid',
             gridTemplateRows: '1fr',
             minHeight: '100%',
-            padding: '0 24px',
+            padding: isMobile ? '0 16px' : '0 24px',
           }"
           position="absolute"
           embedded
@@ -69,7 +70,7 @@
       </n-layout>
     </n-layout>
     <!-- 播放列表 -->
-    <MainPlayList />
+    <SongPlayList />
     <!-- 全局播放器 -->
     <MainPlayer />
     <!-- 全屏播放器 -->
@@ -81,6 +82,7 @@
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { isElectron } from "@/utils/env";
+import { useMobile } from "@/composables/useMobile";
 import init from "@/utils/init";
 
 const musicStore = useMusicStore();
@@ -88,6 +90,8 @@ const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
 const blobURLManager = useBlobURLManager();
+
+const { isDesktop, isMobile } = useMobile();
 
 // 主内容
 const contentRef = ref<HTMLElement | null>(null);

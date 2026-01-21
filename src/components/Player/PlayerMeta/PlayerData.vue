@@ -43,7 +43,9 @@
         <n-popselect
           :value="currentPlayingLevel"
           :options="qualityOptions"
-          :disabled="!!musicStore.playSong.path || statusStore.playUblock || !!musicStore.playSong.pc"
+          :disabled="
+            !!musicStore.playSong.path || statusStore.playUblock || !!musicStore.playSong.pc
+          "
           class="player"
           trigger="click"
           placement="top"
@@ -338,8 +340,6 @@ const jumpPage = debounce(
     .name-text {
       font-size: 26px;
       font-weight: bold;
-      line-clamp: 2;
-      -webkit-line-clamp: 2;
     }
     .n-icon {
       margin-left: 12px;
@@ -444,6 +444,9 @@ const jumpPage = debounce(
         align-items: center;
         justify-content: center;
       }
+    }
+    @media (max-width: 990px) {
+      padding: 0 2px;
     }
   }
   &.center {

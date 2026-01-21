@@ -258,13 +258,13 @@ audio {
 }
 
 // select
-.n-select {
-  .n-base-selection {
-    .n-base-selection-label {
-      background-color: var(--n-border-color);
-    }
-  }
-}
+// .n-select {
+//   .n-base-selection {
+//     .n-base-selection-label {
+//       background-color: var(--n-border-color);
+//     }
+//   }
+// }
 
 // alert
 .n-alert {
@@ -378,6 +378,22 @@ audio {
     & ~ .loading,
     & ~ .n-empty {
       padding-top: 120px;
+    }
+  }
+  @media (max-width: 768px) {
+    .song-list,
+    .list-comment,
+    .loading,
+    .n-empty {
+      padding-top: 180px;
+    }
+    .list-detail.small {
+      & ~ .song-list,
+      & ~ .list-comment,
+      & ~ .loading,
+      & ~ .n-empty {
+        padding-top: 100px;
+      }
     }
   }
 }

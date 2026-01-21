@@ -7,7 +7,7 @@
     :class="{ cover: settingStore.menuShowCover }"
     :indent="0"
     :root-indent="26"
-    :collapsed="statusStore.menuCollapsed"
+    :collapsed="statusStore.menuCollapsed && isDesktop"
     :collapsed-width="64"
     :collapsed-icon-size="22"
     :options="menuOptions"
@@ -17,6 +17,7 @@
 </template>
 
 <script setup lang="ts">
+import { useMobile } from "@/composables/useMobile";
 import { usePlayerController } from "@/core/player/PlayerController";
 import {
   useDataStore,
@@ -44,6 +45,8 @@ import {
 } from "naive-ui";
 import { RouterLink, useRouter } from "vue-router";
 
+const emit = defineEmits<{ (e: "menu-click", key: string): void }>();
+
 const router = useRouter();
 const dataStore = useDataStore();
 const localStore = useLocalStore();
@@ -51,6 +54,8 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
+
+const { isDesktop } = useMobile();
 
 // 菜单数据
 const menuRef = ref<MenuInst | null>(null);
@@ -362,6 +367,7 @@ const renderMenuLabel = (option: MenuOption) => {
 
 // 菜单项更改
 const menuUpdate = (key: string, item: MenuOption) => {
+  emit("menu-click", key);
   // 私人漫游
   if (key === "personal-fm") {
     if (!musicStore.personalFMSong?.id) {
