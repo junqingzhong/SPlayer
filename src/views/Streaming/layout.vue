@@ -9,8 +9,8 @@
             <n-number-animation :from="0" :to="songsCount" /> 首歌曲
           </n-text>
           <n-text class="item server-info">
-            <SvgIcon name="Cloud" :depth="3" />
-            {{ serverName }}
+            <SvgIcon name="Stream" :depth="3" />
+            {{ serverType }}
           </n-text>
         </n-flex>
       </div>
@@ -153,8 +153,17 @@ const isConnected = computed<boolean>(() => streamingStore.isConnected.value);
 // 歌曲数量（用于模板）
 const songsCount = computed<number>(() => streamingStore.songs.value?.length || 0);
 
-// 服务器名称（用于模板）
-const serverName = computed<string>(() => streamingStore.connectionStatus.value?.serverName || "");
+// 服务器类型
+const serverType = computed<string>(() => {
+  const type = streamingStore.activeServer.value?.type;
+  if (!type) return "";
+  const typeMap: Record<string, string> = {
+    jellyfin: "Jellyfin",
+    navidrome: "Navidrome",
+    opensubsonic: "Subsonic",
+  };
+  return typeMap[type] || type;
+});
 
 // Tab 状态
 const tabsDisabled = computed<boolean>(() => !streamingStore.isConnected.value);
@@ -362,17 +371,7 @@ watch(
 
 // 初始化
 onMounted(async () => {
-  // 尝试连接到已保存的服务器
-  if (streamingStore.servers.value.length > 0 && !streamingStore.isConnected.value) {
-    const lastServer =
-      streamingStore.servers.value.find((s) => s.lastConnected) || streamingStore.servers.value[0];
-    const success = await streamingStore.connectToServer(lastServer.id);
-    if (success) {
-      await loadData();
-    } else if (streamingStore.connectionStatus.value.error) {
-      window.$message.error("连接失败：" + streamingStore.connectionStatus.value.error);
-    }
-  } else if (streamingStore.isConnected.value) {
+  if (streamingStore.isConnected.value) {
     await loadData();
   }
 });

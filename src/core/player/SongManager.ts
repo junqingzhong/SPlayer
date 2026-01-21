@@ -1,6 +1,12 @@
 import { personalFm, personalFmToTrash } from "@/api/rec";
 import { songUrl, unlockSongUrl } from "@/api/song";
-import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import {
+  useDataStore,
+  useMusicStore,
+  useSettingStore,
+  useStatusStore,
+  useStreamingStore,
+} from "@/stores";
 import { QualityType, type SongType } from "@/types/main";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
@@ -307,9 +313,12 @@ class SongManager {
 
     // Stream songs (Subsonic / Jellyfin)
     if (song.type === "streaming" && song.streamUrl) {
+      const streamingStore = useStreamingStore();
+      const finalUrl = streamingStore.getSongUrl(song);
+      console.log(`🔄 [${song.id}] Stream URL:`, finalUrl);
       return {
         id: song.id,
-        url: song.streamUrl,
+        url: finalUrl,
         isUnlocked: false,
         quality: song.quality || QualityType.SQ,
       };

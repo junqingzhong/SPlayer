@@ -162,6 +162,7 @@ export interface JellyfinItem {
   Overview?: string;
   ChildCount?: number;
   SongCount?: number;
+  AlbumPrimaryImageTag?: string;
 }
 
 /**

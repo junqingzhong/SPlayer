@@ -37,7 +37,7 @@
             <div class="label">
               <n-flex align="center" :size="8">
                 <n-text class="name">{{ server.name }}</n-text>
-                <n-tag size="small" :type="getServerTagType(server.type)" round>
+                <n-tag size="small" type="primary" round>
                   {{ getServerTypeLabel(server.type) }}
                 </n-tag>
                 <n-tag
@@ -117,16 +117,6 @@ const getServerTypeLabel = (type: StreamingServerType): string => {
     opensubsonic: "OpenSubsonic",
   };
   return labels[type] || type;
-};
-
-// 获取服务器类型标签颜色
-const getServerTagType = (type: StreamingServerType): "default" | "info" | "success" => {
-  const types: Record<StreamingServerType, "default" | "info" | "success"> = {
-    navidrome: "info",
-    jellyfin: "success",
-    opensubsonic: "default",
-  };
-  return types[type] || "default";
 };
 
 // 添加服务器

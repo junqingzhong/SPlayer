@@ -71,9 +71,8 @@ const createStreamingStore = () => {
       }
 
       // 自动连接
-      if (servers.value.length > 0) {
-        const targetId = activeServerId.value || servers.value[0].id;
-        connectToServer(targetId);
+      if (servers.value.length > 0 && activeServerId.value) {
+        connectToServer(activeServerId.value);
       }
     } catch (error) {
       console.error("Failed to load streaming servers:", error);
@@ -467,8 +466,8 @@ const createStreamingStore = () => {
     if (!server || !isConnected.value) return "";
 
     try {
-      if (server.type === "jellyfin") {
-        return "";
+      if (server.type === "jellyfin" && song.originalId) {
+        return await jellyfin.getLyrics(server, song.originalId);
       } else {
         // 优先使用 ID 获取
         if (song.originalId) {
@@ -481,6 +480,22 @@ const createStreamingStore = () => {
       console.error("Failed to fetch lyrics:", error);
       return "";
     }
+  };
+
+  /**
+   * 获取流媒体歌曲播放地址
+   */
+  const getSongUrl = (song: SongType): string => {
+    if (song.type !== "streaming" || !song.serverId) return song.streamUrl || "";
+
+    const server = servers.value.find((s) => s.id === song.serverId);
+    if (!server) return song.streamUrl || "";
+
+    if (server.type === "jellyfin" && server.accessToken && song.originalId) {
+      return jellyfin.getAudioStreamUrl(server, song.originalId);
+    }
+
+    return song.streamUrl || "";
   };
 
   // 初始化：加载保存的配置
@@ -519,6 +534,7 @@ const createStreamingStore = () => {
     fetchPlaylistSongs,
     search,
     fetchLyrics,
+    getSongUrl,
   };
 };
 

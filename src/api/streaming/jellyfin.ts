@@ -17,19 +17,22 @@ import type {
  * 获取请求头
  */
 const getHeaders = (config: StreamingServerConfig): HeadersInit => {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    "X-Emby-Client": "SPlayer",
-    "X-Emby-Client-Version": "1.0.0",
-    "X-Emby-Device-Name": "SPlayer Web",
-    "X-Emby-Device-Id": "splayer-web-client",
-  };
+  // Jellyfin 需要 X-Emby-Authorization 头
+  const authParts = [
+    `MediaBrowser Client="SPlayer"`,
+    `Version="1.0.0"`,
+    `Device="SPlayer Web"`,
+    `DeviceId="splayer-web-client"`,
+  ];
 
   if (config.accessToken) {
-    headers["X-Emby-Token"] = config.accessToken;
+    authParts.push(`Token="${config.accessToken}"`);
   }
 
-  return headers;
+  return {
+    "Content-Type": "application/json",
+    "X-Emby-Authorization": authParts.join(", "),
+  };
 };
 
 /**
@@ -76,11 +79,18 @@ export const getImageUrl = (
   config: StreamingServerConfig,
   itemId: string,
   imageType: "Primary" | "Backdrop" | "Banner" = "Primary",
-  maxWidth: number = 300,
+  maxHeight?: number,
+  tag?: string,
 ): string => {
   if (!itemId) return "";
   const baseUrl = config.url.endsWith("/") ? config.url.slice(0, -1) : config.url;
-  return `${baseUrl}/Items/${itemId}/Images/${imageType}?maxWidth=${maxWidth}&quality=90`;
+  const params = new URLSearchParams({
+    quality: "100",
+  });
+  if (maxHeight) params.append("maxHeight", maxHeight.toString());
+  if (tag) params.append("tag", tag);
+  if (config.accessToken) params.append("api_key", config.accessToken);
+  return `${baseUrl}/Items/${itemId}/Images/${imageType}?${params.toString()}`;
 };
 
 /**
@@ -89,8 +99,18 @@ export const getImageUrl = (
 export const getAudioStreamUrl = (config: StreamingServerConfig, itemId: string): string => {
   const baseUrl = config.url.endsWith("/") ? config.url.slice(0, -1) : config.url;
   const params = new URLSearchParams({
-    static: "true",
+    UserId: config.userId || "",
+    DeviceId: "splayer-web-client",
+    MaxStreamingBitrate: "140000000", // High bitrate to prefer direct play/high quality
+    Container: "opus,webm|opus,ts|mp3,aac,m4a|aac,m4b|aac,flac,webma,webm|webma,wav,ogg",
+    TranscodingContainer: "ts",
+    TranscodingProtocol: "hls",
+    AudioCodec: "aac",
+    PlaySessionId: Date.now().toString(),
     api_key: config.accessToken || "",
+    StartTimeTicks: "0",
+    EnableRedirection: "true",
+    EnableRemoteMedia: "true",
   });
   return `${baseUrl}/Audio/${itemId}/universal?${params.toString()}`;
 };
@@ -116,7 +136,8 @@ export const convertJellyfinSong = (
   config: StreamingServerConfig,
 ): SongType => {
   const artists = item.Artists?.join(", ") || item.AlbumArtist || "未知艺术家";
-  const albumImageId = item.AlbumId || item.Id;
+  const imageId = item.Id;
+  const imageTag = item.ImageTags?.Primary;
 
   return {
     id: stringToNumericId(item.Id),
@@ -124,7 +145,13 @@ export const convertJellyfinSong = (
     name: item.Name,
     artists,
     album: item.Album || "未知专辑",
-    cover: getImageUrl(config, albumImageId),
+    cover: getImageUrl(config, imageId, "Primary", 300, imageTag),
+    coverSize: {
+      s: getImageUrl(config, imageId, "Primary", 100, imageTag),
+      m: getImageUrl(config, imageId, "Primary", 300, imageTag),
+      l: getImageUrl(config, imageId, "Primary", 1024, imageTag),
+      xl: getImageUrl(config, imageId, "Primary", undefined, imageTag),
+    },
     duration: item.RunTimeTicks ? Math.floor(item.RunTimeTicks / 10000) : 0, // 转换为毫秒
     size: 0,
     free: 0,
@@ -145,13 +172,20 @@ export const convertJellyfinAlbum = (
   config: StreamingServerConfig,
 ): StreamingAlbumType => {
   const artistId = item.AlbumArtists?.[0]?.Id || item.ArtistItems?.[0]?.Id;
+  const imageTag = item.ImageTags?.Primary;
 
   return {
     id: item.Id,
     name: item.Name,
     artist: item.AlbumArtist || item.AlbumArtists?.[0]?.Name,
     artistId,
-    cover: getImageUrl(config, item.Id),
+    cover: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+    coverSize: {
+      s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
+      m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
+      l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
+      xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+    },
     songCount: item.SongCount || item.ChildCount,
     year: item.ProductionYear,
     serverId: config.id,
@@ -166,10 +200,17 @@ export const convertJellyfinArtist = (
   item: JellyfinItem,
   config: StreamingServerConfig,
 ): StreamingArtistType => {
+  const imageTag = item.ImageTags?.Primary;
   return {
     id: item.Id,
     name: item.Name,
-    cover: getImageUrl(config, item.Id),
+    cover: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+    coverSize: {
+      s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
+      m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
+      l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
+      xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+    },
     albumCount: item.ChildCount,
     serverId: config.id,
     serverType: config.type,
@@ -183,11 +224,18 @@ export const convertJellyfinPlaylist = (
   item: JellyfinItem,
   config: StreamingServerConfig,
 ): StreamingPlaylistType => {
+  const imageTag = item.ImageTags?.Primary;
   return {
     id: item.Id,
     name: item.Name,
     description: item.Overview,
-    cover: getImageUrl(config, item.Id),
+    cover: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+    coverSize: {
+      s: getImageUrl(config, item.Id, "Primary", 100, imageTag),
+      m: getImageUrl(config, item.Id, "Primary", 300, imageTag),
+      l: getImageUrl(config, item.Id, "Primary", 1024, imageTag),
+      xl: getImageUrl(config, item.Id, "Primary", undefined, imageTag),
+    },
     songCount: item.ChildCount,
     serverId: config.id,
     serverType: config.type,
@@ -433,6 +481,37 @@ export const getSongs = async (
   return result.Items.map((item) => convertJellyfinSong(item, config));
 };
 
+/**
+ * 获取歌词
+ */
+export const getLyrics = async (config: StreamingServerConfig, itemId: string): Promise<string> => {
+  if (!itemId) return "";
+  try {
+    const result = await request<{ Lyrics: { Text: string; Start: number }[] }>(
+      config,
+      `Audio/${itemId}/Lyrics`,
+    );
+    if (result && Array.isArray(result.Lyrics)) {
+      return result.Lyrics.map((l) => {
+        const totalSeconds = l.Start / 10000000;
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = Math.floor(totalSeconds % 60);
+        const milliseconds = Math.floor((totalSeconds % 1) * 100);
+
+        const mm = minutes.toString().padStart(2, "0");
+        const ss = seconds.toString().padStart(2, "0");
+        const xx = milliseconds.toString().padStart(2, "0");
+
+        return `[${mm}:${ss}.${xx}]${l.Text}`;
+      }).join("\n");
+    }
+    return "";
+  } catch (error) {
+    console.warn("Failed to fetch lyrics from Jellyfin:", error);
+    return "";
+  }
+};
+
 export default {
   authenticate,
   ping,
@@ -446,4 +525,5 @@ export default {
   search,
   getImageUrl,
   getAudioStreamUrl,
+  getLyrics,
 };
