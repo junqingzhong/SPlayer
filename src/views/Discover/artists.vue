@@ -6,8 +6,8 @@
         <n-tag
           v-for="(item, index) in artistInitials"
           :key="index"
-          :bordered="false"
-          :class="{ choose: item.key == artistInitialChoose }"
+          :type="item.key === artistInitialChoose ? 'primary' : 'default'"
+          :bordered="item.key === artistInitialChoose"
           round
           @click="artistQueryChange(item.key, artistTypeNamesChoose)"
         >
@@ -19,8 +19,8 @@
         <n-tag
           v-for="(item, index) in artistTypeNames"
           :key="item"
-          :class="{ choose: index == artistTypeNamesChoose }"
-          :bordered="false"
+          :type="index === artistTypeNamesChoose ? 'primary' : 'default'"
+          :bordered="index === artistTypeNamesChoose"
           round
           @click="artistQueryChange(artistInitialChoose, index)"
         >

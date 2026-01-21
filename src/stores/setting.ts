@@ -316,6 +316,8 @@ export interface SettingState {
   customJs: string;
   /** 播放器封面/歌词占比 (0-100) */
   playerStyleRatio: number;
+  /** 是否启用流媒体功能 */
+  streamingEnabled: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -481,6 +483,7 @@ export const useSettingStore = defineStore("setting", {
     customCss: "",
     customJs: "",
     playerStyleRatio: 50,
+    streamingEnabled: false,
   }),
   getters: {
     /**

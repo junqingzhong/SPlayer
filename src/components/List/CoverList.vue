@@ -105,7 +105,7 @@
       </div>
     </div>
     <!-- 空列表 -->
-    <n-empty v-else description="空空如也，怎么什么都没有啊" size="large" />
+    <n-empty v-else :description="emptyDescription || '空空如也，怎么什么都没有啊'" size="large" />
   </Transition>
 </template>
 
@@ -130,6 +130,9 @@ const props = defineProps<{
   loading?: boolean;
   loadingNum?: number;
   loadingText?: string;
+  emptyDescription?: string;
+  /** 是否为流媒体数据 */
+  isStreaming?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -147,10 +150,19 @@ const player = usePlayerController();
 const coverMenuRef = ref<InstanceType<typeof CoverMenu> | null>(null);
 
 // 是否处于当前播放列表
-const isPlaying = (id: number) => musicStore.playPlaylistId === id && statusStore.playStatus;
+const isPlaying = (id: number | string) =>
+  musicStore.playPlaylistId === id && statusStore.playStatus;
 
 // 查看详情
 const goDetail = (item: CoverType) => {
+  // 流媒体歌单跳转到专门的路由
+  if (props.isStreaming && props.type === "playlist") {
+    router.push({
+      name: "streaming-playlist",
+      query: { id: item.id },
+    });
+    return;
+  }
   router.push({
     name: props.type,
     query: { id: item.id },
@@ -165,13 +177,17 @@ const playList = debounce(
       if (props.type === "video") {
         return router.push({ name: "video", query: { id: item.id } });
       }
+      // 流媒体歌单直接跳转到详情页
+      if (props.isStreaming && props.type === "playlist") {
+        return router.push({ name: "streaming-playlist", query: { id: item.id } });
+      }
       // 是否为当前列表
       if (musicStore.playPlaylistId === item.id) return player.playOrPause();
       // 开始加载
       item.loading = true;
       // 获取播放列表
       const list = await getListData(item.id);
-      player.updatePlayList(list, undefined, item.id);
+      player.updatePlayList(list, undefined, item.id as number);
     } catch (error) {
       console.log("Error to play: ", error);
     } finally {
@@ -183,13 +199,13 @@ const playList = debounce(
 );
 
 // 获取列表数据
-const getListData = async (id: number): Promise<SongType[]> => {
+const getListData = async (id: number | string): Promise<SongType[]> => {
   // 判断是否为本地歌单
   const isLocalPlaylist = id.toString().length === 16;
 
   switch (props.type) {
     case "album": {
-      const result = await albumDetail(id);
+      const result = await albumDetail(Number(id));
       const ids: number[] = result.songs.map((song: any) => song.id as number);
       const songRes = await songDetail(ids);
       return formatSongsList(songRes.songs);
@@ -197,7 +213,7 @@ const getListData = async (id: number): Promise<SongType[]> => {
     case "playlist": {
       // 本地歌单
       if (isLocalPlaylist) {
-        const result = localStore.getLocalPlaylistDetail(id);
+        const result = localStore.getLocalPlaylistDetail(Number(id));
         if (!result) {
           window.$message.error("本地歌单不存在");
           return [];
@@ -205,11 +221,11 @@ const getListData = async (id: number): Promise<SongType[]> => {
         return result.songs;
       }
       // 在线歌单：仅请求 100 首
-      const result = await playlistAllSongs(id, 100);
+      const result = await playlistAllSongs(Number(id), 100);
       return formatSongsList(result.songs);
     }
     case "radio": {
-      const result = await radioAllProgram(id, 100);
+      const result = await radioAllProgram(Number(id), 100);
       return formatSongsList(result.programs);
     }
     default:

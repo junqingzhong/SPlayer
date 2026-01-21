@@ -272,28 +272,28 @@ audio {
 }
 
 // tag
-.n-tag {
-  font-size: 13px;
-  padding: 0 16px;
-  line-height: 0;
-  cursor: pointer;
-  transition:
-    transform 0.3s,
-    background-color 0.3s,
-    color 0.3s;
-  background-color: rgba(var(--primary), 0.08);
-  &.choose {
-    background-color: rgba(var(--primary), 0.28);
-    color: var(--primary-hex);
-  }
-  &:hover {
-    background-color: rgba(var(--primary), 0.28);
-    color: var(--primary-hex);
-  }
-  &:active {
-    transform: scale(0.98);
-  }
-}
+// .n-tag {
+//   font-size: 13px;
+//   padding: 0 16px;
+//   line-height: 0;
+//   cursor: pointer;
+//   transition:
+//     transform 0.3s,
+//     background-color 0.3s,
+//     color 0.3s;
+//   background-color: rgba(var(--primary), 0.08);
+//   &.choose {
+//     background-color: rgba(var(--primary), 0.28);
+//     color: var(--primary-hex);
+//   }
+//   &:hover {
+//     background-color: rgba(var(--primary), 0.28);
+//     color: var(--primary-hex);
+//   }
+//   &:active {
+//     transform: scale(0.98);
+//   }
+// }
 
 // .n-badge
 .n-badge {

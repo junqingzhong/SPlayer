@@ -151,11 +151,7 @@
       <!-- 时长 -->
       <n-text v-if="!isSmallScreen" class="meta" depth="3">{{ msToTime(song.duration) }}</n-text>
       <!-- 大小 -->
-      <n-text
-        v-if="song.path && song.size && !hiddenSize && !isSmallScreen"
-        class="meta size"
-        depth="3"
-      >
+      <n-text v-if="song.size && !hiddenSize && !isSmallScreen" class="meta size" depth="3">
         {{ song.size }}M
       </n-text>
     </div>
@@ -216,7 +212,7 @@ const localCover = async (show: boolean) => {
   if (!isElectron || !show) return;
   // 本地路径
   const path = song.value.path;
-  if (!path) return;
+  if (!path || song.value.type === "streaming") return;
   // 当前封面
   const currentCover = song.value.cover;
   // 直接复用

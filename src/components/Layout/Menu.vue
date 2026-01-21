@@ -163,6 +163,13 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           icon: renderIcon("Download"),
         },
         {
+          key: "streaming",
+          link: "streaming",
+          label: "流媒体",
+          show: settingStore.streamingEnabled,
+          icon: renderIcon("Stream"),
+        },
+        {
           key: "local",
           link: "local",
           label: "本地歌曲",
@@ -435,6 +442,7 @@ const checkMenuItem = () => {
     { prefix: "local-", name: "local", skipInLocalMode: true },
     { prefix: "like-", name: "like", exclude: "like-songs" },
     { prefix: "download-", name: "download" },
+    { prefix: "streaming-", name: "streaming" },
   ];
   for (const item of prefixMap) {
     if (item.skipInLocalMode && !settingStore.useOnlineService) continue;

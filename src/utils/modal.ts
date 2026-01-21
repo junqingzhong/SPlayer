@@ -29,6 +29,8 @@ import CopyLyrics from "@/components/Modal/CopyLyrics.vue";
 import AMLLServer from "@/components/Modal/Setting/AMLLServer.vue";
 import FontManager from "@/components/Modal/Setting/FontManager.vue";
 import CustomCode from "@/components/Modal/Setting/CustomCode.vue";
+import StreamingServerConfig from "@/components/Modal/Setting/StreamingServerConfig.vue";
+import type { StreamingServerConfig as StreamingServerConfigType } from "@/types/streaming";
 
 export const openUserAgreement = () => {
   const settingStore = useSettingStore();
@@ -462,6 +464,36 @@ export const openCustomCode = () => {
     title: "自定义代码注入",
     content: () => {
       return h(CustomCode);
+    },
+  });
+};
+
+/**
+ * 打开流媒体服务器配置弹窗
+ * @param server 要编辑的服务器配置，为空时表示新增
+ * @param onSave 保存回调
+ */
+export const openStreamingServerConfig = (
+  server: StreamingServerConfigType | null,
+  onSave: (config: Omit<StreamingServerConfigType, "id">) => void,
+) => {
+  const modal = window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    maskClosable: false,
+    closeOnEsc: false,
+    style: { width: "500px" },
+    title: server ? "编辑流媒体服务" : "添加流媒体服务",
+    content: () => {
+      return h(StreamingServerConfig, {
+        server,
+        onSave: (config: Omit<StreamingServerConfigType, "id">) => {
+          onSave(config);
+          modal.destroy();
+        },
+        onCancel: () => modal.destroy(),
+      });
     },
   });
 };

@@ -98,19 +98,24 @@ export type SongType = {
   playCount?: number;
   /**
    * 歌曲类型
-   * song: 歌曲 | radio: 电台
+   * song: 歌曲 | radio: 电台 | streaming: 流媒体
    */
-  type: "song" | "radio";
-  /**
-   * 是否为心动模式插入的歌曲，
-   * 用于在退出心动模式时清理这些歌曲
-   */
-  isRecommendation?: boolean;
+  type: "song" | "radio" | "streaming";
+  /** 流媒体播放 URL */
+  streamUrl?: string;
+  /** 原始 ID（流媒体服务器的 ID） */
+  originalId?: string;
+  /** 流媒体服务器类型 */
+  serverType?: "navidrome" | "jellyfin" | "opensubsonic";
+  /** 流媒体服务器 ID */
+  serverId?: string;
+  /** 来源标记 */
+  source?: "streaming";
 };
 
 // Cover
 export type CoverType = {
-  id: number;
+  id: number | string;
   name: string;
   cover: string;
   coverSize?: CoverSize;
@@ -307,6 +312,7 @@ export type SettingType =
   | "keyboard"
   | "local"
   | "third"
+  | "streaming"
   | "other"
   | "about";
 

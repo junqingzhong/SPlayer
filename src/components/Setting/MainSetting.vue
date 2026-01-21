@@ -67,6 +67,8 @@
           <LocalSetting v-else-if="activeKey === 'local'" />
           <!-- 第三方 -->
           <ThirdSetting v-else-if="activeKey === 'third'" />
+          <!-- 流媒体 -->
+          <StreamingSetting v-else-if="activeKey === 'streaming'" />
           <!-- 其他 -->
           <OtherSetting v-else-if="activeKey === 'other'" />
           <!-- 关于 -->
@@ -151,6 +153,11 @@ const menuOptions: MenuOption[] = [
     key: "third",
     label: "连接与集成",
     icon: renderIcon("Extension"),
+  },
+  {
+    key: "streaming",
+    label: "流媒体设置",
+    icon: renderIcon("Stream"),
   },
   {
     key: "other",

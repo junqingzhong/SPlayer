@@ -2,7 +2,7 @@ import { qqMusicMatch } from "@/api/qqmusic";
 import { songLyric, songLyricTTML } from "@/api/song";
 import { keywords as defaultKeywords, regexes as defaultRegexes } from "@/assets/data/exclude";
 import { useCacheManager } from "@/core/resource/CacheManager";
-import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { useMusicStore, useSettingStore, useStatusStore, useStreamingStore } from "@/stores";
 import { type SongLyric } from "@/types/lyric";
 import { SongType } from "@/types/main";
 import { isElectron } from "@/utils/env";
@@ -383,7 +383,7 @@ class LyricManager {
    * @param id 歌曲 ID
    * @returns 歌词数据
    */
-  private async handleOnlineLyric(id: number): Promise<SongLyric> {
+  private async handleOnlineLyric(id: number | string): Promise<SongLyric> {
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
@@ -426,6 +426,7 @@ class LyricManager {
     // 处理 TTML 歌词
     const adoptTTML = async () => {
       if (!settingStore.enableOnlineTTMLLyric) return;
+      if (typeof id !== "number") return;
       let ttmlContent: string | null = await this.getRawLyricCache(id, "ttml");
       if (!ttmlContent) {
         ttmlContent = await songLyricTTML(id);
@@ -446,6 +447,7 @@ class LyricManager {
     const adoptLRC = async () => {
       // 如果已经有 QQ 音乐歌词，跳过网易云
       if (qqMusicAdopted) return;
+      if (typeof id !== "number") return;
       let data: any = null;
       const cached = await this.getRawLyricCache(id, "lrc");
       if (cached) {
@@ -866,19 +868,61 @@ class LyricManager {
   }
 
   /**
-   * 处理歌词
-   * @param id 歌曲 ID
-   * @param path 本地歌词路径（可选）
+   * 处理流媒体歌词
+   * @param song 歌曲对象
+   * @returns 歌词数据
    */
-  public async handleLyric(id: number, path?: string) {
+  private async handleStreamingLyric(song: SongType): Promise<SongLyric> {
+    const result: SongLyric = { lrcData: [], yrcData: [] };
+    if (song.type !== "streaming" || !song.originalId || !song.serverId) {
+      return result;
+    }
+    try {
+      const streamingStore = useStreamingStore();
+      const lyricContent = await streamingStore.fetchLyrics(song);
+      if (lyricContent) {
+        const { format, lines } = parseSmartLrc(lyricContent);
+        if (lines.length > 0) {
+          if (isWordLevelFormat(format)) {
+            result.yrcData = lines;
+          } else {
+            result.lrcData = lines;
+            // 应用翻译对齐逻辑
+            const aligned = this.alignLocalLyrics(result);
+            result.lrcData = aligned.lrcData;
+            result.yrcData = aligned.yrcData;
+          }
+        }
+      }
+    } catch (error) {
+      console.error("❌ 获取流媒体歌词失败:", error);
+    }
+    return result;
+  }
+
+  /**
+   * 处理歌词
+   * @param song 歌曲对象
+   */
+  public async handleLyric(song: SongType) {
     const settingStore = useSettingStore();
     // 标记当前歌词请求（避免旧请求覆盖新请求）
     const req = ++this.lyricReqSeq;
     this.activeLyricReq = req;
+    const isStreaming = song?.type === "streaming";
     try {
+      let lyricData: SongLyric = { lrcData: [], yrcData: [] };
+
+      // 流媒体歌曲
+      if (isStreaming) {
+        lyricData = await this.handleStreamingLyric(song);
+        // 排除内容
+        lyricData = this.handleLyricExclude(lyricData);
+        this.setFinalLyric(lyricData, req);
+        return;
+      }
       // 检查歌词覆盖
-      let lyricData = await this.checkLocalLyricOverride(id);
-      // 开始获取歌词
+      lyricData = await this.checkLocalLyricOverride(song.id);
       if (!isEmpty(lyricData.lrcData) || !isEmpty(lyricData.yrcData)) {
         // 进行本地歌词对齐
         lyricData = this.alignLocalLyrics(lyricData);
@@ -886,14 +930,14 @@ class LyricManager {
         if (settingStore.enableExcludeLocalLyrics) {
           lyricData = this.handleLyricExclude(lyricData);
         }
-      } else if (path) {
-        lyricData = await this.handleLocalLyric(path);
+      } else if (song.path) {
+        lyricData = await this.handleLocalLyric(song.path);
         // 排除本地歌词内容
         if (settingStore.enableExcludeLocalLyrics) {
           lyricData = this.handleLyricExclude(lyricData);
         }
       } else {
-        lyricData = await this.handleOnlineLyric(id);
+        lyricData = await this.handleOnlineLyric(song.id);
         // 排除内容
         lyricData = this.handleLyricExclude(lyricData);
       }
