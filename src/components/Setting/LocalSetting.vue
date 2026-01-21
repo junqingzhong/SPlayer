@@ -339,7 +339,7 @@
 import { useSettingStore, useStatusStore } from "@/stores";
 import { changeLocalLyricPath, changeLocalMusicPath, formatFileSize } from "@/utils/helper";
 import { songLevelData, getSongLevelsData } from "@/utils/meta";
-import { useCacheManager, type CacheResourceType } from "@/core/resource/CacheManager";
+import { useCacheManager } from "@/core/resource/CacheManager";
 import { pick } from "lodash-es";
 
 const statusStore = useStatusStore();
@@ -435,17 +435,10 @@ const loadCacheSize = async () => {
 
 // 清空所有缓存目录
 const clearCache = async () => {
-  const types: CacheResourceType[] = ["music", "lyrics", "local-data", "list-data"];
-  let hasError = false;
-  for (const type of types) {
-    const res = await cacheManager.clear(type);
-    if (!res.success) {
-      hasError = true;
-    }
-  }
+  const res = await cacheManager.clearAll();
   await loadCacheSize();
-  if (hasError) {
-    window.$message.error("部分缓存清理失败");
+  if (!res.success) {
+    window.$message.error("缓存清理失败: " + (res.message || "未知错误"));
   } else {
     window.$message.success("缓存已清空");
   }
