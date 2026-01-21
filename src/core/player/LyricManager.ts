@@ -1,15 +1,16 @@
-import { songLyric, songLyricTTML } from "@/api/song";
 import { qqMusicMatch } from "@/api/qqmusic";
+import { songLyric, songLyricTTML } from "@/api/song";
 import { keywords as defaultKeywords, regexes as defaultRegexes } from "@/assets/data/exclude";
 import { useCacheManager } from "@/core/resource/CacheManager";
 import { useMusicStore, useSettingStore, useStatusStore, useStreamingStore } from "@/stores";
 import { type SongLyric } from "@/types/lyric";
-import { isElectron } from "@/utils/env";
-import { stripLyricMetadata } from "@/utils/lyricStripper";
-import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
-import { isWordLevelFormat, parseSmartLrc } from "@/utils/lyricParser";
-import { escapeRegExp, isEmpty } from "lodash-es";
 import { SongType } from "@/types/main";
+import { isElectron } from "@/utils/env";
+import { isWordLevelFormat, parseSmartLrc } from "@/utils/lyricParser";
+import { stripLyricMetadata } from "@/utils/lyricStripper";
+import { getConverter } from "@/utils/opencc";
+import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
+import { cloneDeep, escapeRegExp, isEmpty } from "lodash-es";
 
 class LyricManager {
   /**
@@ -416,7 +417,8 @@ class LyricManager {
       }
       // 先返回一次，避免 TTML 请求过慢
       if (qqMusicAdopted) {
-        const lyricData = this.handleLyricExclude(result);
+        let lyricData = this.handleLyricExclude(result);
+        lyricData = await this.applyChineseVariant(lyricData);
         this.setFinalLyric(lyricData, req);
       }
     };
@@ -491,7 +493,8 @@ class LyricManager {
         result.yrcData = yrcLines;
       }
       // 先返回一次，避免 TTML 请求过慢
-      const lyricData = this.handleLyricExclude(result);
+      let lyricData = this.handleLyricExclude(result);
+      lyricData = await this.applyChineseVariant(lyricData);
       this.setFinalLyric(lyricData, req);
     };
     // 优先获取 QQ 音乐歌词
@@ -501,7 +504,7 @@ class LyricManager {
     await Promise.allSettled([adoptTTML(), adoptLRC()]);
     // 优先使用 TTML
     statusStore.usingTTMLLyric = ttmlAdopted;
-    return result;
+    return await this.applyChineseVariant(this.handleLyricExclude(result));
   }
 
   /**
@@ -523,14 +526,14 @@ class LyricManager {
         const ttml = parseTTML(sorted);
         const lines = ttml?.lines || [];
         statusStore.usingTTMLLyric = true;
-        return { lrcData: [], yrcData: lines };
+        return await this.applyChineseVariant({ lrcData: [], yrcData: lines });
       }
       // 解析本地歌词（智能识别格式）
       const { format: lrcFormat, lines: parsedLines } = parseSmartLrc(lyric);
       // 如果是逐字格式，直接作为 yrcData
       if (isWordLevelFormat(lrcFormat)) {
         statusStore.usingTTMLLyric = false;
-        return { lrcData: [], yrcData: parsedLines };
+        return await this.applyChineseVariant({ lrcData: [], yrcData: parsedLines });
       }
       // 普通格式，继续原有逻辑
       let aligned = this.alignLocalLyrics({ lrcData: parsedLines, yrcData: [] });
@@ -546,7 +549,7 @@ class LyricManager {
           };
         }
       }
-      return aligned;
+      return await this.applyChineseVariant(aligned);
     } catch {
       return { lrcData: [], yrcData: [] };
     }
@@ -740,6 +743,49 @@ class LyricManager {
       lrcData,
       yrcData,
     };
+  }
+
+  /**
+   * 简繁转换歌词
+   * @param lyricData 歌词数据
+   * @returns 转换后的歌词数据
+   */
+  private async applyChineseVariant(lyricData: SongLyric): Promise<SongLyric> {
+    const settingStore = useSettingStore();
+    if (!settingStore.preferTraditionalChinese) {
+      return lyricData;
+    }
+
+    try {
+      const mode = settingStore.traditionalChineseVariant;
+      const convert = await getConverter(mode);
+
+      // 深拷贝以避免副作用
+      const newLyricData = cloneDeep(lyricData);
+
+      const convertLines = (lines: LyricLine[] | undefined) => {
+        if (!lines) return;
+        lines.forEach((line) => {
+          line.words.forEach((word) => {
+            if (word.word) word.word = convert(word.word);
+          });
+          if (line.translatedLyric) {
+            line.translatedLyric = convert(line.translatedLyric);
+          }
+        });
+      };
+
+      // LRC
+      convertLines(newLyricData.lrcData);
+
+      // YRC / QRC / TTML
+      convertLines(newLyricData.yrcData);
+
+      return newLyricData;
+    } catch (e) {
+      console.error("简繁转换失败:", e);
+      return lyricData;
+    }
   }
 
   /**

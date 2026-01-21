@@ -272,6 +272,35 @@
       <n-h3 prefix="bar"> 歌词内容 </n-h3>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">更喜欢繁体中文</n-text>
+          <n-text class="tip" :depth="3"> 将简体中文的歌词文本和翻译内容转换为繁体中文 </n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.preferTraditionalChinese"
+          class="set"
+          :round="false"
+        />
+      </n-card>
+      <n-collapse-transition :show="settingStore.preferTraditionalChinese">
+        <n-card class="set-item">
+          <div class="label">
+            <n-text class="name">繁体中文变体</n-text>
+            <n-text class="tip" :depth="3"> 偏好的繁体中文变体 </n-text>
+          </div>
+          <n-select
+            v-model:value="settingStore.traditionalChineseVariant"
+            :options="[
+              { label: '繁体中文 (标准)', value: 's2t' },
+              { label: '台湾正体', value: 's2tw' },
+              { label: '香港繁体', value: 's2hk' },
+              // { label: '台湾正体 (包含词汇)', value: 's2twp' }, // 包含词汇的转换可能会导致字数发生变化，不开了
+            ]"
+            class="set"
+          />
+        </n-card>
+      </n-collapse-transition>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">
             启用在线 TTML 歌词
             <n-tag type="warning" size="small" round> Beta </n-tag>
@@ -619,14 +648,14 @@
 </template>
 
 <script setup lang="ts">
-import { NFlex, NText } from "naive-ui";
-import { useSettingStore, useStatusStore } from "@/stores";
-import { cloneDeep, isEqual } from "lodash-es";
-import { isElectron } from "@/utils/env";
-import { openLyricExclude, openAMLLServer, openFontManager } from "@/utils/modal";
-import { LyricConfig } from "@/types/desktop-lyric";
-import { usePlayerController } from "@/core/player/PlayerController";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
+import { usePlayerController } from "@/core/player/PlayerController";
+import { useSettingStore, useStatusStore } from "@/stores";
+import { LyricConfig } from "@/types/desktop-lyric";
+import { isElectron } from "@/utils/env";
+import { openAMLLServer, openFontManager, openLyricExclude } from "@/utils/modal";
+import { cloneDeep, isEqual } from "lodash-es";
+import { NFlex, NText } from "naive-ui";
 
 const props = defineProps<{ scrollTo?: string }>();
 

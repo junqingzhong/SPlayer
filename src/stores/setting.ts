@@ -23,6 +23,10 @@ export interface SettingState {
     | "yellow"
     | "teal"
     | "custom";
+  /** 偏好繁体中文 */
+  preferTraditionalChinese: boolean;
+  /** 繁体中文变体 */
+  traditionalChineseVariant: "s2t" | "s2tw" | "s2hk" | "s2twp";
   /** 主题自定义颜色 */
   themeCustomColor: string;
   /** 全局着色 */
@@ -321,6 +325,8 @@ export const useSettingStore = defineStore("setting", {
     schemaVersion: 0,
     themeMode: "auto",
     themeColorType: "default",
+    preferTraditionalChinese: false,
+    traditionalChineseVariant: "s2t",
     themeCustomColor: "#fe7971",
     themeFollowCover: false,
     themeGlobalColor: false,
