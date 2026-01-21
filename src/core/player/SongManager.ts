@@ -311,7 +311,7 @@ class SongManager {
         id: song.id,
         url: song.streamUrl,
         isUnlocked: false,
-        quality: QualityType.SQ, // Default to standard or handle quality if available
+        quality: song.quality || QualityType.SQ,
       };
     }
 

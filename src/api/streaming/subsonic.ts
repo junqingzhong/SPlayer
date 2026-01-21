@@ -264,9 +264,8 @@ export const convertSubsonicSong = (
     serverId: config.id,
     serverType: config.type,
     streamUrl: getStreamUrl(config, song.id),
-    isStreaming: true,
     source: "streaming",
-    path: song.path || "",
+    path: "",
   };
 };
 

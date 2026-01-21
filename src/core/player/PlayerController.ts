@@ -38,6 +38,8 @@ class PlayerController {
   private playModeManager = new PlayModeManager();
 
   private onTimeUpdate: DebouncedFunc<() => void> | null = null;
+  /** 上次错误处理时间 */
+  private lastErrorTime = 0;
 
   constructor() {
     // 初始化 AudioManager（会根据设置自动选择引擎）
@@ -451,6 +453,10 @@ class PlayerController {
    * @param currentSeek 当前播放位置 (用于恢复)
    */
   private async handlePlaybackError(errCode: number | undefined, currentSeek: number = 0) {
+    // 错误防抖
+    const now = Date.now();
+    if (now - this.lastErrorTime < 200) return;
+    this.lastErrorTime = now;
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();

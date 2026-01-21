@@ -841,6 +841,10 @@ class LyricManager {
             result.yrcData = lines;
           } else {
             result.lrcData = lines;
+            // 应用翻译对齐逻辑
+            const aligned = this.alignLocalLyrics(result);
+            result.lrcData = aligned.lrcData;
+            result.yrcData = aligned.yrcData;
           }
         }
       }

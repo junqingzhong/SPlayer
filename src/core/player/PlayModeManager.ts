@@ -187,10 +187,7 @@ export class PlayModeManager {
       const currentSong = musicStore.playSong;
       // 过滤掉推荐列表中可能重复的当前歌曲
       const filteredRec = recList.filter((s) => s.id !== currentSong.id);
-      const finalList = [
-        { ...currentSong, isRecommendation: true },
-        ...filteredRec.map((s) => ({ ...s, isRecommendation: true })),
-      ];
+      const finalList = [{ ...currentSong }, ...filteredRec.map((s) => ({ ...s }))];
       // 直接替换播放列表
       await dataStore.setPlayList(finalList);
       // 设置播放索引为第一首
@@ -223,8 +220,7 @@ export class PlayModeManager {
       statusStore.playIndex = idx !== -1 ? idx : 0;
       await dataStore.clearOriginalPlayList();
     } else {
-      const cleaned = cleanRecommendations(dataStore.playList);
-      await dataStore.setPlayList(cleaned);
+      await dataStore.setPlayList(dataStore.playList);
     }
   }
 
@@ -326,7 +322,6 @@ export const interleaveLists = (
   // 标记推荐歌曲
   const taggedRecs = recommendationList.map((song) => ({
     ...song,
-    isRecommendation: true,
   }));
 
   sourceList.forEach((song, index) => {
@@ -339,12 +334,4 @@ export const interleaveLists = (
   });
 
   return result;
-};
-
-/**
- * 清理推荐歌曲，
- * 用于退出心动模式时，恢复纯净列表
- */
-export const cleanRecommendations = (list: SongType[]): SongType[] => {
-  return list.filter((s) => !s.isRecommendation);
 };

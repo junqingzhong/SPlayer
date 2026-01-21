@@ -133,7 +133,6 @@ export const convertJellyfinSong = (
     serverId: config.id,
     serverType: config.type,
     streamUrl: getAudioStreamUrl(config, item.Id),
-    isStreaming: true,
     source: "streaming",
   };
 };

@@ -151,11 +151,7 @@
       <!-- 时长 -->
       <n-text v-if="!isSmallScreen" class="meta" depth="3">{{ msToTime(song.duration) }}</n-text>
       <!-- 大小 -->
-      <n-text
-        v-if="song.path && song.size && !hiddenSize && !isSmallScreen"
-        class="meta size"
-        depth="3"
-      >
+      <n-text v-if="song.size && !hiddenSize && !isSmallScreen" class="meta size" depth="3">
         {{ song.size }}M
       </n-text>
     </div>

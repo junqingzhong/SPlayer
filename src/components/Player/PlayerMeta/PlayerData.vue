@@ -73,7 +73,13 @@
         <span class="meta-item">{{ lyricMode }}</span>
         <!-- 是否在线 -->
         <span class="meta-item">
-          {{ musicStore.playSong.path ? "LOCAL" : "ONLINE" }}
+          {{
+            musicStore.playSong.path
+              ? "LOCAL"
+              : musicStore.playSong.type === "streaming"
+                ? "STREAMING"
+                : "ONLINE"
+          }}
         </span>
       </n-flex>
       <!-- 歌手 -->

@@ -101,11 +101,6 @@ export type SongType = {
    * song: 歌曲 | radio: 电台 | streaming: 流媒体
    */
   type: "song" | "radio" | "streaming";
-  /**
-   * 是否为心动模式插入的歌曲，
-   * 用于在退出心动模式时清理这些歌曲
-   */
-  isRecommendation?: boolean;
   /** 流媒体播放 URL */
   streamUrl?: string;
   /** 原始 ID（流媒体服务器的 ID） */
@@ -116,8 +111,6 @@ export type SongType = {
   serverId?: string;
   /** 来源标记 */
   source?: "streaming";
-  /** 标记为流媒体歌曲 */
-  isStreaming?: boolean;
 };
 
 // Cover
