@@ -50,11 +50,12 @@ const getThemeSchema = (theme: Theme, variant: keyof Theme["palettes"] = "second
 /**
  * 根据颜色生成主题
  * @param color 颜色 Hex
+ * @param variant 变体名称
  */
-const getThemeFromColor = (color: string) => {
+const getThemeFromColor = (color: string, variant: keyof Theme["palettes"] = "secondary") => {
   const argb = argbFromHex(color);
   const theme = themeFromSourceColor(argb);
-  return getThemeSchema(theme);
+  return getThemeSchema(theme, variant);
 };
 
 // 修改全局颜色
@@ -73,7 +74,8 @@ export const setColorSchemes = (
   mode: "dark" | "light",
 ): { [key: string]: string } => {
   const settingStore = useSettingStore();
-  const colorData = typeof color === "string" ? getThemeFromColor(color) : color;
+  const colorData =
+    typeof color === "string" ? getThemeFromColor(color, settingStore.themeVariant) : color;
   if (!colorData) throw new Error("Color data not found");
   // 指定模式颜色数据
   const colorModeData = colorData[mode];
@@ -150,8 +152,9 @@ export const getCoverColorData = (dom: HTMLImageElement) => {
   const theme = themeFromSourceColor(topColor);
   // 移除 canvas
   canvas.remove();
+  const settingStore = useSettingStore();
   // 返回主题
-  return getThemeSchema(theme);
+  return getThemeSchema(theme, settingStore.themeVariant);
 };
 
 /**

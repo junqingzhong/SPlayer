@@ -21,6 +21,8 @@ export interface SettingState {
   themeCustomColor: string;
   /** 全局着色 */
   themeGlobalColor: boolean;
+  /** 主题变体 */
+  themeVariant: "primary" | "secondary" | "tertiary" | "neutral" | "neutralVariant" | "error";
   /** 主题跟随封面 */
   themeFollowCover: boolean;
   /** 全局字体 */
@@ -320,6 +322,7 @@ export const useSettingStore = defineStore("setting", {
     themeCustomColor: "#fe7971",
     themeFollowCover: false,
     themeGlobalColor: false,
+    themeVariant: "secondary",
     globalFont: "default",
     LyricFont: "follow",
     japaneseLyricFont: "follow",

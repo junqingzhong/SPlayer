@@ -25,6 +25,20 @@
           :round="false"
         />
       </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">主题变体</n-text>
+          <n-text class="tip" :depth="3">调整颜色生成算法风格</n-text>
+        </div>
+        <n-select
+          v-model:value="settingStore.themeVariant"
+          :options="variantOptions"
+          class="set"
+          size="small"
+          style="width: 140px"
+          @update:value="themeGlobalColorChange(true)"
+        />
+      </n-card>
     </div>
 
     <!-- 下方：颜色选择网格 -->
@@ -93,6 +107,16 @@ import type { ThemeColorType } from "@/types/color";
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
+
+// 主题颜色变体选项
+const variantOptions = [
+  { label: "Primary", value: "primary" },
+  { label: "Secondary", value: "secondary" },
+  { label: "Tertiary", value: "tertiary" },
+  { label: "Neutral", value: "neutral" },
+  { label: "Neutral Variant", value: "neutralVariant" },
+  { label: "Error", value: "error" },
+];
 
 // 主题颜色数据
 const themeColors = themeColor as Record<string, { label: string; name: string; color: string }>;
