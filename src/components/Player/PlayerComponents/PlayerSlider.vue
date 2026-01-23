@@ -1,6 +1,7 @@
 <template>
   <n-slider
     v-model:value="sliderProgress"
+    :key="musicStore.playSong?.id"
     :step="0.01"
     :min="0"
     :max="statusStore.duration"

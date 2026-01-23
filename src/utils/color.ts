@@ -4,8 +4,10 @@ import {
   QuantizerCelebi,
   Hct,
   Score,
+  argbFromHex,
+  type Theme,
 } from "@material/material-color-utilities";
-import { getMDColor, rgbToHex } from "@imsyy/color-utils";
+import { rgbToHex } from "@imsyy/color-utils";
 import { useSettingStore, useStatusStore } from "@/stores";
 import { argbToRgb } from "./helper";
 import { chunk } from "lodash-es";
@@ -19,6 +21,40 @@ const getAccentColor = (argb: number) => {
   const [r, g, b] = [...argbToRgb(argb)];
   // 返回 rgb
   return { r, g, b };
+};
+
+/**
+ * 生成主题配色方案
+ * @param theme Material Theme 对象
+ * @param variant 变体名称，默认为 'secondary'
+ */
+const getThemeSchema = (theme: Theme, variant: keyof Theme["palettes"] = "secondary") => {
+  const { hue, chroma } = theme.palettes[variant];
+  const getColor = (tone: number) => getAccentColor(Hct.from(hue, chroma, tone).toInt());
+
+  return {
+    main: getColor(90),
+    light: {
+      primary: getColor(10),
+      background: getColor(94),
+      "surface-container": getColor(90),
+    },
+    dark: {
+      primary: getColor(90),
+      background: getColor(20),
+      "surface-container": getColor(16),
+    },
+  };
+};
+
+/**
+ * 根据颜色生成主题
+ * @param color 颜色 Hex
+ */
+const getThemeFromColor = (color: string) => {
+  const argb = argbFromHex(color);
+  const theme = themeFromSourceColor(argb);
+  return getThemeSchema(theme);
 };
 
 // 修改全局颜色
@@ -37,7 +73,7 @@ export const setColorSchemes = (
   mode: "dark" | "light",
 ): { [key: string]: string } => {
   const settingStore = useSettingStore();
-  const colorData = typeof color === "string" ? getMDColor(color) : color;
+  const colorData = typeof color === "string" ? getThemeFromColor(color) : color;
   if (!colorData) throw new Error("Color data not found");
   // 指定模式颜色数据
   const colorModeData = colorData[mode];
@@ -112,38 +148,10 @@ export const getCoverColorData = (dom: HTMLImageElement) => {
   const ranked = Score.score(new Map(sortedQuantizedColors.slice(0, 50)));
   const topColor = ranked[0];
   const theme = themeFromSourceColor(topColor);
-  // 颜色主题
-  const variant = "secondary";
   // 移除 canvas
   canvas.remove();
   // 返回主题
-  return {
-    main: getAccentColor(
-      Hct.from(theme.palettes[variant].hue, theme.palettes[variant].chroma, 90).toInt(),
-    ),
-    light: {
-      primary: getAccentColor(
-        Hct.from(theme.palettes[variant].hue, theme.palettes[variant].chroma, 10).toInt(),
-      ),
-      background: getAccentColor(
-        Hct.from(theme.palettes[variant].hue, theme.palettes[variant].chroma, 94).toInt(),
-      ),
-      "surface-container": getAccentColor(
-        Hct.from(theme.palettes[variant].hue, theme.palettes[variant].chroma, 90).toInt(),
-      ),
-    },
-    dark: {
-      primary: getAccentColor(
-        Hct.from(theme.palettes[variant].hue, theme.palettes[variant].chroma, 90).toInt(),
-      ),
-      background: getAccentColor(
-        Hct.from(theme.palettes[variant].hue, theme.palettes[variant].chroma, 20).toInt(),
-      ),
-      "surface-container": getAccentColor(
-        Hct.from(theme.palettes[variant].hue, theme.palettes[variant].chroma, 16).toInt(),
-      ),
-    },
-  };
+  return getThemeSchema(theme);
 };
 
 /**

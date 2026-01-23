@@ -4,25 +4,15 @@ import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
 import { defineStore } from "pinia";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
+import { ThemeColorType } from "@/types/color";
 
 export interface SettingState {
-  /** Schema 版本号（可选，用于数据迁移） */
+  /** Schema 版本号 */
   schemaVersion?: number;
   /** 明暗模式 */
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
-  themeColorType:
-    | "default"
-    | "orange"
-    | "blue"
-    | "pink"
-    | "brown"
-    | "indigo"
-    | "green"
-    | "purple"
-    | "yellow"
-    | "teal"
-    | "custom";
+  themeColorType: ThemeColorType;
   /** 偏好繁体中文 */
   preferTraditionalChinese: boolean;
   /** 繁体中文变体 */

@@ -133,7 +133,7 @@
 import type { DropdownOption } from "naive-ui";
 import { useSettingStore } from "@/stores";
 import { renderIcon } from "@/utils/helper";
-import { openSetting } from "@/utils/modal";
+import { openSetting, openThemeConfig } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
 import { useMobile } from "@/composables/useMobile";
 
@@ -218,6 +218,11 @@ const setOptions = computed<DropdownOption[]>(() => [
     ),
   },
   {
+    label: "主题配置",
+    key: "themeConfig",
+    icon: renderIcon("Palette"),
+  },
+  {
     key: "zoom",
     label: "界面缩放",
     icon: renderIcon("ZoomIn"),
@@ -254,6 +259,9 @@ const setSelect = (key: string) => {
   switch (key) {
     case "themeMode":
       settingStore.setThemeMode();
+      break;
+    case "themeConfig":
+      openThemeConfig();
       break;
     case "setting":
       openSetting();

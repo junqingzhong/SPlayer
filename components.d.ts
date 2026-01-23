@@ -166,6 +166,7 @@ declare module 'vue' {
     StreamingSetting: typeof import('./src/components/Setting/StreamingSetting.vue')['default']
     SvgIcon: typeof import('./src/components/Global/SvgIcon.vue')['default']
     TextContainer: typeof import('./src/components/Global/TextContainer.vue')['default']
+    ThemeConfig: typeof import('./src/components/Modal/ThemeConfig.vue')['default']
     ThirdSetting: typeof import('./src/components/Setting/ThirdSetting.vue')['default']
     UpdateApp: typeof import('./src/components/Modal/UpdateApp.vue')['default']
     UpdatePlaylist: typeof import('./src/components/Modal/UpdatePlaylist.vue')['default']
