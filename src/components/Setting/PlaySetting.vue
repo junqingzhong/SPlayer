@@ -80,12 +80,21 @@
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">过滤 AI 音质</n-text>
+          <n-text class="name">Fuck AI Mode</n-text>
           <n-text class="tip" :depth="3">
             开启后将隐藏部分 AI 增强音质选项（如超清母带、沉浸环绕声等），但会保留杜比全景声
           </n-text>
         </div>
         <n-switch v-model:value="settingStore.disableAiAudio" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">Fuck DJ Mode</n-text>
+          <n-text class="tip" :depth="3">
+            歌曲名字带有 DJ 抖音 0.9 0.8 网红 车载 热歌 慢摇 自动跳过
+          </n-text>
+        </div>
+        <n-switch v-model:value="settingStore.disableDjMode" class="set" :round="false" />
       </n-card>
       <n-card class="set-item">
         <div class="label">

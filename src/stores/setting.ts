@@ -319,7 +319,10 @@ export interface SettingState {
   /** 是否启用流媒体功能 */
   streamingEnabled: boolean;
   /** Fuck AI: 开启后在所有的地方都不显示 Hi-res以上的音质选项 */
+  /** Fuck AI: 开启后在所有的地方都不显示 Hi-res以上的音质选项 */
   disableAiAudio: boolean;
+  /** Fuck DJ: 开启后自动跳过 DJ 歌曲 */
+  disableDjMode: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -487,6 +490,7 @@ export const useSettingStore = defineStore("setting", {
     playerStyleRatio: 50,
     streamingEnabled: false,
     disableAiAudio: false,
+    disableDjMode: false,
   }),
   getters: {
     /**

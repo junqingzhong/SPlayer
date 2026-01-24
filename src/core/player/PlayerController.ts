@@ -8,6 +8,7 @@ import { getCoverColor } from "@/utils/color";
 import { isElectron } from "@/utils/env";
 import { getPlayerInfoObj, getPlaySongData } from "@/utils/format";
 import { handleSongQuality, shuffleArray, sleep } from "@/utils/helper";
+import { DJ_MODE_KEYWORDS } from "@/utils/meta";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { calculateProgress } from "@/utils/time";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
@@ -82,6 +83,33 @@ class PlayerController {
       if (!statusStore.playStatus && !autoPlay) return;
       throw new Error("SONG_NOT_FOUND");
     }
+
+    // Fuck DJ Mode
+    const settingStore = useSettingStore();
+    if (settingStore.disableDjMode) {
+      const keywords = DJ_MODE_KEYWORDS;
+      const songName = playSongData.name?.toUpperCase() || "";
+      
+      const alia = playSongData.alia;
+      let aliaStr = "";
+      if (Array.isArray(alia)) {
+        aliaStr = alia.join(" ").toUpperCase();
+      } else if (typeof alia === "string") {
+        aliaStr = alia.toUpperCase();
+      }
+      
+      const shouldSkip = keywords.some((k) => 
+        songName.includes(k.toUpperCase()) || aliaStr.includes(k.toUpperCase())
+      );
+
+      if (shouldSkip) {
+        console.log(`[Fuck DJ] Skipping: ${playSongData.name}`);
+        window.$message.warning(`已跳过 DJ/抖音 歌曲: ${playSongData.name}`);
+        this.nextOrPrev("next");
+        return;
+      }
+    }
+
     try {
       // 停止当前播放
       audioManager.stop();

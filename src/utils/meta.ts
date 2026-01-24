@@ -48,6 +48,9 @@ export const AI_AUDIO_LEVELS = ["jymaster", "sky", "jyeffect", "vivid"];
 /** AI 增强音质 Key（需要过滤的 key） */
 export const AI_AUDIO_KEYS = ["jm", "sk", "je"];
 
+/** Fuck DJ Mode 关键词 */
+export const DJ_MODE_KEYWORDS = ["DJ", "抖音", "0.9", "0.8", "网红", "车载", "热歌", "慢摇"];
+
 /**
  * 根据传入的 level，筛选出包含该 level 及之前的音质数据
  * @param level 音质等级名称
