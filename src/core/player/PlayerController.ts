@@ -85,29 +85,11 @@ class PlayerController {
     }
 
     // Fuck DJ Mode
-    const settingStore = useSettingStore();
-    if (settingStore.disableDjMode) {
-      const keywords = DJ_MODE_KEYWORDS;
-      const songName = playSongData.name?.toUpperCase() || "";
-      
-      const alia = playSongData.alia;
-      let aliaStr = "";
-      if (Array.isArray(alia)) {
-        aliaStr = alia.join(" ").toUpperCase();
-      } else if (typeof alia === "string") {
-        aliaStr = alia.toUpperCase();
-      }
-      
-      const shouldSkip = keywords.some((k) => 
-        songName.includes(k.toUpperCase()) || aliaStr.includes(k.toUpperCase())
-      );
-
-      if (shouldSkip) {
-        console.log(`[Fuck DJ] Skipping: ${playSongData.name}`);
-        window.$message.warning(`已跳过 DJ/抖音 歌曲: ${playSongData.name}`);
-        this.nextOrPrev("next");
-        return;
-      }
+    if (this.shouldSkipSong(playSongData)) {
+      console.log(`[Fuck DJ] Skipping: ${playSongData.name}`);
+      window.$message.warning(`已跳过 DJ/抖音 歌曲: ${playSongData.name}`);
+      this.nextOrPrev("next");
+      return;
     }
 
     try {
@@ -789,6 +771,21 @@ class PlayerController {
 
     // 统一调用 audioManager
     audioManager.setRate(rate);
+  }
+
+  /**
+   * 检查是否需要跳过歌曲 (Fuck DJ Mode)
+   * @param song 歌曲信息
+   */
+  private shouldSkipSong(song: SongType): boolean {
+    const settingStore = useSettingStore();
+    if (!settingStore.disableDjMode) return false;
+    // 是否包含 DJ 关键词
+    const name = (song.name || "").toUpperCase();
+    const alia = song.alia;
+    const aliaStr = (Array.isArray(alia) ? alia.join("") : alia || "").toUpperCase();
+    const fullText = name + aliaStr;
+    return DJ_MODE_KEYWORDS.some((k) => fullText.includes(k.toUpperCase()));
   }
 
   /**

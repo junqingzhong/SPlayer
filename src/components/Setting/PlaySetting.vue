@@ -430,6 +430,7 @@ import { useSettingStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
 import { renderOption } from "@/utils/helper";
+import { AI_AUDIO_LEVELS } from "@/utils/meta";
 import { openSongUnlockManager } from "@/utils/modal";
 import { uniqBy } from "lodash-es";
 import type { SelectOption } from "naive-ui";
@@ -574,8 +575,7 @@ const songLevelData = {
   },
 };
 
-import { AI_AUDIO_LEVELS } from "@/utils/meta";
-
+// 全部音质
 const songLevelOptions = computed(() => {
   const options = Object.values(songLevelData);
   if (settingStore.disableAiAudio) {
@@ -588,14 +588,13 @@ const songLevelOptions = computed(() => {
   return options;
 });
 
-// 监听 Fuck AI 开关，如果当前音质是被隐藏的音质，则重置为 Hi-Res
+// 如果当前音质是被隐藏的音质，则重置为 Hi-Res
 watch(
   () => settingStore.disableAiAudio,
   (val) => {
-    if (val) {
-      if (AI_AUDIO_LEVELS.includes(settingStore.songLevel)) {
-        settingStore.songLevel = "hires";
-      }
+    if (!val) return;
+    if (AI_AUDIO_LEVELS.includes(settingStore.songLevel)) {
+      settingStore.songLevel = "hires";
     }
   },
 );
