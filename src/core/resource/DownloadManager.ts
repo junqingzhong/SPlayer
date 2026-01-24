@@ -7,6 +7,7 @@ import { songDownloadUrl, songLyric, songLyricTTML, songUrl, unlockSongUrl } fro
 
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
+import { getConverter, type ConverterMode } from "@/utils/opencc";
 
 interface DownloadTask {
   song: SongType;
@@ -379,7 +380,7 @@ class DownloadManager {
 
         if (downloadLyric) {
           const lyricResult = (await songLyric(song.id)) as LyricResult;
-          lyric = this.processLyric(lyricResult);
+          lyric = await this.processLyric(lyricResult);
 
           // 获取逐字歌词内容用于另存
           if (downloadMakeYrc) {
@@ -424,6 +425,13 @@ class DownloadManager {
           let content = ttmlLyric || yrcLyric;
           if (content) {
             try {
+              // 繁体转换
+              if (settingStore.downloadLyricToTraditional) {
+                const variant = (settingStore.traditionalChineseVariant || "s2t") as ConverterMode;
+                const converter = await getConverter(variant);
+                content = converter(content);
+              }
+
               const ext = ttmlLyric ? "ttml" : "yrc";
               const fileName = `${safeFileName}.${ext}`;
               const encoding = settingStore.downloadLyricEncoding || "utf-8";
@@ -479,7 +487,7 @@ class DownloadManager {
    * @param lyricResult 歌词结果
    * @returns 处理后的歌词字符串
    */
-  private processLyric(lyricResult: LyricResult): string {
+  private async processLyric(lyricResult: LyricResult): Promise<string> {
     const settingStore = useSettingStore();
     try {
       const rawLyric = lyricResult?.lrc?.lyric || "";
@@ -595,7 +603,16 @@ class DownloadManager {
           }
         }
       }
-      return lines.join("\n");
+      const result = lines.join("\n");
+
+      // 繁体转换
+      if (settingStore.downloadLyricToTraditional) {
+        const variant = (settingStore.traditionalChineseVariant || "s2t") as ConverterMode;
+        const converter = await getConverter(variant);
+        return converter(result);
+      }
+
+      return result;
     } catch (e) {
       console.error("Lyric processing failed", e);
       return "";

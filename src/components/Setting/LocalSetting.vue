@@ -351,6 +351,22 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">下载歌词转繁体</n-text>
+          <n-text class="tip" :depth="3">
+            下载的歌词文件将转换为繁体中文（包括 LRC、YRC、TTML）
+            <br />
+            使用歌词设置中的繁体变体：{{ traditionalVariantLabel }}
+          </n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.downloadLyricToTraditional"
+          :disabled="!settingStore.downloadMeta || !settingStore.downloadLyric"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">下载的歌词文件编码格式</n-text>
           <n-text class="tip" :depth="3">部分车载或老旧播放器可能仅支持 GBK 编码</n-text>
         </div>
@@ -397,6 +413,17 @@ const cachePath = ref<string>("");
 const cacheSizeDisplay = ref<string>("--");
 const cacheLimit = ref<number>(10); // 本地状态
 const cacheLimited = ref<number>(1); // 是否限制缓存 (1 为限制)
+
+// 繁体变体标签
+const traditionalVariantLabel = computed(() => {
+  const variantMap: Record<string, string> = {
+    s2t: "繁体中文 (标准)",
+    s2tw: "台湾正体",
+    s2hk: "香港繁体",
+    s2twp: "台湾正体 (含词汇)",
+  };
+  return variantMap[settingStore.traditionalChineseVariant] || "繁体中文";
+});
 
 // 默认下载音质选项
 const downloadQualityOptions = computed(() => {
