@@ -99,6 +99,8 @@ export interface SettingState {
   usePlaybackForDownload: boolean;
   /** 保存元信息文件 */
   saveMetaFile: boolean;
+  /** 使用解锁接口下载 */
+  useUnlockForDownload: boolean;
   /** 默认下载音质（弹窗默认选项） */
   downloadSongLevel: SongLevelType;
   /** 代理协议 */
@@ -424,6 +426,7 @@ export const useSettingStore = defineStore("setting", {
     downloadLyricTranslation: true,
     downloadLyricRomaji: false,
     usePlaybackForDownload: false,
+    useUnlockForDownload: false,
     saveMetaFile: false,
     downloadSongLevel: "h",
     proxyProtocol: "off",

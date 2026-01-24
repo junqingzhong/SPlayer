@@ -321,6 +321,20 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">
+            使用解锁接口下载
+            <n-tag type="warning" size="small" round>Beta</n-tag>
+          </n-text>
+          <n-text class="tip" :depth="3">利用配置的解锁服务获取下载链接（优先于默认方式）</n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.useUnlockForDownload"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">保留元信息文件</n-text>
           <n-text class="tip" :depth="3">是否在下载目录中保留元信息文件</n-text>
         </div>

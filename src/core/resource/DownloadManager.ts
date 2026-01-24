@@ -3,7 +3,8 @@ import { useDataStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
-import { songDownloadUrl, songLyric, songUrl } from "@/api/song";
+import { songDownloadUrl, songLyric, songUrl, unlockSongUrl } from "@/api/song";
+
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 
@@ -257,6 +258,48 @@ class DownloadManager {
           }
         } catch (e) {
           console.error("Error fetching playback url for download:", e);
+        }
+      }
+
+      // 尝试使用解锁接口获取下载链接 (新增)
+      if (!url && settingStore.useUnlockForDownload) {
+        try {
+          const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
+          const artist = Array.isArray(song.artists) ? song.artists[0].name : song.artists;
+          const keyWord = song.name + "-" + artist;
+
+          if (servers.length > 0) {
+            // 并发请求所有启用的解锁服务
+            const results = await Promise.allSettled(
+              servers.map((server) =>
+                unlockSongUrl(song.id, keyWord, server).then((result) => ({
+                  server,
+                  result,
+                  success: result.code === 200 && !!result.url,
+                })),
+              ),
+            );
+
+            // 查找第一个成功的结果
+            for (const r of results) {
+              if (r.status === "fulfilled" && r.value.success) {
+                const unlockUrl = r.value?.result?.url;
+                if (unlockUrl) {
+                  url = unlockUrl;
+                  // 尝试推断类型
+                  if (url.includes(".flac")) type = "flac";
+                  else if (url.includes(".ogg")) type = "ogg";
+                  else if (url.includes(".wav")) type = "wav";
+                  else if (url.includes(".m4a")) type = "m4a";
+                  else type = "mp3";
+                  console.log(`🔓 [${song.id}] Unlock download URL found:`, url);
+                  break;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching unlock url for download:", e);
         }
       }
 
