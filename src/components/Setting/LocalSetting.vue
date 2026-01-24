@@ -328,9 +328,10 @@
           <n-text class="tip" :depth="3">利用配置的解锁服务获取下载链接（优先于默认方式）</n-text>
         </div>
         <n-switch
-          v-model:value="settingStore.useUnlockForDownload"
+          :value="settingStore.useUnlockForDownload"
           :round="false"
           class="set"
+          @update:value="handleUnlockDownloadChange"
         />
       </n-card>
       <n-card class="set-item">
@@ -486,6 +487,23 @@ const handlePlaybackDownloadChange = (value: boolean) => {
     });
   } else {
     settingStore.usePlaybackForDownload = false;
+  }
+};
+
+// 解锁接口下载开关
+const handleUnlockDownloadChange = (value: boolean) => {
+  if (value) {
+    window.$dialog.warning({
+      title: "开启提示",
+      content: "开启此功能可能导致音质下降和与原曲不一致等情况，确认要打开吗？",
+      positiveText: "确认打开",
+      negativeText: "取消",
+      onPositiveClick: () => {
+        settingStore.useUnlockForDownload = true;
+      },
+    });
+  } else {
+    settingStore.useUnlockForDownload = false;
   }
 };
 

@@ -265,8 +265,8 @@ class DownloadManager {
       if (!url && settingStore.useUnlockForDownload) {
         try {
           const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
-          const artist = Array.isArray(song.artists) ? song.artists[0].name : song.artists;
-          const keyWord = song.name + "-" + artist;
+          const artist = (Array.isArray(song.artists) ? song.artists[0]?.name : song.artists) || "";
+          const keyWord = `${song.name}-${artist}`;
 
           if (servers.length > 0) {
             // 并发请求所有启用的解锁服务
@@ -287,11 +287,18 @@ class DownloadManager {
                 if (unlockUrl) {
                   url = unlockUrl;
                   // 尝试推断类型
-                  if (url.includes(".flac")) type = "flac";
-                  else if (url.includes(".ogg")) type = "ogg";
-                  else if (url.includes(".wav")) type = "wav";
-                  else if (url.includes(".m4a")) type = "m4a";
-                  else type = "mp3";
+                  const extensionMatch = url.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+                  const extension = extensionMatch ? extensionMatch[1].toLowerCase() : null;
+                  switch (extension) {
+                    case "flac":
+                    case "ogg":
+                    case "wav":
+                    case "m4a":
+                      type = extension;
+                      break;
+                    default:
+                      type = "mp3";
+                  }
                   console.log(`🔓 [${song.id}] Unlock download URL found:`, url);
                   break;
                 }
