@@ -241,6 +241,7 @@ class DownloadManager {
     mode?: "standard" | "playback";
   }): Promise<{ success: boolean; skipped?: boolean; message?: string; status?: string }> {
     try {
+      const dataStore = useDataStore();
       const settingStore = useSettingStore();
       let url = "";
       let type = "mp3";
@@ -263,8 +264,13 @@ class DownloadManager {
         }
       }
 
-      // 尝试使用解锁接口获取下载链接 (新增)
-      if (!url && settingStore.useUnlockForDownload) {
+      // 尝试使用解锁接口获取下载链接
+      // 检查 VIP 权限
+      const isVipUser = dataStore.userData?.vipType > 0;
+      const isRestricted = song.free === 1 || song.free === 4 || song.free === 8;
+      const canUseUnlock = !isRestricted || isVipUser;
+
+      if (!url && settingStore.useUnlockForDownload && canUseUnlock) {
         try {
           const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
           const artist = (Array.isArray(song.artists) ? song.artists[0]?.name : song.artists) || "";
