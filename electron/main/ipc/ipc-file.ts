@@ -701,10 +701,10 @@ const initFileIpc = (): void => {
     "save-file-content",
     async (
       _,
-      options: { path: string; fileName: string; content: string },
+      options: { path: string; fileName: string; content: string; encoding?: string },
     ): Promise<{ success: boolean; message?: string }> => {
       try {
-        const { path, fileName, content } = options;
+        const { path, fileName, content, encoding = "utf-8" } = options;
         // 规范化路径
         const dirPath = resolve(path);
         // 检查文件夹是否存在，不存在则自动递归创建
@@ -714,7 +714,23 @@ const initFileIpc = (): void => {
           await mkdir(dirPath, { recursive: true });
         }
         const filePath = join(dirPath, fileName);
-        await writeFile(filePath, content, "utf-8");
+
+        if (encoding !== "utf-8") {
+          try {
+            // 使用动态导入，避免启动时加载问题
+            const { encode } = await import("iconv-lite");
+            // iconv-lite support 'utf16' as alias for 'utf-16' etc.
+            const buffer = encode(content, encoding);
+            await writeFile(filePath, buffer);
+          } catch (e) {
+            ipcLog.error(`❌ ${encoding} encoding failed:`, e);
+            // Fallback to UTF-8 on error
+            await writeFile(filePath, content, "utf-8");
+          }
+        } else {
+          await writeFile(filePath, content, "utf-8");
+        }
+        
         return { success: true };
       } catch (error) {
         ipcLog.error("❌ Error saving file content:", error);

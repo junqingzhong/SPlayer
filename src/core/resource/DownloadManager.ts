@@ -425,11 +425,17 @@ class DownloadManager {
         
         if (result.status !== "cancelled" && result.status !== "error" && downloadMakeYrc) {
            // 优先使用 TTML，其次 YRC
-           const content = ttmlLyric || yrcLyric;
+           let content = ttmlLyric || yrcLyric;
            if (content) {
              try {
                const ext = ttmlLyric ? "ttml" : "yrc";
                const fileName = `${safeFileName}.${ext}`;
+               const encoding = settingStore.downloadLyricEncoding || "utf-8";
+
+               // 如果是 TTML 且转换为非 UTF-8 编码，需要修改 XML 头部的 encoding 声明
+               if (ext === "ttml" && encoding !== "utf-8") {
+                 content = content.replace(/encoding=["']utf-8["']/i, `encoding="${encoding}"`);
+               }
                
                console.log(`[Download] Saving extra lyric file: ${fileName}`);
                // 调用保存文件内容接口
@@ -437,6 +443,7 @@ class DownloadManager {
                  path: targetPath,
                  fileName,
                  content,
+                 encoding,
                });
                if (saveRes.success) {
                  console.log(`[Download] Saved verbatim lyric file successfully: ${fileName}`);
