@@ -80,12 +80,21 @@
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">Fuck AI Mode</n-text>
+          <n-text class="tip" :depth="3">
+            开启后在所有的地方都不显示 Hi-res以上的音质选项（高清环绕声、沉浸环绕声、超清母带）保留杜比全景声
+          </n-text>
+        </div>
+        <n-switch v-model:value="settingStore.disableAiAudio" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">在线歌曲音质</n-text>
           <n-text class="tip" :depth="3"> {{ songLevelData[settingStore.songLevel].tip }}</n-text>
         </div>
         <n-select
           v-model:value="settingStore.songLevel"
-          :options="Object.values(songLevelData)"
+          :options="songLevelOptions"
           :render-option="renderOption"
           class="set"
         />
@@ -555,6 +564,32 @@ const songLevelData = {
     value: "dolby",
   },
 };
+
+const songLevelOptions = computed(() => {
+  const options = Object.values(songLevelData);
+  if (settingStore.disableAiAudio) {
+    return options.filter((option) => {
+      // 保留杜比全景声，过滤掉其他高级音质
+      if (option.value === "dolby") return true;
+      const hiddenLevels = ["jymaster", "sky", "jyeffect", "vivid"];
+      return !hiddenLevels.includes(option.value);
+    });
+  }
+  return options;
+});
+
+// 监听 Fuck AI 开关，如果当前音质是被隐藏的音质，则重置为 Hi-Res
+watch(
+  () => settingStore.disableAiAudio,
+  (val) => {
+    if (val) {
+      const hiddenLevels = ["jymaster", "sky", "jyeffect", "vivid"];
+      if (hiddenLevels.includes(settingStore.songLevel)) {
+        settingStore.songLevel = "hires";
+      }
+    }
+  },
+);
 
 const timeFormatOptions = [
   {

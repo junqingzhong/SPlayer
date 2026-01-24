@@ -318,6 +318,8 @@ export interface SettingState {
   playerStyleRatio: number;
   /** 是否启用流媒体功能 */
   streamingEnabled: boolean;
+  /** Fuck AI: 开启后在所有的地方都不显示 Hi-res以上的音质选项 */
+  disableAiAudio: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -484,6 +486,7 @@ export const useSettingStore = defineStore("setting", {
     customJs: "",
     playerStyleRatio: 50,
     streamingEnabled: false,
+    disableAiAudio: false,
   }),
   getters: {
     /**

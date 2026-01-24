@@ -354,7 +354,20 @@ const cacheLimited = ref<number>(1); // 是否限制缓存 (1 为限制)
 // 默认下载音质选项
 const downloadQualityOptions = computed(() => {
   const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-  return getSongLevelsData(levels).map((item) => ({
+  const allData = getSongLevelsData(levels);
+  
+  if (settingStore.disableAiAudio) {
+      return allData.filter((item) => {
+           if (item.level === "dolby") return true; 
+           const hiddenLevels = ["jymaster", "sky", "jyeffect", "vivid"];
+           return !hiddenLevels.includes(item.level);
+      }).map((item) => ({
+        label: item.name,
+        value: item.value,
+      }));
+  }
+
+  return allData.map((item) => ({
     label: item.name,
     value: item.value,
   }));

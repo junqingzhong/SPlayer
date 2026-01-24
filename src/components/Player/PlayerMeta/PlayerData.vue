@@ -237,7 +237,17 @@ const loadQualities = async (isPreload = false) => {
     const res = await songQuality(songId);
     if (res.data) {
       const levels = getSongLevelsData(songLevelData, res.data);
-      availableQualities.value = levels;
+      if (settingStore.disableAiAudio) {
+           availableQualities.value = levels.filter(q => {
+               if (q.level === "dolby") return true;
+               return !["jymaster", "sky", "jyeffect", "vivid"].includes(q.level);
+           });
+           // 如果当前播放的是被隐藏的音质，尝试切换到最高可用音质 (在这个逻辑里不做自动切换， just pure display filtering might be safer, but ideally should switch)
+           // But actually, `currentPlayingLevel` computed prop relies on `availableQualities`.
+           // So if we filter it out here, `currentPlayingLevel` might fallback to `settingStore.songLevel`.
+      } else {
+          availableQualities.value = levels;
+      }
     } else if (!isPreload) {
       window.$message.warning("获取音质信息失败");
     }

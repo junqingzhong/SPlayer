@@ -112,7 +112,23 @@ const canDownload = computed(() => {
 // 音质选项
 const qualityOptions = computed(() => {
   const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-  return getSongLevelsData(levels).map((item) => ({
+  const allData = getSongLevelsData(levels);
+  
+  if (settingStore.disableAiAudio) {
+      return allData.filter((item) => {
+           // item.level is "dolby", "jymaster" etc.
+           // item.value is "db", "jm" etc.
+           if (item.level === "dolby") return true; 
+           const hiddenLevels = ["jymaster", "sky", "jyeffect", "vivid"];
+           return !hiddenLevels.includes(item.level);
+      }).map((item) => ({
+        label: item.name,
+        value: item.value,
+        size: undefined,
+      }));
+  }
+
+  return allData.map((item) => ({
     label: item.name,
     value: item.value,
     size: undefined,

@@ -399,6 +399,9 @@ export const handleSongQuality = (
   song: AnyObject | number,
   type: "local" | "online" = "local",
 ): QualityType | undefined => {
+  const settingStore = useSettingStore();
+  const { disableAiAudio } = settingStore;
+
   if (type === "local" && typeof song === "number") {
     if (song >= 960000) return QualityType.HiRes;
     if (song >= 441000) return QualityType.SQ;
@@ -417,12 +420,46 @@ export const handleSongQuality = (
     "exhigh": QualityType.HQ,
     "higher": QualityType.MQ,
     "standard": QualityType.LQ,
+  };
+
+  // Fuck AI Filter
+  if (disableAiAudio) {
+    if (typeof song === "object" && song) {
+       // 如果已启用 Fuck AI，且包含 level
+        if ("level" in song) {
+            const level = song.level;
+            // 如果是 AI 音质，且不是 杜比，则返回 HiRe 或 SQ/HQ
+            if (["jymaster", "sky", "jyeffect", "vivid"].includes(level)) {
+                 // 尝试降级显示
+                 return QualityType.HiRes; 
+            }
+             // 其他音质正常显示
+        }
+        // 云盘歌曲适配
+         if ("privilege" in song) {
+            const privilege = song.privilege;
+             let level = privilege?.playMaxBrLevel ?? privilege?.plLevel;
+            
+             if (["jymaster", "sky", "jyeffect", "vivid"].includes(level)) {
+                 level = "hires";
+             }
+             const quality = levelQualityMap[level];
+             if (quality) return quality;
+        }
+    }
+    // 数组遍历检查时也跳过 AI 音质 key
   }
+
 
   if (typeof song === "object" && song) {
     // 含有 level 特殊处理
     if ("level" in song) {
-      const quality = levelQualityMap[song.level];
+      // 再次检查 (如果上面没拦截住或者不想太复杂)
+      let quality = levelQualityMap[song.level];
+      if (disableAiAudio && ["Master", "Spatial", "Surround"].includes(quality)) {
+         // 强制降级显示或者不返回? 这里返回 HiRes 比较合理，因为文件可能还是好的，只是标变了
+         return QualityType.HiRes;
+      }
       if (quality) return quality;
     }
     // 云盘歌曲适配
@@ -430,6 +467,9 @@ export const handleSongQuality = (
       const privilege = song.privilege;
       const quality = levelQualityMap[privilege?.playMaxBrLevel]
         ?? levelQualityMap[privilege?.plLevel];
+      if (disableAiAudio && ["Master", "Spatial", "Surround"].includes(quality)) {
+          return QualityType.HiRes;
+      }
       if (quality) return quality;
     }
   }
@@ -445,7 +485,12 @@ export const handleSongQuality = (
     { key: "m", type: QualityType.MQ },
     { key: "l", type: QualityType.LQ },
   ];
+  
   for (const itemKey of order) {
+      // 过滤 AI 音质
+      if (disableAiAudio && ["jm", "sk", "je"].includes(itemKey.key)) {
+          continue;
+      }
     if (song[itemKey.key] && Number(song[itemKey.key].br) > 0) {
       return itemKey.type;
     }
