@@ -336,6 +336,21 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">
+            下载时另存逐字歌词文件
+            <n-tag type="warning" size="small" round>Beta</n-tag>
+          </n-text>
+          <n-text class="tip" :depth="3">在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌LRC）</n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.downloadMakeYrc"
+          :disabled="!settingStore.downloadMeta || !settingStore.downloadLyric"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">保留元信息文件</n-text>
           <n-text class="tip" :depth="3">是否在下载目录中保留元信息文件</n-text>
         </div>

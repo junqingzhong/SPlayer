@@ -3,7 +3,7 @@ import { useDataStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
-import { songDownloadUrl, songLyric, songUrl, unlockSongUrl } from "@/api/song";
+import { songDownloadUrl, songLyric, songLyricTTML, songUrl, unlockSongUrl } from "@/api/song";
 
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
@@ -17,6 +17,8 @@ interface LyricResult {
   lrc?: { lyric: string };
   tlyric?: { lyric: string };
   romalrc?: { lyric: string };
+  yrc?: { lyric: string };
+  ttml?: { lyric: string };
 }
 
 class DownloadManager {
@@ -363,11 +365,47 @@ class DownloadManager {
       }
 
       if (isElectron) {
-        const { downloadMeta, downloadCover, downloadLyric, saveMetaFile } = settingStore;
+        const { downloadMeta, downloadCover, downloadLyric, saveMetaFile, downloadMakeYrc } = settingStore;
         let lyric = "";
+        let yrcLyric = "";
+        let ttmlLyric = "";
+
         if (downloadLyric) {
           const lyricResult = (await songLyric(song.id)) as LyricResult;
           lyric = this.processLyric(lyricResult);
+          
+          // 获取逐字歌词内容用于另存
+          if (downloadMakeYrc) {
+             console.log(`[Download] Fetching verbatim lyrics for ${song.name} (${song.id})...`);
+             try {
+               // 1. 尝试获取 TTML (优先)
+               const ttmlRes = await songLyricTTML(song.id);
+               // songLyricTTML 返回的是 string (xml) 还是对象? api/song.ts 中如果是 electron 环境请求 /lyric/ttml
+               // 假设返回结构需要确认，通常 request 返回 data. 
+               // 查看 api/song.ts，songLyricTTML return request(...) which returns Promise<any>
+               // 如果是 direct string (web mode) it returns string. 
+               // 稳妥起见，打印 log，并假设它可能在 data 字段或者直接就是内容
+               // 实际上 SPlayer 项目中 request 包装器通常返回 { code, data, ... }
+               // 这里我们简单以此判断
+               if (typeof ttmlRes === 'string') {
+                 ttmlLyric = ttmlRes;
+               } else if (ttmlRes?.data?.content) {
+                 ttmlLyric = ttmlRes.data.content; 
+               } else if (ttmlRes?.data) { 
+                 // 视具体接口返回而定，暂作一种尝试
+                 ttmlLyric = ttmlRes.data; 
+               }
+               console.log(`[Download] TTML fetched: ${!!ttmlLyric}, len: ${ttmlLyric?.length}`);
+
+               // 2. 如果没有 TTML，检查 YRC
+               if (!ttmlLyric) {
+                 yrcLyric = (lyricResult as any)?.yrc?.lyric || "";
+                 console.log(`[Download] YRC fetched from lrcResult: ${!!yrcLyric}, len: ${yrcLyric?.length}`);
+               }
+             } catch (e) {
+               console.error("[Download] Error fetching verbatim lyrics:", e);
+             }
+          }
         }
 
         const config = {
@@ -384,6 +422,35 @@ class DownloadManager {
         };
 
         const result = await window.electron.ipcRenderer.invoke("download-file", url, config);
+        
+        if (result.status !== "cancelled" && result.status !== "error" && downloadMakeYrc) {
+           // 优先使用 TTML，其次 YRC
+           const content = ttmlLyric || yrcLyric;
+           if (content) {
+             try {
+               const ext = ttmlLyric ? "ttml" : "yrc";
+               const fileName = `${safeFileName}.${ext}`;
+               
+               console.log(`[Download] Saving extra lyric file: ${fileName}`);
+               // 调用保存文件内容接口
+               const saveRes = await window.electron.ipcRenderer.invoke("save-file-content", {
+                 path: targetPath,
+                 fileName,
+                 content,
+               });
+               if (saveRes.success) {
+                 console.log(`[Download] Saved verbatim lyric file successfully: ${fileName}`);
+               } else {
+                 console.error(`[Download] Failed to save verbatim lyric file: ${saveRes.message}`);
+               }
+             } catch (e) {
+               console.error("[Download] Failed to save verbatim lyric file exception", e);
+             }
+           } else {
+             console.log("[Download] No verbatim lyrics found to save.");
+           }
+        }
+
         if (result.status === "skipped") {
           return { success: true, skipped: true, message: result.message };
         }
@@ -488,6 +555,9 @@ class DownloadManager {
       const rMap = parseToMap(romalrc || "");
       const lines: string[] = [];
       const lrcLinesRaw = lrc.split(/\r?\n/);
+
+      // 如果启用了另存逐字歌词，此时不替换内嵌歌词（processLyric 仅负责返回嵌入用的 LRC）
+      // YRC 的保存将在 processDownload 中独立处理
 
       for (const raw of lrcLinesRaw) {
         let m: RegExpExecArray | null;
