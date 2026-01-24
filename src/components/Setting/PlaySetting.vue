@@ -80,12 +80,30 @@
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">Fuck AI Mode</n-text>
+          <n-text class="tip" :depth="3">
+            开启后将隐藏部分 AI 增强音质选项（如超清母带、沉浸环绕声等），但会保留杜比全景声
+          </n-text>
+        </div>
+        <n-switch v-model:value="settingStore.disableAiAudio" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">Fuck DJ Mode</n-text>
+          <n-text class="tip" :depth="3">
+            歌曲名字带有 DJ 抖音 0.9 0.8 网红 车载 热歌 慢摇 自动跳过
+          </n-text>
+        </div>
+        <n-switch v-model:value="settingStore.disableDjMode" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">在线歌曲音质</n-text>
           <n-text class="tip" :depth="3"> {{ songLevelData[settingStore.songLevel].tip }}</n-text>
         </div>
         <n-select
           v-model:value="settingStore.songLevel"
-          :options="Object.values(songLevelData)"
+          :options="songLevelOptions"
           :render-option="renderOption"
           class="set"
         />
@@ -412,6 +430,7 @@ import { useSettingStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
 import { renderOption } from "@/utils/helper";
+import { AI_AUDIO_LEVELS } from "@/utils/meta";
 import { openSongUnlockManager } from "@/utils/modal";
 import { uniqBy } from "lodash-es";
 import type { SelectOption } from "naive-ui";
@@ -555,6 +574,30 @@ const songLevelData = {
     value: "dolby",
   },
 };
+
+// 全部音质
+const songLevelOptions = computed(() => {
+  const options = Object.values(songLevelData);
+  if (settingStore.disableAiAudio) {
+    return options.filter((option) => {
+      // 保留杜比全景声，过滤掉其他高级音质
+      if (option.value === "dolby") return true;
+      return !AI_AUDIO_LEVELS.includes(option.value);
+    });
+  }
+  return options;
+});
+
+// 如果当前音质是被隐藏的音质，则重置为 Hi-Res
+watch(
+  () => settingStore.disableAiAudio,
+  (val) => {
+    if (!val) return;
+    if (AI_AUDIO_LEVELS.includes(settingStore.songLevel)) {
+      settingStore.songLevel = "hires";
+    }
+  },
+);
 
 const timeFormatOptions = [
   {
