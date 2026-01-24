@@ -338,7 +338,7 @@
 <script setup lang="ts">
 import { useSettingStore, useStatusStore } from "@/stores";
 import { changeLocalLyricPath, changeLocalMusicPath, formatFileSize } from "@/utils/helper";
-import { songLevelData, getSongLevelsData } from "@/utils/meta";
+import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
 import { useCacheManager } from "@/core/resource/CacheManager";
 import { pick } from "lodash-es";
 
@@ -354,17 +354,13 @@ const cacheLimited = ref<number>(1); // 是否限制缓存 (1 为限制)
 // 默认下载音质选项
 const downloadQualityOptions = computed(() => {
   const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-  const allData = getSongLevelsData(levels);
+  let allData = getSongLevelsData(levels);
   
   if (settingStore.disableAiAudio) {
-      return allData.filter((item) => {
+      allData = allData.filter((item) => {
            if (item.level === "dolby") return true; 
-           const hiddenLevels = ["jymaster", "sky", "jyeffect", "vivid"];
-           return !hiddenLevels.includes(item.level);
-      }).map((item) => ({
-        label: item.name,
-        value: item.value,
-      }));
+           return !AI_AUDIO_LEVELS.includes(item.level);
+      });
   }
 
   return allData.map((item) => ({

@@ -72,7 +72,7 @@
 <script setup lang="ts">
 import type { SongType, SongLevelType } from "@/types/main";
 import { useSettingStore } from "@/stores";
-import { songLevelData, getSongLevelsData } from "@/utils/meta";
+import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
 import { formatFileSize } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
 import { isElectron } from "@/utils/env";
@@ -112,20 +112,13 @@ const canDownload = computed(() => {
 // 音质选项
 const qualityOptions = computed(() => {
   const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-  const allData = getSongLevelsData(levels);
+  let allData = getSongLevelsData(levels);
   
   if (settingStore.disableAiAudio) {
-      return allData.filter((item) => {
-           // item.level is "dolby", "jymaster" etc.
-           // item.value is "db", "jm" etc.
+      allData = allData.filter((item) => {
            if (item.level === "dolby") return true; 
-           const hiddenLevels = ["jymaster", "sky", "jyeffect", "vivid"];
-           return !hiddenLevels.includes(item.level);
-      }).map((item) => ({
-        label: item.name,
-        value: item.value,
-        size: undefined,
-      }));
+           return !AI_AUDIO_LEVELS.includes(item.level);
+      });
   }
 
   return allData.map((item) => ({

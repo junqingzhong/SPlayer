@@ -42,6 +42,12 @@ export const songLevelData = {
   },
 };
 
+/** AI 增强音质 Level（需要过滤的音质） */
+export const AI_AUDIO_LEVELS = ["jymaster", "sky", "jyeffect", "vivid"];
+
+/** AI 增强音质 Key（需要过滤的 key） */
+export const AI_AUDIO_KEYS = ["jm", "sk", "je"];
+
 /**
  * 根据传入的 level，筛选出包含该 level 及之前的音质数据
  * @param level 音质等级名称

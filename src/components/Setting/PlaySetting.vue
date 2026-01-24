@@ -80,9 +80,9 @@
       </n-collapse-transition>
       <n-card class="set-item">
         <div class="label">
-          <n-text class="name">Fuck AI Mode</n-text>
+          <n-text class="name">过滤 AI 音质</n-text>
           <n-text class="tip" :depth="3">
-            开启后在所有的地方都不显示 Hi-res以上的音质选项（高清环绕声、沉浸环绕声、超清母带）保留杜比全景声
+            开启后将隐藏部分 AI 增强音质选项（如超清母带、沉浸环绕声等），但会保留杜比全景声
           </n-text>
         </div>
         <n-switch v-model:value="settingStore.disableAiAudio" class="set" :round="false" />
@@ -565,14 +565,15 @@ const songLevelData = {
   },
 };
 
+import { AI_AUDIO_LEVELS } from "@/utils/meta";
+
 const songLevelOptions = computed(() => {
   const options = Object.values(songLevelData);
   if (settingStore.disableAiAudio) {
     return options.filter((option) => {
       // 保留杜比全景声，过滤掉其他高级音质
       if (option.value === "dolby") return true;
-      const hiddenLevels = ["jymaster", "sky", "jyeffect", "vivid"];
-      return !hiddenLevels.includes(option.value);
+      return !AI_AUDIO_LEVELS.includes(option.value);
     });
   }
   return options;
@@ -583,8 +584,7 @@ watch(
   () => settingStore.disableAiAudio,
   (val) => {
     if (val) {
-      const hiddenLevels = ["jymaster", "sky", "jyeffect", "vivid"];
-      if (hiddenLevels.includes(settingStore.songLevel)) {
+      if (AI_AUDIO_LEVELS.includes(settingStore.songLevel)) {
         settingStore.songLevel = "hires";
       }
     }

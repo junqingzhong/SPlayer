@@ -1,4 +1,8 @@
 import { QualityType, SongType, UpdateLogType } from "@/types/main";
+import {
+  AI_AUDIO_LEVELS,
+  AI_AUDIO_KEYS,
+} from "@/utils/meta";
 import { NTooltip, SelectOption } from "naive-ui";
 import { h, VNode } from "vue";
 import { getCacheData } from "./cache";
@@ -423,43 +427,26 @@ export const handleSongQuality = (
   };
 
   // Fuck AI Filter
-  if (disableAiAudio) {
-    if (typeof song === "object" && song) {
-       // 如果已启用 Fuck AI，且包含 level
-        if ("level" in song) {
-            const level = song.level;
-            // 如果是 AI 音质，且不是 杜比，则返回 HiRe 或 SQ/HQ
-            if (["jymaster", "sky", "jyeffect", "vivid"].includes(level)) {
-                 // 尝试降级显示
-                 return QualityType.HiRes; 
-            }
-             // 其他音质正常显示
-        }
-        // 云盘歌曲适配
-         if ("privilege" in song) {
-            const privilege = song.privilege;
-             let level = privilege?.playMaxBrLevel ?? privilege?.plLevel;
-            
-             if (["jymaster", "sky", "jyeffect", "vivid"].includes(level)) {
-                 level = "hires";
-             }
-             const quality = levelQualityMap[level];
-             if (quality) return quality;
-        }
+  if (disableAiAudio && typeof song === "object" && song) {
+    if ("level" in song) {
+      if (AI_AUDIO_LEVELS.includes(song.level)) {
+        return QualityType.HiRes;
+      }
     }
-    // 数组遍历检查时也跳过 AI 音质 key
+    if ("privilege" in song) {
+      const p = song.privilege;
+      const level = p?.playMaxBrLevel ?? p?.plLevel;
+      if (AI_AUDIO_LEVELS.includes(level)) {
+        const quality = levelQualityMap["hires"];
+        if (quality) return quality;
+      }
+    }
   }
-
-
+ 
   if (typeof song === "object" && song) {
     // 含有 level 特殊处理
     if ("level" in song) {
-      // 再次检查 (如果上面没拦截住或者不想太复杂)
-      let quality = levelQualityMap[song.level];
-      if (disableAiAudio && ["Master", "Spatial", "Surround"].includes(quality)) {
-         // 强制降级显示或者不返回? 这里返回 HiRes 比较合理，因为文件可能还是好的，只是标变了
-         return QualityType.HiRes;
-      }
+      const quality = levelQualityMap[song.level];
       if (quality) return quality;
     }
     // 云盘歌曲适配
@@ -467,9 +454,6 @@ export const handleSongQuality = (
       const privilege = song.privilege;
       const quality = levelQualityMap[privilege?.playMaxBrLevel]
         ?? levelQualityMap[privilege?.plLevel];
-      if (disableAiAudio && ["Master", "Spatial", "Surround"].includes(quality)) {
-          return QualityType.HiRes;
-      }
       if (quality) return quality;
     }
   }
@@ -488,7 +472,7 @@ export const handleSongQuality = (
   
   for (const itemKey of order) {
       // 过滤 AI 音质
-      if (disableAiAudio && ["jm", "sk", "je"].includes(itemKey.key)) {
+      if (disableAiAudio && AI_AUDIO_KEYS.includes(itemKey.key)) {
           continue;
       }
     if (song[itemKey.key] && Number(song[itemKey.key].br) > 0) {

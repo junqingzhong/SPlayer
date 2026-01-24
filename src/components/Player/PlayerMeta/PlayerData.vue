@@ -139,7 +139,7 @@ import type { SongLevelDataType } from "@/types/main";
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
 import { songQuality } from "@/api/song";
-import { songLevelData, getSongLevelsData } from "@/utils/meta";
+import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
 import { formatFileSize, handleSongQuality } from "@/utils/helper";
 import { usePlayerController } from "@/core/player/PlayerController";
 
@@ -240,7 +240,7 @@ const loadQualities = async (isPreload = false) => {
       if (settingStore.disableAiAudio) {
            availableQualities.value = levels.filter(q => {
                if (q.level === "dolby") return true;
-               return !["jymaster", "sky", "jyeffect", "vivid"].includes(q.level);
+               return !AI_AUDIO_LEVELS.includes(q.level);
            });
            // 如果当前播放的是被隐藏的音质，尝试切换到最高可用音质 (在这个逻辑里不做自动切换， just pure display filtering might be safer, but ideally should switch)
            // But actually, `currentPlayingLevel` computed prop relies on `availableQualities`.
