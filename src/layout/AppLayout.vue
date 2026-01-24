@@ -1,5 +1,25 @@
 <template>
   <div id="app-layout">
+    <!-- 背景图 -->
+    <div
+      v-if="statusStore.themeBackgroundMode === 'image' && backgroundImageUrl"
+      class="background-container"
+    >
+      <div
+        class="background-image"
+        :style="{
+          backgroundImage: `url(${backgroundImageUrl})`,
+          transform: `scale(${statusStore.backgroundConfig.scale})`,
+          filter: `blur(${statusStore.backgroundConfig.blur}px)`,
+        }"
+      />
+      <div
+        class="background-mask"
+        :style="{
+          backgroundColor: `rgba(0, 0, 0, ${statusStore.backgroundConfig.maskOpacity / 100})`,
+        }"
+      />
+    </div>
     <!-- 主框架 -->
     <n-layout
       id="main"
@@ -79,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
+import { useMusicStore, useStatusStore, useSettingStore, useDataStore } from "@/stores";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { isElectron } from "@/utils/env";
 import { useMobile } from "@/composables/useMobile";
@@ -88,6 +108,7 @@ import init from "@/utils/init";
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const dataStore = useDataStore();
 
 const blobURLManager = useBlobURLManager();
 
@@ -99,9 +120,44 @@ const contentRef = ref<HTMLElement | null>(null);
 // 主内容高度
 const { height: contentHeight } = useElementSize(contentRef);
 
+// 背景图 URL
+const backgroundImageUrl = ref<string | null>(null);
+
+// 加载背景图
+const loadBackgroundImage = async () => {
+  // 先清理旧的 Blob URL
+  if (backgroundImageUrl.value) {
+    URL.revokeObjectURL(backgroundImageUrl.value);
+    backgroundImageUrl.value = null;
+  }
+  if (statusStore.themeBackgroundMode === "image") {
+    const blob = await dataStore.getBackgroundImage();
+    if (blob) {
+      backgroundImageUrl.value = URL.createObjectURL(blob);
+    }
+  }
+};
+
 watchEffect(() => {
   statusStore.mainContentHeight = contentHeight.value;
 });
+
+// 监听模式变化，加载或清除背景图
+watch(
+  () => statusStore.themeBackgroundMode,
+  async (mode) => {
+    if (mode === "image") {
+      await loadBackgroundImage();
+    } else {
+      // 释放 Blob URL
+      if (backgroundImageUrl.value) {
+        URL.revokeObjectURL(backgroundImageUrl.value);
+      }
+      backgroundImageUrl.value = null;
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   init();
@@ -122,7 +178,38 @@ onMounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
+
+.background-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  .background-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    transform-origin: center center;
+  }
+  .background-mask {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
 #main {
   flex: 1;
   height: 100%;

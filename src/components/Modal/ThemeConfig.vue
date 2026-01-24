@@ -10,6 +10,7 @@
           v-model:value="settingStore.themeGlobalColor"
           class="set"
           :round="false"
+          :disabled="isImageMode"
           @update:value="themeGlobalColorChange"
         />
       </n-card>
@@ -20,7 +21,7 @@
         </div>
         <n-switch
           v-model:value="settingStore.themeFollowCover"
-          :disabled="isEmpty(statusStore.songCoverTheme)"
+          :disabled="isEmpty(statusStore.songCoverTheme) || isImageMode"
           class="set"
           :round="false"
         />
@@ -28,7 +29,7 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">主题变体</n-text>
-          <n-text class="tip" :depth="3">调整颜色生成算法风格</n-text>
+          <n-text class="tip" :depth="3">调整颜色生成算法风格，请勿随意修改</n-text>
         </div>
         <n-select
           v-model:value="settingStore.themeVariant"
@@ -39,10 +40,41 @@
           @update:value="themeGlobalColorChange(true)"
         />
       </n-card>
+      <!-- 自定义背景图 -->
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">自定义背景图</n-text>
+          <n-text class="tip" :depth="3">实验性功能，请选择 10MB 以下图片</n-text>
+        </div>
+        <div class="bg-actions">
+          <n-button
+            v-if="isImageMode"
+            size="small"
+            type="error"
+            quaternary
+            @click="clearBackgroundImage"
+          >
+            取消
+          </n-button>
+          <n-button size="small" type="primary" secondary @click="selectBackgroundImage">
+            {{ isImageMode ? "更换" : "选择图片" }}
+          </n-button>
+        </div>
+        <input
+          ref="fileInputRef"
+          type="file"
+          accept="image/*"
+          style="display: none"
+          @change="handleFileSelect"
+        />
+      </n-card>
     </div>
-
-    <!-- 下方：颜色选择网格 -->
-    <div class="color-section" :class="{ disabled: settingStore.themeFollowCover }">
+    <!-- 颜色模式：选择主题色 -->
+    <div
+      v-if="!isImageMode"
+      class="color-section"
+      :class="{ disabled: settingStore.themeFollowCover }"
+    >
       <n-text class="section-title" :depth="2">选择主题色</n-text>
       <div class="color-grid">
         <div
@@ -94,28 +126,128 @@
         </div>
       </div>
     </div>
+    <!-- 图片模式：背景图配置 -->
+    <div v-else class="config-section">
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">放大倍数</n-text>
+          <n-text class="tip" :depth="3">调整背景图缩放比例</n-text>
+        </div>
+        <n-slider
+          v-model:value="statusStore.backgroundConfig.scale"
+          :min="1"
+          :max="2"
+          :step="0.05"
+          :format-tooltip="(v: number) => `${v.toFixed(2)}x`"
+          style="width: 120px"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">遮罩透明度</n-text>
+          <n-text class="tip" :depth="3">覆盖在背景图上的黑色遮罩</n-text>
+        </div>
+        <n-slider
+          v-model:value="statusStore.backgroundConfig.maskOpacity"
+          :min="0"
+          :max="95"
+          :step="5"
+          :format-tooltip="(v: number) => `${v}%`"
+          style="width: 120px"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">模糊度</n-text>
+          <n-text class="tip" :depth="3">背景图模糊程度</n-text>
+        </div>
+        <n-slider
+          v-model:value="statusStore.backgroundConfig.blur"
+          :min="0"
+          :max="20"
+          :step="1"
+          :format-tooltip="(v: number) => `${v}px`"
+          style="width: 120px"
+        />
+      </n-card>
+    </div>
+    <!-- 图片模式：选择主题色 -->
+    <div v-if="isImageMode" class="color-section">
+      <n-text class="section-title" :depth="2">选择主题色</n-text>
+      <div class="color-grid">
+        <!-- 自动提取的颜色 -->
+        <div
+          v-if="statusStore.backgroundConfig.themeColor"
+          class="color-item"
+          :class="{ active: !statusStore.backgroundConfig.useCustomColor }"
+          :style="{ '--color': statusStore.backgroundConfig.themeColor }"
+          title="自动提取"
+          @click="statusStore.backgroundConfig.useCustomColor = false"
+        >
+          <div class="color-circle">
+            <Transition name="fade">
+              <SvgIcon
+                v-if="!statusStore.backgroundConfig.useCustomColor"
+                name="Check"
+                :size="20"
+              />
+            </Transition>
+          </div>
+          <n-text class="color-name" :depth="2">自动</n-text>
+        </div>
+        <!-- 自定义颜色 -->
+        <div
+          class="color-item"
+          :class="{ active: statusStore.backgroundConfig.useCustomColor }"
+          :style="{ '--color': statusStore.backgroundConfig.customColor }"
+          title="自定义"
+        >
+          <div class="color-circle custom-trigger">
+            <SvgIcon v-if="statusStore.backgroundConfig.useCustomColor" name="Check" :size="16" />
+            <n-color-picker
+              v-model:value="statusStore.backgroundConfig.customColor"
+              :show-alpha="false"
+              :modes="['hex']"
+              placement="top"
+              class="color-picker-overlay"
+              @update:show="
+                (show: boolean) => show && (statusStore.backgroundConfig.useCustomColor = true)
+              "
+            />
+          </div>
+          <n-text class="color-name" :depth="2">自定义</n-text>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { useMusicStore, useSettingStore, useStatusStore, useDataStore } from "@/stores";
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";
-import { getCoverColor } from "@/utils/color";
+import { getCoverColor, getCoverColorData } from "@/utils/color";
 import type { ThemeColorType } from "@/types/color";
 
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
+const dataStore = useDataStore();
+
+// 文件输入引用
+const fileInputRef = ref<HTMLInputElement | null>(null);
+
+// 是否为图片模式
+const isImageMode = computed(() => statusStore.themeBackgroundMode === "image");
 
 // 主题颜色变体选项
 const variantOptions = [
-  { label: "Primary", value: "primary" },
-  { label: "Secondary", value: "secondary" },
-  { label: "Tertiary", value: "tertiary" },
-  { label: "Neutral", value: "neutral" },
-  { label: "Neutral Variant", value: "neutralVariant" },
-  { label: "Error", value: "error" },
+  { label: "主色", value: "primary" },
+  { label: "次色", value: "secondary" },
+  { label: "第三色", value: "tertiary" },
+  { label: "中性色", value: "neutral" },
+  { label: "中性变体", value: "neutralVariant" },
+  { label: "错误色", value: "error" },
 ];
 
 // 主题颜色数据
@@ -130,13 +262,89 @@ const selectColor = (key: ThemeColorType) => {
 const themeGlobalColorChange = (val: boolean) => {
   if (val) getCoverColor(musicStore.songCover);
 };
+
+// 选择背景图
+const selectBackgroundImage = () => {
+  fileInputRef.value?.click();
+};
+
+// 处理文件选择
+const handleFileSelect = async (event: Event) => {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+
+  // 检查文件大小（限制 10MB）
+  const maxSize = 10 * 1024 * 1024;
+  if (file.size > maxSize) {
+    window.$message.error("图片大小不能超过 10MB");
+    input.value = "";
+    return;
+  }
+
+  // 检查文件类型
+  if (!file.type.startsWith("image/")) {
+    window.$message.error("请选择图片文件");
+    input.value = "";
+    return;
+  }
+
+  try {
+    // 保存 Blob 到 IndexedDB
+    await dataStore.saveBackgroundImage(file);
+
+    // 提取图片主色
+    const imageUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.src = imageUrl;
+    await new Promise((resolve) => (image.onload = resolve));
+    const colorData = getCoverColorData(image);
+    URL.revokeObjectURL(imageUrl);
+    image.remove();
+
+    // 保存提取的主色
+    if (colorData?.main) {
+      const { r, g, b } = colorData.main;
+      const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+      statusStore.backgroundConfig.themeColor = hex;
+    }
+
+    // 切换到图片模式
+    statusStore.themeBackgroundMode = "image";
+
+    // 禁用与图片模式冲突的选项
+    settingStore.themeGlobalColor = false;
+    settingStore.themeFollowCover = false;
+
+    window.$message.success("背景图设置成功");
+  } catch (error) {
+    console.error("Error setting background image:", error);
+    window.$message.error("背景图设置失败");
+  }
+
+  // 清空 input 避免相同文件无法重复选择
+  input.value = "";
+};
+
+// 清除背景图
+const clearBackgroundImage = async () => {
+  try {
+    await dataStore.clearBackgroundImage();
+    statusStore.themeBackgroundMode = "color";
+    statusStore.backgroundConfig.themeColor = null;
+    window.$message.success("已恢复颜色模式");
+  } catch (error) {
+    console.error("Error clearing background image:", error);
+    window.$message.error("操作失败");
+  }
+};
 </script>
 
 <style lang="scss" scoped>
 .theme-config {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 12px;
   .config-section {
     display: flex;
     flex-direction: column;
@@ -147,18 +355,23 @@ const themeGlobalColorChange = (val: boolean) => {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 16px 20px;
+        padding: 8px 12px;
       }
       .label {
         display: flex;
         flex-direction: column;
         .name {
-          font-size: 15px;
+          font-size: 14px;
         }
         .tip {
           font-size: 12px;
           margin-top: 2px;
         }
+      }
+      .bg-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
       }
     }
   }
@@ -175,7 +388,7 @@ const themeGlobalColorChange = (val: boolean) => {
     }
     .color-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
       gap: 12px;
       .color-item {
         display: flex;

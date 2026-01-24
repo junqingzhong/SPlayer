@@ -87,7 +87,6 @@ export const setColorSchemes = (
       mode === "dark" ? { r: 16, g: 16, b: 20 } : { r: 246, g: 246, b: 246 };
     colorModeData["surface-container"] =
       mode === "dark" ? { r: 24, g: 24, b: 28 } : { r: 255, g: 255, b: 255 };
-    console.log(colorModeData);
   }
   // 遍历颜色并修改
   for (const key in colorModeData) {

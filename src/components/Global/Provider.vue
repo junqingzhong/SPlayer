@@ -59,6 +59,8 @@ let lastThemeCacheKey: string | null = null;
 
 // 获取明暗模式
 const theme = computed(() => {
+  // 图片模式强制深色
+  if (statusStore.themeBackgroundMode === "image") return darkTheme;
   return settingStore.themeMode === "auto"
     ? // 跟随系统
       osTheme.value === "dark"
@@ -73,19 +75,30 @@ const theme = computed(() => {
 // 获取当前主题色数据
 const getThemeMainColor = () => {
   const themeType = theme.value ? "dark" : "light";
+  // 背景图模式
+  if (statusStore.themeBackgroundMode === "image") {
+    const { themeColor, useCustomColor, customColor } = statusStore.backgroundConfig;
+    const color = useCustomColor ? customColor : themeColor;
+    // 强制使用 dark 模式生成
+    if (color) return setColorSchemes(color, "dark");
+  }
+  // 封面模式
   if (settingStore.themeFollowCover && statusStore.songCoverTheme) {
     const coverColor = statusStore.songCoverTheme;
     if (!coverColor) return {};
     return setColorSchemes(coverColor, themeType);
   } else if (settingStore.themeColorType !== "custom") {
+    // 预设模式
     return setColorSchemes(themeColor[settingStore.themeColorType].color, themeType);
   } else {
+    // 自定义模式
     return setColorSchemes(settingStore.themeCustomColor, themeType);
   }
 };
 
 // 更改全局主题
 const changeGlobalTheme = () => {
+  applyThemeBackgroundMode();
   try {
     // 获取配色方案
     const colorSchemes = getThemeMainColor();
@@ -261,6 +274,15 @@ const NaiveProviderContent = defineComponent({
   },
 });
 
+// 应用背景模式类名
+const applyThemeBackgroundMode = () => {
+  if (statusStore.themeBackgroundMode === "image") {
+    document.documentElement.classList.add("image");
+  } else {
+    document.documentElement.classList.remove("image");
+  }
+};
+
 // 监听设置更改
 watch(
   () => [
@@ -269,6 +291,10 @@ watch(
     settingStore.themeGlobalColor,
     settingStore.globalFont,
     statusStore.songCoverTheme?.main,
+    statusStore.themeBackgroundMode,
+    statusStore.backgroundConfig.themeColor,
+    statusStore.backgroundConfig.useCustomColor,
+    statusStore.backgroundConfig.customColor,
     theme.value,
   ],
   () => changeGlobalTheme(),

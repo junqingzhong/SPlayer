@@ -67,6 +67,13 @@ const userDB = localforage.createInstance({
   storeName: "user",
 });
 
+// backgroundDB
+const backgroundDB = localforage.createInstance({
+  name: "background-data",
+  description: "Background image data",
+  storeName: "background",
+});
+
 export const useDataStore = defineStore("data", {
   state: (): ListState => ({
     // 播放列表
@@ -480,6 +487,42 @@ export const useDataStore = defineStore("data", {
         this.downloadingSongs[index].transferred = "0MB";
         this.downloadingSongs[index].totalSize = "0MB";
         this.downloadingSongs = [...this.downloadingSongs];
+      }
+    },
+    /**
+     * 保存背景图
+     * @param blob 图片 Blob 数据
+     */
+    async saveBackgroundImage(blob: Blob): Promise<void> {
+      try {
+        await backgroundDB.setItem("image", blob);
+      } catch (error) {
+        console.error("Error saving background image:", error);
+        throw error;
+      }
+    },
+    /**
+     * 获取背景图
+     * @returns Blob 数据
+     */
+    async getBackgroundImage(): Promise<Blob | null> {
+      try {
+        const data = await backgroundDB.getItem<Blob>("image");
+        return data || null;
+      } catch (error) {
+        console.error("Error getting background image:", error);
+        return null;
+      }
+    },
+    /**
+     * 清除背景图
+     */
+    async clearBackgroundImage(): Promise<void> {
+      try {
+        await backgroundDB.removeItem("image");
+      } catch (error) {
+        console.error("Error clearing background image:", error);
+        throw error;
       }
     },
   },

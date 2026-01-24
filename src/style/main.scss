@@ -11,6 +11,23 @@
   }
 }
 
+:root {
+  // 图片模式
+  &.image {
+    body {
+      --background-hex: #ffffff20 !important;
+      --surface-container-hex: #ffffff20 !important;
+      background-color: transparent !important;
+    }
+    .n-layout-sider {
+      background-color: #ffffff20 !important;
+    }
+    .n-layout {
+      background-color: transparent !important;
+    }
+  }
+}
+
 body {
   width: 100vw;
   height: 100vh;

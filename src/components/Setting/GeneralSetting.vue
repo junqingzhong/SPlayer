@@ -6,11 +6,16 @@
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">主题模式</n-text>
-          <n-text class="tip" :depth="3">调整全局主题明暗模式</n-text>
+          <n-text class="tip" :depth="3">{{
+            statusStore.themeBackgroundMode === "image"
+              ? "请关闭自定义背景图后调节"
+              : "调整全局主题明暗模式"
+          }}</n-text>
         </div>
         <n-select
           v-model:value="settingStore.themeMode"
           class="set"
+          :disabled="statusStore.themeBackgroundMode === 'image'"
           :options="[
             {
               label: '跟随系统',
@@ -250,7 +255,7 @@
 </template>
 
 <script setup lang="ts">
-import { useDataStore, useMusicStore, useSettingStore } from "@/stores";
+import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import {
   openSidebarHideManager,
@@ -265,6 +270,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
+const statusStore = useStatusStore();
 const player = usePlayerController();
 
 // 是否开启在线服务

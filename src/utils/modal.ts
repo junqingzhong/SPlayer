@@ -541,6 +541,7 @@ export const openThemeConfig = async () => {
     draggable: true,
     style: { width: "500px" },
     title: "主题配置",
+    size: "small",
     content: () => {
       return h(ThemeConfig);
     },

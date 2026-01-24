@@ -107,6 +107,26 @@ interface StatusState {
   };
   /** 开发者模式（假） */
   developerMode: boolean;
+  /**
+   * 主题背景模式
+   * color: 颜色模式 | image: 图片模式
+   */
+  themeBackgroundMode: "color" | "image";
+  /** 背景图配置 */
+  backgroundConfig: {
+    /** 背景放大倍数 (1-2) */
+    scale: number;
+    /** 遮罩透明度 (0-95) */
+    maskOpacity: number;
+    /** 模糊度 (0-20) */
+    blur: number;
+    /** 提取的主色 (hex) */
+    themeColor: string | null;
+    /** 是否使用自定义颜色 */
+    useCustomColor: boolean;
+    /** 用户自定义颜色 (hex) */
+    customColor: string;
+  };
 }
 
 export const useStatusStore = defineStore("status", {
@@ -155,6 +175,22 @@ export const useStatusStore = defineStore("status", {
       waitSongEnd: true,
     },
     developerMode: false,
+    themeBackgroundMode: "color",
+    /** 背景图配置 */
+    backgroundConfig: {
+      /** 背景放大倍数 (1-2) */
+      scale: 1,
+      /** 遮罩透明度 (0-95) */
+      maskOpacity: 0,
+      /** 模糊度 (0-20) */
+      blur: 0,
+      /** 提取的主色 (hex) */
+      themeColor: null,
+      /** 是否使用自定义颜色 */
+      useCustomColor: false,
+      /** 用户自定义颜色 (hex) */
+      customColor: "#fe7971",
+    },
   }),
   getters: {
     // 播放音量图标
@@ -343,6 +379,8 @@ export const useStatusStore = defineStore("status", {
       "eqBands",
       "eqPreset",
       "developerMode",
+      "themeBackgroundMode",
+      "backgroundConfig",
     ],
   },
 });
