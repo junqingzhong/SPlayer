@@ -113,12 +113,12 @@ const canDownload = computed(() => {
 const qualityOptions = computed(() => {
   const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
   let allData = getSongLevelsData(levels);
-  
+
   if (settingStore.disableAiAudio) {
-      allData = allData.filter((item) => {
-           if (item.level === "dolby") return true; 
-           return !AI_AUDIO_LEVELS.includes(item.level);
-      });
+    allData = allData.filter((item) => {
+      if (item.level === "dolby") return true;
+      return !AI_AUDIO_LEVELS.includes(item.level);
+    });
   }
 
   return allData.map((item) => ({
