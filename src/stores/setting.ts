@@ -69,12 +69,20 @@ export interface SettingState {
   showTran: boolean;
   /** 显示歌词音译 */
   showRoma: boolean;
+  /** 调换翻译与音译位置 */
+  swapTranRoma: boolean;
   /** 显示逐字音译 */
   showWordsRoma: boolean;
   /** 歌词位置 */
   lyricsPosition: "flex-start" | "center" | "flex-end";
   /** 歌词滚动位置偏移量 */
   lyricsScrollOffset: number;
+  /** 歌词水平位置偏移量 */
+  lyricHorizontalOffset: number;
+  /** 歌词默认靠右（对唱互换） */
+  lyricAlignRight: boolean;
+  /** 隐藏歌词括号内容和别名 */
+  hideLyricBrackets: boolean;
   /** 下载路径 */
   downloadPath: string;
   /** 是否启用缓存 */
@@ -276,6 +284,8 @@ export interface SettingState {
   enableSearchKeyword: boolean;
   /** 失焦后自动清空搜索框 */
   clearSearchOnBlur: boolean;
+  /** 显示主页问好 */
+  showHomeGreeting: boolean;
   /** 首页栏目顺序和显示配置 */
   homePageSections: Array<{
     key: "playlist" | "radar" | "artist" | "video" | "radio" | "album";
@@ -408,10 +418,14 @@ export const useSettingStore = defineStore("setting", {
     showYrc: true,
     showTran: true,
     showRoma: true,
+    swapTranRoma: false,
     showWordsRoma: true,
     lyricsPosition: "flex-start",
     lyricsBlur: false,
     lyricsScrollOffset: 0.25,
+    lyricHorizontalOffset: 10,
+    lyricAlignRight: false,
+    hideLyricBrackets: false,
     enableExcludeLyrics: true,
     enableExcludeTTML: false,
     enableExcludeLocalLyrics: false,
@@ -463,6 +477,7 @@ export const useSettingStore = defineStore("setting", {
     },
     enableSearchKeyword: true,
     clearSearchOnBlur: false,
+    showHomeGreeting: true,
     homePageSections: [
       { key: "playlist", name: "专属歌单", visible: true, order: 0 },
       { key: "radar", name: "雷达歌单", visible: true, order: 1 },

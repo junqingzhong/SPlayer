@@ -118,6 +118,13 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">隐藏括号与别名</n-text>
+          <n-text class="tip" :depth="3">隐藏歌曲名与专辑名中的括号内容和别名</n-text>
+        </div>
+        <n-switch v-model:value="settingStore.hideLyricBrackets" class="set" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">侧边栏显示封面</n-text>
           <n-text class="tip" :depth="3">是否显示歌单的封面，如果有</n-text>
         </div>

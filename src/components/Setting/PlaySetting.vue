@@ -238,10 +238,12 @@
           :min="30"
           :max="70"
           :step="1"
+          :marks="{ 50: '默认' }"
           :format-tooltip="(value: number) => `${value}%`"
           class="set"
         />
       </n-card>
+
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">播放器背景样式</n-text>

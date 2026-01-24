@@ -6,6 +6,7 @@
       '--lrc-tran-size': settingStore.lyricTranFontSize + 'px',
       '--lrc-roma-size': settingStore.lyricRomaFontSize + 'px',
       '--lrc-bold': settingStore.lyricFontWeight,
+      '--lrc-left-padding': `${settingStore.lyricHorizontalOffset}px`,
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
       cursor: statusStore.playerMetaShow ? 'auto' : 'none',
       ...lyricLangFontStyle(settingStore),
@@ -14,7 +15,11 @@
       'lyric',
       settingStore.playerType,
       settingStore.lyricsPosition,
-      { pure: statusStore.pureLyricMode },
+      settingStore.lyricsPosition,
+      {
+        pure: statusStore.pureLyricMode,
+        'align-right': settingStore.lyricAlignRight,
+      },
     ]"
     @mouseleave="lrcAllLeave"
   >
@@ -83,18 +88,33 @@
                   {{ item.data.words?.[0]?.word }}
                 </span>
               </template>
-              <!-- 翻译 -->
-              <span
-                v-if="item.data.translatedLyric && settingStore.showTran"
-                class="tran"
-                lang="en"
-              >
-                {{ item.data.translatedLyric }}
-              </span>
-              <!-- 音译 -->
-              <span v-if="item.data.romanLyric && settingStore.showRoma" class="roma" lang="en">
-                {{ item.data.romanLyric }}
-              </span>
+              <!-- 翻译和音译 -->
+              <template v-if="settingStore.swapTranRoma">
+                <!-- 音译在前 -->
+                <span v-if="item.data.romanLyric && settingStore.showRoma" class="roma" lang="en">
+                  {{ item.data.romanLyric }}
+                </span>
+                <span
+                  v-if="item.data.translatedLyric && settingStore.showTran"
+                  class="tran"
+                  lang="en"
+                >
+                  {{ item.data.translatedLyric }}
+                </span>
+              </template>
+              <template v-else>
+                <!-- 翻译在前（默认） -->
+                <span
+                  v-if="item.data.translatedLyric && settingStore.showTran"
+                  class="tran"
+                  lang="en"
+                >
+                  {{ item.data.translatedLyric }}
+                </span>
+                <span v-if="item.data.romanLyric && settingStore.showRoma" class="roma" lang="en">
+                  {{ item.data.romanLyric }}
+                </span>
+              </template>
             </div>
           </template>
           <!-- 底部占位 -->
@@ -566,7 +586,7 @@ onBeforeUnmount(() => {
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    padding-left: 10px;
+    padding-left: var(--lrc-left-padding, 10px);
     padding-right: 80px;
     box-sizing: border-box;
     /* 隐藏滚动条 */
@@ -788,7 +808,8 @@ onBeforeUnmount(() => {
       }
     }
   }
-  &.flex-end {
+  &.flex-end,
+  &.align-right {
     span {
       text-align: right;
     }
@@ -799,6 +820,15 @@ onBeforeUnmount(() => {
       transform-origin: right;
       .content {
         text-align: right;
+      }
+      &.is-duet {
+        transform-origin: left;
+        .content,
+        .tran,
+        .roma {
+          text-align: left;
+          justify-content: flex-start;
+        }
       }
     }
     .countdown-line {
