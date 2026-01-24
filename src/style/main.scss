@@ -14,16 +14,37 @@
 :root {
   // 图片模式
   &.image {
+    --background-hex: rgba(0, 0, 0, 0.2) !important;
+    --surface-container-hex: rgba(0, 0, 0, 0.1) !important;
     body {
-      --background-hex: #ffffff20 !important;
-      --surface-container-hex: #ffffff20 !important;
+      --background-hex: rgba(var(--background), 0.1) !important;
+      --surface-container-hex: rgba(var(--surface-container), 0.1) !important;
+      --n-toggle-bar-color: rgba(var(--background), 0.2) !important;
+      --n-toggle-bar-color-hover: rgba(var(--background), 0.4) !important;
       background-color: transparent !important;
     }
     .n-layout-sider {
-      background-color: #ffffff20 !important;
+      background-color: transparent;
     }
     .n-layout {
       background-color: transparent !important;
+    }
+    .main-player {
+      background-color: var(--surface-container-hex);
+      backdrop-filter: blur(10px);
+    }
+    // 内置组件
+    .n-card,
+    .n-tag,
+    .n-popover-shared,
+    .n-float-button {
+      background-color: var(--background-hex) !important;
+      border-color: transparent !important;
+      backdrop-filter: blur(10px) !important;
+    }
+    .n-layout-toggle-bar__top,
+    .n-layout-toggle-bar__bottom {
+      background-color: rgba(var(--primary), 0.4) !important;
     }
   }
 }

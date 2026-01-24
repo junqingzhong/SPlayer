@@ -550,3 +550,19 @@ export const openThemeConfig = async () => {
     },
   });
 };
+
+/** 打开界面缩放调整弹窗 */
+export const openScalingModal = async () => {
+  const { default: ScalingModal } = await import("@/components/Modal/ScalingModal.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    showMask: false,
+    style: { width: "400px" },
+    title: "界面缩放",
+    content: () => {
+      return h(ScalingModal);
+    },
+  });
+};

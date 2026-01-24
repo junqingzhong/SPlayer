@@ -116,7 +116,7 @@ interface StatusState {
   backgroundConfig: {
     /** 背景放大倍数 (1-2) */
     scale: number;
-    /** 遮罩透明度 (0-95) */
+    /** 遮罩透明度 (30-95) */
     maskOpacity: number;
     /** 模糊度 (0-20) */
     blur: number;
@@ -180,8 +180,8 @@ export const useStatusStore = defineStore("status", {
     backgroundConfig: {
       /** 背景放大倍数 (1-2) */
       scale: 1,
-      /** 遮罩透明度 (0-95) */
-      maskOpacity: 0,
+      /** 遮罩透明度 (30-95) */
+      maskOpacity: 30,
       /** 模糊度 (0-20) */
       blur: 0,
       /** 提取的主色 (hex) */

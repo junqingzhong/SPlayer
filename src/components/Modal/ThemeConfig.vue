@@ -149,7 +149,7 @@
         </div>
         <n-slider
           v-model:value="statusStore.backgroundConfig.maskOpacity"
-          :min="0"
+          :min="30"
           :max="95"
           :step="5"
           :format-tooltip="(v: number) => `${v}%`"
@@ -273,7 +273,6 @@ const handleFileSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   if (!file) return;
-
   // 检查文件大小（限制 10MB）
   const maxSize = 10 * 1024 * 1024;
   if (file.size > maxSize) {
@@ -281,18 +280,14 @@ const handleFileSelect = async (event: Event) => {
     input.value = "";
     return;
   }
-
   // 检查文件类型
   if (!file.type.startsWith("image/")) {
     window.$message.error("请选择图片文件");
     input.value = "";
     return;
   }
-
   try {
-    // 保存 Blob 到 IndexedDB
     await dataStore.saveBackgroundImage(file);
-
     // 提取图片主色
     const imageUrl = URL.createObjectURL(file);
     const image = new Image();
@@ -301,28 +296,21 @@ const handleFileSelect = async (event: Event) => {
     const colorData = getCoverColorData(image);
     URL.revokeObjectURL(imageUrl);
     image.remove();
-
     // 保存提取的主色
     if (colorData?.main) {
       const { r, g, b } = colorData.main;
       const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
       statusStore.backgroundConfig.themeColor = hex;
     }
-
     // 切换到图片模式
     statusStore.themeBackgroundMode = "image";
-
-    // 禁用与图片模式冲突的选项
-    settingStore.themeGlobalColor = false;
     settingStore.themeFollowCover = false;
-
+    settingStore.themeGlobalColor = true;
     window.$message.success("背景图设置成功");
   } catch (error) {
     console.error("Error setting background image:", error);
     window.$message.error("背景图设置失败");
   }
-
-  // 清空 input 避免相同文件无法重复选择
   input.value = "";
 };
 

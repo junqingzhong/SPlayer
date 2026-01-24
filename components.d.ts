@@ -148,6 +148,7 @@ declare module 'vue' {
     Provider: typeof import('./src/components/Global/Provider.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ScalingModal: typeof import('./src/components/Modal/ScalingModal.vue')['default']
     SearchDefault: typeof import('./src/components/Search/SearchDefault.vue')['default']
     SearchInp: typeof import('./src/components/Search/SearchInp.vue')['default']
     SearchInpMenu: typeof import('./src/components/Menu/SearchInpMenu.vue')['default']
