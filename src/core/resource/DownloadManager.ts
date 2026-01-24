@@ -378,15 +378,7 @@ class DownloadManager {
           if (downloadMakeYrc) {
              console.log(`[Download] Fetching verbatim lyrics for ${song.name} (${song.id})...`);
              try {
-               // 1. 尝试获取 TTML (优先)
                const ttmlRes = await songLyricTTML(song.id);
-               // songLyricTTML 返回的是 string (xml) 还是对象? api/song.ts 中如果是 electron 环境请求 /lyric/ttml
-               // 假设返回结构需要确认，通常 request 返回 data. 
-               // 查看 api/song.ts，songLyricTTML return request(...) which returns Promise<any>
-               // 如果是 direct string (web mode) it returns string. 
-               // 稳妥起见，打印 log，并假设它可能在 data 字段或者直接就是内容
-               // 实际上 SPlayer 项目中 request 包装器通常返回 { code, data, ... }
-               // 这里我们简单以此判断
                if (typeof ttmlRes === 'string') {
                  ttmlLyric = ttmlRes;
                } else if (ttmlRes?.data?.content) {
@@ -397,7 +389,7 @@ class DownloadManager {
                }
                console.log(`[Download] TTML fetched: ${!!ttmlLyric}, len: ${ttmlLyric?.length}`);
 
-               // 2. 如果没有 TTML，检查 YRC
+               // 如果没有 TTML，检查 YRC
                if (!ttmlLyric) {
                  yrcLyric = (lyricResult as any)?.yrc?.lyric || "";
                  console.log(`[Download] YRC fetched from lrcResult: ${!!yrcLyric}, len: ${yrcLyric?.length}`);
