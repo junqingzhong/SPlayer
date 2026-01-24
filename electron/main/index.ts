@@ -1,5 +1,5 @@
 import { electronApp } from "@electron-toolkit/utils";
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, session } from "electron";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import initAppServer from "../server";
@@ -70,6 +70,23 @@ class MainProcess {
     // 某些 API 只有在此事件发生后才能使用
     app.whenReady().then(async () => {
       processLog.info("🚀 Application Process Startup");
+
+      // 配置 COOP/COEP/CORP 头，FFmpeg 需要
+      session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        const responseHeaders = { ...details.responseHeaders };
+
+        // 同样可以解决 CORS 限制，但为了避免安全问题，等真有需要的时候再开
+        // responseHeaders["Access-Control-Allow-Origin"] = ["*"];
+        // responseHeaders["Access-Control-Allow-Headers"] = ["*"];
+
+        // COOP/COEP/CORP 配置
+        responseHeaders["Cross-Origin-Opener-Policy"] = ["same-origin"];
+        responseHeaders["Cross-Origin-Embedder-Policy"] = ["require-corp"];
+        responseHeaders["Cross-Origin-Resource-Policy"] = ["cross-origin"];
+
+        callback({ responseHeaders });
+      });
+
       // 设置应用程序名称
       electronApp.setAppUserModelId("com.imsyy.splayer");
       // 启动主服务进程
