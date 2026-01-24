@@ -365,7 +365,8 @@ class DownloadManager {
       }
 
       if (isElectron) {
-        const { downloadMeta, downloadCover, downloadLyric, saveMetaFile, downloadMakeYrc } = settingStore;
+        const { downloadMeta, downloadCover, downloadLyric, saveMetaFile, downloadMakeYrc } =
+          settingStore;
         let lyric = "";
         let yrcLyric = "";
         let ttmlLyric = "";
@@ -373,30 +374,27 @@ class DownloadManager {
         if (downloadLyric) {
           const lyricResult = (await songLyric(song.id)) as LyricResult;
           lyric = this.processLyric(lyricResult);
-          
+
           // 获取逐字歌词内容用于另存
           if (downloadMakeYrc) {
-             console.log(`[Download] Fetching verbatim lyrics for ${song.name} (${song.id})...`);
-             try {
-               const ttmlRes = await songLyricTTML(song.id);
-               if (typeof ttmlRes === 'string') {
-                 ttmlLyric = ttmlRes;
-               } else if (ttmlRes?.data?.content) {
-                 ttmlLyric = ttmlRes.data.content; 
-               } else if (ttmlRes?.data) { 
-                 // 视具体接口返回而定，暂作一种尝试
-                 ttmlLyric = ttmlRes.data; 
-               }
-               console.log(`[Download] TTML fetched: ${!!ttmlLyric}, len: ${ttmlLyric?.length}`);
+            console.log(`[Download] Fetching verbatim lyrics for ${song.name} (${song.id})...`);
+            try {
+              const ttmlRes = await songLyricTTML(song.id);
+              if (typeof ttmlRes === "string") {
+                ttmlLyric = ttmlRes;
+              }
+              console.log(`[Download] TTML fetched: ${!!ttmlLyric}, len: ${ttmlLyric?.length}`);
 
-               // 如果没有 TTML，检查 YRC
-               if (!ttmlLyric) {
-                 yrcLyric = (lyricResult as any)?.yrc?.lyric || "";
-                 console.log(`[Download] YRC fetched from lrcResult: ${!!yrcLyric}, len: ${yrcLyric?.length}`);
-               }
-             } catch (e) {
-               console.error("[Download] Error fetching verbatim lyrics:", e);
-             }
+              // 如果没有 TTML，检查 YRC
+              if (!ttmlLyric) {
+                yrcLyric = lyricResult?.yrc?.lyric || "";
+                console.log(
+                  `[Download] YRC fetched from lrcResult: ${!!yrcLyric}, len: ${yrcLyric?.length}`,
+                );
+              }
+            } catch (e) {
+              console.error("[Download] Error fetching verbatim lyrics:", e);
+            }
           }
         }
 
@@ -414,40 +412,40 @@ class DownloadManager {
         };
 
         const result = await window.electron.ipcRenderer.invoke("download-file", url, config);
-        
-        if (result.status !== "cancelled" && result.status !== "error" && downloadMakeYrc) {
-           // 优先使用 TTML，其次 YRC
-           let content = ttmlLyric || yrcLyric;
-           if (content) {
-             try {
-               const ext = ttmlLyric ? "ttml" : "yrc";
-               const fileName = `${safeFileName}.${ext}`;
-               const encoding = settingStore.downloadLyricEncoding || "utf-8";
 
-               // 如果是 TTML 且转换为非 UTF-8 编码，需要修改 XML 头部的 encoding 声明
-               if (ext === "ttml" && encoding !== "utf-8") {
-                 content = content.replace(/encoding=["']utf-8["']/i, `encoding="${encoding}"`);
-               }
-               
-               console.log(`[Download] Saving extra lyric file: ${fileName}`);
-               // 调用保存文件内容接口
-               const saveRes = await window.electron.ipcRenderer.invoke("save-file-content", {
-                 path: targetPath,
-                 fileName,
-                 content,
-                 encoding,
-               });
-               if (saveRes.success) {
-                 console.log(`[Download] Saved verbatim lyric file successfully: ${fileName}`);
-               } else {
-                 console.error(`[Download] Failed to save verbatim lyric file: ${saveRes.message}`);
-               }
-             } catch (e) {
-               console.error("[Download] Failed to save verbatim lyric file exception", e);
-             }
-           } else {
-             console.log("[Download] No verbatim lyrics found to save.");
-           }
+        if (result.status !== "cancelled" && result.status !== "error" && downloadMakeYrc) {
+          // 优先使用 TTML，其次 YRC
+          let content = ttmlLyric || yrcLyric;
+          if (content) {
+            try {
+              const ext = ttmlLyric ? "ttml" : "yrc";
+              const fileName = `${safeFileName}.${ext}`;
+              const encoding = settingStore.downloadLyricEncoding || "utf-8";
+
+              // 如果是 TTML 且转换为非 UTF-8 编码，需要修改 XML 头部的 encoding 声明
+              if (ext === "ttml" && encoding !== "utf-8") {
+                content = content.replace(/encoding=["']utf-8["']/i, `encoding="${encoding}"`);
+              }
+
+              console.log(`[Download] Saving extra lyric file: ${fileName}`);
+              // 调用保存文件内容接口
+              const saveRes = await window.electron.ipcRenderer.invoke("save-file-content", {
+                path: targetPath,
+                fileName,
+                content,
+                encoding,
+              });
+              if (saveRes.success) {
+                console.log(`[Download] Saved verbatim lyric file successfully: ${fileName}`);
+              } else {
+                console.error(`[Download] Failed to save verbatim lyric file: ${saveRes.message}`);
+              }
+            } catch (e) {
+              console.error("[Download] Failed to save verbatim lyric file exception", e);
+            }
+          } else {
+            console.log("[Download] No verbatim lyrics found to save.");
+          }
         }
 
         if (result.status === "skipped") {
