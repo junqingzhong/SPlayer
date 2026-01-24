@@ -196,10 +196,16 @@ class SongManager {
         const unlockUrl = r.value?.result?.url;
         // 解锁成功后，触发下载
         this.triggerCacheDownload(songId, unlockUrl);
+        // 推断音质
+        let quality = QualityType.HQ;
+        if (unlockUrl && (unlockUrl.includes(".flac") || unlockUrl.includes(".wav"))) {
+            quality = QualityType.SQ;
+        }
         return {
           id: songId,
           url: unlockUrl,
           isUnlocked: true,
+          quality,
         };
       }
     }

@@ -63,7 +63,7 @@
             @click="handlePopselectClick"
           >
             {{
-              statusStore.playUblock || !statusStore.songQuality
+              !statusStore.songQuality
                 ? "未知音质"
                 : statusStore.songQuality
             }}

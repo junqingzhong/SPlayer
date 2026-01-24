@@ -99,6 +99,12 @@ export interface SettingState {
   usePlaybackForDownload: boolean;
   /** 保存元信息文件 */
   saveMetaFile: boolean;
+  /** 使用解锁接口下载 */
+  useUnlockForDownload: boolean;
+  /** 内嵌暂逐字歌词 (beta) */
+  downloadMakeYrc: boolean;
+  /** 下载歌词文件编码 */
+  downloadLyricEncoding: "utf-8" | "gbk" | "utf-16" | "iso-8859-1";
   /** 默认下载音质（弹窗默认选项） */
   downloadSongLevel: SongLevelType;
   /** 代理协议 */
@@ -424,6 +430,9 @@ export const useSettingStore = defineStore("setting", {
     downloadLyricTranslation: true,
     downloadLyricRomaji: false,
     usePlaybackForDownload: false,
+    useUnlockForDownload: false,
+    downloadMakeYrc: false,
+    downloadLyricEncoding: "utf-8",
     saveMetaFile: false,
     downloadSongLevel: "h",
     proxyProtocol: "off",

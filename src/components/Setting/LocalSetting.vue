@@ -321,6 +321,53 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">
+            使用解锁接口下载
+            <n-tag type="warning" size="small" round>Beta</n-tag>
+          </n-text>
+          <n-text class="tip" :depth="3">利用配置的解锁服务获取下载链接（优先于默认方式）</n-text>
+        </div>
+        <n-switch
+          :value="settingStore.useUnlockForDownload"
+          :round="false"
+          class="set"
+          @update:value="handleUnlockDownloadChange"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">
+            下载时另存逐字歌词文件
+            <n-tag type="warning" size="small" round>Beta</n-tag>
+          </n-text>
+          <n-text class="tip" :depth="3">在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌LRC）</n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.downloadMakeYrc"
+          :disabled="!settingStore.downloadMeta || !settingStore.downloadLyric"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">下载的歌词文件编码格式</n-text>
+          <n-text class="tip" :depth="3">部分车载或老旧播放器可能仅支持 GBK 编码</n-text>
+        </div>
+        <n-select
+          :value="settingStore.downloadLyricEncoding"
+          :options="[
+            { label: 'UTF-8', value: 'utf-8' },
+            { label: 'GBK', value: 'gbk' },
+            { label: 'UTF-16', value: 'utf-16' },
+            { label: 'ISO-8859-1', value: 'iso-8859-1' },
+          ]"
+          class="set"
+          @update:value="handleLyricEncodingChange"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">保留元信息文件</n-text>
           <n-text class="tip" :depth="3">是否在下载目录中保留元信息文件</n-text>
         </div>
@@ -473,6 +520,37 @@ const handlePlaybackDownloadChange = (value: boolean) => {
   } else {
     settingStore.usePlaybackForDownload = false;
   }
+};
+
+// 解锁接口下载开关
+const handleUnlockDownloadChange = (value: boolean) => {
+  if (value) {
+    window.$dialog.warning({
+      title: "开启提示",
+      content: "开启此功能可能导致音质下降和与原曲不一致等情况，确认要打开吗？",
+      positiveText: "确认打开",
+      negativeText: "取消",
+      onPositiveClick: () => {
+        settingStore.useUnlockForDownload = true;
+      },
+    });
+  } else {
+    settingStore.useUnlockForDownload = false;
+  }
+};
+
+// 歌词编码更改
+const handleLyricEncodingChange = (value: "utf-8" | "gbk" | "utf-16" | "iso-8859-1") => {
+  if (value === settingStore.downloadLyricEncoding) return;
+  window.$dialog.warning({
+    title: "更改编码提示",
+    content: "请确保你的编码为相应编码再开启，改变编码可能导致文件播放乱码。确认要更改吗？",
+    positiveText: "确认更改",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      settingStore.downloadLyricEncoding = value;
+    },
+  });
 };
 
 onMounted(async () => {

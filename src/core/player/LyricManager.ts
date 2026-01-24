@@ -517,9 +517,15 @@ class LyricManager {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
       const settingStore = useSettingStore();
-      const { lyric, format }: { lyric?: string; format?: "lrc" | "ttml" } =
+      const { lyric, format }: { lyric?: string; format?: "lrc" | "ttml" | "yrc" } =
         await window.electron.ipcRenderer.invoke("get-music-lyric", path);
       if (!lyric) return { lrcData: [], yrcData: [] };
+      // YRC 直接解析
+      if (format === "yrc") {
+        const lines = parseYrc(lyric) || [];
+        statusStore.usingTTMLLyric = false;
+        return await this.applyChineseVariant({ lrcData: [], yrcData: lines });
+      }
       // TTML 直接返回
       if (format === "ttml") {
         const sorted = this.cleanTTMLTranslations(lyric);
