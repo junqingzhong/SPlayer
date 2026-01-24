@@ -196,10 +196,16 @@ class SongManager {
         const unlockUrl = r.value?.result?.url;
         // 解锁成功后，触发下载
         this.triggerCacheDownload(songId, unlockUrl);
+        // 推断音质
+        let quality = QualityType.HQ;
+        if (unlockUrl && (unlockUrl.includes(".flac") || unlockUrl.includes(".wav"))) {
+            quality = QualityType.SQ;
+        }
         return {
           id: songId,
           url: unlockUrl,
           isUnlocked: true,
+          quality,
         };
       }
     }
@@ -430,6 +436,30 @@ class SongManager {
     } catch (error) {
       window.$message.error("移至垃圾桶失败，请重试");
       console.error("❌ 私人 FM 垃圾桶失败", error);
+    }
+  }
+
+  /**
+   * 刷新私人 FM
+   */
+  public async refreshPersonalFM() {
+    const musicStore = useMusicStore();
+    if (!isLogin()) {
+      window.$message.error("请先登录");
+      return;
+    }
+    try {
+      const res = await personalFm();
+      const newList = formatSongsList(res.data);
+      if (!newList || newList.length === 0) {
+        throw new Error("加载私人漫游列表失败");
+      }
+      musicStore.personalFM.list = newList;
+      musicStore.personalFM.playIndex = 0;
+      window.$message.success("刷新成功");
+    } catch (error) {
+      console.error("❌ 刷新私人 FM 失败", error);
+      window.$message.error("刷新失败，请重试");
     }
   }
 }

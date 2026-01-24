@@ -3,7 +3,8 @@ import { useDataStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
-import { songDownloadUrl, songLyric, songUrl } from "@/api/song";
+import { songDownloadUrl, songLyric, songLyricTTML, songUrl, unlockSongUrl } from "@/api/song";
+
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 
@@ -16,6 +17,8 @@ interface LyricResult {
   lrc?: { lyric: string };
   tlyric?: { lyric: string };
   romalrc?: { lyric: string };
+  yrc?: { lyric: string };
+  ttml?: { lyric: string };
 }
 
 class DownloadManager {
@@ -238,6 +241,7 @@ class DownloadManager {
     mode?: "standard" | "playback";
   }): Promise<{ success: boolean; skipped?: boolean; message?: string; status?: string }> {
     try {
+      const dataStore = useDataStore();
       const settingStore = useSettingStore();
       let url = "";
       let type = "mp3";
@@ -257,6 +261,60 @@ class DownloadManager {
           }
         } catch (e) {
           console.error("Error fetching playback url for download:", e);
+        }
+      }
+
+      // 尝试使用解锁接口获取下载链接
+      // 检查 VIP 权限
+      const isVipUser = dataStore.userData?.vipType > 0;
+      const isRestricted = song.free === 1 || song.free === 4 || song.free === 8;
+      const canUseUnlock = !isRestricted || isVipUser;
+
+      if (!url && settingStore.useUnlockForDownload && canUseUnlock) {
+        try {
+          const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
+          const artist = (Array.isArray(song.artists) ? song.artists[0]?.name : song.artists) || "";
+          const keyWord = `${song.name}-${artist}`;
+
+          if (servers.length > 0) {
+            // 并发请求所有启用的解锁服务
+            const results = await Promise.allSettled(
+              servers.map((server) =>
+                unlockSongUrl(song.id, keyWord, server).then((result) => ({
+                  server,
+                  result,
+                  success: result.code === 200 && !!result.url,
+                })),
+              ),
+            );
+
+            // 查找第一个成功的结果
+            for (const r of results) {
+              if (r.status === "fulfilled" && r.value.success) {
+                const unlockUrl = r.value?.result?.url;
+                if (unlockUrl) {
+                  url = unlockUrl;
+                  // 尝试推断类型
+                  const extensionMatch = url.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+                  const extension = extensionMatch ? extensionMatch[1].toLowerCase() : null;
+                  switch (extension) {
+                    case "flac":
+                    case "ogg":
+                    case "wav":
+                    case "m4a":
+                      type = extension;
+                      break;
+                    default:
+                      type = "mp3";
+                  }
+                  console.log(`🔓 [${song.id}] Unlock download URL found:`, url);
+                  break;
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error fetching unlock url for download:", e);
         }
       }
 
@@ -313,11 +371,37 @@ class DownloadManager {
       }
 
       if (isElectron) {
-        const { downloadMeta, downloadCover, downloadLyric, saveMetaFile } = settingStore;
+        const { downloadMeta, downloadCover, downloadLyric, saveMetaFile, downloadMakeYrc } =
+          settingStore;
         let lyric = "";
+        let yrcLyric = "";
+        let ttmlLyric = "";
+
         if (downloadLyric) {
           const lyricResult = (await songLyric(song.id)) as LyricResult;
           lyric = this.processLyric(lyricResult);
+
+          // 获取逐字歌词内容用于另存
+          if (downloadMakeYrc) {
+            console.log(`[Download] Fetching verbatim lyrics for ${song.name} (${song.id})...`);
+            try {
+              const ttmlRes = await songLyricTTML(song.id);
+              if (typeof ttmlRes === "string") {
+                ttmlLyric = ttmlRes;
+              }
+              console.log(`[Download] TTML fetched: ${!!ttmlLyric}, len: ${ttmlLyric?.length}`);
+
+              // 如果没有 TTML，检查 YRC
+              if (!ttmlLyric) {
+                yrcLyric = lyricResult?.yrc?.lyric || "";
+                console.log(
+                  `[Download] YRC fetched from lrcResult: ${!!yrcLyric}, len: ${yrcLyric?.length}`,
+                );
+              }
+            } catch (e) {
+              console.error("[Download] Error fetching verbatim lyrics:", e);
+            }
+          }
         }
 
         const config = {
@@ -334,6 +418,42 @@ class DownloadManager {
         };
 
         const result = await window.electron.ipcRenderer.invoke("download-file", url, config);
+
+        if (result.status !== "cancelled" && result.status !== "error" && downloadMakeYrc) {
+          // 优先使用 TTML，其次 YRC
+          let content = ttmlLyric || yrcLyric;
+          if (content) {
+            try {
+              const ext = ttmlLyric ? "ttml" : "yrc";
+              const fileName = `${safeFileName}.${ext}`;
+              const encoding = settingStore.downloadLyricEncoding || "utf-8";
+
+              // 如果是 TTML 且转换为非 UTF-8 编码，需要修改 XML 头部的 encoding 声明
+              if (ext === "ttml" && encoding !== "utf-8") {
+                content = content.replace(/encoding=["']utf-8["']/i, `encoding="${encoding}"`);
+              }
+
+              console.log(`[Download] Saving extra lyric file: ${fileName}`);
+              // 调用保存文件内容接口
+              const saveRes = await window.electron.ipcRenderer.invoke("save-file-content", {
+                path: targetPath,
+                fileName,
+                content,
+                encoding,
+              });
+              if (saveRes.success) {
+                console.log(`[Download] Saved verbatim lyric file successfully: ${fileName}`);
+              } else {
+                console.error(`[Download] Failed to save verbatim lyric file: ${saveRes.message}`);
+              }
+            } catch (e) {
+              console.error("[Download] Failed to save verbatim lyric file exception", e);
+            }
+          } else {
+            console.log("[Download] No verbatim lyrics found to save.");
+          }
+        }
+
         if (result.status === "skipped") {
           return { success: true, skipped: true, message: result.message };
         }
@@ -438,6 +558,9 @@ class DownloadManager {
       const rMap = parseToMap(romalrc || "");
       const lines: string[] = [];
       const lrcLinesRaw = lrc.split(/\r?\n/);
+
+      // 如果启用了另存逐字歌词，此时不替换内嵌歌词（processLyric 仅负责返回嵌入用的 LRC）
+      // YRC 的保存将在 processDownload 中独立处理
 
       for (const raw of lrcLinesRaw) {
         let m: RegExpExecArray | null;

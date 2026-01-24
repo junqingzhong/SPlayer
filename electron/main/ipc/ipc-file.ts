@@ -240,7 +240,7 @@ const initFileIpc = (): void => {
       musicPath: string, // 参数名改为 musicPath 以示区分
     ): Promise<{
       lyric: string;
-      format: "lrc" | "ttml";
+      format: "lrc" | "ttml" | "yrc";
     }> => {
       try {
         // 获取文件基本信息
@@ -257,7 +257,7 @@ const initFileIpc = (): void => {
           throw error;
         }
         // 遍历优先级
-        for (const format of ["lrc", "ttml"] as const) {
+        for (const format of ["ttml", "yrc", "lrc"] as const) {
           // 构造期望目标文件名
           const targetNameLower = `${baseName}.${format}`.toLowerCase();
           // 在文件列表中查找是否存在匹配项（忽略大小写）
@@ -695,6 +695,52 @@ const initFileIpc = (): void => {
       return relativePath && !relativePath.startsWith("..") && !isAbsolute(relativePath);
     });
   });
+
+  // 保存文件内容 (用于保存文本文件等)
+  ipcMain.handle(
+    "save-file-content",
+    async (
+      _,
+      options: { path: string; fileName: string; content: string; encoding?: string },
+    ): Promise<{ success: boolean; message?: string }> => {
+      try {
+        const { path, fileName, content, encoding = "utf-8" } = options;
+        // 规范化路径
+        const dirPath = resolve(path);
+        // 检查文件夹是否存在，不存在则自动递归创建
+        try {
+          await access(dirPath);
+        } catch {
+          await mkdir(dirPath, { recursive: true });
+        }
+        const filePath = join(dirPath, fileName);
+
+        if (encoding !== "utf-8") {
+          try {
+            // 使用动态导入，避免启动时加载问题
+            const { encode } = await import("iconv-lite");
+            // iconv-lite support 'utf16' as alias for 'utf-16' etc.
+            const buffer = encode(content, encoding);
+            await writeFile(filePath, buffer);
+          } catch (e) {
+            ipcLog.error(`❌ ${encoding} encoding failed:`, e);
+            // Fallback to UTF-8 on error
+            await writeFile(filePath, content, "utf-8");
+          }
+        } else {
+          await writeFile(filePath, content, "utf-8");
+        }
+        
+        return { success: true };
+      } catch (error) {
+        ipcLog.error("❌ Error saving file content:", error);
+        return {
+          success: false,
+          message: error instanceof Error ? error.message : "Unknown error",
+        };
+      }
+    },
+  );
 };
 
 export default initFileIpc;
