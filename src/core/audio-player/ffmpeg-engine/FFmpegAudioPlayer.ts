@@ -1,6 +1,6 @@
 import { toError } from "@/utils/error";
 import { type GetDetail } from "@/utils/TypedEventTarget";
-import { BaseAudioPlayer, type AudioEventMap } from "../BaseAudioPlayer";
+import { AudioErrorCode, BaseAudioPlayer, type AudioEventMap } from "../BaseAudioPlayer";
 import { EngineCapabilities } from "../IPlaybackEngine";
 import FFmpegWorker from "./ffmpeg.worker?worker";
 import { SharedRingBuffer } from "./SharedRingBuffer";
@@ -192,7 +192,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     } catch (e) {
       const err = toError(e);
       console.error("[Player] Load error:", err);
-      this.dispatch("error", { originalEvent: new Event("error"), errorCode: 0 }); // Adapt to AudioErrorDetail
+      this.dispatch("error", {
+        originalEvent: new Event("error"),
+        errorCode: AudioErrorCode.DECODE,
+      });
     }
   }
 
@@ -527,7 +530,10 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.activeSources.push(source);
 
     source.onended = () => {
-      this.activeSources = this.activeSources.filter((s) => s !== source);
+      const index = this.activeSources.indexOf(source);
+      if (index !== -1) {
+        this.activeSources.splice(index, 1);
+      }
 
       if (this.audioCtx && !this.isDecodingFinished) {
         const bufferedDuration = this.nextStartTime - this.audioCtx.currentTime;
