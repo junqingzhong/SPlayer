@@ -18,31 +18,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from "vue";
-
-const zoomFactor = ref(1.0);
 const zoomPercentage = ref(100);
 
-// 监听 zoomFactor 变化更新 zoomPercentage 并应用缩放
-watch(zoomFactor, (newVal) => {
-  zoomPercentage.value = Math.round(newVal * 100);
-  window.electron.ipcRenderer.invoke("set-zoom-factor", newVal);
-});
-
-// 监听 zoomPercentage 变化更新 zoomFactor
 watch(zoomPercentage, (newVal) => {
   if (newVal) {
-    zoomFactor.value = newVal / 100;
+    const factor = newVal / 100;
+    window.electron.ipcRenderer.invoke("set-zoom-factor", factor);
   }
 });
 
 const resetZoom = () => {
-  zoomFactor.value = 1.0;
+  zoomPercentage.value = 100;
 };
 
 onMounted(async () => {
   const currentZoom = await window.electron.ipcRenderer.invoke("get-zoom-factor");
-  zoomFactor.value = currentZoom;
+  zoomPercentage.value = Math.round(currentZoom * 100);
 });
 </script>
 
