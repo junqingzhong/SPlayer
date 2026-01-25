@@ -11,6 +11,7 @@ import { QualityType, type SongType } from "@/types/main";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
 import { formatSongsList } from "@/utils/format";
+import { AI_AUDIO_LEVELS } from "@/utils/meta";
 import { handleSongQuality } from "@/utils/helper";
 import { openUserLogin } from "@/utils/modal";
 
@@ -120,7 +121,13 @@ class SongManager {
    */
   public getOnlineUrl = async (id: number, isPc: boolean = false): Promise<AudioSource> => {
     const settingStore = useSettingStore();
-    const level = isPc ? "exhigh" : settingStore.songLevel;
+    let level = isPc ? "exhigh" : settingStore.songLevel;
+
+    // Fuck AI Mode: 如果开启，且请求的 level 是 AI 音质，降级为 hires
+    if (settingStore.disableAiAudio && AI_AUDIO_LEVELS.includes(level)) {
+      level = "hires";
+    }
+
     const res = await songUrl(id, level);
     console.log(`🌐 ${id} music data:`, res);
     const songData = res.data?.[0];
