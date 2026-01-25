@@ -523,7 +523,13 @@ class LyricManager {
       if (!lyric) return { lrcData: [], yrcData: [] };
       // YRC 直接解析
       if (format === "yrc") {
-        const lines = parseYrc(lyric) || [];
+        let lines: LyricLine[] = [];
+        // 检测是否为 XML 格式 (QRC)
+        if (lyric.trim().startsWith("<") || lyric.includes("<QrcInfos>")) {
+          lines = this.parseQRCLyric(lyric);
+        } else {
+          lines = parseYrc(lyric) || [];
+        }
         statusStore.usingTTMLLyric = false;
         return await this.applyChineseVariant({ lrcData: [], yrcData: lines });
       }
