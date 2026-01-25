@@ -22,4 +22,5 @@ export type ThemeColorType =
   | "brown"
   | "grey"
   | "blueGrey"
+  | "solid"
   | "custom";

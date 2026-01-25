@@ -12,6 +12,21 @@ import { useSettingStore, useStatusStore } from "@/stores";
 import { argbToRgb } from "./helper";
 import { chunk } from "lodash-es";
 
+// 单调主题（纯色模式）
+export const MONOTONOUS_THEME = {
+  main: { r: 239, g: 239, b: 239 },
+  light: {
+    primary: { r: 10, g: 10, b: 10 },
+    background: { r: 238, g: 238, b: 238 },
+    "surface-container": { r: 212, g: 212, b: 212 },
+  },
+  dark: {
+    primary: { r: 239, g: 239, b: 239 },
+    background: { r: 31, g: 31, b: 31 },
+    "surface-container": { r: 39, g: 39, b: 39 },
+  },
+};
+
 /**
  * 主色以 RGB 格式返回
  * @param {number} argb - 表示颜色的 ARGB 格式整数
@@ -131,19 +146,7 @@ export const getCoverColorData = (dom: HTMLImageElement) => {
   const mostFrequentColors = sortedQuantizedColors.slice(0, 5).map((x) => argbToRgb(x[0]));
   // 如果最频繁的颜色差异很小，使用灰色强调色
   if (mostFrequentColors.every((x) => Math.max(...x) - Math.min(...x) < 5)) {
-    return {
-      main: { r: 239, g: 239, b: 239 },
-      light: {
-        primary: { r: 10, g: 10, b: 10 },
-        background: { r: 238, g: 238, b: 238 },
-        "surface-container": { r: 212, g: 212, b: 212 },
-      },
-      dark: {
-        primary: { r: 239, g: 239, b: 239 },
-        background: { r: 31, g: 31, b: 31 },
-        "surface-container": { r: 39, g: 39, b: 39 },
-      },
-    };
+    return MONOTONOUS_THEME;
   }
   // 使用 Score 库对颜色进行评分
   const ranked = Score.score(new Map(sortedQuantizedColors.slice(0, 50)));

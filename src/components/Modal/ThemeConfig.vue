@@ -1,5 +1,12 @@
 <template>
-  <div class="theme-config">
+  <n-scrollbar
+    style="max-height: 70vh"
+    :content-style="{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '12px',
+    }"
+  >
     <div class="config-section">
       <n-card class="set-item">
         <div class="label">
@@ -51,12 +58,13 @@
             v-if="isImageMode"
             size="small"
             type="error"
-            quaternary
+            strong
+            secondary
             @click="clearBackgroundImage"
           >
             取消
           </n-button>
-          <n-button size="small" type="primary" secondary @click="selectBackgroundImage">
+          <n-button size="small" type="primary" strong secondary @click="selectBackgroundImage">
             {{ isImageMode ? "更换" : "选择图片" }}
           </n-button>
         </div>
@@ -182,7 +190,12 @@
           :class="{ active: !statusStore.backgroundConfig.useCustomColor }"
           :style="{ '--color': statusStore.backgroundConfig.themeColor }"
           title="自动提取"
-          @click="statusStore.backgroundConfig.useCustomColor = false"
+          @click="
+            () => {
+              statusStore.backgroundConfig.useCustomColor = false;
+              statusStore.backgroundConfig.isSolid = false;
+            }
+          "
         >
           <div class="color-circle">
             <Transition name="fade">
@@ -195,10 +208,33 @@
           </div>
           <n-text class="color-name" :depth="2">自动</n-text>
         </div>
+        <!-- 纯色模式 -->
+        <div
+          class="color-item"
+          :class="{ active: statusStore.backgroundConfig.isSolid }"
+          :style="{ '--color': '#9e9e9e' }"
+          title="纯色"
+          @click="
+            () => {
+              statusStore.backgroundConfig.useCustomColor = true;
+              statusStore.backgroundConfig.isSolid = true;
+            }
+          "
+        >
+          <div class="color-circle">
+            <Transition name="fade">
+              <SvgIcon v-if="statusStore.backgroundConfig.isSolid" name="Check" :size="20" />
+            </Transition>
+          </div>
+          <n-text class="color-name" :depth="2">纯色</n-text>
+        </div>
         <!-- 自定义颜色 -->
         <div
           class="color-item"
-          :class="{ active: statusStore.backgroundConfig.useCustomColor }"
+          :class="{
+            active:
+              statusStore.backgroundConfig.useCustomColor && !statusStore.backgroundConfig.isSolid,
+          }"
           :style="{ '--color': statusStore.backgroundConfig.customColor }"
           title="自定义"
         >
@@ -211,7 +247,10 @@
               placement="top"
               class="color-picker-overlay"
               @update:show="
-                (show: boolean) => show && (statusStore.backgroundConfig.useCustomColor = true)
+                (show: boolean) =>
+                  show &&
+                  (statusStore.backgroundConfig.useCustomColor = true) &&
+                  (statusStore.backgroundConfig.isSolid = false)
               "
             />
           </div>
@@ -219,7 +258,7 @@
         </div>
       </div>
     </div>
-  </div>
+  </n-scrollbar>
 </template>
 
 <script setup lang="ts">
@@ -227,12 +266,14 @@ import { useMusicStore, useSettingStore, useStatusStore, useDataStore } from "@/
 import { isEmpty } from "lodash-es";
 import themeColor from "@/assets/data/themeColor.json";
 import { getCoverColor, getCoverColorData } from "@/utils/color";
+import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import type { ThemeColorType } from "@/types/color";
 
 const musicStore = useMusicStore();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
 const dataStore = useDataStore();
+const blobURLManager = useBlobURLManager();
 
 // 文件输入引用
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -288,13 +329,16 @@ const handleFileSelect = async (event: Event) => {
   }
   try {
     await dataStore.saveBackgroundImage(file);
+    // 生成 Blob URL
+    const arrayBuffer = await file.arrayBuffer();
+    // 强制清理旧的 URL，确保生成新的
+    blobURLManager.revokeBlobURL("background-image");
+    const imageUrl = blobURLManager.createBlobURL(arrayBuffer, file.type, "background-image");
     // 提取图片主色
-    const imageUrl = URL.createObjectURL(file);
     const image = new Image();
     image.src = imageUrl;
     await new Promise((resolve) => (image.onload = resolve));
     const colorData = getCoverColorData(image);
-    URL.revokeObjectURL(imageUrl);
     image.remove();
     // 保存提取的主色
     if (colorData?.main) {
@@ -303,6 +347,7 @@ const handleFileSelect = async (event: Event) => {
       statusStore.backgroundConfig.themeColor = hex;
     }
     // 切换到图片模式
+    statusStore.backgroundImageUrl = imageUrl;
     statusStore.themeBackgroundMode = "image";
     settingStore.themeFollowCover = false;
     settingStore.themeGlobalColor = true;
@@ -318,6 +363,8 @@ const handleFileSelect = async (event: Event) => {
 const clearBackgroundImage = async () => {
   try {
     await dataStore.clearBackgroundImage();
+    blobURLManager.revokeBlobURL("background-image");
+    statusStore.backgroundImageUrl = null;
     statusStore.themeBackgroundMode = "color";
     statusStore.backgroundConfig.themeColor = null;
     window.$message.success("已恢复颜色模式");
@@ -329,104 +376,99 @@ const clearBackgroundImage = async () => {
 </script>
 
 <style lang="scss" scoped>
-.theme-config {
+.config-section {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  .config-section {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    .set-item {
-      border-radius: 8px;
-      :deep(.n-card__content) {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 12px;
+  .set-item {
+    border-radius: 8px;
+    :deep(.n-card__content) {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+    }
+    .label {
+      display: flex;
+      flex-direction: column;
+      .name {
+        font-size: 14px;
       }
-      .label {
-        display: flex;
-        flex-direction: column;
-        .name {
-          font-size: 14px;
-        }
-        .tip {
-          font-size: 12px;
-          margin-top: 2px;
-        }
+      .tip {
+        font-size: 12px;
+        margin-top: 2px;
       }
-      .bg-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
+    }
+    .bg-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
   }
-  .color-section {
-    transition: opacity 0.3s ease;
-    &.disabled {
-      opacity: 0.4;
-      pointer-events: none;
-    }
-    .section-title {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 12px;
-    }
-    .color-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-      gap: 12px;
-      .color-item {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        padding: 8px;
-        border-radius: 8px;
-        cursor: pointer;
-        transition:
-          background-color 0.3s,
-          box-shadow 0.3s;
-        &:hover {
-          background-color: rgba(var(--primary), 0.08);
-        }
-        &.active {
-          background-color: rgba(var(--primary), 0.12);
-          .color-circle {
-            box-shadow: 0 0 0 3px rgba(var(--primary), 0.3);
-          }
-        }
+}
+.color-section {
+  transition: opacity 0.3s ease;
+  &.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .section-title {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+    gap: 12px;
+    .color-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition:
+        background-color 0.3s,
+        box-shadow 0.3s;
+      &:hover {
+        background-color: rgba(var(--primary), 0.08);
+      }
+      &.active {
+        background-color: rgba(var(--primary), 0.12);
         .color-circle {
-          position: relative;
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background-color: var(--color);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: background-color 0.3s;
-          color: #fff;
-          &.custom-trigger {
+          box-shadow: 0 0 0 3px rgba(var(--primary), 0.3);
+        }
+      }
+      .color-circle {
+        position: relative;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background-color: var(--color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.3s;
+        color: #fff;
+        &.custom-trigger {
+          cursor: pointer;
+          overflow: hidden;
+          .color-picker-overlay {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
             cursor: pointer;
-            overflow: hidden;
-            .color-picker-overlay {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
-              height: 100%;
-              opacity: 0;
-              cursor: pointer;
-            }
           }
         }
-        .color-name {
-          font-size: 12px;
-          text-align: center;
-        }
+      }
+      .color-name {
+        font-size: 12px;
+        text-align: center;
       }
     }
   }

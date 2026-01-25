@@ -1,25 +1,28 @@
 <template>
   <div id="app-layout">
     <!-- 背景图 -->
-    <div
-      v-if="statusStore.themeBackgroundMode === 'image' && backgroundImageUrl"
-      class="background-container"
-    >
+    <Transition name="fade">
       <div
-        class="background-image"
-        :style="{
-          backgroundImage: `url(${backgroundImageUrl})`,
-          transform: `scale(${statusStore.backgroundConfig.scale})`,
-          filter: `blur(${statusStore.backgroundConfig.blur}px)`,
-        }"
-      />
-      <div
-        class="background-mask"
-        :style="{
-          backgroundColor: `rgba(0, 0, 0, ${statusStore.backgroundConfig.maskOpacity / 100})`,
-        }"
-      />
-    </div>
+        v-if="statusStore.themeBackgroundMode === 'image' && statusStore.backgroundImageUrl"
+        :key="statusStore.backgroundImageUrl"
+        class="background-container"
+      >
+        <div
+          class="background-image"
+          :style="{
+            backgroundImage: `url(${statusStore.backgroundImageUrl})`,
+            transform: `scale(${statusStore.backgroundConfig.scale})`,
+            filter: `blur(${statusStore.backgroundConfig.blur}px)`,
+          }"
+        />
+        <div
+          class="background-mask"
+          :style="{
+            backgroundColor: `rgba(0, 0, 0, ${statusStore.backgroundConfig.maskOpacity / 100})`,
+          }"
+        />
+      </div>
+    </Transition>
     <!-- 主框架 -->
     <n-layout
       id="main"
@@ -120,20 +123,18 @@ const contentRef = ref<HTMLElement | null>(null);
 // 主内容高度
 const { height: contentHeight } = useElementSize(contentRef);
 
-// 背景图 URL
-const backgroundImageUrl = ref<string | null>(null);
-
 // 加载背景图
 const loadBackgroundImage = async () => {
-  // 先清理旧的 Blob URL
-  if (backgroundImageUrl.value) {
-    URL.revokeObjectURL(backgroundImageUrl.value);
-    backgroundImageUrl.value = null;
-  }
+  if (statusStore.backgroundImageUrl) return;
   if (statusStore.themeBackgroundMode === "image") {
     const blob = await dataStore.getBackgroundImage();
     if (blob) {
-      backgroundImageUrl.value = URL.createObjectURL(blob);
+      const arrayBuffer = await blob.arrayBuffer();
+      statusStore.backgroundImageUrl = blobURLManager.createBlobURL(
+        arrayBuffer,
+        blob.type,
+        "background-image",
+      );
     }
   }
 };
@@ -142,24 +143,8 @@ watchEffect(() => {
   statusStore.mainContentHeight = contentHeight.value;
 });
 
-// 监听模式变化，加载或清除背景图
-watch(
-  () => statusStore.themeBackgroundMode,
-  async (mode) => {
-    if (mode === "image") {
-      await loadBackgroundImage();
-    } else {
-      // 释放 Blob URL
-      if (backgroundImageUrl.value) {
-        URL.revokeObjectURL(backgroundImageUrl.value);
-      }
-      backgroundImageUrl.value = null;
-    }
-  },
-  { immediate: true },
-);
-
 onMounted(() => {
+  loadBackgroundImage();
   init();
   if (!isElectron) {
     window.addEventListener("beforeunload", (event) => {

@@ -82,31 +82,24 @@ const amLyricsData = computed(() => {
   if (!Array.isArray(lyrics) || lyrics.length === 0) return [];
   // 此处cloneDeep 删除会暴毙 不要动
   const clonedLyrics = cloneDeep(lyrics) as LyricLine[];
-  // 检查是否要不显示某一部分并删去
-  const showTran = settingStore.showTran;
-  const showRoma = settingStore.showRoma;
-  const showWordsRoma = settingStore.showWordsRoma;
-  if (!showTran || !showRoma || !showWordsRoma) {
-    clonedLyrics.forEach((line) => {
-      if (!showTran) line.translatedLyric = "";
-      if (!showRoma) line.romanLyric = "";
-      if (!showWordsRoma) line.words.forEach((word) => (word.romanWord = ""));
-    });
-  }
-  // 调换翻译与音译位置
-  if (settingStore.swapTranRoma) {
-    clonedLyrics.forEach((line) => {
+  // 处理歌词内容
+  const { showTran, showRoma, showWordsRoma, swapTranRoma, lyricAlignRight } = settingStore;
+  clonedLyrics.forEach((line) => {
+    // 处理显隐
+    if (!showTran) line.translatedLyric = "";
+    if (!showRoma) line.romanLyric = "";
+    if (!showWordsRoma) line.words?.forEach((word) => (word.romanWord = ""));
+    // 调换翻译与音译位置
+    if (swapTranRoma) {
       const temp = line.translatedLyric;
       line.translatedLyric = line.romanLyric;
       line.romanLyric = temp;
-    });
-  }
-  // 如果开启了歌词靠右，反转 isDuet
-  if (settingStore.lyricAlignRight) {
-    clonedLyrics.forEach((line) => {
+    }
+    // 处理对唱方向反转
+    if (lyricAlignRight) {
       line.isDuet = !line.isDuet;
-    });
-  }
+    }
+  });
   return clonedLyrics;
 });
 

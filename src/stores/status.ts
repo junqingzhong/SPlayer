@@ -11,6 +11,8 @@ interface StatusState {
   searchFocus: boolean;
   /** 搜索框输入值 */
   searchInputValue: string;
+  /** 背景图 URL (Blob URL) */
+  backgroundImageUrl: string | null;
   /** 播放控制条 */
   showPlayBar: boolean;
   /** 全屏播放器 */
@@ -126,6 +128,8 @@ interface StatusState {
     useCustomColor: boolean;
     /** 用户自定义颜色 (hex) */
     customColor: string;
+    /** 是否为纯色模式 */
+    isSolid: boolean;
   };
 }
 
@@ -134,6 +138,7 @@ export const useStatusStore = defineStore("status", {
     menuCollapsed: false,
     searchFocus: false,
     searchInputValue: "",
+    backgroundImageUrl: null,
     showPlayBar: true,
     playStatus: false,
     playLoading: true,
@@ -190,6 +195,8 @@ export const useStatusStore = defineStore("status", {
       useCustomColor: false,
       /** 用户自定义颜色 (hex) */
       customColor: "#fe7971",
+      /** 是否为纯色模式 */
+      isSolid: false,
     },
   }),
   getters: {

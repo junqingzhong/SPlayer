@@ -21,30 +21,52 @@
       --surface-container-hex: rgba(var(--surface-container), 0.1) !important;
       --n-toggle-bar-color: rgba(var(--background), 0.2) !important;
       --n-toggle-bar-color-hover: rgba(var(--background), 0.4) !important;
-      background-color: transparent !important;
     }
     .n-layout-sider {
-      background-color: transparent;
+      background-color: rgba(var(--surface-container), 0.2) !important;
     }
     .n-layout {
       background-color: transparent !important;
     }
     .main-player {
       background-color: var(--surface-container-hex);
-      backdrop-filter: blur(10px);
+      backdrop-filter: blur(20px);
     }
     // 内置组件
     .n-card,
-    .n-tag,
+    .n-tag {
+      background-color: rgba(var(--background), 0.2) !important;
+      border-color: rgba(var(--primary), 0.1) !important;
+    }
+    .n-modal,
     .n-popover-shared,
     .n-float-button {
-      background-color: var(--background-hex) !important;
-      border-color: transparent !important;
-      backdrop-filter: blur(10px) !important;
+      background-color: rgba(var(--background), 0.2) !important;
+      border-color: rgba(var(--primary), 0.1) !important;
+      backdrop-filter: blur(20px);
+    }
+    .n-layout-toggle-bar {
+      opacity: 0.3;
+      transition: opacity 0.3s var(--n-bezier);
+      .n-layout-toggle-bar__top,
+      .n-layout-toggle-bar__bottom {
+        background-color: color-mix(
+          in srgb,
+          rgb(var(--primary)) 40%,
+          rgb(var(--background)) 60%
+        ) !important;
+      }
+      &:hover {
+        opacity: 1;
+      }
     }
     .n-layout-toggle-bar__top,
     .n-layout-toggle-bar__bottom {
-      background-color: rgba(var(--primary), 0.4) !important;
+      background-color: color-mix(
+        in srgb,
+        rgb(var(--primary)) 40%,
+        rgb(var(--background)) 60%
+      ) !important;
     }
   }
 }

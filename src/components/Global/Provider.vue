@@ -39,7 +39,7 @@ import {
   GlobalThemeOverrides,
 } from "naive-ui";
 import { useSettingStore, useStatusStore } from "@/stores";
-import { setColorSchemes } from "@/utils/color";
+import { setColorSchemes, MONOTONOUS_THEME } from "@/utils/color";
 import { useCustomCode } from "@/composables/useCustomCode";
 // import { rgbToHex } from "@imsyy/color-utils";
 import themeColor from "@/assets/data/themeColor.json";
@@ -77,7 +77,9 @@ const getThemeMainColor = () => {
   const themeType = theme.value ? "dark" : "light";
   // 背景图模式
   if (statusStore.themeBackgroundMode === "image") {
-    const { themeColor, useCustomColor, customColor } = statusStore.backgroundConfig;
+    const { themeColor, useCustomColor, customColor, isSolid } = statusStore.backgroundConfig;
+    // 纯色覆盖
+    if (isSolid) return setColorSchemes(MONOTONOUS_THEME, themeType);
     const color = useCustomColor ? customColor : themeColor;
     // 强制使用 dark 模式生成
     if (color) return setColorSchemes(color, "dark");
@@ -87,6 +89,9 @@ const getThemeMainColor = () => {
     const coverColor = statusStore.songCoverTheme;
     if (!coverColor) return {};
     return setColorSchemes(coverColor, themeType);
+  } else if (settingStore.themeColorType === "solid") {
+    // 纯色预设
+    return setColorSchemes(MONOTONOUS_THEME, themeType);
   } else if (settingStore.themeColorType !== "custom") {
     // 预设模式
     return setColorSchemes(themeColor[settingStore.themeColorType].color, themeType);
@@ -295,6 +300,7 @@ watch(
     statusStore.backgroundConfig.themeColor,
     statusStore.backgroundConfig.useCustomColor,
     statusStore.backgroundConfig.customColor,
+    statusStore.backgroundConfig.isSolid,
     theme.value,
   ],
   () => changeGlobalTheme(),

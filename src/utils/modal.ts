@@ -557,6 +557,7 @@ export const openScalingModal = async () => {
   window.$modal.create({
     preset: "card",
     transformOrigin: "center",
+    size: "small",
     autoFocus: false,
     showMask: false,
     style: { width: "400px" },

@@ -131,7 +131,7 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
-import { useSettingStore } from "@/stores";
+import { useSettingStore, useStatusStore } from "@/stores";
 import { renderIcon } from "@/utils/helper";
 import { openSetting, openThemeConfig, openScalingModal } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
@@ -139,6 +139,7 @@ import { useMobile } from "@/composables/useMobile";
 
 const router = useRouter();
 const settingStore = useSettingStore();
+const statusStore = useStatusStore();
 const { isDesktop, isSmallScreen } = useMobile();
 
 const showCloseModal = ref(false);
@@ -192,6 +193,7 @@ const setOptions = computed<DropdownOption[]>(() => [
           ? "深色模式"
           : "跟随系统",
     key: "themeMode",
+    disabled: !!statusStore.backgroundImageUrl,
     icon: renderIcon(
       settingStore.themeMode === "auto"
         ? "LightTheme"
