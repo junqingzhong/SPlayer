@@ -1,5 +1,6 @@
 import { useSettingStore } from "@/stores";
-import { isElectron } from "@/utils/env";
+import { checkIsolationSupport, isElectron } from "@/utils/env";
+import { TypedEventTarget } from "@/utils/TypedEventTarget";
 import { AudioElementPlayer } from "../audio-player/AudioElementPlayer";
 import { AUDIO_EVENTS, type AudioEventMap } from "../audio-player/BaseAudioPlayer";
 import { FFmpegAudioPlayer } from "../audio-player/ffmpeg-engine/FFmpegAudioPlayer";
@@ -16,7 +17,7 @@ import { MpvPlayer, useMpvPlayer } from "../audio-player/MpvPlayer";
  *
  * 统一的音频播放接口，根据设置选择播放引擎
  */
-class AudioManager extends EventTarget implements IPlaybackEngine {
+class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackEngine {
   /** 当前活动的播放引擎 */
   private engine: IPlaybackEngine;
   /** 用于清理当前引擎的事件监听器 */
@@ -37,10 +38,14 @@ class AudioManager extends EventTarget implements IPlaybackEngine {
       mpvPlayer.init();
       this.engine = mpvPlayer;
       this.engineType = "mpv";
-    } else if (audioEngine === "ffmpeg") {
+    } else if (audioEngine === "ffmpeg" && checkIsolationSupport()) {
       this.engine = new FFmpegAudioPlayer();
       this.engineType = "ffmpeg";
     } else {
+      if (audioEngine === "ffmpeg" && !checkIsolationSupport()) {
+        console.warn("[AudioManager] 环境未隔离，从 FFmpeg 回退到 Web Audio");
+      }
+
       this.engine = new AudioElementPlayer();
       this.engineType = "element";
     }
@@ -62,11 +67,8 @@ class AudioManager extends EventTarget implements IPlaybackEngine {
 
     events.forEach((eventType) => {
       const handler = (e: Event) => {
-        if (e instanceof CustomEvent) {
-          this.dispatchEvent(new CustomEvent(eventType, { detail: e.detail }));
-        } else {
-          this.dispatchEvent(new Event(eventType));
-        }
+        const detail = (e as CustomEvent).detail;
+        this.dispatch(eventType, detail);
       };
       handlers.set(eventType, handler);
       this.engine.addEventListener(eventType, handler);
@@ -231,22 +233,6 @@ class AudioManager extends EventTarget implements IPlaybackEngine {
    */
   public getErrorCode(): number {
     return this.engine.getErrorCode();
-  }
-
-  public override addEventListener<K extends keyof AudioEventMap>(
-    type: K,
-    listener: (this: AudioManager, ev: AudioEventMap[K]) => unknown,
-    options?: boolean | AddEventListenerOptions,
-  ): void {
-    super.addEventListener(type, listener as EventListenerOrEventListenerObject, options);
-  }
-
-  public override removeEventListener<K extends keyof AudioEventMap>(
-    type: K,
-    listener: (this: AudioManager, ev: AudioEventMap[K]) => unknown,
-    options?: boolean | EventListenerOptions,
-  ): void {
-    super.removeEventListener(type, listener as EventListenerOrEventListenerObject, options);
   }
 
   /**

@@ -86,7 +86,7 @@ const controlsOptions = computed<DropdownOption[]>(() => [
   {
     label: "播放速度",
     key: "rate",
-    disabled: settingStore.audioEngine === "ffmpeg" && settingStore.playbackEngine !== "mpv",
+    disabled: settingStore.playbackEngine === "mpv",
     icon: renderIcon("PlayRate"),
   },
 ]);

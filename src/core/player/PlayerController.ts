@@ -8,8 +8,8 @@ import { getCoverColor } from "@/utils/color";
 import { isElectron } from "@/utils/env";
 import { getPlayerInfoObj, getPlaySongData } from "@/utils/format";
 import { handleSongQuality, shuffleArray, sleep } from "@/utils/helper";
-import { DJ_MODE_KEYWORDS } from "@/utils/meta";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
+import { DJ_MODE_KEYWORDS } from "@/utils/meta";
 import { calculateProgress } from "@/utils/time";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { DebouncedFunc, throttle } from "lodash-es";
@@ -576,7 +576,10 @@ class PlayerController {
 
     // 如果没有源，尝试重新初始化当前歌曲
     if (!audioManager.src) {
-      await this.playSong({ autoPlay: true });
+      await this.playSong({
+        autoPlay: true,
+        seek: statusStore.currentTime,
+      });
       return;
     }
 
@@ -604,8 +607,6 @@ class PlayerController {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     const audioManager = useAudioManager();
-
-    if (!audioManager.src) return;
 
     // 计算渐出时间
     const fadeTime = settingStore.getFadeTime ? settingStore.getFadeTime / 1000 : 0;
