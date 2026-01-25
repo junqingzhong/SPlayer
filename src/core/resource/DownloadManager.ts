@@ -4,9 +4,11 @@ import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
 import { songDownloadUrl, songLyric, songLyricTTML, songUrl, unlockSongUrl } from "@/api/song";
+import { qqMusicMatch } from "@/api/qqmusic";
 
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
+import { getConverter, type ConverterMode } from "@/utils/opencc";
 
 interface DownloadTask {
   song: SongType;
@@ -379,7 +381,7 @@ class DownloadManager {
 
         if (downloadLyric) {
           const lyricResult = (await songLyric(song.id)) as LyricResult;
-          lyric = this.processLyric(lyricResult);
+          lyric = await this.processLyric(lyricResult);
 
           // 获取逐字歌词内容用于另存
           if (downloadMakeYrc) {
@@ -397,6 +399,26 @@ class DownloadManager {
                 console.log(
                   `[Download] YRC fetched from lrcResult: ${!!yrcLyric}, len: ${yrcLyric?.length}`,
                 );
+
+                // Fallback: 如果官方没有 YRC，尝试从 QM 获取
+                if (!yrcLyric) {
+                  try {
+                    const artistsStr = Array.isArray(song.artists)
+                      ? song.artists.map((a) => a.name).join("/")
+                      : String(song.artists || "");
+                    const keyword = `${song.name}-${artistsStr}`;
+                    console.log(`[Download] Trying QM fallback with keyword: ${keyword}`);
+                    const qmResult = await qqMusicMatch(keyword);
+                    if (qmResult?.code === 200 && qmResult?.qrc) {
+                      yrcLyric = qmResult.qrc;
+                      console.log(
+                        `[Download] QM QRC fetched as fallback, len: ${yrcLyric?.length}`,
+                      );
+                    }
+                  } catch (e) {
+                    console.error("[Download] Error fetching QM lyrics as fallback:", e);
+                  }
+                }
               }
             } catch (e) {
               console.error("[Download] Error fetching verbatim lyrics:", e);
@@ -424,6 +446,9 @@ class DownloadManager {
           let content = ttmlLyric || yrcLyric;
           if (content) {
             try {
+              // 繁体转换
+              content = await this._convertToTraditionalIfNeeded(content);
+
               const ext = ttmlLyric ? "ttml" : "yrc";
               const fileName = `${safeFileName}.${ext}`;
               const encoding = settingStore.downloadLyricEncoding || "utf-8";
@@ -479,7 +504,7 @@ class DownloadManager {
    * @param lyricResult 歌词结果
    * @returns 处理后的歌词字符串
    */
-  private processLyric(lyricResult: LyricResult): string {
+  private async processLyric(lyricResult: LyricResult): Promise<string> {
     const settingStore = useSettingStore();
     try {
       const rawLyric = lyricResult?.lrc?.lyric || "";
@@ -595,7 +620,12 @@ class DownloadManager {
           }
         }
       }
-      return lines.join("\n");
+      const result = lines.join("\n");
+
+      // 繁体转换
+      return await this._convertToTraditionalIfNeeded(result);
+
+
     } catch (e) {
       console.error("Lyric processing failed", e);
       return "";
@@ -658,6 +688,20 @@ class DownloadManager {
     failedSongs.forEach((id) => {
       this.retryDownload(id);
     });
+  }
+  /**
+   * 繁体转换辅助方法
+   * @param text 需要转换的文本
+   * @returns 转换后的文本
+   */
+  private async _convertToTraditionalIfNeeded(text: string): Promise<string> {
+    const settingStore = useSettingStore();
+    if (settingStore.downloadLyricToTraditional && text) {
+      const variant = (settingStore.traditionalChineseVariant || "s2t") as ConverterMode;
+      const converter = await getConverter(variant);
+      return converter(text);
+    }
+    return text;
   }
 }
 
