@@ -56,6 +56,8 @@ interface StatusState {
   pureLyricMode: boolean;
   /** 当前是否正使用 TTML 歌词 */
   usingTTMLLyric: boolean;
+  /** 当前是否正使用 QRC 歌词（来自QQ音乐） */
+  usingQRCLyric: boolean;
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;
   /** 当前播放索引 */
@@ -153,6 +155,7 @@ export const useStatusStore = defineStore("status", {
     songCoverTheme: {},
     pureLyricMode: false,
     usingTTMLLyric: false,
+    usingQRCLyric: false,
     songQuality: undefined,
     playIndex: -1,
     lyricIndex: -1,

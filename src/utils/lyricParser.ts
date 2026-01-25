@@ -216,3 +216,231 @@ export const parseSmartLrc = (content: string): { format: LrcFormat; lines: Lyri
  */
 export const isWordLevelFormat = (format: LrcFormat): boolean =>
   format === LrcFormat.WordByWord || format === LrcFormat.Enhanced;
+
+/**
+ * 歌词内容对齐
+ * @param lyrics 歌词数据
+ * @param otherLyrics 其他歌词数据
+ * @param key 对齐类型
+ * @returns 对齐后的歌词数据
+ */
+export const alignLyrics = (
+  lyrics: LyricLine[],
+  otherLyrics: LyricLine[],
+  key: "translatedLyric" | "romanLyric",
+): LyricLine[] => {
+  const lyricsData = lyrics;
+  if (lyricsData.length && otherLyrics.length) {
+    lyricsData.forEach((v: LyricLine) => {
+      otherLyrics.forEach((x: LyricLine) => {
+        if (v.startTime === x.startTime || Math.abs(v.startTime - x.startTime) < 300) {
+          v[key] = x.words.map((word) => word.word).join("");
+        }
+      });
+    });
+  }
+  return lyricsData;
+};
+
+/**
+ * 解析 QQ 音乐 QRC 格式歌词
+ * @param qrcContent QRC 原始内容
+ * @param trans 翻译歌词
+ * @param roma 罗马音歌词（QRC 格式）
+ * @returns LyricLine 数组
+ */
+export const parseQRCLyric = (qrcContent: string, trans?: string, roma?: string): LyricLine[] => {
+  // 行匹配: [开始时间,持续时间]内容
+  const linePattern = /^\[(\d+),(\d+)\](.*)$/;
+  // 逐字匹配: 文字(开始时间,持续时间)
+  const wordPattern = /([^(]*)\((\d+),(\d+)\)/g;
+
+  /**
+   * 解析 QRC 内容为行数据
+   */
+  const parseQRCContent = (
+    rawContent: string,
+  ): Array<{
+    startTime: number;
+    endTime: number;
+    words: Array<{ word: string; startTime: number; endTime: number }>;
+  }> => {
+    // 从 XML 中提取歌词内容
+    const contentMatch = /<Lyric_1[^>]*LyricContent="([^"]*)"[^>]*\/>/.exec(rawContent);
+    const content = contentMatch ? contentMatch[1] : rawContent;
+
+    const result: Array<{
+      startTime: number;
+      endTime: number;
+      words: Array<{ word: string; startTime: number; endTime: number }>;
+    }> = [];
+
+    for (const rawLine of content.split("\n")) {
+      const line = rawLine.trim();
+      if (!line) continue;
+
+      // 跳过元数据标签 [ti:xxx] [ar:xxx] 等
+      if (/^\\[[a-z]+:/i.test(line)) continue;
+
+      const lineMatch = linePattern.exec(line);
+      if (!lineMatch) continue;
+
+      const lineStart = parseInt(lineMatch[1], 10);
+      const lineDuration = parseInt(lineMatch[2], 10);
+      const lineContent = lineMatch[3];
+
+      // 解析逐字
+      const words: Array<{ word: string; startTime: number; endTime: number }> = [];
+      let wordMatch: RegExpExecArray | null;
+      const wordRegex = new RegExp(wordPattern.source, "g");
+
+      while ((wordMatch = wordRegex.exec(lineContent)) !== null) {
+        const wordText = wordMatch[1];
+        const wordStart = parseInt(wordMatch[2], 10);
+        const wordDuration = parseInt(wordMatch[3], 10);
+
+        if (wordText) {
+          words.push({
+            word: wordText,
+            startTime: wordStart,
+            endTime: wordStart + wordDuration,
+          });
+        }
+      }
+
+      if (words.length > 0) {
+        result.push({
+          startTime: lineStart,
+          endTime: lineStart + lineDuration,
+          words,
+        });
+      }
+    }
+    return result;
+  };
+
+  // 解析主歌词
+  const qrcLines = parseQRCContent(qrcContent);
+  let result: LyricLine[] = qrcLines.map((qrcLine) => {
+    return {
+      words: qrcLine.words.map((word) => ({
+        ...word,
+        romanWord: "",
+      })),
+      startTime: qrcLine.startTime,
+      endTime: qrcLine.endTime,
+      translatedLyric: "",
+      romanLyric: "",
+      isBG: false,
+      isDuet: false,
+    };
+  });
+
+  // 处理翻译
+  if (trans) {
+    let transLines = parseLrc(trans);
+    if (transLines?.length) {
+      // 过滤包含 "//" 或 "作品的著作权" 的翻译行
+      transLines = transLines.filter((line) => {
+        const text = line.words.map((w) => w.word).join("");
+        return !text.includes("//") && !text.includes("作品的著作权");
+      });
+      result = alignLyrics(result, transLines, "translatedLyric");
+    }
+  }
+
+  // 处理音译
+  if (roma) {
+    const qrcRomaLines = parseQRCContent(roma);
+    if (qrcRomaLines?.length) {
+      const romaLines: LyricLine[] = qrcRomaLines.map((line) => {
+        return {
+          words: [
+            {
+              startTime: line.startTime,
+              endTime: line.endTime,
+              word: line.words.map((w) => w.word).join(""),
+              romanWord: "",
+            },
+          ],
+          startTime: line.startTime,
+          endTime: line.endTime,
+          translatedLyric: "",
+          romanLyric: "",
+          isBG: false,
+          isDuet: false,
+        };
+      });
+      result = alignLyrics(result, romaLines, "romanLyric");
+    }
+  }
+
+  return result;
+};
+
+/**
+ * 将 LyricLine 数组转换为 TTML 格式
+ * @param lines LyricLine 数组
+ * @returns TTML 格式字符串
+ */
+export const lyricLinesToTTML = (lines: LyricLine[]): string => {
+  const formatTime = (ms: number): string => {
+    const totalSeconds = ms / 1000;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toFixed(3).padStart(6, "0")}`;
+  };
+
+  const escapeXml = (text: string): string => {
+    return text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+  };
+
+  let ttml = `<?xml version="1.0" encoding="utf-8"?>
+<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:amll="http://www.example.com/ns/amll">
+  <head>
+    <metadata>
+      <ttm:title>Lyrics</ttm:title>
+    </metadata>
+  </head>
+  <body>
+    <div>
+`;
+
+  for (const line of lines) {
+    const lineStart = formatTime(line.startTime);
+    const lineEnd = formatTime(line.endTime);
+
+    ttml += `      <p begin="${lineStart}" end="${lineEnd}">\n`;
+
+    // 添加逐字歌词
+    for (const word of line.words) {
+      const wordStart = formatTime(word.startTime);
+      const wordEnd = formatTime(word.endTime);
+      ttml += `        <span begin="${wordStart}" end="${wordEnd}">${escapeXml(word.word)}</span>\n`;
+    }
+
+    // 添加翻译
+    if (line.translatedLyric) {
+      ttml += `        <span ttm:role="x-translation">${escapeXml(line.translatedLyric)}</span>\n`;
+    }
+
+    // 添加音译
+    if (line.romanLyric) {
+      ttml += `        <span ttm:role="x-roman">${escapeXml(line.romanLyric)}</span>\n`;
+    }
+
+    ttml += `      </p>\n`;
+  }
+
+  ttml += `    </div>
+  </body>
+</tt>`;
+
+  return ttml;
+};
