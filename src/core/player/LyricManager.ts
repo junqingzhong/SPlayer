@@ -6,7 +6,7 @@ import { useMusicStore, useSettingStore, useStatusStore, useStreamingStore } fro
 import { type SongLyric } from "@/types/lyric";
 import { SongType } from "@/types/main";
 import { isElectron } from "@/utils/env";
-import { isWordLevelFormat, parseSmartLrc } from "@/utils/lyricParser";
+import { alignLyrics, isWordLevelFormat, parseQRCLyric, parseSmartLrc } from "@/utils/lyricParser";
 import { stripLyricMetadata } from "@/utils/lyricStripper";
 import { getConverter } from "@/utils/opencc";
 import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
@@ -95,17 +95,7 @@ class LyricManager {
     otherLyrics: LyricLine[],
     key: "translatedLyric" | "romanLyric",
   ): LyricLine[] {
-    const lyricsData = lyrics;
-    if (lyricsData.length && otherLyrics.length) {
-      lyricsData.forEach((v: LyricLine) => {
-        otherLyrics.forEach((x: LyricLine) => {
-          if (v.startTime === x.startTime || Math.abs(v.startTime - x.startTime) < 300) {
-            v[key] = x.words.map((word) => word.word).join("");
-          }
-        });
-      });
-    }
-    return lyricsData;
+    return alignLyrics(lyrics, otherLyrics, key);
   }
 
   /**
@@ -257,127 +247,7 @@ class LyricManager {
    * @returns LyricLine 数组
    */
   private parseQRCLyric(qrcContent: string, trans?: string, roma?: string): LyricLine[] {
-    // 行匹配: [开始时间,持续时间]内容
-    const linePattern = /^\[(\d+),(\d+)\](.*)$/;
-    // 逐字匹配: 文字(开始时间,持续时间)
-    const wordPattern = /([^(]*)\((\d+),(\d+)\)/g;
-    /**
-     * 解析 QRC 内容为行数据
-     */
-    const parseQRCContent = (
-      rawContent: string,
-    ): Array<{
-      startTime: number;
-      endTime: number;
-      words: Array<{ word: string; startTime: number; endTime: number }>;
-    }> => {
-      // 从 XML 中提取歌词内容
-      const contentMatch = /<Lyric_1[^>]*LyricContent="([^"]*)"[^>]*\/>/.exec(rawContent);
-      const content = contentMatch ? contentMatch[1] : rawContent;
-
-      const result: Array<{
-        startTime: number;
-        endTime: number;
-        words: Array<{ word: string; startTime: number; endTime: number }>;
-      }> = [];
-
-      for (const rawLine of content.split("\n")) {
-        const line = rawLine.trim();
-        if (!line) continue;
-
-        // 跳过元数据标签 [ti:xxx] [ar:xxx] 等
-        if (/^\[[a-z]+:/i.test(line)) continue;
-
-        const lineMatch = linePattern.exec(line);
-        if (!lineMatch) continue;
-
-        const lineStart = parseInt(lineMatch[1], 10);
-        const lineDuration = parseInt(lineMatch[2], 10);
-        const lineContent = lineMatch[3];
-
-        // 解析逐字
-        const words: Array<{ word: string; startTime: number; endTime: number }> = [];
-        let wordMatch: RegExpExecArray | null;
-        const wordRegex = new RegExp(wordPattern.source, "g");
-
-        while ((wordMatch = wordRegex.exec(lineContent)) !== null) {
-          const wordText = wordMatch[1];
-          const wordStart = parseInt(wordMatch[2], 10);
-          const wordDuration = parseInt(wordMatch[3], 10);
-
-          if (wordText) {
-            words.push({
-              word: wordText,
-              startTime: wordStart,
-              endTime: wordStart + wordDuration,
-            });
-          }
-        }
-
-        if (words.length > 0) {
-          result.push({
-            startTime: lineStart,
-            endTime: lineStart + lineDuration,
-            words,
-          });
-        }
-      }
-      return result;
-    };
-    // 解析主歌词
-    const qrcLines = parseQRCContent(qrcContent);
-    let result = qrcLines.map((qrcLine) => {
-      return {
-        words: qrcLine.words.map((word) => ({
-          ...word,
-          romanWord: "",
-        })),
-        startTime: qrcLine.startTime,
-        endTime: qrcLine.endTime,
-        translatedLyric: "",
-        romanLyric: "",
-        isBG: false,
-        isDuet: false,
-      };
-    });
-    // 处理翻译
-    if (trans) {
-      let transLines = parseLrc(trans);
-      if (transLines?.length) {
-        // 过滤包含 "//" 或 "作品的著作权" 的翻译行
-        transLines = transLines.filter((line) => {
-          const text = line.words.map((w) => w.word).join("");
-          return !text.includes("//") && !text.includes("作品的著作权");
-        });
-        result = this.alignLyrics(result, transLines, "translatedLyric");
-      }
-    }
-    // 处理音译
-    if (roma) {
-      const qrcRomaLines = parseQRCContent(roma);
-      if (qrcRomaLines?.length) {
-        const romaLines = qrcRomaLines.map((line) => {
-          return {
-            words: [
-              {
-                startTime: line.startTime,
-                endTime: line.endTime,
-                word: line.words.map((w) => w.word).join(""),
-                romanWord: "",
-              },
-            ],
-            startTime: line.startTime,
-            endTime: line.endTime,
-            translatedLyric: "",
-            romanLyric: "",
-            isBG: false,
-            isDuet: false,
-          };
-        });
-        result = this.alignLyrics(result, romaLines, "romanLyric");
-      }
-    }
-    return result;
+    return parseQRCLyric(qrcContent, trans, roma);
   }
 
   /**

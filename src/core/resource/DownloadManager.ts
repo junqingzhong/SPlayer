@@ -9,6 +9,7 @@ import { qqMusicMatch } from "@/api/qqmusic";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 import { getConverter, type ConverterMode } from "@/utils/opencc";
+import { lyricLinesToTTML, parseQRCLyric } from "@/utils/lyricParser";
 
 interface DownloadTask {
   song: SongType;
@@ -410,10 +411,25 @@ class DownloadManager {
                     console.log(`[Download] Trying QM fallback with keyword: ${keyword}`);
                     const qmResult = await qqMusicMatch(keyword);
                     if (qmResult?.code === 200 && qmResult?.qrc) {
-                      yrcLyric = qmResult.qrc;
-                      console.log(
-                        `[Download] QM QRC fetched as fallback, len: ${yrcLyric?.length}`,
+                      // 解析 QRC 歌词（包含翻译和音译对齐）
+                      const parsedLines = parseQRCLyric(
+                        qmResult.qrc,
+                        qmResult.trans,
+                        qmResult.roma,
                       );
+                      if (parsedLines.length > 0) {
+                        // 转换为 TTML 格式
+                        ttmlLyric = lyricLinesToTTML(parsedLines);
+                        console.log(
+                          `[Download] QM QRC parsed and converted to TTML, lines: ${parsedLines.length}`,
+                        );
+                      } else {
+                        // 如果解析失败，保留原始 QRC
+                        yrcLyric = qmResult.qrc;
+                        console.log(
+                          `[Download] QM QRC fetched as fallback (raw), len: ${yrcLyric?.length}`,
+                        );
+                      }
                     }
                   } catch (e) {
                     console.error("[Download] Error fetching QM lyrics as fallback:", e);
