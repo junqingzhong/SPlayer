@@ -248,8 +248,9 @@ export abstract class BaseAudioPlayer
    */
   public stop() {
     this.cancelPendingPause();
-    this.pause({ fadeOut: false });
-    this.doSeek(0);
+    // 捕获可能产生的异步错误
+    Promise.resolve(this.pause({ fadeOut: false })).catch(() => {});
+    Promise.resolve(this.doSeek(0)).catch(() => {});
   }
 
   /**

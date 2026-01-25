@@ -349,7 +349,11 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
   }
 
   public setRate(value: number): void {
-    this.setTempo(value);
+    this.setTempo(value).catch((e) => {
+      if (e.message !== "Player reset") {
+        console.warn("[FFmpegAudioPlayer] setTempo failed:", e);
+      }
+    });
   }
 
   public getRate(): number {
@@ -638,7 +642,6 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.stopActiveSources();
     this.activeSources = [];
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     for (const [_id, req] of this.pendingRequests) {
       clearTimeout(req.timer);
       req.reject(new Error("Player reset"));
