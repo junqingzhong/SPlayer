@@ -54,9 +54,6 @@ import { LyricLineMouseEvent, type LyricLine } from "@applemusic-like-lyrics/cor
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
-
-// 此处cloneDeep 删除会暴毙 不要动
-
 import { cloneDeep } from "lodash-es";
 import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
 
@@ -78,21 +75,17 @@ const lyricPlayerRef = ref<any | null>(null);
 const amLyricsData = computed(() => {
   const { songLyric } = musicStore;
   if (!songLyric) return [];
-
   // 优先使用逐字歌词(YRC/TTML)
   const useYrc = songLyric.yrcData?.length && settingStore.showYrc;
   const lyrics = useYrc ? songLyric.yrcData : songLyric.lrcData;
-
   // 简单检查歌词有效性
   if (!Array.isArray(lyrics) || lyrics.length === 0) return [];
-
+  // 此处cloneDeep 删除会暴毙 不要动
   const clonedLyrics = cloneDeep(lyrics) as LyricLine[];
-
   // 检查是否要不显示某一部分并删去
   const showTran = settingStore.showTran;
   const showRoma = settingStore.showRoma;
   const showWordsRoma = settingStore.showWordsRoma;
-
   if (!showTran || !showRoma || !showWordsRoma) {
     clonedLyrics.forEach((line) => {
       if (!showTran) line.translatedLyric = "";
@@ -100,9 +93,6 @@ const amLyricsData = computed(() => {
       if (!showWordsRoma) line.words.forEach((word) => (word.romanWord = ""));
     });
   }
-
-
-
   // 调换翻译与音译位置
   if (settingStore.swapTranRoma) {
     clonedLyrics.forEach((line) => {
@@ -111,14 +101,12 @@ const amLyricsData = computed(() => {
       line.romanLyric = temp;
     });
   }
-
   // 如果开启了歌词靠右，反转 isDuet
   if (settingStore.lyricAlignRight) {
     clonedLyrics.forEach((line) => {
       line.isDuet = !line.isDuet;
     });
   }
-
   return clonedLyrics;
 });
 
