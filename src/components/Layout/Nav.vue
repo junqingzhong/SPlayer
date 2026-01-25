@@ -26,7 +26,7 @@
         <!-- 用户 -->
         <User v-if="settingStore.useOnlineService" />
         <!-- 设置菜单 -->
-        <n-dropdown :options="setOptions" trigger="click" show-arrow @select="setSelect">
+        <n-dropdown :options="setOptions" trigger="click" @select="setSelect">
           <n-button :focusable="false" title="设置" tertiary circle>
             <template #icon>
               <SvgIcon name="Settings" />
@@ -131,14 +131,15 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
-import { useSettingStore } from "@/stores";
+import { useSettingStore, useStatusStore } from "@/stores";
 import { renderIcon } from "@/utils/helper";
-import { openSetting } from "@/utils/modal";
+import { openSetting, openThemeConfig, openScalingModal } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
 import { useMobile } from "@/composables/useMobile";
 
 const router = useRouter();
 const settingStore = useSettingStore();
+const statusStore = useStatusStore();
 const { isDesktop, isSmallScreen } = useMobile();
 
 const showCloseModal = ref(false);
@@ -150,23 +151,6 @@ const useBorderless = ref(true);
 const isMax = ref(false);
 // 是否显示侧边栏
 const showAside = ref(false);
-// 当前缩放系数
-const currentZoomFactor = ref(1.0);
-
-// 缩放系数选项
-const zoomFactorList = [0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2];
-
-// 缩放选项列表
-const zoomOptions = computed<DropdownOption[]>(() =>
-  zoomFactorList.map((factor) => {
-    const isSelected = Math.abs(currentZoomFactor.value - factor) < 0.01;
-    return {
-      label: `${Math.round(factor * 100)}%`,
-      key: `zoom-${factor}`,
-      icon: isSelected ? renderIcon("Check") : undefined,
-    };
-  }),
-);
 
 // 最小化
 const min = () => window.electron.ipcRenderer.send("win-min");
@@ -209,6 +193,7 @@ const setOptions = computed<DropdownOption[]>(() => [
           ? "深色模式"
           : "跟随系统",
     key: "themeMode",
+    disabled: !!statusStore.backgroundImageUrl,
     icon: renderIcon(
       settingStore.themeMode === "auto"
         ? "LightTheme"
@@ -218,11 +203,15 @@ const setOptions = computed<DropdownOption[]>(() => [
     ),
   },
   {
+    label: "主题配置",
+    key: "themeConfig",
+    icon: renderIcon("Palette"),
+  },
+  {
     key: "zoom",
     label: "界面缩放",
     icon: renderIcon("ZoomIn"),
     show: isElectron,
-    children: zoomOptions.value,
   },
   {
     key: "divider-1",
@@ -255,21 +244,17 @@ const setSelect = (key: string) => {
     case "themeMode":
       settingStore.setThemeMode();
       break;
+    case "themeConfig":
+      openThemeConfig();
+      break;
+    case "zoom":
+      openScalingModal();
+      break;
     case "setting":
       openSetting();
       break;
     case "dev-tools":
       window.electron.ipcRenderer.send("open-dev-tools");
-      break;
-    default:
-      // 处理缩放选项
-      if (key.startsWith("zoom-")) {
-        const factor = parseFloat(key.replace("zoom-", ""));
-        if (!isNaN(factor)) {
-          window.electron.ipcRenderer.invoke("set-zoom-factor", factor);
-          currentZoomFactor.value = factor;
-        }
-      }
       break;
   }
 };
@@ -280,8 +265,6 @@ onMounted(async () => {
     // 获取无边框窗口配置
     const windowConfig = await window.api.store.get("window");
     useBorderless.value = windowConfig?.useBorderless ?? true;
-    // 获取当前缩放系数
-    currentZoomFactor.value = await window.electron.ipcRenderer.invoke("get-zoom-factor");
     // 获取窗口状态
     isMax.value = window.electron.ipcRenderer.sendSync("win-state");
     window.electron.ipcRenderer.on("win-state-change", (_event, value: boolean) => {

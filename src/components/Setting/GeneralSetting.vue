@@ -2,15 +2,20 @@
 <template>
   <div class="setting-type">
     <div class="set-list">
-      <n-h3 prefix="bar"> 主题设置 </n-h3>
+      <n-h3 prefix="bar"> 全局设置 </n-h3>
       <n-card class="set-item">
         <div class="label">
           <n-text class="name">主题模式</n-text>
-          <n-text class="tip" :depth="3">调整全局主题明暗模式</n-text>
+          <n-text class="tip" :depth="3">{{
+            statusStore.themeBackgroundMode === "image"
+              ? "请关闭自定义背景图后调节"
+              : "调整全局主题明暗模式"
+          }}</n-text>
         </div>
         <n-select
           v-model:value="settingStore.themeMode"
           class="set"
+          :disabled="statusStore.themeBackgroundMode === 'image'"
           :options="[
             {
               label: '跟随系统',
@@ -32,52 +37,7 @@
           <n-text class="name">主题配置</n-text>
           <n-text class="tip" :depth="3">更改主题色或自定义图片</n-text>
         </div>
-        <n-select
-          v-model:value="settingStore.themeColorType"
-          class="set"
-          :disabled="settingStore.themeFollowCover"
-          :options="themeColorOptions"
-        />
-      </n-card>
-      <n-collapse-transition
-        :show="settingStore.themeColorType === 'custom' && !settingStore.themeFollowCover"
-      >
-        <n-card class="set-item">
-          <div class="label">
-            <n-text class="name">自定义主题色</n-text>
-            <n-text class="tip" :depth="3">可在此处自定义全局主题色</n-text>
-          </div>
-          <n-color-picker
-            v-model:value="settingStore.themeCustomColor"
-            :show-alpha="false"
-            :modes="['hex']"
-            class="set"
-          />
-        </n-card>
-      </n-collapse-transition>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">全局着色</n-text>
-          <n-text class="tip" :depth="3">是否将主题色应用至所有元素</n-text>
-        </div>
-        <n-switch
-          v-model:value="settingStore.themeGlobalColor"
-          class="set"
-          :round="false"
-          @update:value="themeGlobalColorChange"
-        />
-      </n-card>
-      <n-card class="set-item">
-        <div class="label">
-          <n-text class="name">全局动态取色</n-text>
-          <n-text class="tip" :depth="3">主题色是否跟随封面，开启后自定义主题色将失效</n-text>
-        </div>
-        <n-switch
-          v-model:value="settingStore.themeFollowCover"
-          :disabled="isEmpty(statusStore.songCoverTheme)"
-          class="set"
-          :round="false"
-        />
+        <n-button type="primary" strong secondary @click="openThemeConfig"> 配置 </n-button>
       </n-card>
       <n-card class="set-item">
         <div class="label">
@@ -302,19 +262,16 @@
 </template>
 
 <script setup lang="ts">
-import type { SelectOption } from "naive-ui";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { isElectron } from "@/utils/env";
-import { isEmpty } from "lodash-es";
-import themeColor from "@/assets/data/themeColor.json";
 import {
   openSidebarHideManager,
   openHomePageSectionManager,
   openFontManager,
   openCustomCode,
+  openThemeConfig,
 } from "@/utils/modal";
 import { sendRegisterProtocol } from "@/utils/protocol";
-import { getCoverColor } from "@/utils/color";
 import { usePlayerController } from "@/core/player/PlayerController";
 
 const dataStore = useDataStore();
@@ -328,18 +285,6 @@ const useOnlineService = ref(settingStore.useOnlineService);
 
 // 是否开启无边框窗口
 const useBorderless = ref(true);
-
-// 全局主题色配置
-const themeColorOptions: SelectOption[] = [
-  // { label: "关闭主题色", value: "close" },
-  ...Object.keys(themeColor).map((key) => ({
-    value: key,
-    label: themeColor[key].name,
-    style: {
-      color: themeColor[key].color,
-    },
-  })),
-];
 
 // 关闭任务栏进度
 const closeTaskbarProgress = (val: boolean) => {
@@ -395,11 +340,6 @@ const modeChange = (val: boolean) => {
       },
     });
   }
-};
-
-// 全局着色更改
-const themeGlobalColorChange = (val: boolean) => {
-  if (val) getCoverColor(musicStore.songCover);
 };
 
 // 注册或取消注册协议

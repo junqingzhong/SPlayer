@@ -4,25 +4,15 @@ import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
 import { defineStore } from "pinia";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
+import { ThemeColorType } from "@/types/color";
 
 export interface SettingState {
-  /** Schema 版本号（可选，用于数据迁移） */
+  /** Schema 版本号 */
   schemaVersion?: number;
   /** 明暗模式 */
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
-  themeColorType:
-    | "default"
-    | "orange"
-    | "blue"
-    | "pink"
-    | "brown"
-    | "indigo"
-    | "green"
-    | "purple"
-    | "yellow"
-    | "teal"
-    | "custom";
+  themeColorType: ThemeColorType;
   /** 偏好繁体中文 */
   preferTraditionalChinese: boolean;
   /** 繁体中文变体 */
@@ -31,6 +21,8 @@ export interface SettingState {
   themeCustomColor: string;
   /** 全局着色 */
   themeGlobalColor: boolean;
+  /** 主题变体 */
+  themeVariant: "primary" | "secondary" | "tertiary" | "neutral" | "neutralVariant" | "error";
   /** 主题跟随封面 */
   themeFollowCover: boolean;
   /** 全局字体 */
@@ -350,6 +342,7 @@ export const useSettingStore = defineStore("setting", {
     themeCustomColor: "#fe7971",
     themeFollowCover: false,
     themeGlobalColor: false,
+    themeVariant: "secondary",
     globalFont: "default",
     LyricFont: "follow",
     japaneseLyricFont: "follow",
