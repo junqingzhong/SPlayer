@@ -1,5 +1,5 @@
 import { useSettingStore } from "@/stores";
-import { isElectron } from "@/utils/env";
+import { checkIsolationSupport, isElectron } from "@/utils/env";
 import { TypedEventTarget } from "@/utils/TypedEventTarget";
 import { AudioElementPlayer } from "../audio-player/AudioElementPlayer";
 import { AUDIO_EVENTS, type AudioEventMap } from "../audio-player/BaseAudioPlayer";
@@ -38,10 +38,14 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       mpvPlayer.init();
       this.engine = mpvPlayer;
       this.engineType = "mpv";
-    } else if (audioEngine === "ffmpeg") {
+    } else if (audioEngine === "ffmpeg" && checkIsolationSupport()) {
       this.engine = new FFmpegAudioPlayer();
       this.engineType = "ffmpeg";
     } else {
+      if (audioEngine === "ffmpeg" && !checkIsolationSupport()) {
+        console.warn("[AudioManager] 环境未隔离，从 FFmpeg 回退到 Web Audio");
+      }
+
       this.engine = new AudioElementPlayer();
       this.engineType = "element";
     }

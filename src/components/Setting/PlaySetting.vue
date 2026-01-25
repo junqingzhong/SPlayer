@@ -122,6 +122,7 @@
         <n-select
           :value="audioEngineSelectValue"
           :options="audioEngineOptions"
+          :render-option="renderAudioEngineOption"
           class="set"
           @update:value="handleAudioEngineSelect"
         />
@@ -430,12 +431,13 @@
 import { usePlayerController } from "@/core/player/PlayerController";
 import { useSettingStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
-import { isElectron } from "@/utils/env";
+import { checkIsolationSupport, isElectron } from "@/utils/env";
 import { renderOption } from "@/utils/helper";
 import { AI_AUDIO_LEVELS } from "@/utils/meta";
 import { openSongUnlockManager } from "@/utils/modal";
 import { uniqBy } from "lodash-es";
-import type { SelectOption } from "naive-ui";
+import { NTooltip, type SelectOption } from "naive-ui";
+import { h, type VNodeChild } from "vue";
 
 const player = usePlayerController();
 const settingStore = useSettingStore();
@@ -444,6 +446,11 @@ const outputDevices = ref<SelectOption[]>([]);
 
 // 统一处理音频引擎选择
 const handleAudioEngineSelect = async (value: "element" | "ffmpeg" | "mpv") => {
+  if (value === "ffmpeg" && !checkIsolationSupport()) {
+    window.$message.warning("当前环境不支持 FFmpeg 引擎，已回退至默认引擎");
+    return;
+  }
+
   const targetPlaybackEngine = value === "mpv" ? "mpv" : "web-audio";
   // 如果是切回 web-audio，且 value 为 element/ffmpeg，则更新 audioEngine
   const targetAudioEngine = value !== "mpv" ? value : settingStore.audioEngine;
@@ -511,10 +518,28 @@ const engineTip = computed(() => {
   return audioEngineData[settingStore.audioEngine]?.tip;
 });
 
+const renderAudioEngineOption = ({ node, option }: { node: VNodeChild; option: SelectOption }) => {
+  if (option.value === "ffmpeg" && option.disabled) {
+    return h(
+      NTooltip,
+      { placement: "left", keepAliveOnHover: false },
+      {
+        trigger: () => h("div", { style: "cursor: not-allowed;" }, [node]),
+        default: () => "当前环境不支持 FFmpeg",
+      },
+    );
+  }
+  return node;
+};
+
 // 组合下拉选项：包含 WebAudio / FFmpeg / MPV
 const audioEngineOptions = [
   { label: "Web Audio (默认)", value: "element" },
-  { label: "FFmpeg", value: "ffmpeg" },
+  {
+    label: "FFmpeg",
+    value: "ffmpeg",
+    disabled: !checkIsolationSupport(),
+  },
   { label: "MPV", value: "mpv" },
 ];
 
