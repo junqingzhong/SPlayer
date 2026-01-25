@@ -4,6 +4,7 @@ import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
 import { songDownloadUrl, songLyric, songLyricTTML, songUrl, unlockSongUrl } from "@/api/song";
+import { qqMusicMatch } from "@/api/qqmusic";
 
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
@@ -398,6 +399,26 @@ class DownloadManager {
                 console.log(
                   `[Download] YRC fetched from lrcResult: ${!!yrcLyric}, len: ${yrcLyric?.length}`,
                 );
+
+                // Fallback: 如果官方没有 YRC，尝试从 QM 获取
+                if (!yrcLyric) {
+                  try {
+                    const artistsStr = Array.isArray(song.artists)
+                      ? song.artists.map((a) => a.name).join("/")
+                      : String(song.artists || "");
+                    const keyword = `${song.name}-${artistsStr}`;
+                    console.log(`[Download] Trying QM fallback with keyword: ${keyword}`);
+                    const qmResult = await qqMusicMatch(keyword);
+                    if (qmResult?.code === 200 && qmResult?.qrc) {
+                      yrcLyric = qmResult.qrc;
+                      console.log(
+                        `[Download] QM QRC fetched as fallback, len: ${yrcLyric?.length}`,
+                      );
+                    }
+                  } catch (e) {
+                    console.error("[Download] Error fetching QM lyrics as fallback:", e);
+                  }
+                }
               }
             } catch (e) {
               console.error("[Download] Error fetching verbatim lyrics:", e);
