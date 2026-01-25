@@ -212,7 +212,10 @@ const qualityOptions = computed<DropdownOption[]>(() => {
 const lyricMode = computed(() => {
   if (settingStore.showYrc) {
     if (statusStore.usingTTMLLyric) return "TTML";
-    if (musicStore.isHasYrc) return "YRC";
+    if (musicStore.isHasYrc) {
+      // 如果是从QQ音乐获取的歌词，显示QRC
+      return statusStore.usingQRCLyric ? "QRC" : "YRC";
+    }
   }
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
 });

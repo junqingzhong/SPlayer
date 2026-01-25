@@ -36,6 +36,7 @@ class LyricManager {
     // 重置歌词数据
     musicStore.setSongLyric({}, true);
     statusStore.usingTTMLLyric = false;
+    statusStore.usingQRCLyric = false;
     // 重置歌词索引
     statusStore.lyricIndex = -1;
     statusStore.lyricLoading = false;
@@ -376,6 +377,8 @@ class LyricManager {
     await Promise.allSettled([adoptTTML(), adoptLRC()]);
     // 优先使用 TTML
     statusStore.usingTTMLLyric = ttmlAdopted;
+    // 设置是否使用 QRC 歌词（来自 QQ 音乐，且未被 TTML 覆盖）
+    statusStore.usingQRCLyric = qqMusicAdopted && !ttmlAdopted;
     return await this.applyChineseVariant(this.handleLyricExclude(result));
   }
 
@@ -425,6 +428,7 @@ class LyricManager {
             lrcData: aligned.lrcData,
             yrcData: qqLyric.yrcData,
           };
+          statusStore.usingQRCLyric = true;
         }
       }
       return await this.applyChineseVariant(aligned);
