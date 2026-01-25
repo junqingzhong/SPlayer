@@ -193,6 +193,7 @@ class LyricManager {
       if (durationDiff > 5000) {
         console.warn(
           `QQ 音乐歌词时长不匹配: ${data.song.duration}ms vs ${song.duration}ms (差异 ${durationDiff}ms)`,
+          data,
         );
         return null;
       }
