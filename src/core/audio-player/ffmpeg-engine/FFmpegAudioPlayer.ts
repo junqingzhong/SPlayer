@@ -452,10 +452,13 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
             if (this.audioCtx) {
               const bufferedDuration = this.nextStartTime - this.audioCtx.currentTime;
               if (bufferedDuration > HIGH_WATER_MARK && !this.isWorkerPaused) {
+                this.isWorkerPaused = true;
                 this.requestWorker({
                   type: "PAUSE",
-                }).catch(() => {});
-                this.isWorkerPaused = true;
+                }).catch((e) => {
+                  console.error("[Player] Failed to pause worker for high water mark:", e);
+                  this.isWorkerPaused = false;
+                });
               }
             }
           }
@@ -529,8 +532,11 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
       if (this.audioCtx && !this.isDecodingFinished) {
         const bufferedDuration = this.nextStartTime - this.audioCtx.currentTime;
         if (bufferedDuration < LOW_WATER_MARK && this.isWorkerPaused) {
-          this.requestWorker({ type: "RESUME" }).catch(() => {});
           this.isWorkerPaused = false;
+          this.requestWorker({ type: "RESUME" }).catch((err) => {
+            console.error("[Player] Failed to resume worker for low water mark:", err);
+            this.isWorkerPaused = true;
+          });
         }
       }
 
