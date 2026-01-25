@@ -415,13 +415,15 @@ const cacheLimit = ref<number>(10); // 本地状态
 const cacheLimited = ref<number>(1); // 是否限制缓存 (1 为限制)
 
 // 繁体变体标签
+const variantMap: Record<string, string> = {
+  s2t: "繁体中文 (标准)",
+  s2tw: "台湾正体",
+  s2hk: "香港繁体",
+  s2twp: "台湾正体 (含词汇)",
+};
+
+// 繁体变体标签
 const traditionalVariantLabel = computed(() => {
-  const variantMap: Record<string, string> = {
-    s2t: "繁体中文 (标准)",
-    s2tw: "台湾正体",
-    s2hk: "香港繁体",
-    s2twp: "台湾正体 (含词汇)",
-  };
   return variantMap[settingStore.traditionalChineseVariant] || "繁体中文";
 });
 

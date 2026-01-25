@@ -426,11 +426,7 @@ class DownloadManager {
           if (content) {
             try {
               // 繁体转换
-              if (settingStore.downloadLyricToTraditional) {
-                const variant = (settingStore.traditionalChineseVariant || "s2t") as ConverterMode;
-                const converter = await getConverter(variant);
-                content = converter(content);
-              }
+              content = await this._convertToTraditionalIfNeeded(content);
 
               const ext = ttmlLyric ? "ttml" : "yrc";
               const fileName = `${safeFileName}.${ext}`;
@@ -606,13 +602,9 @@ class DownloadManager {
       const result = lines.join("\n");
 
       // 繁体转换
-      if (settingStore.downloadLyricToTraditional) {
-        const variant = (settingStore.traditionalChineseVariant || "s2t") as ConverterMode;
-        const converter = await getConverter(variant);
-        return converter(result);
-      }
+      return await this._convertToTraditionalIfNeeded(result);
 
-      return result;
+
     } catch (e) {
       console.error("Lyric processing failed", e);
       return "";
@@ -675,6 +667,20 @@ class DownloadManager {
     failedSongs.forEach((id) => {
       this.retryDownload(id);
     });
+  }
+  /**
+   * 繁体转换辅助方法
+   * @param text 需要转换的文本
+   * @returns 转换后的文本
+   */
+  private async _convertToTraditionalIfNeeded(text: string): Promise<string> {
+    const settingStore = useSettingStore();
+    if (settingStore.downloadLyricToTraditional && text) {
+      const variant = (settingStore.traditionalChineseVariant || "s2t") as ConverterMode;
+      const converter = await getConverter(variant);
+      return converter(text);
+    }
+    return text;
   }
 }
 
