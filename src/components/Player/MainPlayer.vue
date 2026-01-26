@@ -44,7 +44,11 @@
             <!-- 名称 -->
             <TextContainer
               :key="musicStore.playSong.name"
-              :text="settingStore.hideLyricBrackets ? removeBrackets(musicStore.playSong.name) : musicStore.playSong.name"
+              :text="
+                settingStore.hideLyricBrackets
+                  ? removeBrackets(musicStore.playSong.name)
+                  : musicStore.playSong.name
+              "
               :speed="0.2"
               class="name"
             />

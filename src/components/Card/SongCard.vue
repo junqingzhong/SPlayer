@@ -39,8 +39,18 @@
               }"
               class="name-text"
             >
-              {{ settingStore.hideLyricBrackets ? removeBrackets(song?.name) : (song?.name || "未知曲目") }}
-              <n-text v-if="song.alia?.length && !settingStore.hideLyricBrackets" class="alia" depth="3"> ({{ song.alia }}) </n-text>
+              {{
+                settingStore.hideLyricBrackets
+                  ? removeBrackets(song?.name)
+                  : song?.name || "未知曲目"
+              }}
+              <n-text
+                v-if="song.alia?.length && !settingStore.hideLyricBrackets"
+                class="alia"
+                depth="3"
+              >
+                ({{ song.alia }})
+              </n-text>
             </n-ellipsis>
           </div>
           <n-flex :size="4" :wrap="false" class="desc" align="center">

@@ -1,8 +1,5 @@
 import { QualityType, SongType, UpdateLogType } from "@/types/main";
-import {
-  AI_AUDIO_LEVELS,
-  AI_AUDIO_KEYS,
-} from "@/utils/meta";
+import { AI_AUDIO_LEVELS, AI_AUDIO_KEYS } from "@/utils/meta";
 import { NTooltip, SelectOption } from "naive-ui";
 import { h, VNode } from "vue";
 import { getCacheData } from "./cache";
@@ -415,23 +412,26 @@ export const handleSongQuality = (
   }
 
   const levelQualityMap = {
-    "jymaster": QualityType.Master,
-    "dolby": QualityType.Dolby,
-    "sky": QualityType.Spatial,
-    "jyeffect": QualityType.Surround,
-    "hires": QualityType.HiRes,
-    "lossless": QualityType.SQ,
-    "exhigh": QualityType.HQ,
-    "higher": QualityType.MQ,
-    "standard": QualityType.LQ,
+    jymaster: QualityType.Master,
+    dolby: QualityType.Dolby,
+    sky: QualityType.Spatial,
+    jyeffect: QualityType.Surround,
+    hires: QualityType.HiRes,
+    lossless: QualityType.SQ,
+    exhigh: QualityType.HQ,
+    higher: QualityType.MQ,
+    standard: QualityType.LQ,
   };
 
   // Fuck AI Filter: 如果是 AI 音质，跳过 level 属性判断，让后续遍历逻辑来确定真正的最高音质
-  const isAiLevel = disableAiAudio && typeof song === "object" && song && (
-    ("level" in song && AI_AUDIO_LEVELS.includes(song.level)) ||
-    ("privilege" in song && AI_AUDIO_LEVELS.includes(song.privilege?.playMaxBrLevel ?? song.privilege?.plLevel))
-  );
- 
+  const isAiLevel =
+    disableAiAudio &&
+    typeof song === "object" &&
+    song &&
+    (("level" in song && AI_AUDIO_LEVELS.includes(song.level)) ||
+      ("privilege" in song &&
+        AI_AUDIO_LEVELS.includes(song.privilege?.playMaxBrLevel ?? song.privilege?.plLevel)));
+
   if (typeof song === "object" && song && !isAiLevel) {
     // 含有 level 特殊处理（仅在非 AI 音质时使用）
     if ("level" in song) {
@@ -441,8 +441,8 @@ export const handleSongQuality = (
     // 云盘歌曲适配
     if ("privilege" in song) {
       const privilege = song.privilege;
-      const quality = levelQualityMap[privilege?.playMaxBrLevel]
-        ?? levelQualityMap[privilege?.plLevel];
+      const quality =
+        levelQualityMap[privilege?.playMaxBrLevel] ?? levelQualityMap[privilege?.plLevel];
       if (quality) return quality;
     }
   }
@@ -458,12 +458,12 @@ export const handleSongQuality = (
     { key: "m", type: QualityType.MQ },
     { key: "l", type: QualityType.LQ },
   ];
-  
+
   for (const itemKey of order) {
-      // 过滤 AI 音质
-      if (disableAiAudio && AI_AUDIO_KEYS.includes(itemKey.key)) {
-          continue;
-      }
+    // 过滤 AI 音质
+    if (disableAiAudio && AI_AUDIO_KEYS.includes(itemKey.key)) {
+      continue;
+    }
     if (song[itemKey.key] && Number(song[itemKey.key].br) > 0) {
       return itemKey.type;
     }

@@ -45,9 +45,7 @@ export const lyricFontConfigs: LyricFontConfig[] = [
   ...lyricLangFontConfigs,
 ];
 
-export const lyricLangFontStyle = (
-  settingStore = useSettingStore()
-) => {
+export const lyricLangFontStyle = (settingStore = useSettingStore()) => {
   return Object.fromEntries(
     lyricLangFontConfigs.map((c) => {
       const settingValue = settingStore[c.keySetting];

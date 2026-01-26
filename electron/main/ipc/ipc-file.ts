@@ -730,7 +730,7 @@ const initFileIpc = (): void => {
         } else {
           await writeFile(filePath, content, "utf-8");
         }
-        
+
         return { success: true };
       } catch (error) {
         ipcLog.error("❌ Error saving file content:", error);

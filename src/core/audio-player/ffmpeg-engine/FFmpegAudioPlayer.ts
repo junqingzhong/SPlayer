@@ -642,7 +642,7 @@ export class FFmpegAudioPlayer extends BaseAudioPlayer {
     this.stopActiveSources();
     this.activeSources = [];
 
-    for (const [_id, req] of this.pendingRequests) {
+    for (const req of this.pendingRequests.values()) {
       clearTimeout(req.timer);
       req.reject(new Error("Player reset"));
     }

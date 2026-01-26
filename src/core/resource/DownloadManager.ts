@@ -640,8 +640,6 @@ class DownloadManager {
 
       // 繁体转换
       return await this._convertToTraditionalIfNeeded(result);
-
-
     } catch (e) {
       console.error("Lyric processing failed", e);
       return "";
