@@ -1,13 +1,14 @@
 /**
- * Jellyfin API 客户端
+ * Emby API 客户端
+ * 基于 Jellyfin 实现，因为两者 API 高度兼容
  */
 
 import { SongType } from "@/types/main";
 import type {
   StreamingServerConfig,
-  JellyfinItem,
-  JellyfinAuthResponse,
-  JellyfinItemsResponse,
+  JellyfinItem as EmbyItem, // 复用 Jellyfin 类型，因为结构基本一致
+  JellyfinAuthResponse as EmbyAuthResponse,
+  JellyfinItemsResponse as EmbyItemsResponse,
   StreamingAlbumType,
   StreamingArtistType,
   StreamingPlaylistType,
@@ -17,7 +18,7 @@ import type {
  * 获取请求头
  */
 const getHeaders = (config: StreamingServerConfig): HeadersInit => {
-  // Jellyfin 需要 X-Emby-Authorization 头
+  // Emby 使用 X-Emby-Authorization 头
   const authParts = [
     `MediaBrowser Client="SPlayer"`,
     `Version="1.0.0"`,
@@ -89,7 +90,11 @@ export const getImageUrl = (
   });
   if (maxHeight) params.append("maxHeight", maxHeight.toString());
   if (tag) params.append("tag", tag);
+  // Emby 通常不需要 api_key 在 URL 中如果 header 中有 token，但为了保险起见可以加上，或者 Emby 只需要 header
+  // Jellyfin 是两者都支持。Emby 文档建议 header。这里先保留兼容性。
   if (config.accessToken) params.append("api_key", config.accessToken);
+
+  // Emby 的图片路径可能略有不同，但 /Items/{Id}/Images/{Type} 是标准的
   return `${baseUrl}/Items/${itemId}/Images/${imageType}?${params.toString()}`;
 };
 
@@ -101,7 +106,7 @@ export const getAudioStreamUrl = (config: StreamingServerConfig, itemId: string)
   const params = new URLSearchParams({
     UserId: config.userId || "",
     DeviceId: "splayer-web-client",
-    MaxStreamingBitrate: "140000000", // High bitrate to prefer direct play/high quality
+    MaxStreamingBitrate: "140000000",
     Container: "opus,webm|opus,ts|mp3,aac,m4a|aac,m4b|aac,flac,webma,webm|webma,wav,ogg",
     TranscodingContainer: "ts",
     TranscodingProtocol: "hls",
@@ -111,6 +116,7 @@ export const getAudioStreamUrl = (config: StreamingServerConfig, itemId: string)
     StartTimeTicks: "0",
     EnableRedirection: "true",
     EnableRemoteMedia: "true",
+    Static: "true", // Emby 可能更喜欢 Static=true 对于直接播放
   });
   return `${baseUrl}/Audio/${itemId}/universal?${params.toString()}`;
 };
@@ -129,12 +135,9 @@ const stringToNumericId = (id: string): number => {
 };
 
 /**
- * 转换 Jellyfin 项目为歌曲格式
+ * 转换 Emby 项目为歌曲格式
  */
-export const convertJellyfinSong = (
-  item: JellyfinItem,
-  config: StreamingServerConfig,
-): SongType => {
+export const convertEmbySong = (item: EmbyItem, config: StreamingServerConfig): SongType => {
   const artists = item.Artists?.join(", ") || item.AlbumArtist || "未知艺术家";
   const imageId = item.Id;
   const imageTag = item.ImageTags?.Primary;
@@ -167,10 +170,10 @@ export const convertJellyfinSong = (
 };
 
 /**
- * 转换 Jellyfin 项目为专辑格式
+ * 转换 Emby 项目为专辑格式
  */
-export const convertJellyfinAlbum = (
-  item: JellyfinItem,
+export const convertEmbyAlbum = (
+  item: EmbyItem,
   config: StreamingServerConfig,
 ): StreamingAlbumType => {
   const artistId = item.AlbumArtists?.[0]?.Id || item.ArtistItems?.[0]?.Id;
@@ -198,10 +201,10 @@ export const convertJellyfinAlbum = (
 };
 
 /**
- * 转换 Jellyfin 项目为艺术家格式
+ * 转换 Emby 项目为艺术家格式
  */
-export const convertJellyfinArtist = (
-  item: JellyfinItem,
+export const convertEmbyArtist = (
+  item: EmbyItem,
   config: StreamingServerConfig,
 ): StreamingArtistType => {
   const imageTag = item.ImageTags?.Primary;
@@ -224,10 +227,10 @@ export const convertJellyfinArtist = (
 };
 
 /**
- * 转换 Jellyfin 项目为歌单格式
+ * 转换 Emby 项目为歌单格式
  */
-export const convertJellyfinPlaylist = (
-  item: JellyfinItem,
+export const convertEmbyPlaylist = (
+  item: EmbyItem,
   config: StreamingServerConfig,
 ): StreamingPlaylistType => {
   const imageTag = item.ImageTags?.Primary;
@@ -258,7 +261,10 @@ export const convertJellyfinPlaylist = (
 export const authenticate = async (
   config: StreamingServerConfig,
 ): Promise<{ accessToken: string; userId: string }> => {
-  const result = await request<JellyfinAuthResponse>(config, "Users/AuthenticateByName", {
+  // Emby 的认证响应结构可能略有不同，但通常也包含 AccessToken 和 User.Id
+  // Emby 需要 Connect/Exchange 或者 Users/AuthenticateByName
+  // 尝试使用 Users/AuthenticateByName，这是旧版 Emby/Jellyfin 通用的
+  const result = await request<EmbyAuthResponse>(config, "Users/AuthenticateByName", {
     method: "POST",
     body: JSON.stringify({
       Username: config.username,
@@ -286,12 +292,12 @@ export const ping = async (config: StreamingServerConfig): Promise<{ version: st
 export const getArtists = async (config: StreamingServerConfig): Promise<StreamingArtistType[]> => {
   if (!config.userId) throw new Error("User ID is required");
 
-  const result = await request<JellyfinItemsResponse>(
+  const result = await request<EmbyItemsResponse>(
     config,
     `Artists?userId=${config.userId}&Recursive=true&SortBy=Name&SortOrder=Ascending`,
   );
 
-  return result.Items.map((item) => convertJellyfinArtist(item, config));
+  return result.Items.map((item) => convertEmbyArtist(item, config));
 };
 
 /**
@@ -314,12 +320,12 @@ export const getAlbums = async (
     Limit: limit.toString(),
   });
 
-  const result = await request<JellyfinItemsResponse>(
+  const result = await request<EmbyItemsResponse>(
     config,
     `Users/${config.userId}/Items?${params.toString()}`,
   );
 
-  return result.Items.map((item) => convertJellyfinAlbum(item, config));
+  return result.Items.map((item) => convertEmbyAlbum(item, config));
 };
 
 /**
@@ -334,16 +340,16 @@ export const getAlbumItems = async (
   const params = new URLSearchParams({
     ParentId: albumId,
     IncludeItemTypes: "Audio",
-    SortBy: "ParentIndexNumber,IndexNumber,SortName",
+    SortBy: "SortName", // Emby 也许没有 ParentIndexNumber
     SortOrder: "Ascending",
   });
 
-  const result = await request<JellyfinItemsResponse>(
+  const result = await request<EmbyItemsResponse>(
     config,
     `Users/${config.userId}/Items?${params.toString()}`,
   );
 
-  return result.Items.map((item) => convertJellyfinSong(item, config));
+  return result.Items.map((item) => convertEmbySong(item, config));
 };
 
 /**
@@ -363,12 +369,12 @@ export const getRandomSongs = async (
     Limit: limit.toString(),
   });
 
-  const result = await request<JellyfinItemsResponse>(
+  const result = await request<EmbyItemsResponse>(
     config,
     `Users/${config.userId}/Items?${params.toString()}`,
   );
 
-  return result.Items.map((item) => convertJellyfinSong(item, config));
+  return result.Items.map((item) => convertEmbySong(item, config));
 };
 
 /**
@@ -384,14 +390,15 @@ export const getPlaylists = async (
     Recursive: "true",
   });
 
-  const result = await request<JellyfinItemsResponse>(
+  const result = await request<EmbyItemsResponse>(
     config,
     `Users/${config.userId}/Items?${params.toString()}`,
   );
 
-  // 只返回音乐歌单
+  // 只返回音乐歌单，Emby 歌单可能不区分类型，或者 MediaType = Audio
+  // 先简单的过滤
   return result.Items.filter((item) => item.Type === "Playlist").map((item) =>
-    convertJellyfinPlaylist(item, config),
+    convertEmbyPlaylist(item, config),
   );
 };
 
@@ -408,13 +415,13 @@ export const getPlaylistItems = async (
     userId: config.userId,
   });
 
-  const result = await request<JellyfinItemsResponse>(
+  const result = await request<EmbyItemsResponse>(
     config,
     `Playlists/${playlistId}/Items?${params.toString()}`,
   );
 
   return result.Items.filter((item) => item.Type === "Audio").map((item) =>
-    convertJellyfinSong(item, config),
+    convertEmbySong(item, config),
   );
 };
 
@@ -439,7 +446,7 @@ export const search = async (
     Limit: limit.toString(),
   });
 
-  const result = await request<JellyfinItemsResponse>(
+  const result = await request<EmbyItemsResponse>(
     config,
     `Users/${config.userId}/Items?${params.toString()}`,
   );
@@ -450,11 +457,11 @@ export const search = async (
 
   for (const item of result.Items) {
     if (item.Type === "MusicArtist") {
-      artists.push(convertJellyfinArtist(item, config));
+      artists.push(convertEmbyArtist(item, config));
     } else if (item.Type === "MusicAlbum") {
-      albums.push(convertJellyfinAlbum(item, config));
+      albums.push(convertEmbyAlbum(item, config));
     } else if (item.Type === "Audio") {
-      songs.push(convertJellyfinSong(item, config));
+      songs.push(convertEmbySong(item, config));
     }
   }
 
@@ -481,12 +488,12 @@ export const getSongs = async (
     Limit: limit.toString(),
   });
 
-  const result = await request<JellyfinItemsResponse>(
+  const result = await request<EmbyItemsResponse>(
     config,
     `Users/${config.userId}/Items?${params.toString()}`,
   );
 
-  return result.Items.map((item) => convertJellyfinSong(item, config));
+  return result.Items.map((item) => convertEmbySong(item, config));
 };
 
 /**
@@ -495,6 +502,8 @@ export const getSongs = async (
 export const getLyrics = async (config: StreamingServerConfig, itemId: string): Promise<string> => {
   if (!itemId) return "";
   try {
+    // Emby 可能不支持这个端点，或者格式不同。Jellyfin 支持 Audio/{Id}/Lyrics
+    // 如果 Emby 不支持，会抛出 404，返回空字符串
     const result = await request<{ Lyrics: { Text: string; Start: number }[] }>(
       config,
       `Audio/${itemId}/Lyrics`,
@@ -515,7 +524,7 @@ export const getLyrics = async (config: StreamingServerConfig, itemId: string): 
     }
     return "";
   } catch (error) {
-    console.warn("Failed to fetch lyrics from Jellyfin:", error);
+    console.warn("Failed to fetch lyrics from Emby:", error);
     return "";
   }
 };

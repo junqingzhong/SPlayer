@@ -106,7 +106,7 @@ export type SongType = {
   /** 原始 ID（流媒体服务器的 ID） */
   originalId?: string;
   /** 流媒体服务器类型 */
-  serverType?: "navidrome" | "jellyfin" | "opensubsonic";
+  serverType?: "navidrome" | "jellyfin" | "subsonic" | "opensubsonic" | "emby";
   /** 流媒体服务器 ID */
   serverId?: string;
   /** 来源标记 */

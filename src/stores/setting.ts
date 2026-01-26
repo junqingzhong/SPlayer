@@ -245,6 +245,8 @@ export interface SettingState {
   showPlayMeta: boolean;
   /** 显示歌曲音质 */
   showSongQuality: boolean;
+  /** 显示播放器歌曲音质 */
+  showPlayerQuality: boolean;
   /** 显示歌曲特权标签 */
   showSongPrivilegeTag: boolean;
   /** 显示原唱翻唱标签 */
@@ -456,6 +458,7 @@ export const useSettingStore = defineStore("setting", {
     realIP: "",
     showPlayMeta: true,
     showSongQuality: true,
+    showPlayerQuality: true,
     showSongPrivilegeTag: true,
     showSongOriginalTag: true,
     sidebarHide: {

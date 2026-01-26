@@ -11,7 +11,7 @@ import type {
   StreamingPlaylistType,
 } from "@/types/streaming";
 import { SongType } from "@/types/main";
-import { subsonic, jellyfin } from "@/api/streaming";
+import { subsonic, jellyfin, emby } from "@/api/streaming";
 import localforage from "localforage";
 
 // 创建存储实例
@@ -165,6 +165,18 @@ const createStreamingStore = () => {
           serverName: config.name,
           serverVersion: pingResult.version,
         };
+      } else if (config.type === "emby") {
+        // Emby 需要先认证
+        const authResult = await emby.authenticate(config);
+        config.accessToken = authResult.accessToken;
+        config.userId = authResult.userId;
+
+        const pingResult = await emby.ping(config);
+        return {
+          connected: true,
+          serverName: config.name,
+          serverVersion: pingResult.version,
+        };
       } else {
         // Subsonic API (Navidrome / OpenSubsonic)
         const pingResult = await subsonic.ping(config);
@@ -200,8 +212,8 @@ const createStreamingStore = () => {
         activeServerId.value = serverId;
         server.lastConnected = Date.now();
 
-        // 如果是 Jellyfin，保存认证信息
-        if (server.type === "jellyfin" && server.accessToken) {
+        // 如果是 Jellyfin 或 Emby，保存认证信息
+        if ((server.type === "jellyfin" || server.type === "emby") && server.accessToken) {
           await updateServer(serverId, {
             accessToken: server.accessToken,
             userId: server.userId,
@@ -258,6 +270,8 @@ const createStreamingStore = () => {
 
       if (server.type === "jellyfin") {
         result = await jellyfin.getRandomSongs(server, count);
+      } else if (server.type === "emby") {
+        result = await emby.getRandomSongs(server, count);
       } else {
         result = await subsonic.getRandomSongs(server, count);
       }
@@ -292,6 +306,8 @@ const createStreamingStore = () => {
 
       if (server.type === "jellyfin") {
         result = await jellyfin.getSongs(server, offset, size);
+      } else if (server.type === "emby") {
+        result = await emby.getSongs(server, offset, size);
       } else {
         result = await subsonic.getSongs(server, offset, size);
       }
@@ -323,6 +339,8 @@ const createStreamingStore = () => {
 
       if (server.type === "jellyfin") {
         result = await jellyfin.getArtists(server);
+      } else if (server.type === "emby") {
+        result = await emby.getArtists(server);
       } else {
         result = await subsonic.getArtists(server);
       }
@@ -350,6 +368,8 @@ const createStreamingStore = () => {
 
       if (server.type === "jellyfin") {
         result = await jellyfin.getAlbums(server);
+      } else if (server.type === "emby") {
+        result = await emby.getAlbums(server);
       } else {
         result = await subsonic.getAlbumList(server, "alphabeticalByName");
       }
@@ -377,6 +397,8 @@ const createStreamingStore = () => {
 
       if (server.type === "jellyfin") {
         result = await jellyfin.getPlaylists(server);
+      } else if (server.type === "emby") {
+        result = await emby.getPlaylists(server);
       } else {
         result = await subsonic.getPlaylists(server);
       }
@@ -401,6 +423,8 @@ const createStreamingStore = () => {
     try {
       if (server.type === "jellyfin") {
         return await jellyfin.getAlbumItems(server, albumId);
+      } else if (server.type === "emby") {
+        return await emby.getAlbumItems(server, albumId);
       } else {
         const result = await subsonic.getAlbum(server, albumId);
         return result.songs;
@@ -421,6 +445,8 @@ const createStreamingStore = () => {
     try {
       if (server.type === "jellyfin") {
         return await jellyfin.getPlaylistItems(server, playlistId);
+      } else if (server.type === "emby") {
+        return await emby.getPlaylistItems(server, playlistId);
       } else {
         const result = await subsonic.getPlaylist(server, playlistId);
         return result.songs;
@@ -449,6 +475,8 @@ const createStreamingStore = () => {
     try {
       if (server.type === "jellyfin") {
         return await jellyfin.search(server, query);
+      } else if (server.type === "emby") {
+        return await emby.search(server, query);
       } else {
         return await subsonic.search(server, query);
       }
@@ -468,6 +496,8 @@ const createStreamingStore = () => {
     try {
       if (server.type === "jellyfin" && song.originalId) {
         return await jellyfin.getLyrics(server, song.originalId);
+      } else if (server.type === "emby" && song.originalId) {
+        return await emby.getLyrics(server, song.originalId);
       } else {
         // 优先使用 ID 获取
         if (song.originalId) {
@@ -493,6 +523,10 @@ const createStreamingStore = () => {
 
     if (server.type === "jellyfin" && server.accessToken && song.originalId) {
       return jellyfin.getAudioStreamUrl(server, song.originalId);
+    }
+
+    if (server.type === "emby" && server.accessToken && song.originalId) {
+      return emby.getAudioStreamUrl(server, song.originalId);
     }
 
     return song.streamUrl || "";
