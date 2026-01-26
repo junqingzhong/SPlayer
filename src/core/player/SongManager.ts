@@ -149,7 +149,6 @@ class SongManager {
     const finalUrl = isTrial && !settingStore.playSongDemo ? null : normalizedUrl;
     // 获取音质
     const quality = handleSongQuality(songData, "online");
-    console.log(`[QualityDebug] getOnlineUrl quality determined: ${quality} for song ${id}`);
     // 检查本地缓存
     if (finalUrl && quality) {
       const cachedUrl = await this.checkLocalCache(id, quality);
@@ -172,11 +171,9 @@ class SongManager {
   public getUnlockSongUrl = async (song: SongType): Promise<AudioSource> => {
     const settingStore = useSettingStore();
     const songId = song.id;
-    console.log(`[QualityDebug] getUnlockSongUrl called for song ${songId}`);
     // 优先检查本地缓存
     const cachedUrl = await this.checkLocalCache(songId);
     if (cachedUrl) {
-      console.log(`[QualityDebug] getUnlockSongUrl found in local cache: ${cachedUrl}`);
       return { id: songId, url: cachedUrl };
     }
     const artist = Array.isArray(song.artists) ? song.artists[0].name : song.artists;
@@ -211,7 +208,7 @@ class SongManager {
         // 推断音质
         let quality = QualityType.HQ;
         if (unlockUrl && (unlockUrl.includes(".flac") || unlockUrl.includes(".wav"))) {
-            quality = QualityType.SQ;
+          quality = QualityType.SQ;
         }
         console.log(`最终音质判断：详细输出：`, { unlockUrl, quality });
         return {
@@ -317,7 +314,6 @@ class SongManager {
    */
   public getAudioSource = async (song: SongType): Promise<AudioSource> => {
     const settingStore = useSettingStore();
-    console.log(`[QualityDebug] getAudioSource called for song ${song.id} (${song.name})`);
 
     // 本地文件直接返回
     if (song.path && song.type !== "streaming") {
@@ -366,8 +362,6 @@ class SongManager {
       // 如果官方链接有效且非试听（或者用户接受试听）
       if (officialUrl && (!isTrial || (isTrial && settingStore.playSongDemo))) {
         if (isTrial) window.$message.warning("当前歌曲仅可试听");
-        console.log(`[QualityDebug] Using official URL. Quality: ${quality}`);
-        console.log(`[QualityDebug] Using official URL. Quality: ${quality}`);
         return { id: songId, url: officialUrl, quality, isUnlocked: false, source: "netease" };
       }
       // 尝试解锁
@@ -375,15 +369,13 @@ class SongManager {
         const unlockUrl = await this.getUnlockSongUrl(song);
         if (unlockUrl.url) {
           console.log(`🔓 [${songId}] 解锁成功`, unlockUrl);
-          console.log(`[QualityDebug] Using unlocked URL. Quality: ${unlockUrl.quality}`);
           return unlockUrl;
         }
       }
       // 最后的兜底：检查本地是否有缓存（不区分音质）
       const fallbackUrl = await this.checkLocalCache(songId);
       if (fallbackUrl) {
-        console.log(`🚀 [${songId}] 网络请求失败，使用本地缓存兜底`);
-        console.log(`[QualityDebug] Fallback to cache (network fail). URL: ${fallbackUrl}`);
+        console.log(`🚀 [${songId}] 网络请求失败，使用本地缓存兜底`, fallbackUrl);
         return { id: songId, url: fallbackUrl, isUnlocked: true };
       }
       // 无可用源

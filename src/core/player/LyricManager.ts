@@ -619,8 +619,7 @@ class LyricManager {
       softMatchRegexes: songMetadataRegexes,
     };
 
-    let lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
-
+    const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
     let yrcData = lyricData.yrcData || [];
 
     if (!statusStore.usingTTMLLyric || settingStore.enableExcludeTTML) {
