@@ -1,5 +1,45 @@
 <template>
   <n-flex :size="8" align="center" class="right-menu">
+    <!-- 音质 -->
+    <template v-if="settingStore.showPlayerQuality">
+      <n-popselect
+        v-if="isOnlineSong"
+        v-model:show="showQualityPopover"
+        :value="currentPlayingLevel"
+        :options="qualityOptions"
+        :class="{ player: statusStore.showFullPlayer }"
+        trigger="manual"
+        placement="top"
+        @update:value="handleQualitySelect"
+        @clickoutside="handleClickOutside"
+      >
+        <template #header>
+          <n-flex class="quality-title" size="small" vertical>
+            <span class="title">音质切换</span>
+            <span class="tip">以账号具体权限为准</span>
+          </n-flex>
+        </template>
+        <div ref="qualityTagRef">
+          <n-tag
+            class="quality-tag hidden"
+            type="primary"
+            size="small"
+            @click.stop="handleQualityClick"
+          >
+            {{ getQualityName(statusStore.songQuality) }}
+          </n-tag>
+        </div>
+      </n-popselect>
+      <n-popover v-else trigger="hover" placement="top" :show-arrow="false">
+        <template #trigger>
+          <n-tag class="quality-tag hidden" type="primary" size="small">
+            {{ getQualityName(statusStore.songQuality) }}
+          </n-tag>
+        </template>
+        <span>当前歌曲不支持切换音质</span>
+      </n-popover>
+    </template>
+    <!-- 桌面歌词 -->
     <n-badge v-if="isElectron" value="ON" :show="statusStore.showDesktopLyric">
       <div class="menu-icon hidden" @click.stop="player.toggleDesktopLyric()">
         <SvgIcon name="DesktopLyric2" :depth="statusStore.showDesktopLyric ? 1 : 3" />
@@ -59,16 +99,49 @@
 
 <script setup lang="ts">
 import { usePlayerController } from "@/core/player/PlayerController";
-import { useDataStore, useSettingStore, useStatusStore } from "@/stores";
+import { useDataStore, useSettingStore, useStatusStore, useMusicStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
 import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
 import type { DropdownOption } from "naive-ui";
+import { useQualityControl } from "@/composables/useQualityControl";
 
 const dataStore = useDataStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const musicStore = useMusicStore();
 const player = usePlayerController();
+
+const {
+  currentPlayingLevel,
+  qualityOptions,
+  loadQualities,
+  handleQualitySelect,
+  getQualityName,
+  isOnlineSong,
+} = useQualityControl();
+
+const showQualityPopover = ref(false);
+const qualityTagRef = ref<HTMLElement | null>(null);
+
+const handleQualityClick = async () => {
+  if (showQualityPopover.value) {
+    showQualityPopover.value = false;
+  } else {
+    await loadQualities();
+    if (qualityOptions.value.length > 0) {
+      showQualityPopover.value = true;
+    }
+  }
+};
+
+// 点击外部关闭音质选择
+const handleClickOutside = (e: MouseEvent) => {
+  if (qualityTagRef.value && qualityTagRef.value.contains(e.target as Node)) {
+    return;
+  }
+  showQualityPopover.value = false;
+};
 
 // 更多功能
 const controlsOptions = computed<DropdownOption[]>(() => [
@@ -109,6 +182,18 @@ const handleControls = (key: string) => {
       break;
   }
 };
+
+// 更新音质数据
+watch(
+  () => musicStore.playSong.id,
+  async () => {
+    statusStore.availableQualities = [];
+    await loadQualities();
+    if (showQualityPopover.value && statusStore.availableQualities.length === 0) {
+      showQualityPopover.value = false;
+    }
+  },
+);
 </script>
 
 <style scoped lang="scss">
@@ -143,10 +228,26 @@ const handleControls = (key: string) => {
       color: var(--primary-hex);
     }
   }
+  .quality-tag {
+    height: 26px;
+    padding: 0 8px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
   @media (max-width: 810px) {
     .hidden {
       display: none;
     }
+  }
+}
+.quality-title {
+  .title {
+    font-size: 14px;
+    line-height: normal;
+  }
+  .tip {
+    font-size: 12px;
+    opacity: 0.6;
   }
 }
 .volume-change {
