@@ -73,13 +73,7 @@
         <span class="meta-item">{{ lyricMode }}</span>
         <!-- 是否在线 -->
         <span class="meta-item">
-          {{
-            musicStore.playSong.path
-              ? "LOCAL"
-              : musicStore.playSong.type === "streaming"
-                ? "STREAMING"
-                : "ONLINE"
-          }}
+          {{ audioSourceText }}
         </span>
       </n-flex>
       <!-- 歌手 -->
@@ -218,6 +212,22 @@ const lyricMode = computed(() => {
     }
   }
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
+});
+
+const sourceMap: Record<string, string> = {
+  netease: "Netease",
+  kuwo: "Kuwo",
+  bodian: "Bodian",
+  gequbao: "Gequbao",
+};
+
+const audioSourceText = computed(() => {
+  if (musicStore.playSong.path) return "LOCAL";
+  if (musicStore.playSong.type === "streaming") return "STREAMING";
+  if (statusStore.audioSource) {
+    return sourceMap[statusStore.audioSource] || statusStore.audioSource.toUpperCase();
+  }
+  return "ONLINE";
 });
 
 /**

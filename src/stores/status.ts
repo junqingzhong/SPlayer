@@ -60,6 +60,8 @@ interface StatusState {
   usingQRCLyric: boolean;
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;
+  /** 当前歌曲音源 */
+  audioSource: string | undefined;
   /** 当前播放索引 */
   playIndex: number;
   /** 歌词播放索引 */
@@ -157,6 +159,7 @@ export const useStatusStore = defineStore("status", {
     usingTTMLLyric: false,
     usingQRCLyric: false,
     songQuality: undefined,
+    audioSource: undefined,
     playIndex: -1,
     lyricIndex: -1,
     lyricLoading: false,

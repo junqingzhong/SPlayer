@@ -37,6 +37,8 @@ export type AudioSource = {
   isTrial?: boolean;
   /** 音质 */
   quality?: QualityType;
+  /** 音源 */
+  source?: string;
 };
 
 class SongManager {
@@ -217,6 +219,7 @@ class SongManager {
           url: unlockUrl,
           isUnlocked: true,
           quality,
+          source: r.value.server,
         };
       }
     }
@@ -364,7 +367,8 @@ class SongManager {
       if (officialUrl && (!isTrial || (isTrial && settingStore.playSongDemo))) {
         if (isTrial) window.$message.warning("当前歌曲仅可试听");
         console.log(`[QualityDebug] Using official URL. Quality: ${quality}`);
-        return { id: songId, url: officialUrl, quality, isUnlocked: false };
+        console.log(`[QualityDebug] Using official URL. Quality: ${quality}`);
+        return { id: songId, url: officialUrl, quality, isUnlocked: false, source: "netease" };
       }
       // 尝试解锁
       if (canUnlock) {
