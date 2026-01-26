@@ -7,8 +7,9 @@ import { calculateLyricIndex } from "@/utils/calc";
 import { getCoverColor } from "@/utils/color";
 import { isElectron } from "@/utils/env";
 import { getPlayerInfoObj, getPlaySongData } from "@/utils/format";
-import { handleSongQuality, shuffleArray } from "@/utils/helper";
+import { handleSongQuality, shuffleArray, sleep } from "@/utils/helper";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
+import { DJ_MODE_KEYWORDS } from "@/utils/meta";
 import { calculateProgress } from "@/utils/time";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { DebouncedFunc, throttle } from "lodash-es";
@@ -40,6 +41,8 @@ class PlayerController {
   private pendingSeekAt = 0;
 
   private onTimeUpdate: DebouncedFunc<() => void> | null = null;
+  /** 上次错误处理时间 */
+  private lastErrorTime = 0;
 
   constructor() {
     // 初始化 AudioManager（会根据设置自动选择引擎）
@@ -82,6 +85,15 @@ class PlayerController {
       if (!statusStore.playStatus && !autoPlay) return;
       throw new Error("SONG_NOT_FOUND");
     }
+
+    // Fuck DJ Mode
+    if (this.shouldSkipSong(playSongData)) {
+      console.log(`[Fuck DJ] Skipping: ${playSongData.name}`);
+      window.$message.warning(`已跳过 DJ/抖音 歌曲: ${playSongData.name}`);
+      this.nextOrPrev("next");
+      return;
+    }
+
     try {
       // 停止当前播放
       audioManager.stop();
@@ -110,7 +122,7 @@ class PlayerController {
         });
       }
       // 获取歌词
-      lyricManager.handleLyric(playSongData.id, playSongData.path);
+      lyricManager.handleLyric(playSongData);
       // 获取音频
       const audioSource = await songManager.getAudioSource(playSongData);
       if (requestToken !== this.currentRequestToken) {
@@ -127,10 +139,10 @@ class PlayerController {
       if (requestToken !== this.currentRequestToken) return;
       // 后置处理
       await this.afterPlaySetup(playSongData);
-    } catch (error: any) {
+    } catch (error) {
       if (requestToken === this.currentRequestToken) {
         console.error("❌ 播放初始化失败:", error);
-        await this.handlePlaybackError(error?.code || 0, options.seek || 0);
+        this.handlePlaybackError(undefined);
       }
     }
   }
@@ -251,7 +263,7 @@ class PlayerController {
     // 记录播放历史 (非电台)
     if (song.type !== "radio") dataStore.setHistory(song);
     // 更新歌曲数据
-    if (!song.path) {
+    if (!song.path || song.type === "streaming") {
       mediaSessionManager.updateMetadata();
       getCoverColor(musicStore.songCover);
     }
@@ -278,6 +290,7 @@ class PlayerController {
   private async parseLocalMusicInfo(path: string) {
     try {
       const musicStore = useMusicStore();
+      if (musicStore.playSong.type === "streaming") return;
       const statusStore = useStatusStore();
       const blobURLManager = useBlobURLManager();
 
@@ -359,7 +372,7 @@ class PlayerController {
       window.document.title = `${playTitle} | SPlayer`;
       // 只有真正播放了才重置重试计数
       if (this.retryInfo.count > 0) this.retryInfo.count = 0;
-      this.failSkipCount = 0;
+      // 注意：failSkipCount 的重置移至 onTimeUpdate，确保有实际进度
       // Last.fm Scrobbler
       lastfmScrobbler.resume();
       // IPC 通知
@@ -423,6 +436,10 @@ class PlayerController {
         progress: calculateProgress(currentTime, duration),
         lyricIndex,
       });
+      // 成功播放一段距离后，重置失败跳过计数
+      if (currentTime > 500 && this.failSkipCount > 0) {
+        this.failSkipCount = 0;
+      }
       // 更新系统 MediaSession
       mediaSessionManager.updateState(duration, currentTime);
       // 更新桌面歌词
@@ -456,80 +473,103 @@ class PlayerController {
    * @param currentSeek 当前播放位置 (用于恢复)
    */
   private async handlePlaybackError(errCode: number | undefined, currentSeek: number = 0) {
-    const dataStore = useDataStore();
+    // 错误防抖
+    const now = Date.now();
+    if (now - this.lastErrorTime < 200) return;
+    this.lastErrorTime = now;
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();
-
     // 清除预加载缓存
     songManager.clearPrefetch();
-
-    // 是否为本地歌曲
-    const isLocalSong = musicStore.playSong.path;
-    if (isLocalSong) {
-      console.error("❌ 本地文件加载失败，停止重试");
-      window.$message.error("本地文件无法播放");
+    // 当前歌曲 ID
+    const currentSongId = musicStore.playSong?.id || 0;
+    // 检查是否为同一首歌
+    if (this.retryInfo.songId !== currentSongId) {
+      // 新歌曲，重置重试计数
+      this.retryInfo = { songId: currentSongId, count: 0 };
+    }
+    // 防止无限重试
+    const ABSOLUTE_MAX_RETRY = 3;
+    if (this.retryInfo.count >= ABSOLUTE_MAX_RETRY) {
+      console.error(`❌ 歌曲 ${currentSongId} 已重试 ${this.retryInfo.count} 次，强制跳过`);
+      window.$message.error("播放失败，已自动跳过");
       statusStore.playLoading = false;
       this.retryInfo.count = 0;
-      // 如果列表只有一首，直接停止
-      if (dataStore.playList.length <= 1) {
-        this.pause(true);
-        return;
-      }
-      await this.nextOrPrev("next");
+      await this.skipToNextWithDelay();
       return;
     }
-
-    this.retryInfo.count++;
-    console.warn(
-      `⚠️ 播放出错 (Code: ${errCode}), 重试: ${this.retryInfo.count}/${this.MAX_RETRY_COUNT}`,
-    );
-
-    // 用户主动中止 (Code 1) 或 AbortError (Code 20) - 不重试
+    // 用户主动中止
     if (errCode === AudioErrorCode.ABORTED || errCode === AudioErrorCode.DOM_ABORT) {
       statusStore.playLoading = false;
       this.retryInfo.count = 0;
       return;
     }
-
-    // 达到最大重试次数 -> 切歌
-    if (this.retryInfo.count > this.MAX_RETRY_COUNT) {
-      console.error("❌ 超过最大重试次数，跳过当前歌曲");
-
+    // 格式不支持
+    if (errCode === AudioErrorCode.SRC_NOT_SUPPORTED || errCode === 9) {
+      console.warn(`⚠️ 音频格式不支持 (Code: ${errCode}), 跳过`);
+      window.$message.error("该歌曲无法播放，已自动跳过");
+      statusStore.playLoading = false;
       this.retryInfo.count = 0;
-      this.failSkipCount++;
-
-      // 连续跳过 3 首直接暂停
-      if (this.failSkipCount >= 3) {
-        window.$message.error("播放失败次数过多，已停止播放");
-        statusStore.playLoading = false;
-        this.pause(true);
-        this.failSkipCount = 0;
-        return;
-      }
-
-      // 列表只有一首，或连续跳过所有歌曲
-      if (dataStore.playList.length <= 1 || this.failSkipCount >= dataStore.playList.length) {
-        window.$message.error("当前已无可播放歌曲");
-        this.cleanPlayList();
-        this.failSkipCount = 0;
-        return;
-      }
-      window.$message.error("播放失败，已自动跳过");
-      await this.nextOrPrev("next");
+      await this.skipToNextWithDelay();
       return;
     }
-
-    // 尝试重试
-    setTimeout(async () => {
-      // 只有第一次重试时提示用户
+    // 本地文件错误
+    if (musicStore.playSong.path && musicStore.playSong.type !== "streaming") {
+      console.error("❌ 本地文件加载失败");
+      window.$message.error("本地文件无法播放");
+      statusStore.playLoading = false;
+      this.retryInfo.count = 0;
+      await this.skipToNextWithDelay();
+      return;
+    }
+    // 在线/流媒体错误处理
+    this.retryInfo.count++;
+    console.warn(
+      `⚠️ 播放出错 (Code: ${errCode}), 重试: ${this.retryInfo.count}/${this.MAX_RETRY_COUNT}`,
+    );
+    // 未超过重试次数 -> 尝试重新获取 URL（可能是过期）
+    if (this.retryInfo.count <= this.MAX_RETRY_COUNT) {
+      await sleep(1000);
       if (this.retryInfo.count === 1) {
         statusStore.playLoading = true;
         window.$message.warning("播放异常，正在尝试恢复...");
       }
-      // 重新调用 playSong，尝试恢复进度
       await this.playSong({ autoPlay: true, seek: currentSeek });
-    }, 1000);
+      return;
+    }
+    // 超过重试次数 -> 跳下一首
+    console.error("❌ 超过最大重试次数，跳过当前歌曲");
+    this.retryInfo.count = 0;
+    window.$message.error("播放失败，已自动跳过");
+    await this.skipToNextWithDelay();
+  }
+
+  /**
+   * 带延迟的跳转下一首
+   */
+  private async skipToNextWithDelay() {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+    this.failSkipCount++;
+    // 连续跳过 3 首 -> 停止播放
+    if (this.failSkipCount >= 3) {
+      window.$message.error("播放失败次数过多，已停止播放");
+      statusStore.playLoading = false;
+      this.pause(true);
+      this.failSkipCount = 0;
+      return;
+    }
+    // 列表只有一首 -> 停止播放
+    if (dataStore.playList.length <= 1) {
+      window.$message.error("当前已无可播放歌曲");
+      this.cleanPlayList();
+      this.failSkipCount = 0;
+      return;
+    }
+    // 添加延迟，避免快速切歌导致卡死
+    await sleep(500);
+    await this.nextOrPrev("next");
   }
 
   /** 播放 */
@@ -546,7 +586,10 @@ class PlayerController {
 
     // 如果没有源，尝试重新初始化当前歌曲
     if (!audioManager.src) {
-      await this.playSong({ autoPlay: true });
+      await this.playSong({
+        autoPlay: true,
+        seek: statusStore.currentTime,
+      });
       return;
     }
 
@@ -574,8 +617,6 @@ class PlayerController {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     const audioManager = useAudioManager();
-
-    if (!audioManager.src) return;
 
     // 计算渐出时间
     const fadeTime = settingStore.getFadeTime ? settingStore.getFadeTime / 1000 : 0;
@@ -752,6 +793,21 @@ class PlayerController {
 
     // 统一调用 audioManager
     audioManager.setRate(rate);
+  }
+
+  /**
+   * 检查是否需要跳过歌曲 (Fuck DJ Mode)
+   * @param song 歌曲信息
+   */
+  private shouldSkipSong(song: SongType): boolean {
+    const settingStore = useSettingStore();
+    if (!settingStore.disableDjMode) return false;
+    // 是否包含 DJ 关键词
+    const name = (song.name || "").toUpperCase();
+    const alia = song.alia;
+    const aliaStr = (Array.isArray(alia) ? alia.join("") : alia || "").toUpperCase();
+    const fullText = name + aliaStr;
+    return DJ_MODE_KEYWORDS.some((k) => fullText.includes(k.toUpperCase()));
   }
 
   /**
@@ -1067,21 +1123,10 @@ class PlayerController {
    * @note 当播放列表包含本地歌曲时，跳过心动模式，只在 Off 和 On 之间切换
    */
   public async toggleShuffle(mode?: ShuffleModeType) {
-    const dataStore = useDataStore();
     const statusStore = useStatusStore();
     const currentMode = statusStore.shuffleMode;
-
-    // 检查播放列表是否包含本地歌曲
-    const hasLocalSongs = dataStore.playList.some((song) => song.path);
-
     // 预判下一个模式
-    let nextMode = mode ?? this.playModeManager.calculateNextShuffleMode(currentMode);
-
-    // 如果播放列表包含本地歌曲，跳过心动模式
-    if (hasLocalSongs && nextMode === "heartbeat") {
-      nextMode = "off";
-    }
-
+    const nextMode = mode ?? this.playModeManager.calculateNextShuffleMode(currentMode);
     // 如果模式确实改变了，才让 Manager 进行繁重的数据处理
     if (currentMode !== nextMode) {
       await this.playModeManager.toggleShuffle(nextMode);
@@ -1169,13 +1214,17 @@ class PlayerController {
   }
 }
 
-let instance: PlayerController | null = null;
+const PLAYER_CONTROLLER_KEY = "__SPLAYER_PLAYER_CONTROLLER__";
 
 /**
  * 获取 PlayerController 实例
  * @returns PlayerController
  */
 export const usePlayerController = (): PlayerController => {
-  if (!instance) instance = new PlayerController();
-  return instance;
+  const win = window as Window & { [PLAYER_CONTROLLER_KEY]?: PlayerController };
+  if (!win[PLAYER_CONTROLLER_KEY]) {
+    win[PLAYER_CONTROLLER_KEY] = new PlayerController();
+    console.log("[PlayerController] 创建新实例");
+  }
+  return win[PLAYER_CONTROLLER_KEY];
 };

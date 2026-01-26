@@ -6,7 +6,7 @@
 .router-slide-enter-from,
 .router-slide-leave-to {
   opacity: 0;
-  transform: translateX(10px);
+  transform: translate3d(10px, 0, 0);
 }
 
 .router-fade-enter-active,
@@ -36,14 +36,14 @@
 }
 .router-up-enter-from {
   opacity: 0;
-  transform: translateY(20px);
+  transform: translate3d(0, 20px, 0);
 }
 .router-up-enter-to {
   opacity: 1;
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 .router-up-leave-active {
-  transform: translateY(0);
+  transform: translate3d(0, 0, 0);
 }
 .router-up-leave-to {
   opacity: 0;
@@ -79,7 +79,7 @@
 .fadeDown-enter-from,
 .fadeDown-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  transform: translate3d(0, -10px, 0);
 }
 
 // 移动端优化 - 减少动画时间和距离
@@ -99,7 +99,7 @@
 .left-sm-enter-active,
 .left-sm-leave-active {
   opacity: 1;
-  transform: translateX(0);
+  transform: translate3d(0, 0, 0);
   transition:
     transform 0.3s,
     opacity 0.3s;
@@ -108,7 +108,7 @@
 .left-sm-enter-from,
 .left-sm-leave-to {
   opacity: 0;
-  transform: translateX(-5px);
+  transform: translate3d(-5px, 0, 0);
 }
 
 // 移动端优化
@@ -185,6 +185,16 @@
 .smooth-leave-to {
   opacity: 0;
   transform: translateY(20px) scale(0.96);
+}
+
+// 侧边栏滑入动画
+.slideLeft-enter-active,
+.slideLeft-leave-active {
+  transition: transform 0.3s ease;
+}
+.slideLeft-enter-from,
+.slideLeft-leave-to {
+  transform: translateX(-100%);
 }
 
 @keyframes skeleton-loading {

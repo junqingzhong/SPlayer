@@ -2,7 +2,7 @@
   <div :class="['player-data', settingStore.playerType, { center, light }]">
     <!-- 名称 -->
     <div class="name">
-      <span class="name-text text-hidden">{{ musicStore.playSong.name || "未知曲目" }}</span>
+      <span class="name-text text-hidden">{{ settingStore.hideLyricBrackets ? removeBrackets(musicStore.playSong.name) : (musicStore.playSong.name || "未知曲目") }}</span>
       <!-- 额外信息 -->
       <n-flex
         v-if="statusStore.playUblock || musicStore.playSong.pc"
@@ -28,7 +28,7 @@
       </n-flex>
     </div>
     <!-- 别名 -->
-    <span v-if="musicStore.playSong.alia" class="alia text-hidden">
+    <span v-if="musicStore.playSong.alia && !settingStore.hideLyricBrackets" class="alia text-hidden">
       {{ musicStore.playSong.alia }}
     </span>
     <n-flex :align="center ? 'center' : undefined" size="small" vertical>
@@ -43,7 +43,9 @@
         <n-popselect
           :value="currentPlayingLevel"
           :options="qualityOptions"
-          :disabled="!!musicStore.playSong.path || statusStore.playUblock || !!musicStore.playSong.pc"
+          :disabled="
+            !!musicStore.playSong.path || statusStore.playUblock || !!musicStore.playSong.pc
+          "
           class="player"
           trigger="click"
           placement="top"
@@ -61,7 +63,7 @@
             @click="handlePopselectClick"
           >
             {{
-              statusStore.playUblock || !statusStore.songQuality
+              !statusStore.songQuality
                 ? "未知音质"
                 : statusStore.songQuality
             }}
@@ -71,7 +73,13 @@
         <span class="meta-item">{{ lyricMode }}</span>
         <!-- 是否在线 -->
         <span class="meta-item">
-          {{ musicStore.playSong.path ? "LOCAL" : "ONLINE" }}
+          {{
+            musicStore.playSong.path
+              ? "LOCAL"
+              : musicStore.playSong.type === "streaming"
+                ? "STREAMING"
+                : "ONLINE"
+          }}
         </span>
       </n-flex>
       <!-- 歌手 -->
@@ -131,9 +139,10 @@ import type { SongLevelDataType } from "@/types/main";
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
 import { songQuality } from "@/api/song";
-import { songLevelData, getSongLevelsData } from "@/utils/meta";
+import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
 import { formatFileSize, handleSongQuality } from "@/utils/helper";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { removeBrackets } from "@/utils/format";
 
 defineProps<{
   center?: boolean;
@@ -203,7 +212,10 @@ const qualityOptions = computed<DropdownOption[]>(() => {
 const lyricMode = computed(() => {
   if (settingStore.showYrc) {
     if (statusStore.usingTTMLLyric) return "TTML";
-    if (musicStore.isHasYrc) return "YRC";
+    if (musicStore.isHasYrc) {
+      // 如果是从QQ音乐获取的歌词，显示QRC
+      return statusStore.usingQRCLyric ? "QRC" : "YRC";
+    }
   }
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
 });
@@ -229,7 +241,15 @@ const loadQualities = async (isPreload = false) => {
     const res = await songQuality(songId);
     if (res.data) {
       const levels = getSongLevelsData(songLevelData, res.data);
-      availableQualities.value = levels;
+      // 如果当前播放的是被隐藏的音质，尝试切换到最高可用音质
+      if (settingStore.disableAiAudio) {
+        availableQualities.value = levels.filter((q) => {
+          if (q.level === "dolby") return true;
+          return !AI_AUDIO_LEVELS.includes(q.level);
+        });
+      } else {
+        availableQualities.value = levels;
+      }
     } else if (!isPreload) {
       window.$message.warning("获取音质信息失败");
     }
@@ -338,8 +358,6 @@ const jumpPage = debounce(
     .name-text {
       font-size: 26px;
       font-weight: bold;
-      line-clamp: 2;
-      -webkit-line-clamp: 2;
     }
     .n-icon {
       margin-left: 12px;
@@ -444,6 +462,9 @@ const jumpPage = debounce(
         align-items: center;
         justify-content: center;
       }
+    }
+    @media (max-width: 990px) {
+      padding: 0 2px;
     }
   }
   &.center {

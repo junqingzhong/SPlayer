@@ -2,8 +2,8 @@
 <template>
   <n-card :style="{ height: `${height}px` || 'auto' }" :class="['song-data-card', size]">
     <n-flex v-if="size === 'normal'" align="center" justify="space-between" class="title">
-      <n-text class="name text-hidden">{{ title }}</n-text>
-      <n-text v-if="description" depth="3" class="desc text-hidden">{{ description }}</n-text>
+      <n-text class="name">{{ title }}</n-text>
+      <n-text v-if="description" depth="3" class="desc">{{ description }}</n-text>
     </n-flex>
     <div class="content">
       <!-- 封面 -->
@@ -16,8 +16,14 @@
           </template>
         </n-image>
         <TransitionGroup v-else tag="div" name="fade" class="cover-list">
-          <n-image v-for="item in songList" :key="item.id" :src="item.coverSize?.m || item.cover" preview-disabled lazy
-            @load="coverLoaded">
+          <n-image
+            v-for="item in songList"
+            :key="item.id"
+            :src="item.coverSize?.m || item.cover"
+            preview-disabled
+            lazy
+            @load="coverLoaded"
+          >
             <template #placeholder>
               <div class="cover-loading">
                 <img src="/images/song.jpg?asset" class="loading-img" alt="loading-img" />
@@ -30,9 +36,13 @@
       </div>
       <!-- 信息 -->
       <div v-if="size === 'small'" class="info">
-        <n-text v-if="typeof title === 'string'" class="name text-hidden">{{ title }}</n-text>
+        <n-text v-if="typeof title === 'string'" class="name text-hidden">
+          {{ title }}
+        </n-text>
         <component v-else :is="title" />
-        <n-text v-if="description" depth="3" class="desc text-hidden">{{ description }}</n-text>
+        <n-text v-if="description" depth="3" class="desc text-hidden">
+          {{ description }}
+        </n-text>
       </div>
       <div v-else class="info">
         <slot name="info" />

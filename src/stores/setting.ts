@@ -4,29 +4,25 @@ import type { SongLevelType } from "@/types/main";
 import { defaultAMLLDbServer } from "@/utils/meta";
 import { defineStore } from "pinia";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
+import { ThemeColorType } from "@/types/color";
 
 export interface SettingState {
-  /** Schema 版本号（可选，用于数据迁移） */
+  /** Schema 版本号 */
   schemaVersion?: number;
   /** 明暗模式 */
   themeMode: "light" | "dark" | "auto";
   /** 主题类别 */
-  themeColorType:
-    | "default"
-    | "orange"
-    | "blue"
-    | "pink"
-    | "brown"
-    | "indigo"
-    | "green"
-    | "purple"
-    | "yellow"
-    | "teal"
-    | "custom";
+  themeColorType: ThemeColorType;
+  /** 偏好繁体中文 */
+  preferTraditionalChinese: boolean;
+  /** 繁体中文变体 */
+  traditionalChineseVariant: "s2t" | "s2tw" | "s2hk" | "s2twp";
   /** 主题自定义颜色 */
   themeCustomColor: string;
   /** 全局着色 */
   themeGlobalColor: boolean;
+  /** 主题变体 */
+  themeVariant: "primary" | "secondary" | "tertiary" | "neutral" | "neutralVariant" | "error";
   /** 主题跟随封面 */
   themeFollowCover: boolean;
   /** 全局字体 */
@@ -61,18 +57,24 @@ export interface SettingState {
   lyricFontWeight: number;
   /** 显示逐字歌词 */
   showYrc: boolean;
-  /** 显示逐字歌词动画 */
-  showYrcAnimation: boolean;
   /** 显示歌词翻译 */
   showTran: boolean;
   /** 显示歌词音译 */
   showRoma: boolean;
+  /** 调换翻译与音译位置 */
+  swapTranRoma: boolean;
   /** 显示逐字音译 */
   showWordsRoma: boolean;
   /** 歌词位置 */
   lyricsPosition: "flex-start" | "center" | "flex-end";
-  /** 歌词滚动位置 */
-  lyricsScrollPosition: "start" | "center";
+  /** 歌词滚动位置偏移量 */
+  lyricsScrollOffset: number;
+  /** 歌词水平位置偏移量 */
+  lyricHorizontalOffset: number;
+  /** 歌词默认靠右（对唱互换） */
+  lyricAlignRight: boolean;
+  /** 隐藏歌词括号内容和别名 */
+  hideLyricBrackets: boolean;
   /** 下载路径 */
   downloadPath: string;
   /** 是否启用缓存 */
@@ -97,30 +99,23 @@ export interface SettingState {
   usePlaybackForDownload: boolean;
   /** 保存元信息文件 */
   saveMetaFile: boolean;
-  /** 下载音质 */
+  /** 使用解锁接口下载 */
+  useUnlockForDownload: boolean;
+  /** 内嵌暂逐字歌词 (beta) */
+  downloadMakeYrc: boolean;
+  /** 下载歌词转繁体 */
+  downloadLyricToTraditional: boolean;
+  /** 下载歌词文件编码 */
+  downloadLyricEncoding: "utf-8" | "gbk" | "utf-16" | "iso-8859-1";
+  /** 默认下载音质（弹窗默认选项） */
   downloadSongLevel: SongLevelType;
-  /** 是否手机模式 */
-  isMobileMode: boolean;
-  /** 自定义背景图片 */
-  customBackgroundImage: string;
-  /** 自定义全局背景图片 */
-  customGlobalBackgroundImage: string;
-  /** 全局背景透明度 */
-  globalBackgroundOpacity: number;
-  /** 活动服务 API Base URL */
-  activitiesApiBaseUrl: string;
-  /** 应用启动次数 */
-  appLaunchCount: number;
-  // 音频解锁来源平台配置 - 已整合到 songUnlockServer
-  // Proxy settings
-  proxyType: "off" | "system" | "manual" | "pac";
-  proxyProtocol: "http" | "https" | "off"; // Used when proxyType is 'manual'
-  proxyServe: string; // Used when proxyType is 'manual'
-  proxyPort: number; // Used when proxyType is 'manual'
-  proxyUsername?: string; // Optional, for manual proxy
-  proxyPassword?: string; // Optional, for manual proxy
-  pacUrl?: string; // Used when proxyType is 'pac'
-  autoLoginCookie: string;
+  /** 代理协议 */
+  proxyProtocol: "off" | "http" | "https";
+  /** 代理地址 */
+  proxyServe: string;
+  /** 代理端口 */
+  proxyPort: number;
+  /** 歌曲音质 */
   songLevel:
     | "standard"
     | "higher"
@@ -146,8 +141,6 @@ export interface SettingState {
   useSongUnlock: boolean;
   /** 歌曲解锁音源 */
   songUnlockServer: { key: SongUnlockServer; enabled: boolean }[];
-  /** 时间显示格式 */
-  timeDisplayFormat: 'HH:MM:SS' | 'MM:SS';
   /** 显示倒计时 */
   countDownShow: boolean;
   /** 显示歌词条 */
@@ -184,8 +177,6 @@ export interface SettingState {
   smtcOpen: boolean;
   /** 歌词模糊 */
   lyricsBlur: boolean;
-  /** 鼠标悬停暂停 */
-  lrcMousePause: boolean;
   /** 播放试听 */
   playSongDemo: boolean;
   /** 显示搜索历史 */
@@ -282,13 +273,13 @@ export interface SettingState {
     hideLikedPlaylists: boolean;
     /** 隐藏心动模式 */
     hideHeartbeatMode: boolean;
-    /** 隐藏活动列表 */
-    hideActivities: boolean;
   };
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
   /** 失焦后自动清空搜索框 */
   clearSearchOnBlur: boolean;
+  /** 显示主页问好 */
+  showHomeGreeting: boolean;
   /** 首页栏目顺序和显示配置 */
   homePageSections: Array<{
     key: "playlist" | "radar" | "artist" | "video" | "radio" | "album";
@@ -333,6 +324,14 @@ export interface SettingState {
   customCss: string;
   /** 自定义 JS */
   customJs: string;
+  /** 播放器封面/歌词占比 (0-100) */
+  playerStyleRatio: number;
+  /** 是否启用流媒体功能 */
+  streamingEnabled: boolean;
+  /** Fuck AI: 开启后在所有的地方都不显示 Hi-res 以上的音质选项 */
+  disableAiAudio: boolean;
+  /** Fuck DJ: 开启后自动跳过 DJ 歌曲 */
+  disableDjMode: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -340,9 +339,12 @@ export const useSettingStore = defineStore("setting", {
     schemaVersion: 0,
     themeMode: "auto",
     themeColorType: "default",
+    preferTraditionalChinese: false,
+    traditionalChineseVariant: "s2t",
     themeCustomColor: "#fe7971",
     themeFollowCover: false,
     themeGlobalColor: false,
+    themeVariant: "secondary",
     globalFont: "default",
     LyricFont: "follow",
     japaneseLyricFont: "follow",
@@ -370,16 +372,11 @@ export const useSettingStore = defineStore("setting", {
     songVolumeFadeTime: 300,
     useSongUnlock: true,
     songUnlockServer: [
-      { key: SongUnlockServer.NETEASE, enabled: true },
-      { key: SongUnlockServer.QQ, enabled: true },
-      { key: SongUnlockServer.KUGOU, enabled: true },
-      { key: SongUnlockServer.KUWO, enabled: true },
-      { key: SongUnlockServer.BILIBILI, enabled: true },
       { key: SongUnlockServer.BODIAN, enabled: true },
       { key: SongUnlockServer.GEQUBAO, enabled: true },
+      { key: SongUnlockServer.NETEASE, enabled: true },
+      { key: SongUnlockServer.KUWO, enabled: false },
     ],
-    timeDisplayFormat: 'MM:SS', // 时间显示格式
-    // 音频解锁来源平台配置 - 已整合到 songUnlockServer
     countDownShow: true,
     barLyricShow: true,
     timeFormat: "current-total",
@@ -414,14 +411,16 @@ export const useSettingStore = defineStore("setting", {
     localLyricQQMusicMatch: false,
     amllDbServer: defaultAMLLDbServer,
     showYrc: true,
-    showYrcAnimation: true,
     showTran: true,
     showRoma: true,
+    swapTranRoma: false,
     showWordsRoma: true,
     lyricsPosition: "flex-start",
     lyricsBlur: false,
-    lyricsScrollPosition: "start",
-    lrcMousePause: false,
+    lyricsScrollOffset: 0.25,
+    lyricHorizontalOffset: 10,
+    lyricAlignRight: false,
+    hideLyricBrackets: false,
     enableExcludeLyrics: true,
     enableExcludeTTML: false,
     enableExcludeLocalLyrics: false,
@@ -444,16 +443,12 @@ export const useSettingStore = defineStore("setting", {
     downloadLyricTranslation: true,
     downloadLyricRomaji: false,
     usePlaybackForDownload: false,
+    useUnlockForDownload: false,
+    downloadMakeYrc: false,
+    downloadLyricToTraditional: false,
+    downloadLyricEncoding: "utf-8",
     saveMetaFile: false,
     downloadSongLevel: "h",
-    isMobileMode: false,
-    customBackgroundImage: "",
-    customGlobalBackgroundImage: "",
-    globalBackgroundOpacity: 0.8,
-    activitiesApiBaseUrl: "",
-    appLaunchCount: 0,
-    proxyType: "off",
-    autoLoginCookie: "",
     proxyProtocol: "off",
     proxyServe: "127.0.0.1",
     proxyPort: 80,
@@ -475,10 +470,10 @@ export const useSettingStore = defineStore("setting", {
       hideUserPlaylists: false,
       hideLikedPlaylists: false,
       hideHeartbeatMode: false,
-      hideActivities: false,
     },
     enableSearchKeyword: true,
     clearSearchOnBlur: false,
+    showHomeGreeting: true,
     homePageSections: [
       { key: "playlist", name: "专属歌单", visible: true, order: 0 },
       { key: "radar", name: "雷达歌单", visible: true, order: 1 },
@@ -511,6 +506,10 @@ export const useSettingStore = defineStore("setting", {
     playbackEngine: "web-audio",
     customCss: "",
     customJs: "",
+    playerStyleRatio: 50,
+    streamingEnabled: false,
+    disableAiAudio: false,
+    disableDjMode: false,
   }),
   getters: {
     /**
@@ -581,47 +580,6 @@ export const useSettingStore = defineStore("setting", {
               ? "浅色模式"
               : "深色模式"
         }`,
-        {
-          showIcon: false,
-        },
-      );
-    },
-
-    /**
-     * 设置全局登录Cookie
-     */
-    setGlobalCookie(cookie: string) {
-      this.autoLoginCookie = cookie;
-      console.log('已更新全局登录Cookie');
-    },
-
-    /**
-     * 清除全局登录Cookie
-     */
-    clearGlobalCookie() {
-      this.autoLoginCookie = "";
-      console.log('已清除全局登录Cookie');
-    },
-
-    /**
-     * 获取全局登录Cookie
-     */
-    getGlobalCookie(): string {
-      return this.autoLoginCookie;
-    },
-
-    /**
-     * 切换手机模式
-     * @param mode 是否启用手机模式，不传则切换当前状态
-     */
-    toggleMobileMode(mode?: boolean) {
-      if (mode === undefined) {
-        this.isMobileMode = !this.isMobileMode;
-      } else {
-        this.isMobileMode = mode;
-      }
-      window.$message.info(
-        `已切换至${this.isMobileMode ? '手机模式' : 'PC模式'}`,
         {
           showIcon: false,
         },

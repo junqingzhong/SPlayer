@@ -1,62 +1,90 @@
 <template>
   <div class="setting">
-    <div class="set-left">
-      <n-flex class="title" :size="0" vertical>
+    <!-- 移动端遮罩层 -->
+    <Transition name="fade">
+      <div v-if="showLeftMenu" class="mobile-overlay" @click="showLeftMenu = false" />
+    </Transition>
+    <Transition name="slideLeft">
+      <div v-show="showLeftMenu" class="set-left">
+        <n-flex class="title" :size="0" vertical>
+          <n-h1>设置</n-h1>
+          <n-text :depth="3">个性化与全局设置</n-text>
+        </n-flex>
+        <!-- 设置菜单 -->
+        <n-scrollbar style="height: calc(100% - 160px)">
+          <n-menu
+            v-model:value="activeKey"
+            :options="menuOptions"
+            :indent="10"
+            @update:value="onMenuSelect"
+          />
+        </n-scrollbar>
+        <!-- 信息 -->
+        <div class="power">
+          <n-text class="author" :depth="2" @click="toGithub">
+            <SvgIcon name="Github" :size="20" />
+            {{ packageJson.author }}
+          </n-text>
+          <n-text class="name">SPlayer</n-text>
+          <n-tag
+            v-if="statusStore.isDeveloperMode"
+            class="version"
+            size="small"
+            type="warning"
+            round
+          >
+            DEV · v{{ packageJson.version }}
+          </n-tag>
+          <n-text v-else class="version" depth="3">v{{ packageJson.version }}</n-text>
+        </div>
+      </div>
+    </Transition>
+    <div class="set-right">
+      <n-flex class="mobile-title" size="small" align="end">
+        <n-button quaternary circle @click="showLeftMenu = !showLeftMenu">
+          <template #icon>
+            <SvgIcon :depth="2" size="24" name="Menu" />
+          </template>
+        </n-button>
         <n-h1>设置</n-h1>
         <n-text :depth="3">个性化与全局设置</n-text>
       </n-flex>
-      <!-- 设置菜单 -->
-      <n-menu
-        v-model:value="activeKey"
-        :options="menuOptions"
-        :indent="10"
-        @update:value="setScrollbar?.scrollTo({ top: 0, behavior: 'smooth' })"
-      />
-      <!-- 信息 -->
-      <div class="power">
-        <n-text class="author" :depth="2" @click="toGithub">
-          <SvgIcon name="Github" :size="20" />
-          {{ packageJson.author }}
-        </n-text>
-        <n-text class="name">SPlayer</n-text>
-        <n-tag v-if="statusStore.isDeveloperMode" class="version" size="small" type="warning" round>
-          DEV · v{{ packageJson.version }}
-        </n-tag>
-        <n-text v-else class="version" depth="3">v{{ packageJson.version }}</n-text>
-      </div>
+      <n-scrollbar
+        ref="setScrollbar"
+        class="set-content"
+        :content-style="{ overflow: 'hidden', padding: '40px 0' }"
+      >
+        <Transition name="fade" mode="out-in">
+          <!-- 常规 -->
+          <GeneralSetting v-if="activeKey === 'general'" />
+          <!-- 播放 -->
+          <PlaySetting v-else-if="activeKey === 'play'" />
+          <!-- 歌词 -->
+          <LyricsSetting v-else-if="activeKey === 'lyrics'" :scroll-to="props.scrollTo" />
+          <!-- 快捷键 -->
+          <KeyboardSetting v-else-if="activeKey === 'keyboard'" />
+          <!-- 本地 -->
+          <LocalSetting v-else-if="activeKey === 'local'" />
+          <!-- 第三方 -->
+          <ThirdSetting v-else-if="activeKey === 'third'" />
+          <!-- 流媒体 -->
+          <StreamingSetting v-else-if="activeKey === 'streaming'" />
+          <!-- 其他 -->
+          <OtherSetting v-else-if="activeKey === 'other'" />
+          <!-- 关于 -->
+          <AboutSetting v-else-if="activeKey === 'about'" />
+          <!-- 空白 -->
+          <n-text v-else class="error">暂无该设置项</n-text>
+        </Transition>
+      </n-scrollbar>
     </div>
-    <n-scrollbar
-      ref="setScrollbar"
-      class="set-content"
-      :content-style="{ overflow: 'hidden', padding: '40px 0' }"
-    >
-      <Transition name="fade" mode="out-in">
-        <!-- 常规 -->
-        <GeneralSetting v-if="activeKey === 'general'" key="general" />
-        <!-- 播放 -->
-        <PlaySetting v-else-if="activeKey === 'play'" key="play" />
-        <!-- 歌词 -->
-        <LyricsSetting v-else-if="activeKey === 'lyrics'" :scroll-to="props.scrollTo" />
-        <!-- 快捷键 -->
-        <KeyboardSetting v-else-if="activeKey === 'keyboard'" key="keyboard" />
-        <!-- 本地 -->
-        <LocalSetting v-else-if="activeKey === 'local'" />
-        <!-- 第三方 -->
-        <ThirdSetting v-else-if="activeKey === 'third'" />
-        <!-- 其他 -->
-        <OtherSetting v-else-if="activeKey === 'other'" key="other" />
-        <!-- 关于 -->
-        <AboutSetting v-else-if="activeKey === 'about'" key="about" />
-        <!-- 空白 -->
-        <n-text v-else class="error" key="error">暂无该设置项</n-text>
-      </Transition>
-    </n-scrollbar>
   </div>
 </template>
 
 <script setup lang="ts">
 import type { MenuOption, NScrollbar } from "naive-ui";
 import type { SettingType } from "@/types/main";
+import { useMobile } from "@/composables/useMobile";
 import { renderIcon } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
 import { useStatusStore } from "@/stores";
@@ -65,12 +93,32 @@ import packageJson from "@/../package.json";
 const props = defineProps<{ type: SettingType; scrollTo?: string }>();
 
 const statusStore = useStatusStore();
+const { isSmallScreen } = useMobile();
 
 // 设置内容
 const setScrollbar = ref<InstanceType<typeof NScrollbar> | null>(null);
 
+// 移动端菜单显示状态
+const showLeftMenu = ref(true);
+
+// 监听屏幕大小变化，非小屏时自动显示侧边栏
+watch(isSmallScreen, (small) => {
+  if (!small) {
+    showLeftMenu.value = true;
+  }
+});
+
 // 菜单数据
 const activeKey = ref<SettingType>(props.type);
+
+// 菜单选择处理
+const onMenuSelect = () => {
+  setScrollbar.value?.scrollTo({ top: 0, behavior: "smooth" });
+  // 移动端选择后自动收起菜单
+  if (isSmallScreen.value) {
+    showLeftMenu.value = false;
+  }
+};
 
 // 菜单内容
 const menuOptions: MenuOption[] = [
@@ -107,6 +155,11 @@ const menuOptions: MenuOption[] = [
     icon: renderIcon("Extension"),
   },
   {
+    key: "streaming",
+    label: "流媒体设置",
+    icon: renderIcon("Stream"),
+  },
+  {
     key: "other",
     label: "其他设置",
     icon: renderIcon("SettingsOther"),
@@ -126,14 +179,14 @@ const toGithub = () => {
 
 <style lang="scss" scoped>
 .setting {
+  position: relative;
   display: flex;
   width: 100%;
   height: 75vh;
   min-height: 75vh;
-  @media (max-width: 768px) {
-    flex-direction: column;
-    height: 100vh;
-    min-height: 100vh;
+  overflow: hidden;
+  .mobile-overlay {
+    display: none;
   }
   .set-left {
     display: flex;
@@ -142,13 +195,8 @@ const toGithub = () => {
     height: 100%;
     padding: 20px;
     background-color: var(--surface-container-hex);
-    @media (max-width: 768px) {
-      width: 100%;
-      height: auto;
-      padding: 12px 12px 0;
-      border-bottom: 1px solid rgba(var(--outline), 0.12);
-    }
     .title {
+      height: 60px;
       margin: 10px 0 20px 10px;
       .n-h1 {
         font-size: 26px;
@@ -157,26 +205,14 @@ const toGithub = () => {
         line-height: normal;
         margin-bottom: 6px;
       }
-      @media (max-width: 768px) {
-        margin: 4px 0 10px 6px;
-        .n-h1 {
-          font-size: 20px;
-          margin-bottom: 2px;
-        }
-      }
     }
     .n-menu {
       width: 100%;
-      padding: 0;
-      @media (max-width: 768px) {
-        margin-top: 6px;
-      }
+      flex: 1;
     }
     .power {
+      height: 50px;
       margin: auto 0 0 10px;
-      @media (max-width: 768px) {
-        display: none;
-      }
       .name {
         font-weight: bold;
         margin-right: 6px;
@@ -196,6 +232,50 @@ const toGithub = () => {
       }
     }
   }
+  .set-right {
+    flex: 1;
+    height: 100%;
+    background-color: var(--background-hex);
+    .mobile-title {
+      display: none !important;
+    }
+  }
+  @media (max-width: 768px) {
+    .mobile-overlay {
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 10;
+    }
+    .set-left {
+      position: absolute;
+      left: 0;
+      top: 0;
+      z-index: 11;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+    }
+    .set-right {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      .mobile-title {
+        display: flex !important;
+        padding: 20px 12px 16px;
+        gap: 12px;
+        .n-h1 {
+          font-size: 24px;
+          font-weight: bold;
+          margin-bottom: 0;
+          line-height: normal;
+          margin: 0;
+        }
+      }
+    }
+  }
 }
 </style>
 
@@ -205,21 +285,12 @@ const toGithub = () => {
   width: calc(100vw - 40px);
   max-width: 1024px !important;
   overflow: hidden;
-  @media (max-width: 768px) {
-    width: 100vw;
-    max-width: 100vw !important;
-    height: 100vh;
-    max-height: 100vh;
-  }
   .n-card-header {
     position: absolute;
     top: 0;
     right: 0;
     padding: 20px;
     z-index: 1;
-    @media (max-width: 768px) {
-      padding: 12px;
-    }
   }
   .n-card__content {
     padding: 0;
@@ -227,18 +298,12 @@ const toGithub = () => {
       transition: opacity 0.2s ease-in-out;
     }
     .set-content {
-      flex: 1;
       padding: 0 40px;
-      background-color: var(--background-hex);
-      @media (max-width: 768px) {
-        padding: 0 12px;
-        height: calc(100vh - 170px);
-      }
     }
     .set-list {
-      margin-bottom: 30px;
-      &:last-child {
-        margin-bottom: 0;
+      padding-top: 30px;
+      &:first-child {
+        padding-top: 0;
       }
     }
     .n-h {
@@ -267,11 +332,6 @@ const toGithub = () => {
         align-items: center;
         justify-content: space-between;
         padding: 16px;
-        @media (max-width: 768px) {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 12px;
-        }
       }
       .label {
         display: flex;
@@ -279,12 +339,6 @@ const toGithub = () => {
         padding-right: 20px;
         .name {
           font-size: 16px;
-        }
-        @media (max-width: 768px) {
-          padding-right: 0;
-          .name {
-            font-size: 15px;
-          }
         }
       }
       .n-flex {
@@ -297,10 +351,21 @@ const toGithub = () => {
         &.n-switch {
           width: max-content;
         }
-        @media (max-width: 768px) {
-          width: 100%;
-          min-width: 0;
-          justify-content: flex-start;
+      }
+    }
+    @media (max-width: 768px) {
+      .set-content {
+        padding: 0 16px;
+        .n-scrollbar-content {
+          padding: 12px 0 !important;
+        }
+      }
+      .set-item {
+        .set {
+          @media (max-width: 768px) {
+            width: 140px;
+            min-width: 140px;
+          }
         }
       }
     }

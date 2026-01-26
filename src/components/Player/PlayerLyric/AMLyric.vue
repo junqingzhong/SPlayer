@@ -2,10 +2,23 @@
   <Transition name="fade" mode="out-in">
     <div
       :key="amLyricsData?.[0]?.words?.length"
-      :class="['lyric-am', { pure: statusStore.pureLyricMode, duet: hasDuet }]"
+      :class="[
+        'lyric-am',
+        {
+          pure: statusStore.pureLyricMode,
+          duet: hasDuet,
+          'align-right': settingStore.lyricAlignRight,
+        },
+      ]"
       :style="{
         '--amll-lp-color': 'rgb(var(--main-cover-color, 239 239 239))',
         '--amll-lp-hover-bg-color': 'rgba(var(--main-cover-color), 0.08)',
+        '--amll-lyric-left-padding': settingStore.lyricAlignRight
+          ? ''
+          : `${settingStore.lyricHorizontalOffset}px`,
+        '--amll-lyric-right-padding': settingStore.lyricAlignRight
+          ? `${settingStore.lyricHorizontalOffset}px`
+          : '',
       }"
     >
       <div v-if="statusStore.lyricLoading" class="lyric-loading">歌词正在加载中...</div>
@@ -13,12 +26,12 @@
         v-else
         ref="lyricPlayerRef"
         :lyricLines="amLyricsData"
-        :currentTime="playSeek"
+        :currentTime="currentTime"
         :playing="statusStore.playStatus"
         :enableSpring="settingStore.useAMSpring"
         :enableScale="settingStore.useAMSpring"
-        :alignPosition="settingStore.lyricsScrollPosition === 'center' ? 0.5 : 0.15"
-        :alignAnchor="settingStore.lyricsScrollPosition === 'center' ? 'center' : 'top'"
+        :alignPosition="settingStore.lyricsScrollOffset"
+        :alignAnchor="settingStore.lyricsScrollOffset > 0.4 ? 'center' : 'top'"
         :enableBlur="settingStore.lyricsBlur"
         :hidePassedLines="settingStore.hidePassedLines"
         :wordFadeWidth="settingStore.wordFadeWidth"
@@ -32,19 +45,24 @@
         class="am-lyric"
         @line-click="jumpSeek"
       />
-      <!-- 歌词菜单组件 -->
-      <LyricMenu />
     </div>
   </Transition>
 </template>
 
 <script setup lang="ts">
-import { type LyricLine } from "@applemusic-like-lyrics/core";
+import { LyricLineMouseEvent, type LyricLine } from "@applemusic-like-lyrics/core";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { cloneDeep } from "lodash-es";
 import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
+
+defineProps({
+  currentTime: {
+    type: Number,
+    default: 0,
+  },
+});
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
@@ -53,53 +71,46 @@ const player = usePlayerController();
 
 const lyricPlayerRef = ref<any | null>(null);
 
-// 实时播放进度
-const playSeek = ref<number>(player.getSeek() + statusStore.getSongOffset(musicStore.playSong?.id));
-
-// 是否有对唱行
-const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?? false);
-
-// 实时更新播放进度
-const { pause: pauseSeek, resume: resumeSeek } = useRafFn(() => {
-  const songId = musicStore.playSong?.id;
-  const offsetTime = statusStore.getSongOffset(songId);
-  playSeek.value = player.getSeek() + offsetTime;
-});
-
 // 当前歌词
 const amLyricsData = computed(() => {
   const { songLyric } = musicStore;
   if (!songLyric) return [];
-
   // 优先使用逐字歌词(YRC/TTML)
   const useYrc = songLyric.yrcData?.length && settingStore.showYrc;
   const lyrics = useYrc ? songLyric.yrcData : songLyric.lrcData;
-
   // 简单检查歌词有效性
   if (!Array.isArray(lyrics) || lyrics.length === 0) return [];
-
+  // 此处cloneDeep 删除会暴毙 不要动
   const clonedLyrics = cloneDeep(lyrics) as LyricLine[];
-
-  // 检查是否要不显示某一部分并删去
-  const showTran = settingStore.showTran;
-  const showRoma = settingStore.showRoma;
-  const showWordsRoma = settingStore.showWordsRoma;
-
-  if (!showTran || !showRoma || !showWordsRoma) {
-    clonedLyrics.forEach((line) => {
-      if (!showTran) line.translatedLyric = "";
-      if (!showRoma) line.romanLyric = "";
-      if (!showWordsRoma) line.words.forEach((word) => (word.romanWord = ""));
-    });
-  }
-
+  // 处理歌词内容
+  const { showTran, showRoma, showWordsRoma, swapTranRoma, lyricAlignRight } = settingStore;
+  clonedLyrics.forEach((line) => {
+    // 处理显隐
+    if (!showTran) line.translatedLyric = "";
+    if (!showRoma) line.romanLyric = "";
+    if (!showWordsRoma) line.words?.forEach((word) => (word.romanWord = ""));
+    // 调换翻译与音译位置
+    if (swapTranRoma) {
+      const temp = line.translatedLyric;
+      line.translatedLyric = line.romanLyric;
+      line.romanLyric = temp;
+    }
+    // 处理对唱方向反转
+    if (lyricAlignRight) {
+      line.isDuet = !line.isDuet;
+    }
+  });
   return clonedLyrics;
 });
 
+// 是否有对唱行
+const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?? false);
+
 // 进度跳转
-const jumpSeek = (line: any) => {
-  if (!line?.line?.lyricLine?.startTime) return;
-  const time = line.line.lyricLine.startTime;
+const jumpSeek = (line: LyricLineMouseEvent) => {
+  const lineContent = line.line.getLine();
+  if (!lineContent?.startTime) return;
+  const time = lineContent.startTime;
   const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
   player.setSeek(time - offsetMs);
   player.play();
@@ -131,15 +142,6 @@ watch(amLyricsData, (data) => {
 watch(lyricPlayerRef, (player) => {
   if (player) nextTick(() => processLyricLanguage(player));
 });
-
-onMounted(() => {
-  // 恢复进度
-  resumeSeek();
-});
-
-onBeforeUnmount(() => {
-  pauseSeek();
-});
 </script>
 
 <style lang="scss" scoped>
@@ -148,18 +150,6 @@ onBeforeUnmount(() => {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));
-  mask: linear-gradient(
-    180deg,
-    hsla(0, 0%, 100%, 0) 0,
-    hsla(0, 0%, 100%, 0.6) 5%,
-    #fff 10%,
-    #fff 75%,
-    hsla(0, 0%, 100%, 0.6) 85%,
-    hsla(0, 0%, 100%, 0)
-  );
-
-  /* 限定混合模式只作用于歌词区域，避免影响页面其它元素。 */
   isolation: isolate;
 
   :deep(.am-lyric) {
@@ -168,16 +158,32 @@ onBeforeUnmount(() => {
     position: absolute;
     left: 0;
     top: 0;
-    padding-left: 10px;
+    padding-left: var(--amll-lyric-left-padding, 10px);
     padding-right: 80px;
-
     div {
       div[class^="_interludeDots"] {
         display: var(--display-count-down-show);
       }
     }
+    @media (max-width: 500px) {
+      margin-left: 0;
+    }
   }
 
+  &.align-right {
+    :deep(.am-lyric) {
+      padding-left: 80px;
+      padding-right: var(--amll-lyric-right-padding, 10px);
+
+      @media (max-width: 990px) {
+        padding: 0;
+        margin-right: -20px;
+      }
+      @media (max-width: 500px) {
+        margin-right: 0;
+      }
+    }
+  }
   &.pure {
     &:not(.duet) {
       text-align: center;

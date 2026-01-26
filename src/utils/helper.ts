@@ -1,4 +1,8 @@
 import { QualityType, SongType, UpdateLogType } from "@/types/main";
+import {
+  AI_AUDIO_LEVELS,
+  AI_AUDIO_KEYS,
+} from "@/utils/meta";
 import { NTooltip, SelectOption } from "naive-ui";
 import { h, VNode } from "vue";
 import { getCacheData } from "./cache";
@@ -429,6 +433,9 @@ export const handleSongQuality = (
   song: AnyObject | number,
   type: "local" | "online" = "local",
 ): QualityType | undefined => {
+  const settingStore = useSettingStore();
+  const { disableAiAudio } = settingStore;
+
   if (type === "local" && typeof song === "number") {
     if (song >= 960000) return QualityType.HiRes;
     if (song >= 441000) return QualityType.SQ;
@@ -447,10 +454,16 @@ export const handleSongQuality = (
     "exhigh": QualityType.HQ,
     "higher": QualityType.MQ,
     "standard": QualityType.LQ,
-  }
+  };
 
-  if (typeof song === "object" && song) {
-    // 含有 level 特殊处理
+  // Fuck AI Filter: 如果是 AI 音质，跳过 level 属性判断，让后续遍历逻辑来确定真正的最高音质
+  const isAiLevel = disableAiAudio && typeof song === "object" && song && (
+    ("level" in song && AI_AUDIO_LEVELS.includes(song.level)) ||
+    ("privilege" in song && AI_AUDIO_LEVELS.includes(song.privilege?.playMaxBrLevel ?? song.privilege?.plLevel))
+  );
+ 
+  if (typeof song === "object" && song && !isAiLevel) {
+    // 含有 level 特殊处理（仅在非 AI 音质时使用）
     if ("level" in song) {
       const quality = levelQualityMap[song.level];
       if (quality) return quality;
@@ -475,7 +488,12 @@ export const handleSongQuality = (
     { key: "m", type: QualityType.MQ },
     { key: "l", type: QualityType.LQ },
   ];
+  
   for (const itemKey of order) {
+      // 过滤 AI 音质
+      if (disableAiAudio && AI_AUDIO_KEYS.includes(itemKey.key)) {
+          continue;
+      }
     if (song[itemKey.key] && Number(song[itemKey.key].br) > 0) {
       return itemKey.type;
     }

@@ -3,6 +3,10 @@
     <Transition name="fade" mode="out-in">
       <div v-show="statusStore.playerMetaShow" class="control-content" @click.stop>
         <n-flex class="left" align="center">
+          <!-- 收起 -->
+          <div class="menu-icon" @click.stop="statusStore.showFullPlayer = false">
+            <SvgIcon name="Down" />
+          </div>
           <!-- 喜欢歌曲 -->
           <div
             v-if="musicStore.playSong.type !== 'radio'"
@@ -81,7 +85,7 @@
           <!-- 进度条 -->
           <div class="slider">
             <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
-            <PlayerSlider :show-tooltip="false" />
+            <PlayerSlider class="player" :show-tooltip="false" />
             <span @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
           </div>
         </div>
@@ -114,6 +118,8 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 
 <style lang="scss" scoped>
 .player-control {
+  position: absolute;
+  bottom: 0;
   width: 100%;
   height: 80px;
   overflow: hidden;
@@ -246,13 +252,5 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
       opacity: 1;
     }
   }
-}
-// slider
-.n-slider {
-  --n-rail-color: rgba(var(--main-cover-color), 0.14);
-  --n-rail-color-hover: rgba(var(--main-cover-color), 0.3);
-  --n-fill-color: rgb(var(--main-cover-color));
-  --n-handle-color: rgb(var(--main-cover-color));
-  --n-fill-color-hover: rgb(var(--main-cover-color));
 }
 </style>

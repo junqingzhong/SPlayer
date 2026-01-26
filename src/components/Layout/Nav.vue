@@ -2,42 +2,68 @@
   <n-layout-header class="nav">
     <!-- 页面导航 -->
     <n-flex class="page-control">
-      <!-- 移动端侧边栏控制按钮 -->
-      <n-button :focusable="false" v-if="settingStore.isMobileMode" tertiary circle class="mobile-sidebar-toggle" @click="toggleSidebar">
-        <template #icon>
-          <SvgIcon name="Menu" :size="26" />
-        </template>
-      </n-button>
-      <n-button :focusable="false" tertiary circle @click="goBack">
-        <template #icon>
-          <SvgIcon name="NavigateBefore" :size="26" />
-        </template>
-      </n-button>
-      <n-button :focusable="false" tertiary circle @click="goForward">
-        <template #icon>
-          <SvgIcon name="NavigateNext" :size="26" />
-        </template>
-      </n-button>
+      <Logo v-if="!isDesktop" :size="40" @click="router.push('/')" />
+      <template v-if="!isSmallScreen">
+        <n-button :focusable="false" tertiary circle @click="router.go(-1)">
+          <template #icon>
+            <SvgIcon name="NavigateBefore" :size="26" />
+          </template>
+        </n-button>
+        <n-button :focusable="false" tertiary circle @click="router.go(1)">
+          <template #icon>
+            <SvgIcon name="NavigateNext" :size="26" />
+          </template>
+        </n-button>
+      </template>
     </n-flex>
     <!-- 主内容 -->
-    <n-flex class="nav-main" :wrap="false">
+    <n-flex :wrap="false" justify="end" class="nav-main">
       <!-- 搜索 -->
       <SearchInp v-if="settingStore.useOnlineService" />
       <!-- 可拖拽 -->
-      <div class="nav-drag" />
-      <!-- 用户 -->
-      <User v-if="settingStore.useOnlineService && !settingStore.isMobileMode" />
-      <!-- 设置菜单 -->
-      <n-dropdown :options="setOptions" trigger="click" :show-arrow="false" @select="setSelect">
-        <n-button :focusable="false" title="设置" tertiary circle>
+      <div v-if="isDesktop" class="nav-drag" />
+      <n-flex align="center">
+        <!-- 用户 -->
+        <User v-if="settingStore.useOnlineService" />
+        <!-- 设置菜单 -->
+        <n-dropdown :options="setOptions" trigger="click" @select="setSelect">
+          <n-button :focusable="false" title="设置" tertiary circle>
+            <template #icon>
+              <SvgIcon name="Settings" />
+            </template>
+          </n-button>
+        </n-dropdown>
+        <!-- 移动端菜单 -->
+        <n-button
+          v-if="!isDesktop"
+          :focusable="false"
+          tertiary
+          circle
+          @click="showAside = !showAside"
+        >
           <template #icon>
-            <SvgIcon name="Settings" />
+            <SvgIcon name="Menu" />
           </template>
         </n-button>
-      </n-dropdown>
+        <n-drawer v-model:show="showAside" :width="240" placement="left">
+          <n-drawer-content :body-content-style="{ padding: 0 }" :native-scrollbar="false">
+            <template #header>
+              <n-flex align="center" justify="center" class="aside-logo">
+                <Logo />
+                <n-text>SPlayer</n-text>
+              </n-flex>
+            </template>
+            <Menu @menu-click="showAside = false" />
+          </n-drawer-content>
+        </n-drawer>
+      </n-flex>
     </n-flex>
     <!-- 客户端控制 -->
-    <n-flex v-if="isElectron && useBorderless" align="center" class="client-control">
+    <n-flex
+      v-if="isElectron && !isSmallScreen && useBorderless"
+      align="center"
+      class="client-control"
+    >
       <n-divider class="divider" vertical />
       <div class="min-button-wrapper" @click="min" title="最小化">
         <n-button :focusable="false" title="最小化" tertiary circle @click.stop="min">
@@ -71,8 +97,16 @@
       </div>
     </n-flex>
     <!-- 关闭弹窗 -->
-    <n-modal v-model:show="showCloseModal" :auto-focus="false" title="关闭软件" style="width: 600px" preset="card"
-      transform-origin="center" bordered @after-leave="rememberNotAsk = false">
+    <n-modal
+      v-model:show="showCloseModal"
+      :auto-focus="false"
+      title="关闭软件"
+      style="width: 600px"
+      preset="card"
+      transform-origin="center"
+      bordered
+      @after-leave="rememberNotAsk = false"
+    >
       <n-text class="tip">确认关闭软件吗？</n-text>
       <n-checkbox v-model:checked="rememberNotAsk" class="checkbox"> 记住且不再询问 </n-checkbox>
       <template #footer>
@@ -97,33 +131,26 @@
 
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
-import { useSettingStore } from "@/stores";
+import { useSettingStore, useStatusStore } from "@/stores";
 import { renderIcon } from "@/utils/helper";
-import { openSetting } from "@/utils/modal";
+import { openSetting, openThemeConfig, openScalingModal } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
+import { useMobile } from "@/composables/useMobile";
 
 const router = useRouter();
 const settingStore = useSettingStore();
+const statusStore = useStatusStore();
+const { isDesktop, isSmallScreen } = useMobile();
 
 const showCloseModal = ref(false);
-
-
-// 移动端侧边栏控制
-const toggleSidebar = () => {
-  // 获取侧边栏元素
-  const siderElement = document.getElementById('main-sider');
-  if (siderElement) {
-    siderElement.classList.toggle('mobile-show');
-  }
-};
 // 是否记住
 const rememberNotAsk = ref(false);
-
 // 是否启用无边框窗口
 const useBorderless = ref(true);
-
 // 当前窗口状态
 const isMax = ref(false);
+// 是否显示侧边栏
+const showAside = ref(false);
 
 // 最小化
 const min = () => window.electron.ipcRenderer.send("win-min");
@@ -166,6 +193,7 @@ const setOptions = computed<DropdownOption[]>(() => [
           ? "深色模式"
           : "跟随系统",
     key: "themeMode",
+    disabled: !!statusStore.backgroundImageUrl,
     icon: renderIcon(
       settingStore.themeMode === "auto"
         ? "LightTheme"
@@ -175,12 +203,18 @@ const setOptions = computed<DropdownOption[]>(() => [
     ),
   },
   {
-    label: settingStore.isMobileMode ? "切换至PC模式" : "切换至手机模式",
-    key: "toggleMobileMode",
-    icon: renderIcon(settingStore.isMobileMode ? "Computer" : "Smartphone"),
+    label: "主题配置",
+    key: "themeConfig",
+    icon: renderIcon("Palette"),
   },
   {
-    key: "header-divider",
+    key: "zoom",
+    label: "界面缩放",
+    icon: renderIcon("ZoomIn"),
+    show: isElectron,
+  },
+  {
+    key: "divider-1",
     type: "divider",
   },
   {
@@ -204,27 +238,17 @@ const setOptions = computed<DropdownOption[]>(() => [
   },
 ]);
 
-// 页面导航
-const goBack = () => {
-  if (window.history.length > 1) {
-    router.back();
-  } else {
-    router.push("/");
-  }
-};
-
-const goForward = () => {
-  router.forward();
-};
-
 // 菜单选择
 const setSelect = (key: string) => {
   switch (key) {
     case "themeMode":
       settingStore.setThemeMode();
       break;
-    case "toggleMobileMode":
-      settingStore.toggleMobileMode();
+    case "themeConfig":
+      openThemeConfig();
+      break;
+    case "zoom":
+      openScalingModal();
       break;
     case "setting":
       openSetting();
@@ -232,17 +256,6 @@ const setSelect = (key: string) => {
     case "dev-tools":
       window.electron.ipcRenderer.send("open-dev-tools");
       break;
-    default:
-      break;
-  }
-};
-
-// 监听窗口大小变化，更新手机模式状态
-const handleResize = () => {
-  if (window.innerWidth <= 768) {
-    settingStore.isMobileMode = true;
-  } else {
-    settingStore.isMobileMode = false;
   }
 };
 
@@ -258,15 +271,6 @@ onMounted(async () => {
       isMax.value = value;
     });
   }
-  // 添加窗口大小监听器
-  window.addEventListener('resize', handleResize);
-  // 初始化时检查一次
-  handleResize();
-});
-
-onUnmounted(() => {
-  // 移除窗口大小监听器，防止内存泄漏
-  window.removeEventListener('resize', handleResize);
 });
 </script>
 
@@ -285,25 +289,16 @@ onUnmounted(() => {
     -webkit-app-region: no-drag;
   }
   .nav-main {
+    position: relative;
     flex: 1;
     align-items: center;
     height: 100%;
     margin-left: 12px;
-    z-index: 2; /* 确保nav-main在client-control之上 */
     .nav-drag {
       flex: 1;
       width: 100%;
       height: 100%;
     }
-  }
-  .client-control {
-    z-index: 1; /* 确保client-control在nav-main之下 */
-    .divider {
-      margin: 0 0 0 12px;
-    }
-  }
-  .nav-main .search{
-    width: 70%;
   }
   .client-control {
     .divider {
@@ -338,9 +333,17 @@ onUnmounted(() => {
     }
   }
 }
-
 .tip {
   font-size: 16px;
+}
+.aside-logo {
+  .n-text {
+    width: 90px;
+    font-size: 22px;
+    font-family: "logo";
+    margin-top: 2px;
+    line-height: 40px;
+  }
 }
 .checkbox {
   display: flex;

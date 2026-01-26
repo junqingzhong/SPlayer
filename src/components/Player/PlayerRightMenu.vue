@@ -1,7 +1,7 @@
 <template>
   <n-flex :size="8" align="center" class="right-menu">
     <n-badge v-if="isElectron" value="ON" :show="statusStore.showDesktopLyric">
-      <div class="menu-icon" @click.stop="player.toggleDesktopLyric()">
+      <div class="menu-icon hidden" @click.stop="player.toggleDesktopLyric()">
         <SvgIcon name="DesktopLyric2" :depth="statusStore.showDesktopLyric ? 1 : 3" />
       </div>
     </n-badge>
@@ -12,29 +12,18 @@
       :class="{ player: statusStore.showFullPlayer }"
       @select="handleControls"
     >
-      <div class="menu-icon">
+      <div class="menu-icon hidden">
         <SvgIcon name="Controls" />
       </div>
     </n-dropdown>
-   <!-- 播放模式 -->
-    <n-dropdown
-      v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode"
-      :options="playModeOptions"
-      :show-arrow="false"
-      :class="{ player: statusStore.showFullPlayer }"
-      @select="(mode) => player.togglePlayMode(mode)"
-    >
-      <div class="menu-icon">
-        <SvgIcon :name="statusStore.playModeIcon" />
-      </div>
-    </n-dropdown>
+    <!-- 音量 -->
     <n-popover
       :show-arrow="false"
       :style="{ padding: 0 }"
       :class="{ player: statusStore.showFullPlayer }"
     >
       <template #trigger>
-        <div class="menu-icon" @click.stop="player.toggleMute" @wheel="player.setVolume">
+        <div class="menu-icon hidden" @click.stop="player.toggleMute" @wheel="player.setVolume">
           <SvgIcon :name="statusStore.playVolumeIcon" />
         </div>
       </template>
@@ -48,12 +37,12 @@
           vertical
           @update:value="(val: number) => player.setVolume(val)"
         />
-        <n-text class="slider-num">{{ statusStore.playVolumePercent }}%</n-text>
+        <n-text class="slider-num hidden">{{ statusStore.playVolumePercent }}%</n-text>
       </div>
     </n-popover>
     <!-- 播放列表 -->
     <n-badge
-      v-if="!settingStore.isMobileMode && !statusStore.personalFmMode"
+      v-if="!statusStore.personalFmMode"
       :value="dataStore.playList?.length ?? 0"
       :show="settingStore.showPlaylistCount"
       :max="9999"
@@ -69,42 +58,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { useDataStore, useSettingStore, useStatusStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
 import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
 import type { DropdownOption } from "naive-ui";
 
 const dataStore = useDataStore();
-const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
-// 播放模式数据
-const playModeOptions: DropdownOption[] = [
-  {
-    label: "顺序播放",
-    key: "off",
-    icon: renderIcon("Repeat"),
-  },
-  {
-    label: "列表循环",
-    key: "repeat",
-    icon: renderIcon("Repeat"),
-  },
-  {
-    label: "单曲循环",
-    key: "repeat-once",
-    icon: renderIcon("RepeatSong"),
-  },
-  {
-    label: "随机播放",
-    key: "shuffle",
-    icon: renderIcon("Shuffle"),
-  },
-];
 
 // 更多功能
 const controlsOptions = computed<DropdownOption[]>(() => [
@@ -122,7 +86,7 @@ const controlsOptions = computed<DropdownOption[]>(() => [
   {
     label: "播放速度",
     key: "rate",
-    disabled: settingStore.audioEngine === "ffmpeg" && settingStore.playbackEngine !== "mpv",
+    disabled: settingStore.playbackEngine === "mpv",
     icon: renderIcon("PlayRate"),
   },
 ]);
@@ -177,6 +141,11 @@ const handleControls = (key: string) => {
     // font-size: 10px;
     .n-base-slot-machine {
       color: var(--primary-hex);
+    }
+  }
+  @media (max-width: 810px) {
+    .hidden {
+      display: none;
     }
   }
 }

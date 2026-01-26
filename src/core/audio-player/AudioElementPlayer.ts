@@ -110,6 +110,7 @@ export class AudioElementPlayer extends BaseAudioPlayer {
    */
   public setRate(value: number): void {
     this.audioElement.playbackRate = value;
+    this.audioElement.defaultPlaybackRate = value;
   }
 
   /**
@@ -186,12 +187,12 @@ export class AudioElementPlayer extends BaseAudioPlayer {
     events.forEach((eventType) => {
       this.audioElement.addEventListener(eventType, (e) => {
         if (eventType === AUDIO_EVENTS.ERROR) {
-          this.emit(AUDIO_EVENTS.ERROR, {
+          this.dispatch(AUDIO_EVENTS.ERROR, {
             originalEvent: e,
             errorCode: this.getErrorCode(),
           });
         } else {
-          this.emit(eventType);
+          this.dispatch(eventType);
         }
       });
     });

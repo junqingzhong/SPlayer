@@ -213,7 +213,7 @@ async function getQQMusicLyric(
       try {
         result.lrc = decryptQrc(lyric);
       } catch {
-        void 0;
+        // LRC 解密失败，忽略
       }
     } else {
       // 单独请求 LRC 格式歌词
@@ -232,7 +232,7 @@ async function getQQMusicLyric(
           result.lrc = decryptQrc(lrcResponse.lyric);
         }
       } catch {
-        void 0;
+        // LRC 获取失败，忽略
       }
     }
 
@@ -492,8 +492,8 @@ export const initQQMusicAPI = async (fastify: FastifyInstance) => {
       );
 
       // 返回歌曲信息和歌词
-      const { code, ...lyrics } = lyricResult;
-      void code;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { code: _code, ...lyrics } = lyricResult;
       return reply.send({
         code: 200,
         song: {

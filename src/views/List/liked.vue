@@ -8,9 +8,10 @@
       :list-scrolling="listScrolling"
       :search-value="searchValue"
       :config="listConfig"
-      title-text="我喜欢的音乐"
       :play-button-text="playButtonText"
       :more-options="moreOptions"
+      title-text="我喜欢的音乐"
+      hide-comment-tab
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
     />
@@ -69,7 +70,7 @@ const { listScrolling, handleListScroll, resetScroll } = useListScroll();
 const { playAllSongs: playAllSongsAction } = useListActions();
 
 // 歌单 ID
-const playlistId = computed<number>(() => dataStore.userLikeData.playlists?.[0]?.id);
+const playlistId = computed<number>(() => Number(dataStore.userLikeData.playlists?.[0]?.id) || 0);
 
 // 当前正在请求的歌单 ID，用于防止竞态条件
 const currentRequestId = ref<number>(0);
@@ -375,7 +376,7 @@ onMounted(async () => {
   // 获取我喜欢的音乐歌单ID
   const likedPlaylistId = dataStore.userLikeData.playlists?.[0]?.id;
   if (likedPlaylistId) {
-    getPlaylistDetail(likedPlaylistId);
+    getPlaylistDetail(Number(likedPlaylistId));
   } else {
     // 如果没有找到我喜欢的音乐歌单，尝试从缓存获取
     const data: any = await dataStore.getUserLikePlaylist();

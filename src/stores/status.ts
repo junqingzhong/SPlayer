@@ -1,5 +1,5 @@
 import type { ColorScheme, RGB } from "@/types/main";
-import { QualityType, type SortType } from "@/types/main";
+import { QualityType, type SortField, type SortOrder } from "@/types/main";
 import { RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isDevBuild } from "@/utils/env";
 import { defineStore } from "pinia";
@@ -11,6 +11,8 @@ interface StatusState {
   searchFocus: boolean;
   /** 搜索框输入值 */
   searchInputValue: string;
+  /** 背景图 URL (Blob URL) */
+  backgroundImageUrl: string | null;
   /** 播放控制条 */
   showPlayBar: boolean;
   /** 全屏播放器 */
@@ -54,6 +56,8 @@ interface StatusState {
   pureLyricMode: boolean;
   /** 当前是否正使用 TTML 歌词 */
   usingTTMLLyric: boolean;
+  /** 当前是否正使用 QRC 歌词（来自QQ音乐） */
+  usingQRCLyric: boolean;
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;
   /** 当前播放索引 */
@@ -76,8 +80,10 @@ interface StatusState {
   playUblock: boolean;
   /** 主内容高度 */
   mainContentHeight: number;
-  /** 列表排序 */
-  listSort: SortType;
+  /** 列表排序字段 */
+  listSortField: SortField;
+  /** 列表排序顺序 */
+  listSortOrder: SortOrder;
   /** 桌面歌词 */
   showDesktopLyric: boolean;
   /** 播放器评论 */
@@ -108,6 +114,28 @@ interface StatusState {
   };
   /** 开发者模式（假） */
   developerMode: boolean;
+  /**
+   * 主题背景模式
+   * color: 颜色模式 | image: 图片模式
+   */
+  themeBackgroundMode: "color" | "image";
+  /** 背景图配置 */
+  backgroundConfig: {
+    /** 背景放大倍数 (1-2) */
+    scale: number;
+    /** 遮罩透明度 (30-95) */
+    maskOpacity: number;
+    /** 模糊度 (0-20) */
+    blur: number;
+    /** 提取的主色 (hex) */
+    themeColor: string | null;
+    /** 是否使用自定义颜色 */
+    useCustomColor: boolean;
+    /** 用户自定义颜色 (hex) */
+    customColor: string;
+    /** 是否为纯色模式 */
+    isSolid: boolean;
+  };
 }
 
 export const useStatusStore = defineStore("status", {
@@ -115,6 +143,7 @@ export const useStatusStore = defineStore("status", {
     menuCollapsed: false,
     searchFocus: false,
     searchInputValue: "",
+    backgroundImageUrl: null,
     showPlayBar: true,
     playStatus: false,
     playLoading: true,
@@ -129,6 +158,7 @@ export const useStatusStore = defineStore("status", {
     songCoverTheme: {},
     pureLyricMode: false,
     usingTTMLLyric: false,
+    usingQRCLyric: false,
     songQuality: undefined,
     playIndex: -1,
     lyricIndex: -1,
@@ -140,7 +170,8 @@ export const useStatusStore = defineStore("status", {
     shuffleMode: "off",
     personalFmMode: false,
     mainContentHeight: 0,
-    listSort: "default",
+    listSortField: "default",
+    listSortOrder: "default",
     showDesktopLyric: false,
     showPlayerComment: false,
     updateCheck: false,
@@ -157,6 +188,24 @@ export const useStatusStore = defineStore("status", {
       waitSongEnd: true,
     },
     developerMode: false,
+    themeBackgroundMode: "color",
+    /** 背景图配置 */
+    backgroundConfig: {
+      /** 背景放大倍数 (1-2) */
+      scale: 1,
+      /** 遮罩透明度 (30-95) */
+      maskOpacity: 30,
+      /** 模糊度 (0-20) */
+      blur: 0,
+      /** 提取的主色 (hex) */
+      themeColor: null,
+      /** 是否使用自定义颜色 */
+      useCustomColor: false,
+      /** 用户自定义颜色 (hex) */
+      customColor: "#fe7971",
+      /** 是否为纯色模式 */
+      isSolid: false,
+    },
   }),
   getters: {
     // 播放音量图标
@@ -318,6 +367,8 @@ export const useStatusStore = defineStore("status", {
         playIndex: -1,
         repeatMode: "off",
         shuffleMode: "off",
+        listSortField: "default",
+        listSortOrder: "default",
       });
     },
   },
@@ -340,7 +391,8 @@ export const useStatusStore = defineStore("status", {
       "repeatMode",
       "shuffleMode",
       "songCoverTheme",
-      "listSort",
+      "listSortField",
+      "listSortOrder",
       "showDesktopLyric",
       "personalFmMode",
       "autoClose",
@@ -348,6 +400,8 @@ export const useStatusStore = defineStore("status", {
       "eqBands",
       "eqPreset",
       "developerMode",
+      "themeBackgroundMode",
+      "backgroundConfig",
     ],
   },
 });

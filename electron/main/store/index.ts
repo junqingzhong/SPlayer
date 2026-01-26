@@ -23,6 +23,8 @@ export interface StoreType {
     maximized?: boolean;
     /** 是否启用无边框窗口 */
     useBorderless?: boolean;
+    /** 缩放系数 (0.5 - 2.0) */
+    zoomFactor?: number;
   };
   /** 歌词 */
   lyric: {

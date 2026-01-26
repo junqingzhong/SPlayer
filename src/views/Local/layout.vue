@@ -33,6 +33,20 @@
           播放
         </n-button>
         <n-button
+          v-if="localType === 'local-playlists'"
+          :focusable="false"
+          class="more"
+          strong
+          secondary
+          circle
+          @click="openCreatePlaylist(true)"
+        >
+          <template #icon>
+            <SvgIcon name="Add" />
+          </template>
+        </n-button>
+        <n-button
+          v-else
           :disabled="loading"
           :loading="loading"
           :focusable="false"
@@ -82,18 +96,37 @@
             <SvgIcon name="Search" />
           </template>
         </n-input>
-        <n-tabs
-          v-if="settingStore.useOnlineService"
-          v-model:value="localType"
-          class="tabs"
-          type="segment"
-          @update:value="handleTabUpdate"
-        >
-          <n-tab :disabled="tabsDisabled" name="local-songs"> 单曲 </n-tab>
-          <n-tab :disabled="tabsDisabled" name="local-artists"> 歌手 </n-tab>
-          <n-tab :disabled="tabsDisabled" name="local-albums"> 专辑 </n-tab>
-          <n-tab :disabled="tabsDisabled" name="local-folders"> 文件夹 </n-tab>
-        </n-tabs>
+        <!-- Tab 切换 -->
+        <template v-if="settingStore.useOnlineService">
+          <n-dropdown
+            v-if="!isLargeDesktop"
+            :options="tabDropdownOptions"
+            :value="localType"
+            trigger="click"
+            placement="bottom-end"
+            @select="handleTabUpdate"
+          >
+            <n-button :disabled="tabsDisabled" :focusable="false" strong secondary round>
+              {{ currentTabLabel }}
+              <template #icon>
+                <SvgIcon name="Down" />
+              </template>
+            </n-button>
+          </n-dropdown>
+          <n-tabs
+            v-else
+            v-model:value="localType"
+            class="tabs"
+            type="segment"
+            @update:value="handleTabUpdate"
+          >
+            <n-tab :disabled="tabsDisabled" name="local-songs"> 单曲 </n-tab>
+            <n-tab :disabled="tabsDisabled" name="local-artists"> 歌手 </n-tab>
+            <n-tab :disabled="tabsDisabled" name="local-albums"> 专辑 </n-tab>
+            <n-tab :disabled="tabsDisabled" name="local-playlists"> 歌单 </n-tab>
+            <n-tab :disabled="tabsDisabled" name="local-folders"> 文件夹 </n-tab>
+          </n-tabs>
+        </template>
       </n-flex>
     </n-flex>
     <!-- 路由 -->
@@ -134,9 +167,9 @@
       transform-origin="center"
       style="width: 600px"
     >
-      <n-text class="local-list-tip"
-        >请选择本地音乐文件夹，将自动扫描您添加的目录，歌曲增删实时同步</n-text
-      >
+      <n-text class="local-list-tip">
+        请选择本地音乐文件夹，将自动扫描您添加的目录，歌曲增删实时同步
+      </n-text>
       <n-scrollbar style="max-height: 50vh">
         <n-list class="local-list" hoverable clickable bordered>
           <n-list-item v-for="(item, index) in settingStore.localFilesPath" :key="index">
@@ -172,16 +205,18 @@
 import type { SongType } from "@/types/main";
 import type { DropdownOption, MessageReactive } from "naive-ui";
 import { useLocalStore, useSettingStore } from "@/stores";
+import { useMobile } from "@/composables/useMobile";
 import { formatSongsList } from "@/utils/format";
 import { debounce } from "lodash-es";
 import { changeLocalMusicPath, fuzzySearch, renderIcon } from "@/utils/helper";
-import { openBatchList } from "@/utils/modal";
+import { openBatchList, openCreatePlaylist } from "@/utils/modal";
 import { usePlayerController } from "@/core/player/PlayerController";
 
 const router = useRouter();
 const localStore = useLocalStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
+const { isLargeDesktop } = useMobile();
 
 const loading = ref<boolean>(false);
 const loadingMsg = ref<MessageReactive | null>(null);
@@ -291,6 +326,8 @@ const pageTitle = computed<string>(() => {
     case "local-songs":
     case "local":
       return "音乐库";
+    case "local-playlists":
+      return "歌单";
     case "local-albums":
       return "专辑";
     case "local-artists":
@@ -337,6 +374,27 @@ const moreOptions = computed<DropdownOption[]>(() => [
     icon: renderIcon("Batch"),
   },
 ]);
+
+// Tab 标签映射
+const tabLabels: Record<string, string> = {
+  "local-songs": "单曲",
+  "local-artists": "歌手",
+  "local-albums": "专辑",
+  "local-playlists": "歌单",
+  "local-folders": "文件夹",
+};
+
+// Tab 下拉选项
+const tabDropdownOptions = computed<DropdownOption[]>(() => [
+  { label: "单曲", key: "local-songs", icon: renderIcon("Music") },
+  { label: "歌手", key: "local-artists", icon: renderIcon("Artist") },
+  { label: "专辑", key: "local-albums", icon: renderIcon("Album") },
+  { label: "歌单", key: "local-playlists", icon: renderIcon("MusicList") },
+  { label: "文件夹", key: "local-folders", icon: renderIcon("Folder") },
+]);
+
+// 当前 Tab 标签
+const currentTabLabel = computed(() => tabLabels[localType.value] || "单曲");
 
 /** 主进程发送的Track数据类型 */
 interface MusicTrackData {
@@ -523,10 +581,16 @@ const handleTabUpdate = (name: string) => {
   router.push({ name });
 };
 
-onBeforeRouteUpdate((to) => {
-  if (to.matched[0].name !== "local") return;
-  localType.value = to.name as string;
-});
+// 监听路由变化
+watch(
+  () => router.currentRoute.value.name,
+  (name) => {
+    if (name && typeof name === "string" && name.startsWith("local")) {
+      localType.value = name;
+    }
+  },
+  { immediate: true },
+);
 
 onMounted(() => {
   // 监听本地音乐同步进度
@@ -609,8 +673,6 @@ onUnmounted(() => {
       height: 40px;
       :deep(.n-base-selection) {
         height: 40px;
-        background-color: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 25px;
         .n-base-selection-label {
           height: 40px;
@@ -619,10 +681,15 @@ onUnmounted(() => {
       }
     }
     .n-tabs {
-      width: 280px;
+      width: 320px;
       --n-tab-border-radius: 25px !important;
       :deep(.n-tabs-rail) {
         outline: 1px solid var(--n-tab-color-segment);
+      }
+    }
+    @media (max-width: 678px) {
+      .search {
+        display: none;
       }
     }
   }
@@ -630,6 +697,11 @@ onUnmounted(() => {
     flex: 1;
     overflow: hidden;
     max-height: calc((var(--layout-height) - 132) * 1px);
+  }
+  @media (max-width: 512px) {
+    .status {
+      display: none !important;
+    }
   }
 }
 .local-list-tip {

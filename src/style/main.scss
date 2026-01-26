@@ -1,6 +1,3 @@
-/* 导入媒体查询样式 */
-@use "./media.scss";
-
 * {
   margin: 0;
   padding: 0;
@@ -14,7 +11,65 @@
   }
 }
 
-
+:root {
+  // 图片模式
+  &.image {
+    --background-hex: rgba(0, 0, 0, 0.2) !important;
+    --surface-container-hex: rgba(0, 0, 0, 0.1) !important;
+    body {
+      --background-hex: rgba(var(--background), 0.1) !important;
+      --surface-container-hex: rgba(var(--surface-container), 0.1) !important;
+      --n-toggle-bar-color: rgba(var(--background), 0.2) !important;
+      --n-toggle-bar-color-hover: rgba(var(--background), 0.4) !important;
+    }
+    .n-layout-sider {
+      background-color: rgba(var(--surface-container), 0.2) !important;
+    }
+    .n-layout {
+      background-color: transparent !important;
+    }
+    .main-player {
+      background-color: var(--surface-container-hex);
+      backdrop-filter: blur(20px);
+    }
+    // 内置组件
+    .n-card,
+    .n-tag {
+      background-color: rgba(var(--background), 0.2) !important;
+      border-color: rgba(var(--primary), 0.1) !important;
+    }
+    .n-modal,
+    .n-popover-shared,
+    .n-float-button {
+      background-color: rgba(var(--background), 0.2) !important;
+      border-color: rgba(var(--primary), 0.1) !important;
+      backdrop-filter: blur(20px);
+    }
+    .n-layout-toggle-bar {
+      opacity: 0.3;
+      transition: opacity 0.3s var(--n-bezier);
+      .n-layout-toggle-bar__top,
+      .n-layout-toggle-bar__bottom {
+        background-color: color-mix(
+          in srgb,
+          rgb(var(--primary)) 40%,
+          rgb(var(--background)) 60%
+        ) !important;
+      }
+      &:hover {
+        opacity: 1;
+      }
+    }
+    .n-layout-toggle-bar__top,
+    .n-layout-toggle-bar__bottom {
+      background-color: color-mix(
+        in srgb,
+        rgb(var(--primary)) 40%,
+        rgb(var(--background)) 60%
+      ) !important;
+    }
+  }
+}
 
 body {
   width: 100vw;
@@ -80,9 +135,7 @@ audio {
     }
   }
 }
-#main-content .n-scrollbar .n-scrollbar-container .n-scrollbar-content {
-  display: grid;
-}
+
 // modal
 .n-modal {
   max-width: calc(100vw - 40px);
@@ -200,9 +253,6 @@ audio {
     }
   }
 }
-#main #main-content{
-  padding: 0 24px;
-}
 
 // notification
 .n-notification {
@@ -268,13 +318,13 @@ audio {
 }
 
 // select
-.n-select {
-  .n-base-selection {
-    .n-base-selection-label {
-      background-color: var(--n-border-color);
-    }
-  }
-}
+// .n-select {
+//   .n-base-selection {
+//     .n-base-selection-label {
+//       background-color: var(--n-border-color);
+//     }
+//   }
+// }
 
 // alert
 .n-alert {
@@ -282,28 +332,28 @@ audio {
 }
 
 // tag
-.n-tag {
-  font-size: 13px;
-  padding: 0 16px;
-  line-height: 0;
-  cursor: pointer;
-  transition:
-    transform 0.3s,
-    background-color 0.3s,
-    color 0.3s;
-  background-color: rgba(var(--primary), 0.08);
-  &.choose {
-    background-color: rgba(var(--primary), 0.28);
-    color: var(--primary-hex);
-  }
-  &:hover {
-    background-color: rgba(var(--primary), 0.28);
-    color: var(--primary-hex);
-  }
-  &:active {
-    transform: scale(0.98);
-  }
-}
+// .n-tag {
+//   font-size: 13px;
+//   padding: 0 16px;
+//   line-height: 0;
+//   cursor: pointer;
+//   transition:
+//     transform 0.3s,
+//     background-color 0.3s,
+//     color 0.3s;
+//   background-color: rgba(var(--primary), 0.08);
+//   &.choose {
+//     background-color: rgba(var(--primary), 0.28);
+//     color: var(--primary-hex);
+//   }
+//   &:hover {
+//     background-color: rgba(var(--primary), 0.28);
+//     color: var(--primary-hex);
+//   }
+//   &:active {
+//     transform: scale(0.98);
+//   }
+// }
 
 // .n-badge
 .n-badge {
@@ -365,213 +415,6 @@ audio {
   padding: 20px;
   border-radius: 8px;
 }
-.text-hidden {
-  display: -webkit-box;
-  overflow: hidden;
-  word-break: break-all;
-  line-clamp: 1;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 1;
-}
-.likedPage {
-  display: flex;
-  flex-direction: column;
-
-  .detail {
-    position: absolute;
-    display: flex;
-    height: 240px;
-    width: 100%;
-    padding: 12px 0 30px 0;
-    will-change: height, opacity;
-    z-index: 1;
-    transition:
-      height 0.3s,
-      opacity 0.3s;
-
-    .cover {
-      position: relative;
-      display: flex;
-      width: auto;
-      height: 100%;
-      aspect-ratio: 1/1;
-      margin-right: 20px;
-      border-radius: 8px;
-      transition:
-        opacity 0.3s,
-        margin 0.3s,
-        transform 0.3s;
-
-      :deep(img) {
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        transition: opacity 0.35s ease-in-out;
-      }
-
-      .cover-img {
-        border-radius: 8px;
-        overflow: hidden;
-        z-index: 1;
-        transition:
-          opacity 0.3s,
-          filter 0.3s,
-          transform 0.3s;
-      }
-
-      .cover-shadow {
-        position: absolute;
-        top: 6px;
-        height: 100%;
-        width: 100%;
-        filter: blur(12px) opacity(0.6);
-        transform: scale(0.92, 0.96);
-        z-index: 0;
-        background-size: cover;
-        aspect-ratio: 1/1;
-
-        :deep(img) {
-          opacity: 1;
-        }
-      }
-
-      .cover-mask {
-        position: absolute;
-        top: 0;
-        left: 0;
-        height: 30%;
-        width: 100%;
-        border-radius: 8px;
-        overflow: hidden;
-        z-index: 1;
-        background: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0));
-        transition: opacity 0.3s;
-      }
-
-      .play-count {
-        position: absolute;
-        display: flex;
-        align-items: center;
-        top: 10px;
-        right: 12px;
-        color: #fff;
-        font-weight: bold;
-        z-index: 2;
-        transition: opacity 0.3s;
-
-        .n-icon {
-          color: #fff;
-          font-size: 16px;
-          margin-right: 4px;
-        }
-      }
-
-      &:active {
-        transform: scale(0.98);
-      }
-    }
-
-    .data {
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      // padding-right: 60px;
-
-      :deep(.n-skeleton) {
-        margin-bottom: 12px;
-        border-radius: 8px;
-        height: 32px;
-      }
-
-      :deep(.n-ellipsis) {
-        margin-bottom: 8px;
-        cursor: pointer;
-      }
-
-      .name {
-        font-size: 30px;
-        font-weight: bold;
-        margin-bottom: 12px;
-        transition:
-          font-size 0.3s var(--n-bezier),
-          color 0.3s var(--n-bezier);
-      }
-
-      .collapse {
-        position: absolute;
-        left: 0;
-        top: 60px;
-        margin-bottom: 12px;
-      }
-
-      .meta {
-        .item {
-          display: flex;
-          align-items: center;
-
-          .n-icon {
-            font-size: 20px;
-            margin-right: 4px;
-          }
-
-          .tags {
-            margin-left: 4px;
-
-            .n-tag {
-              font-size: 13px;
-              padding: 0 16px;
-              line-height: 0;
-              cursor: pointer;
-              transition:
-                transform 0.3s,
-                background-color 0.3s,
-                color 0.3s;
-
-              &:hover {
-                background-color: rgba(var(--primary), 0.14);
-              }
-
-              &:active {
-                transform: scale(0.95);
-              }
-            }
-          }
-        }
-      }
-
-      .menu {
-        position: absolute;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-
-        .n-button {
-          height: 40px;
-          transition: all 0.3s var(--n-bezier);
-        }
-
-        .more {
-          width: 40px;
-        }
-
-        .search {
-          height: 40px;
-          width: 130px;
-          display: flex;
-          align-items: center;
-          border-radius: 25px;
-          transition: all 0.3s var(--n-bezier);
-
-          &.n-input--focus {
-            width: 200px;
-          }
-        }
-      }
-    }
-  }
-
-  .song-list,
 
 // 列表页通用样式
 .album-list,
@@ -589,52 +432,28 @@ audio {
       padding 0.3s,
       opacity 0.3s;
   }
-
-  &.small {
-    .detail {
-      height: 120px;
-
-      .cover {
-        margin-right: 12px;
-
-        .cover-mask,
-        .play-count {
-          opacity: 0;
-        }
-      }
-
-      .data {
-        .name {
-          font-size: 22px;
-        }
-
-        .menu {
-
-          .n-button,
-          .search {
-            height: 32px;
-            --n-font-size: 13px;
-            --n-padding: 0 14px;
-            --n-icon-size: 16px;
-          }
-        }
-      }
-    }
-
-    .song-list,
-    .loading,
-    .n-empty {
-      padding-top: 120px;
-
-    }
-  }
-}
   .list-detail.small {
     & ~ .song-list,
     & ~ .list-comment,
     & ~ .loading,
     & ~ .n-empty {
       padding-top: 120px;
+    }
+  }
+  @media (max-width: 768px) {
+    .song-list,
+    .list-comment,
+    .loading,
+    .n-empty {
+      padding-top: 180px;
+    }
+    .list-detail.small {
+      & ~ .song-list,
+      & ~ .list-comment,
+      & ~ .loading,
+      & ~ .n-empty {
+        padding-top: 100px;
+      }
     }
   }
 }

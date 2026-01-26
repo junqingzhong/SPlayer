@@ -88,7 +88,10 @@ export class MusicCacheService {
 
       await pipeline(downloadStream, fileStream);
 
-      // 检查文件大小，避免空文件（stat 在文件不存在时会抛出错误）
+      // 检查临时文件是否存在
+      if (!existsSync(tempPath)) throw new Error("下载失败：临时文件未创建");
+
+      // 检查文件大小，避免空文件
       const stats = await stat(tempPath);
       if (stats.size === 0) {
         await unlink(tempPath).catch(() => {});

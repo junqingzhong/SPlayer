@@ -321,6 +321,69 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">
+            使用解锁接口下载
+            <n-tag type="warning" size="small" round>Beta</n-tag>
+          </n-text>
+          <n-text class="tip" :depth="3">利用配置的解锁服务获取下载链接（优先于默认方式）</n-text>
+        </div>
+        <n-switch
+          :value="settingStore.useUnlockForDownload"
+          :round="false"
+          class="set"
+          @update:value="handleUnlockDownloadChange"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">
+            下载时另存逐字歌词文件
+            <n-tag type="warning" size="small" round>Beta</n-tag>
+          </n-text>
+          <n-text class="tip" :depth="3">在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌LRC）</n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.downloadMakeYrc"
+          :disabled="!settingStore.downloadMeta || !settingStore.downloadLyric"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">下载歌词转繁体</n-text>
+          <n-text class="tip" :depth="3">
+            下载的歌词文件将转换为繁体中文（包括 LRC、YRC、TTML）
+            <br />
+            使用歌词设置中的繁体变体：{{ traditionalVariantLabel }}
+          </n-text>
+        </div>
+        <n-switch
+          v-model:value="settingStore.downloadLyricToTraditional"
+          :disabled="!settingStore.downloadMeta || !settingStore.downloadLyric"
+          :round="false"
+          class="set"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
+          <n-text class="name">下载的歌词文件编码格式</n-text>
+          <n-text class="tip" :depth="3">部分车载或老旧播放器可能仅支持 GBK 编码</n-text>
+        </div>
+        <n-select
+          :value="settingStore.downloadLyricEncoding"
+          :options="[
+            { label: 'UTF-8', value: 'utf-8' },
+            { label: 'GBK', value: 'gbk' },
+            { label: 'UTF-16', value: 'utf-16' },
+            { label: 'ISO-8859-1', value: 'iso-8859-1' },
+          ]"
+          class="set"
+          @update:value="handleLyricEncodingChange"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">保留元信息文件</n-text>
           <n-text class="tip" :depth="3">是否在下载目录中保留元信息文件</n-text>
         </div>
@@ -338,8 +401,8 @@
 <script setup lang="ts">
 import { useSettingStore, useStatusStore } from "@/stores";
 import { changeLocalLyricPath, changeLocalMusicPath, formatFileSize } from "@/utils/helper";
-import { songLevelData, getSongLevelsData } from "@/utils/meta";
-import { useCacheManager, type CacheResourceType } from "@/core/resource/CacheManager";
+import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
+import { useCacheManager } from "@/core/resource/CacheManager";
 import { pick } from "lodash-es";
 
 const statusStore = useStatusStore();
@@ -351,10 +414,32 @@ const cacheSizeDisplay = ref<string>("--");
 const cacheLimit = ref<number>(10); // 本地状态
 const cacheLimited = ref<number>(1); // 是否限制缓存 (1 为限制)
 
+// 繁体变体标签
+const variantMap: Record<string, string> = {
+  s2t: "繁体中文 (标准)",
+  s2tw: "台湾正体",
+  s2hk: "香港繁体",
+  s2twp: "台湾正体 (含词汇)",
+};
+
+// 繁体变体标签
+const traditionalVariantLabel = computed(() => {
+  return variantMap[settingStore.traditionalChineseVariant] || "繁体中文";
+});
+
 // 默认下载音质选项
 const downloadQualityOptions = computed(() => {
   const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
-  return getSongLevelsData(levels).map((item) => ({
+  let allData = getSongLevelsData(levels);
+  
+  if (settingStore.disableAiAudio) {
+      allData = allData.filter((item) => {
+           if (item.level === "dolby") return true; 
+           return !AI_AUDIO_LEVELS.includes(item.level);
+      });
+  }
+
+  return allData.map((item) => ({
     label: item.name,
     value: item.value,
   }));
@@ -435,17 +520,10 @@ const loadCacheSize = async () => {
 
 // 清空所有缓存目录
 const clearCache = async () => {
-  const types: CacheResourceType[] = ["music", "lyrics", "local-data", "list-data"];
-  let hasError = false;
-  for (const type of types) {
-    const res = await cacheManager.clear(type);
-    if (!res.success) {
-      hasError = true;
-    }
-  }
+  const res = await cacheManager.clearAll();
   await loadCacheSize();
-  if (hasError) {
-    window.$message.error("部分缓存清理失败");
+  if (!res.success) {
+    window.$message.error("缓存清理失败: " + (res.message || "未知错误"));
   } else {
     window.$message.success("缓存已清空");
   }
@@ -480,6 +558,37 @@ const handlePlaybackDownloadChange = (value: boolean) => {
   } else {
     settingStore.usePlaybackForDownload = false;
   }
+};
+
+// 解锁接口下载开关
+const handleUnlockDownloadChange = (value: boolean) => {
+  if (value) {
+    window.$dialog.warning({
+      title: "开启提示",
+      content: "开启此功能可能导致音质下降和与原曲不一致等情况，确认要打开吗？",
+      positiveText: "确认打开",
+      negativeText: "取消",
+      onPositiveClick: () => {
+        settingStore.useUnlockForDownload = true;
+      },
+    });
+  } else {
+    settingStore.useUnlockForDownload = false;
+  }
+};
+
+// 歌词编码更改
+const handleLyricEncodingChange = (value: "utf-8" | "gbk" | "utf-16" | "iso-8859-1") => {
+  if (value === settingStore.downloadLyricEncoding) return;
+  window.$dialog.warning({
+    title: "更改编码提示",
+    content: "请确保你的编码为相应编码再开启，改变编码可能导致文件播放乱码。确认要更改吗？",
+    positiveText: "确认更改",
+    negativeText: "取消",
+    onPositiveClick: () => {
+      settingStore.downloadLyricEncoding = value;
+    },
+  });
 };
 
 onMounted(async () => {

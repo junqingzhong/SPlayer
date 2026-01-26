@@ -1,5 +1,5 @@
 <template>
-  <div class="song-card" :data-index="index" :data-song-id="song.id">
+  <div class="song-card">
     <div :class="['song-content', { play: musicStore.playSong.id === song.id }]">
       <!-- 序号 -->
       <div class="num" @dblclick.stop>
@@ -39,8 +39,8 @@
               }"
               class="name-text"
             >
-              {{ song?.name || "未知曲目" }}
-              <n-text v-if="song.alia?.length" class="alia" depth="3"> ({{ song.alia }}) </n-text>
+              {{ settingStore.hideLyricBrackets ? removeBrackets(song?.name) : (song?.name || "未知曲目") }}
+              <n-text v-if="song.alia?.length && !settingStore.hideLyricBrackets" class="alia" depth="3"> ({{ song.alia }}) </n-text>
             </n-ellipsis>
           </div>
           <n-flex :size="4" :wrap="false" class="desc" align="center">
@@ -63,17 +63,16 @@
               </n-tag>
             </template>
             <!-- 特权 -->
-            <!-- <n-tag v-if="song.originCoverType === 1" :bordered="false" type="primary" round>
-              原
-            </n-tag> -->
-            <!-- <n-tag v-if="song.free === 1" :bordered="false" type="error" round> VIP </n-tag> -->
-            <!-- <n-tag v-if="song.free === 4" :bordered="false" type="error" round> EP </n-tag> -->
-            <!-- 云盘 -->
-            <n-tag v-if="song?.pc" :bordered="false" class="cloud" type="info" round>
-              <template #icon>
-                <SvgIcon name="Cloud" />
-              </template>
-            </n-tag>
+            <template v-if="settingStore.showSongPrivilegeTag">
+              <n-tag v-if="song.free === 1" :bordered="false" type="error" round> VIP </n-tag>
+              <n-tag v-if="song.free === 4" :bordered="false" type="error" round> EP </n-tag>
+              <!-- 云盘 -->
+              <n-tag v-if="song?.pc" :bordered="false" class="cloud" type="info" round>
+                <template #icon>
+                  <SvgIcon name="Cloud" />
+                </template>
+              </n-tag>
+            </template>
             <!-- MV -->
             <n-tag
               v-if="song?.mv"
@@ -91,7 +90,7 @@
               MV
             </n-tag>
             <!-- 歌手 -->
-            <div v-if="Array.isArray(song.artists)" class="artists text-hidden">
+            <div v-if="Array.isArray(song.artists)" class="artists">
               <n-text
                 v-for="ar in song.artists"
                 :key="ar.id"
@@ -104,14 +103,14 @@
             <div v-else-if="song.type === 'radio'" class="artists">
               <n-text class="ar"> 电台节目 </n-text>
             </div>
-            <div v-else class="artists text-hidden" @click="openJumpArtist(song.artists)">
+            <div v-else class="artists" @click="openJumpArtist(song.artists)">
               <n-text class="ar"> {{ song.artists || "未知艺术家" }} </n-text>
             </div>
           </n-flex>
         </n-flex>
       </div>
       <!-- 专辑 -->
-      <div v-if="song.type !== 'radio' && !hiddenAlbum && !settingStore.isMobileMode" class="album text-hidden">
+      <div v-if="song.type !== 'radio' && !hiddenAlbum && !isSmallScreen" class="album text-hidden">
         <n-text
           v-if="isObject(song.album)"
           class="album-text"
@@ -129,27 +128,30 @@
         </n-text>
       </div>
       <!-- 操作 -->
-      <div v-if="song.type !== 'radio' " class="actions" @click.stop @dblclick.stop>
+      <div v-if="song.type !== 'radio'" class="actions" @click.stop @dblclick.stop>
         <!-- 喜欢歌曲 -->
         <SvgIcon
+          v-if="!isSmallScreen"
           :name="dataStore.isLikeSong(song.id) ? 'Favorite' : 'FavoriteBorder'"
           :size="20"
           @click.stop="toLikeSong(song, !dataStore.isLikeSong(song.id))"
           @delclick.stop
         />
+        <!-- 移动端菜单 -->
+        <SvgIcon v-else name="More" :size="20" @click.stop="emit('show-menu', $event)" />
       </div>
       <!-- 更新日期 -->
-      <n-text v-if="song.type === 'radio'" class="meta date" depth="3">
+      <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta date" depth="3">
         {{ formatTimestamp(song.updateTime) }}
       </n-text>
       <!-- 播放量 -->
-      <n-text v-if="song.type === 'radio'" class="meta" depth="3">
+      <n-text v-if="song.type === 'radio' && !isSmallScreen" class="meta" depth="3">
         {{ formatNumber(song.playCount || 0) }}
       </n-text>
       <!-- 时长 -->
-      <n-text class="meta song-duration" depth="3">{{ formatTime(millisecondsToSeconds(song.duration), settingStore.timeDisplayFormat) }}</n-text>
+      <n-text v-if="!isSmallScreen" class="meta" depth="3">{{ msToTime(song.duration) }}</n-text>
       <!-- 大小 -->
-      <n-text v-if="song.path && song.size && !hiddenSize" class="meta size" depth="3">
+      <n-text v-if="song.size && !hiddenSize && !isSmallScreen" class="meta size" depth="3">
         {{ song.size }}M
       </n-text>
     </div>
@@ -158,17 +160,17 @@
 
 <script setup lang="ts">
 import { QualityType, type SongType } from "@/types/main";
-import { useStatusStore, useMusicStore, useDataStore } from "@/stores";
+import { useStatusStore, useMusicStore, useDataStore, useSettingStore } from "@/stores";
 import { formatNumber } from "@/utils/helper";
 import { openJumpArtist } from "@/utils/modal";
+import { removeBrackets } from "@/utils/format";
 import { toLikeSong } from "@/utils/auth";
 import { isObject } from "lodash-es";
-import { formatTimestamp } from "@/utils/time";
-import { useSettingStore } from "@/stores/setting";
-import { formatTime, millisecondsToSeconds } from "@/utils/timeFormat";
+import { formatTimestamp, msToTime } from "@/utils/time";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { isElectron } from "@/utils/env";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
+import { useMobile } from "@/composables/useMobile";
 
 const props = defineProps<{
   // 歌曲
@@ -181,6 +183,11 @@ const props = defineProps<{
   hiddenSize?: boolean;
 }>();
 
+const emit = defineEmits<{
+  "show-menu": [event: MouseEvent];
+}>();
+
+const { isSmallScreen } = useMobile();
 const router = useRouter();
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
@@ -206,7 +213,7 @@ const localCover = async (show: boolean) => {
   if (!isElectron || !show) return;
   // 本地路径
   const path = song.value.path;
-  if (!path) return;
+  if (!path || song.value.type === "streaming") return;
   // 当前封面
   const currentCover = song.value.cover;
   // 直接复用
@@ -233,11 +240,8 @@ const localCover = async (show: boolean) => {
 </script>
 
 <style lang="scss" scoped>
-// 引入统一时间显示样式
-@use "@/styles/time-display.scss" as *;
-
 .song-card {
-  height: 100%;
+  height: 90px;
   cursor: pointer;
   .song-content {
     display: flex;
@@ -317,6 +321,7 @@ const localCover = async (show: boolean) => {
   }
   .title {
     flex: 1;
+    min-width: 0;
     display: flex;
     align-items: center;
     padding: 4px 20px 4px 0;
@@ -332,6 +337,7 @@ const localCover = async (show: boolean) => {
       overflow: hidden;
     }
     .info {
+      min-width: 0;
       .name {
         display: flex;
         flex-direction: row;
@@ -340,6 +346,7 @@ const localCover = async (show: boolean) => {
         font-size: 16px;
       }
       .desc {
+        min-width: 0;
         margin-top: 2px;
         font-size: 13px;
         .n-tag {
@@ -372,8 +379,13 @@ const localCover = async (show: boolean) => {
         }
       }
       .artists {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
         .ar {
-          display: inline-flex;
+          display: inline;
           transition: opacity 0.3s;
           opacity: 0.6;
           cursor: pointer;
@@ -404,6 +416,7 @@ const localCover = async (show: boolean) => {
   }
   .album {
     flex: 1;
+    min-width: 0;
     line-clamp: 2;
     -webkit-line-clamp: 2;
     padding-right: 20px;

@@ -1,6 +1,7 @@
 <template>
   <n-slider
     v-model:value="sliderProgress"
+    :key="musicStore.playSong?.id"
     :step="0.01"
     :min="0"
     :max="statusStore.duration"
@@ -133,6 +134,13 @@ const formatTooltip = (value: number) => {
         transform: scale(1);
       }
     }
+  }
+  &.player {
+    --n-rail-color: rgba(var(--main-cover-color), 0.14);
+    --n-rail-color-hover: rgba(var(--main-cover-color), 0.3);
+    --n-fill-color: rgb(var(--main-cover-color));
+    --n-handle-color: rgb(var(--main-cover-color));
+    --n-fill-color-hover: rgb(var(--main-cover-color));
   }
 }
 </style>

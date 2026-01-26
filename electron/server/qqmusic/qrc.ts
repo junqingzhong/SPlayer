@@ -35,7 +35,7 @@ export function decryptQrc(encryptedQrc: string): string {
     decompressed = inflateSync(decryptedBuffer);
     return decompressed.toString("utf8");
   } catch {
-    void 0;
+    // zlib inflate 失败，尝试其他格式
   }
 
   // 尝试 2: raw inflate (无 header)
@@ -43,7 +43,7 @@ export function decryptQrc(encryptedQrc: string): string {
     decompressed = inflateRawSync(decryptedBuffer);
     return decompressed.toString("utf8");
   } catch {
-    void 0;
+    // raw inflate 失败，尝试其他格式
   }
 
   // 尝试 3: gzip unzip
@@ -51,7 +51,7 @@ export function decryptQrc(encryptedQrc: string): string {
     decompressed = unzipSync(decryptedBuffer);
     return decompressed.toString("utf8");
   } catch {
-    void 0;
+    // gzip unzip 失败，尝试其他格式
   }
 
   // 尝试 4: 可能数据本身就不是压缩的

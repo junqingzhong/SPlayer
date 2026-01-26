@@ -1,22 +1,13 @@
-/*
- * @Author: ZJQ
- * @Date: 2025-12-10 16:41:55
- * @LastEditors: zjq zjq@xkb.com.cn
- * @LastEditTime: 2026-01-14 17:04:32
- * @FilePath: \tea\src\composables\List\useListDetail.ts
- * @Description:
- *
- * Copyright (c) 2026 by ${git_name_email}, All Rights Reserved.
- */
 import type { CoverType, SongType } from "@/types/main";
-import { useStatusStore, useSettingStore } from "@/stores";
+import { useStatusStore } from "@/stores";
+import { useMobile } from "@/composables/useMobile";
 
 /**
  * 列表详情逻辑
  */
 export const useListDetail = () => {
   const statusStore = useStatusStore();
-  const settingStore = useSettingStore();
+  const { isSmallScreen } = useMobile();
 
   const detailData = ref<CoverType | null>(null);
   const listData = shallowRef<SongType[]>([]);
@@ -26,9 +17,10 @@ export const useListDetail = () => {
    * 计算列表高度
    */
   const getSongListHeight = (listScrolling: boolean) => {
-    const headerHeight = settingStore.isMobileMode ? 160 : 240;
-    const collapsedHeight = settingStore.isMobileMode ? 80 : 120;
-    return statusStore.mainContentHeight - (listScrolling ? collapsedHeight : headerHeight);
+    // 移动端高度较小
+    const normalHeight = isSmallScreen.value ? 180 : 240;
+    const smallHeight = isSmallScreen.value ? 100 : 120;
+    return statusStore.mainContentHeight - (listScrolling ? smallHeight : normalHeight);
   };
 
   /**

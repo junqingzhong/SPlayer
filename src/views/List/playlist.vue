@@ -10,7 +10,7 @@
       :config="listConfig"
       :play-button-text="playButtonText"
       :more-options="moreOptions"
-      :show-comment-tab="!isLocalPlaylist"
+      :hide-comment-tab="isLocalPlaylist || detailData?.privacy === 10"
       @update:search-value="handleSearchUpdate"
       @play-all="playAllSongs"
       @tab-change="handleTabChange"
@@ -486,8 +486,17 @@ const toDeletePlaylist = async () => {
 };
 
 // 删除指定索引歌曲
-const removeSong = (ids: number[]) => {
+const removeSong = async (ids: number[]) => {
   if (!listData.value) return;
+  // 如果是本地歌单，同步删除存储中的数据
+  if (isLocalPlaylist.value) {
+    const songIds = ids.map((id) => id.toString());
+    const success = await localStore.removeSongsFromLocalPlaylist(playlistId.value, songIds);
+    if (!success) {
+      window.$message.error("删除失败");
+      return;
+    }
+  }
   setListData(listData.value.filter((song) => !ids.includes(song.id)));
 };
 
