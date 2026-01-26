@@ -174,7 +174,7 @@ class SongManager {
     // 优先检查本地缓存
     const cachedUrl = await this.checkLocalCache(songId);
     if (cachedUrl) {
-      return { id: songId, url: cachedUrl };
+      return { id: songId, url: cachedUrl, isUnlocked: true };
     }
     const artist = Array.isArray(song.artists) ? song.artists[0].name : song.artists;
     const keyWord = song.name + "-" + artist;
