@@ -511,7 +511,7 @@ class LyricManager {
     const major = lang_filter(context_lang);
     const cleaned_ttml = ttml_cleaner(ttmlContent, major);
 
-    return cleaned_ttml;
+    return cleaned_ttml.replace(/\n\s*/g, "");
   }
 
   /**
@@ -554,7 +554,7 @@ class LyricManager {
       try {
         const ttmlContent = typeof ttml === "string" ? ttml : "";
         if (ttmlContent) {
-          ttmlLines = parseTTML(ttmlContent).lines || [];
+          ttmlLines = parseTTML(ttmlContent.replace(/\n\s*/g, "")).lines || [];
           console.log("检测到本地TTML歌词覆盖", ttmlLines);
         }
       } catch (err) {
