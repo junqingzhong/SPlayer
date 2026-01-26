@@ -77,7 +77,9 @@ class LyricWindow {
     });
     if (!this.win) return null;
     // 加载地址
-    this.win.loadURL(lyricWinUrl);
+    const url = new URL(lyricWinUrl);
+    url.searchParams.set("win", "desktop-lyric");
+    this.win.loadURL(url.toString());
     // 窗口事件
     this.event();
     return this.win;
