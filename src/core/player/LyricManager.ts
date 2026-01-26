@@ -619,13 +619,27 @@ class LyricManager {
       softMatchRegexes: songMetadataRegexes,
     };
 
-    const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
+    let lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
 
     let yrcData = lyricData.yrcData || [];
 
     if (!statusStore.usingTTMLLyric || settingStore.enableExcludeTTML) {
       yrcData = stripLyricMetadata(yrcData, options);
     }
+
+    const checkInstrumental = (lines: LyricLine[]) => {
+      if (lines.length === 1) {
+        const text = lines[0].words
+          .map((w) => w.word)
+          .join("")
+          .trim();
+        return text.includes("纯音乐");
+      }
+      return false;
+    };
+
+    if (checkInstrumental(lrcData)) lrcData = [];
+    if (checkInstrumental(yrcData)) yrcData = [];
 
     return {
       lrcData,
