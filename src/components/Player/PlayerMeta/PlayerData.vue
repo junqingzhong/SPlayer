@@ -56,13 +56,7 @@
         <span class="meta-item">{{ lyricMode }}</span>
         <!-- 是否在线 -->
         <span class="meta-item">
-          {{
-            musicStore.playSong.path
-              ? "LOCAL"
-              : musicStore.playSong.type === "streaming"
-                ? "STREAMING"
-                : "ONLINE"
-          }}
+          {{ audioSourceText }}
         </span>
       </n-flex>
       <!-- 歌手 -->
@@ -120,6 +114,7 @@ import type { RouteLocationRaw } from "vue-router";
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
 import { removeBrackets } from "@/utils/format";
+import { SongUnlockServer } from "@/core/player/SongManager";
 
 defineProps<{
   center?: boolean;
@@ -142,6 +137,23 @@ const lyricMode = computed(() => {
     }
   }
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
+});
+
+/** 歌曲解锁服务器名称映射 */
+const sourceMap: Record<string, string> = {
+  [SongUnlockServer.NETEASE]: "Netease",
+  [SongUnlockServer.KUWO]: "Kuwo",
+  [SongUnlockServer.BODIAN]: "Bodian",
+  [SongUnlockServer.GEQUBAO]: "Gequbao",
+};
+
+const audioSourceText = computed(() => {
+  if (musicStore.playSong.path) return "LOCAL";
+  if (musicStore.playSong.type === "streaming") return "STREAMING";
+  if (statusStore.audioSource) {
+    return sourceMap[statusStore.audioSource] || statusStore.audioSource.toUpperCase();
+  }
+  return "ONLINE";
 });
 
 const jumpPage = debounce(
