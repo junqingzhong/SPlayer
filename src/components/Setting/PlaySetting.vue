@@ -118,14 +118,6 @@
 
       <n-card v-if="isElectron" class="set-item">
         <div class="label">
-          <n-text class="name">音乐解锁</n-text>
-          <n-text class="tip" :depth="3">在无法正常播放时进行替换，可能会与原曲不符</n-text>
-        </div>
-        <n-switch v-model:value="settingStore.useSongUnlock" class="set" :round="false" />
-      </n-card>
-
-      <n-card v-if="isElectron" class="set-item">
-        <div class="label">
           <n-text class="name">音频输出设备</n-text>
           <n-text class="tip" :depth="3">
             {{

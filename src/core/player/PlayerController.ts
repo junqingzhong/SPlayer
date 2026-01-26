@@ -1,3 +1,4 @@
+import { AudioErrorCode } from "@/core/audio-player/BaseAudioPlayer";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { type SongType } from "@/types/main";
@@ -11,7 +12,6 @@ import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { calculateProgress } from "@/utils/time";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { DebouncedFunc, throttle } from "lodash-es";
-import { AudioErrorCode } from "@/core/audio-player/BaseAudioPlayer";
 import { useAudioManager } from "./AudioManager";
 import { useLyricManager } from "./LyricManager";
 import { mediaSessionManager } from "./MediaSessionManager";
@@ -36,6 +36,8 @@ class PlayerController {
   private failSkipCount = 0;
   /** 负责管理播放模式相关的逻辑 */
   private playModeManager = new PlayModeManager();
+  private pendingSeekTime: number | null = null;
+  private pendingSeekAt = 0;
 
   private onTimeUpdate: DebouncedFunc<() => void> | null = null;
 
@@ -393,8 +395,16 @@ class PlayerController {
     // 进度更新
     this.onTimeUpdate = throttle(() => {
       const rawTime = audioManager.currentTime;
-      const currentTime = Math.floor(rawTime * 1000);
+      let currentTime = Math.floor(rawTime * 1000);
       const duration = Math.floor(audioManager.duration * 1000) || statusStore.duration;
+      if (this.pendingSeekTime !== null) {
+        const delta = Math.abs(currentTime - this.pendingSeekTime);
+        if (performance.now() - this.pendingSeekAt < 1500 && delta > 500) {
+          currentTime = this.pendingSeekTime;
+        } else {
+          this.pendingSeekTime = null;
+        }
+      }
       // 计算歌词索引
       const songId = musicStore.playSong?.id;
       const offset = statusStore.getSongOffset(songId);
@@ -666,9 +676,17 @@ class PlayerController {
     }
     const statusStore = useStatusStore();
     const audioManager = useAudioManager();
-    const safeTime = Math.max(0, Math.min(time, this.getDuration()));
+    const duration = this.getDuration();
+    const safeTime = Math.max(0, Math.min(time, duration));
+    this.pendingSeekTime = safeTime;
+    this.pendingSeekAt = performance.now();
     audioManager.seek(safeTime / 1000);
-    statusStore.currentTime = safeTime;
+    statusStore.$patch({
+      currentTime: safeTime,
+      duration: duration || statusStore.duration,
+      progress: calculateProgress(safeTime, duration || statusStore.duration),
+    });
+    mediaSessionManager.updateState(duration || statusStore.duration, safeTime, true);
   }
 
   /**
@@ -897,20 +915,6 @@ class PlayerController {
   }
 
   /**
-   * 专门处理 SMTC 的随机按钮事件
-   */
-  public handleSmtcShuffle() {
-    this.playModeManager.handleSmtcShuffle();
-  }
-
-  /**
-   * 专门处理 SMTC 的循环按钮事件
-   */
-  public handleSmtcRepeat() {
-    this.playModeManager.handleSmtcRepeat();
-  }
-
-  /**
    * 移除指定歌曲
    * @param index 歌曲索引
    */
@@ -1085,10 +1089,10 @@ class PlayerController {
   }
 
   /**
-   * 同步当前的播放模式到 SMTC
+   * 同步当前的播放模式到媒体控件
    */
-  public syncSmtcPlayMode() {
-    this.playModeManager.syncSmtcPlayMode();
+  public syncMediaPlayMode() {
+    this.playModeManager.syncMediaPlayMode();
   }
 
   /**

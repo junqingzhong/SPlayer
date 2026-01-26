@@ -1,80 +1,75 @@
-import axios from "axios";
 import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
-import { isElectron, isLinux, isWin } from "@/utils/env";
 import { msToS } from "@/utils/time";
-import type { MediaEvent } from "@/types/global";
+import { SystemMediaEvent } from "@emi";
+import axios from "axios";
+import { throttle } from "lodash-es";
 import { usePlayerController } from "./PlayerController";
 import {
-  sendMediaMetadata,
-  sendMediaTimeline,
-  sendMediaPlayState,
-  sendMediaPlayMode,
   enableDiscordRpc,
+  sendMediaMetadata,
+  sendMediaPlayMode,
+  sendMediaPlayState,
+  sendMediaTimeline,
   updateDiscordConfig,
 } from "./PlayerIpc";
-import { throttle } from "lodash-es";
 
 /**
- * 媒体会话管理器，负责跨平台媒体控制集成
- * - Windows: 原生 SMTC
- * - Linux: 原生 MPRIS
- * - 其他平台: navigator.mediaSession
+ * 媒体会话管理器，负责不同平台的媒体控制集成
+ *
+ * 在 Electron 平台上会使用原生插件，Web 平台上会使用 Navigator.mediaSession
  */
 class MediaSessionManager {
   private metadataAbortController: AbortController | null = null;
+
+  private throttledSendTimeline = throttle((currentTime: number, duration: number) => {
+    sendMediaTimeline(currentTime, duration);
+  }, 1000);
 
   /**
    * 是否使用原生媒体集成
    */
   private shouldUseNativeMedia(): boolean {
-    return isElectron && (isWin || isLinux);
+    return isElectron;
   }
 
   /**
-   * 处理统一媒体事件
+   * 处理原生来的媒体事件
    */
-  private handleMediaEvent(event: MediaEvent, player: ReturnType<typeof usePlayerController>) {
-    const statusStore = useStatusStore();
-
+  private handleMediaEvent(
+    event: SystemMediaEvent,
+    player: ReturnType<typeof usePlayerController>,
+  ) {
     switch (event.type) {
-      case "play":
+      case "Play":
         player.play();
-        setTimeout(() => sendMediaPlayState(statusStore.playStatus ? "Playing" : "Paused"), 50);
         break;
-      case "pause":
+      case "Pause":
         player.pause();
-        setTimeout(() => sendMediaPlayState("Paused"), 50);
+        sendMediaPlayState("Paused");
         break;
-      case "stop":
+      case "Stop":
         player.pause();
-        setTimeout(() => sendMediaPlayState("Stopped"), 50);
+        player.setSeek(0);
+        sendMediaPlayState("Paused");
         break;
-      case "next":
+      case "NextSong":
         player.nextOrPrev("next");
         break;
-      case "previous":
+      case "PreviousSong":
         player.nextOrPrev("prev");
         break;
-      case "seek":
-        if (event.value !== undefined) {
-          player.setSeek(event.value);
+      case "Seek":
+        if (event.positionMs != null) {
+          player.setSeek(event.positionMs);
         }
         break;
-      case "shuffle":
-        player.handleSmtcShuffle();
+      case "ToggleShuffle":
+        player.toggleShuffle();
         break;
-      case "repeat":
+      case "ToggleRepeat":
         player.toggleRepeat();
-        break;
-      case "toggle-play-pause":
-        if (statusStore.playStatus) {
-          player.pause();
-          setTimeout(() => sendMediaPlayState("Paused"), 50);
-        } else {
-          player.play();
-          setTimeout(() => sendMediaPlayState(statusStore.playStatus ? "Playing" : "Paused"), 50);
-        }
         break;
     }
   }
@@ -90,9 +85,8 @@ class MediaSessionManager {
     const statusStore = useStatusStore();
 
     if (isElectron) {
-      // 统一媒体事件监听
       window.electron.ipcRenderer.removeAllListeners("media-event");
-      window.electron.ipcRenderer.on("media-event", (_, event: MediaEvent) => {
+      window.electron.ipcRenderer.on("media-event", (_, event) => {
         this.handleMediaEvent(event, player);
       });
 
@@ -100,16 +94,13 @@ class MediaSessionManager {
       const shuffle = statusStore.shuffleMode !== "off";
       const repeat =
         statusStore.repeatMode === "list"
-          ? "list"
+          ? "List"
           : statusStore.repeatMode === "one"
-            ? "one"
-            : "off";
+            ? "Track"
+            : "None";
       sendMediaPlayMode(shuffle, repeat);
 
-      // SMTC 播放模式同步
-      if (isWin) {
-        player.syncSmtcPlayMode();
-      }
+      player.syncMediaPlayMode();
 
       // Discord RPC 初始化
       if (settingStore.discordRpc.enabled) {
@@ -121,7 +112,7 @@ class MediaSessionManager {
       }
 
       // 如果有原生集成则不需要 Web API
-      if ((isWin || isLinux) && settingStore.smtcOpen) return;
+      if (settingStore.smtcOpen) return;
     }
 
     // Web API 初始化
@@ -162,64 +153,31 @@ class MediaSessionManager {
     if (this.shouldUseNativeMedia() && settingStore.smtcOpen) {
       try {
         let coverBuffer: Uint8Array | undefined;
-        let coverUrl = metadata.coverUrl;
 
-        // 获取封面数据（用于 SMTC）
+        // 获取封面数据
         if (
-          isWin &&
           metadata.coverUrl &&
           (metadata.coverUrl.startsWith("http") || metadata.coverUrl.startsWith("blob:"))
         ) {
-          const resp = await axios.get(metadata.coverUrl, {
-            responseType: "arraybuffer",
-            signal,
-          });
-          coverBuffer = new Uint8Array(resp.data);
-        }
-
-        // 处理 MPRIS 封面 URL
-        if (isLinux && coverUrl) {
-          if (coverUrl.startsWith("blob:")) {
-            try {
-              const resp = await axios.get(coverUrl, {
-                responseType: "arraybuffer",
-                signal,
-              });
-              const base64 = btoa(
-                new Uint8Array(resp.data).reduce(
-                  (data, byte) => data + String.fromCharCode(byte),
-                  "",
-                ),
-              );
-              coverUrl = `data:image/jpeg;base64,${base64}`;
-            } catch (e) {
-              if (!axios.isCancel(e)) {
-                console.error("转换 blob 封面失败:", e);
-              }
-              coverUrl = "";
-            }
-          } else if (
-            !coverUrl.startsWith("http") &&
-            !coverUrl.startsWith("file://") &&
-            !coverUrl.startsWith("data:")
-          ) {
-            coverUrl = `file://${coverUrl}`;
+          try {
+            const resp = await axios.get(metadata.coverUrl, {
+              responseType: "arraybuffer",
+              signal,
+            });
+            coverBuffer = new Uint8Array(resp.data);
+          } catch {
+            // 忽略下载失败
           }
         }
 
-        // 发送统一的元数据
         sendMediaMetadata({
           songName: metadata.title,
           authorName: metadata.artist,
           albumName: metadata.album,
-          coverUrl: isLinux
-            ? coverUrl || undefined
-            : coverUrl?.startsWith("http")
-              ? coverUrl
-              : undefined,
+          originalCoverUrl: metadata.coverUrl,
           coverData: coverBuffer as Buffer,
           duration: song.duration,
-          trackId: typeof song.id === "number" ? song.id : 0,
+          ncmId: typeof song.id === "number" ? song.id : undefined,
         });
       } catch (e) {
         if (!axios.isCancel(e)) {
@@ -307,14 +265,23 @@ class MediaSessionManager {
 
   /**
    * 更新播放进度
+   * @param duration 总时长
+   * @param position 当前位置
+   * @param immediate 是否立即发送，用于 Seek 操作
    */
-  public updateState(duration: number, position: number) {
+  public updateState(duration: number, position: number, immediate: boolean = false) {
     const settingStore = useSettingStore();
     if (!settingStore.smtcOpen) return;
 
     // 原生插件
     if (this.shouldUseNativeMedia()) {
-      sendMediaTimeline(position, duration);
+      if (immediate) {
+        this.throttledSendTimeline.cancel();
+        // 取消节流就会立刻触发一次更新了，所以不再发送一个多余的事件
+        // sendMediaTimeline(position, duration);
+      } else {
+        this.throttledSendTimeline(position, duration);
+      }
       return;
     }
 

@@ -25,32 +25,11 @@ const config: Configuration = {
   asarUnpack: ["public/**"],
   // 将原生插件作为外部资源复制
   extraResources: [
-    // Discord RPC
     {
-      from: "native/discord-rpc-for-splayer",
+      from: "native/external-media-integration",
       to: "native",
       filter: ["*.node"],
     },
-    // SMTC - 仅 Windows
-    ...(process.platform === "win32"
-      ? [
-          {
-            from: "native/smtc-for-splayer",
-            to: "native",
-            filter: ["*.node"],
-          },
-        ]
-      : []),
-    // MPRIS - 仅 Linux
-    ...(process.platform === "linux"
-      ? [
-          {
-            from: "native/mpris-for-splayer",
-            to: "native",
-            filter: ["*.node"],
-          },
-        ]
-      : []),
   ],
   win: {
     // 可执行文件名

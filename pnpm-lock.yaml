@@ -269,22 +269,10 @@ importers:
         specifier: ^3.1.8
         version: 3.2.2(typescript@5.9.3)
 
-  native/discord-rpc-for-splayer:
+  native/external-media-integration:
     devDependencies:
       '@napi-rs/cli':
-        specifier: ^3.5.0
-        version: 3.5.1(@emnapi/runtime@1.8.1)(@types/node@24.10.7)(node-addon-api@7.1.1)
-
-  native/mpris-for-splayer:
-    devDependencies:
-      '@napi-rs/cli':
-        specifier: ^3.5.0
-        version: 3.5.1(@emnapi/runtime@1.8.1)(@types/node@24.10.7)(node-addon-api@7.1.1)
-
-  native/smtc-for-splayer:
-    devDependencies:
-      '@napi-rs/cli':
-        specifier: ^3.5.0
+        specifier: ^3.5.1
         version: 3.5.1(@emnapi/runtime@1.8.1)(@types/node@24.10.7)(node-addon-api@7.1.1)
 
 packages:

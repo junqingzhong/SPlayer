@@ -12,7 +12,8 @@
     "electron/preload/index.d.ts",
     "electron/preload/index.ts",
     "src/assets/data/*",
-    "src/types/shared.ts"
+    "src/types/shared.ts",
+    "scripts/*"
   ],
   "exclude": [
     "src/**/*.test.ts",
@@ -22,9 +23,7 @@
     "composite": true,
     "types": ["electron-vite/node"],
     "paths": {
-      "@native": ["./native/smtc-for-splayer"],
-      "@discord-rpc": ["./native/discord-rpc-for-splayer"],
-      "@mpris": ["./native/mpris-for-splayer"],
+      "@emi": ["./native/external-media-integration"],
       "@shared": ["./src/types/shared.ts"]
     }
   }

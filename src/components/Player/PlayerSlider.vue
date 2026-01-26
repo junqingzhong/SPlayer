@@ -46,7 +46,7 @@ const sliderProgress = computed({
       return;
     }
     // 结束或者为点击
-    useThrottleFn((value: number) => setSeek(value), 30);
+    setSeek(value);
   },
 });
 

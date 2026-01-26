@@ -309,9 +309,10 @@ const scrollToTop = () => {
 // 滚动到当前播放歌曲
 const scrollToCurrentSong = () => {
   if (hasPlaySong.value >= 0) {
-    listRef.value?.scrollToIndex(hasPlaySong.value);
+    listRef.value?.scrollToIndex(hasPlaySong.value); // ✅ 传递正确的索引
   }
 };
+
 
 // 排序更改
 const sortSelect = (key: SortType) => {
@@ -494,8 +495,12 @@ onBeforeUnmount(() => {
 .list-menu {
   position: fixed;
   right: 40px;
-  bottom: 140px;
-  .n-float-button {
+  bottom: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  :deep(.n-float-button) {
     height: 42px;
     border: 1px solid rgba(var(--primary), 0.28);
   }

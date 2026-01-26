@@ -6,12 +6,21 @@
       },
     ]">
     <!-- 进度条 -->
-    <n-slider v-model:value="statusStore.progress" :step="0.01" :min="0" :max="100" :tooltip="false" :keyboard="false"
+    <n-slider
+      v-model:value="statusStore.progress"
+      :step="0.01"
+      :min="0"
+      :max="100"
+      :tooltip="false"
+      :keyboard="false"
       :marks="
         statusStore.chorus && statusStore.progress <= statusStore.chorus
           ? { [statusStore.chorus]: '' }
           : undefined
-      " class="player-slider" @dragstart="player.pause(false)" @dragend="sliderDragend" />
+      "
+      class="player-slider"
+      @update:value="(val) => handleProgressChange(val)"
+    />
     <!-- 信息 -->
     <div class="play-data">
       <!-- 封面 -->
@@ -353,9 +362,11 @@ const instantLyrics = computed(() => {
     : contentStr || "";
 });
 
-// 滑块拖拽结束
-const sliderDragend = () => {
-  player.play();
+const handleProgressChange = (val: number) => {
+  const duration = statusStore.duration || 0;
+  if (duration <= 0) return;
+  const targetMs = Math.max(0, Math.min(duration, Math.floor((val / 100) * duration)));
+  player.setSeek(targetMs);
 };
 
 /**

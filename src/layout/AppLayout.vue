@@ -62,7 +62,7 @@
             </Transition>
           </RouterView>
           <!-- 回顶 -->
-          <n-back-top :right="40" :bottom="120">
+          <n-back-top :right="40" :bottom="140">
             <SvgIcon :size="22" name="Up" />
           </n-back-top>
         </n-layout>

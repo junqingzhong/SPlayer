@@ -1,28 +1,58 @@
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::sync::{LazyLock, Mutex};
-use std::thread;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
-
-use discord_rich_presence::activity::{
-    Activity, ActivityType, Assets, Button, StatusDisplayType, Timestamps,
+use std::{
+    sync::{
+        LazyLock,
+        Mutex,
+        mpsc::{
+            self,
+            Receiver,
+            Sender,
+        },
+    },
+    thread,
+    time::{
+        Duration,
+        SystemTime,
+        UNIX_EPOCH,
+    },
 };
-use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
-use tracing::{debug, info, warn};
+
+use discord_rich_presence::{
+    DiscordIpc,
+    DiscordIpcClient,
+    activity::{
+        Activity,
+        ActivityType,
+        Assets,
+        Button,
+        StatusDisplayType,
+        Timestamps,
+    },
+};
+use tracing::{
+    debug,
+    info,
+    warn,
+};
 
 use crate::model::{
-    DiscordConfigPayload, DiscordDisplayMode, MetadataPayload, PlaybackStatus, TimelinePayload,
+    DiscordConfigPayload,
+    DiscordDisplayMode,
+    MetadataPayload,
+    PlayStatePayload,
+    PlaybackStatus,
+    TimelinePayload,
 };
 
 const APP_ID: &str = "1454403710162698293";
 const SP_ICON_ASSET_KEY: &str = "logo-icon";
 
-// 主要用来应对跳转进度的更新（单位：秒）
-const TIMESTAMP_UPDATE_THRESHOLD_S: i64 = 2;
+// 主要用来应对跳转进度的更新
+const TIMESTAMP_UPDATE_THRESHOLD_MS: i64 = 100;
 const RECONNECT_COOLDOWN_SECONDS: u8 = 5;
 
-pub enum RpcMessage {
+enum RpcMessage {
     Metadata(MetadataPayload),
-    PlayState(PlaybackStatus),
+    PlayState(PlayStatePayload),
     Timeline(TimelinePayload),
     Enable,
     Disable,
@@ -31,36 +61,31 @@ pub enum RpcMessage {
 
 static SENDER: LazyLock<Mutex<Option<Sender<RpcMessage>>>> = LazyLock::new(|| Mutex::new(None));
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct ActivityData {
     metadata: MetadataPayload,
     status: PlaybackStatus,
     current_time: f64,
     cached_cover_url: String,
     cached_song_url: String,
-    /// 缓存 "歌曲名 - 歌手" 格式的完整信息
-    cached_full_info: String,
 }
 
 impl ActivityData {
     fn from_metadata(metadata: MetadataPayload) -> Self {
         let cached_cover_url = Self::process_cover_url(metadata.original_cover_url.as_deref());
         let cached_song_url = Self::process_song_url(metadata.ncm_id);
-        let cached_full_info = format!("{} - {}", metadata.song_name, metadata.author_name);
         Self {
             metadata,
             status: PlaybackStatus::Paused,
             current_time: 0.0,
             cached_cover_url,
             cached_song_url,
-            cached_full_info,
         }
     }
 
     fn update_metadata(&mut self, metadata: MetadataPayload) {
         self.cached_cover_url = Self::process_cover_url(metadata.original_cover_url.as_deref());
         self.cached_song_url = Self::process_song_url(metadata.ncm_id);
-        self.cached_full_info = format!("{} - {}", metadata.song_name, metadata.author_name);
         self.metadata = metadata;
         self.current_time = 0.0;
     }
@@ -103,6 +128,8 @@ struct RpcWorker {
     data: Option<ActivityData>,
     is_enabled: bool,
     connect_retry_count: u8,
+    // 上次发送的结束时间戳
+    // 用于防抖，也用于判断是否要清除 Activity
     last_sent_end_timestamp: Option<i64>,
     show_when_paused: bool,
     display_mode: DiscordDisplayMode,
@@ -160,12 +187,14 @@ impl RpcWorker {
                 self.data = Some(new_data);
                 self.last_sent_end_timestamp = None;
             }
-            RpcMessage::PlayState(status) => {
+            RpcMessage::PlayState(payload) => {
                 if let Some(data) = &mut self.data {
-                    if status == PlaybackStatus::Playing && data.status != PlaybackStatus::Playing {
+                    if payload.status == PlaybackStatus::Playing
+                        && data.status != PlaybackStatus::Playing
+                    {
                         self.last_sent_end_timestamp = None;
                     }
-                    data.status = status;
+                    data.status = payload.status;
                 }
             }
             RpcMessage::Timeline(payload) => {
@@ -197,7 +226,7 @@ impl RpcWorker {
                 self.last_sent_end_timestamp = None;
             }
             Err(e) => {
-                info!("连接 Discord IPC 失败: {e:?}. Discord 可能未运行");
+                debug!("连接 Discord IPC 失败: {e:?}. Discord 可能未运行");
                 self.connect_retry_count = RECONNECT_COOLDOWN_SECONDS;
             }
         }
@@ -246,58 +275,37 @@ impl RpcWorker {
 
         let buttons = vec![Button::new("🎧 Listen", &data.cached_song_url)];
 
-        // 根据显示模式设置左下角 "正在听 - XXX" 的显示内容
-        // StatusDisplayType::Name -> 显示应用名称 (SPlayer)
-        // StatusDisplayType::Details -> 显示 details 字段
-        // StatusDisplayType::State -> 显示 state 字段
-        match display_mode {
-            DiscordDisplayMode::Name => {
-                // 仅歌曲名：左下角显示歌曲名
-                Activity::new()
-                    .details(&data.metadata.song_name)
-                    .state(&data.metadata.author_name)
-                    .activity_type(ActivityType::Listening)
-                    .assets(assets)
-                    .buttons(buttons)
-                    .status_display_type(StatusDisplayType::Details)
-            }
-            DiscordDisplayMode::State => {
-                // 仅播放状态：左下角显示 SPlayer
-                Activity::new()
-                    .details(&data.metadata.song_name)
-                    .state(&data.metadata.author_name)
-                    .activity_type(ActivityType::Listening)
-                    .assets(assets)
-                    .buttons(buttons)
-                    .status_display_type(StatusDisplayType::Name)
-            }
-            DiscordDisplayMode::Details => {
-                // 完整信息：左下角显示 "歌曲名 - 歌手"
-                Activity::new()
-                    .details(&data.cached_full_info)
-                    .state(&data.metadata.author_name)
-                    .activity_type(ActivityType::Listening)
-                    .assets(assets)
-                    .buttons(buttons)
-                    .status_display_type(StatusDisplayType::Details)
-            }
-        }
+        // 不打开详细信息面板时，在用户名下方显示的小字
+        let status_type = match display_mode {
+            DiscordDisplayMode::Name => StatusDisplayType::Name,
+            DiscordDisplayMode::State => StatusDisplayType::State,
+            DiscordDisplayMode::Details => StatusDisplayType::Details,
+        };
+
+        Activity::new()
+            .details(&data.metadata.song_name)
+            .state(&data.metadata.author_name)
+            .activity_type(ActivityType::Listening)
+            .assets(assets)
+            .buttons(buttons)
+            .status_display_type(status_type)
     }
 
     fn calc_paused_timestamps(current_time: f64, duration: f64) -> (i64, i64) {
         // 来自 https://musicpresence.app/ 的 hack，通过将
         // 开始和结束时间戳向后平移一年以实现在暂停时进度静止的效果
-        const ONE_YEAR_S: i64 = 365 * 24 * 60 * 60;
+        const ONE_YEAR_MS: i64 = 365 * 24 * 60 * 60 * 1000;
+
         let now_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_millis() as i64;
 
         let current_progress_ms = current_time as i64;
-        let future_start = (now_ms - current_progress_ms) + ONE_YEAR_S * 1000; // seconds to ms
+        let future_start = (now_ms - current_progress_ms) + ONE_YEAR_MS;
         let future_end = future_start + (duration as i64);
 
-        (future_start / 1000, future_end / 1000)
+        (future_start, future_end)
     }
 
     fn calc_playing_timestamps(current_time: f64, duration: f64) -> (i64, i64) {
@@ -315,13 +323,12 @@ impl RpcWorker {
         let current_time_ms = current_time as i64;
         let remaining_ms = (duration_ms - current_time_ms).max(0);
 
-        let end = (now_ms + remaining_ms) / 1000;
-        let start = (now_ms - current_time_ms) / 1000;
+        let end = now_ms + remaining_ms;
+        let start = end - duration_ms;
 
         (start, end)
     }
 
-    #[allow(clippy::too_many_lines)]
     fn perform_update(
         client: &mut DiscordIpcClient,
         data: &ActivityData,
@@ -367,38 +374,27 @@ impl RpcWorker {
                 *last_sent_end_timestamp = None;
             }
             PlaybackStatus::Playing => {
-                if let Some(duration) = data.metadata.duration {
-                    if duration > 0.0 {
-                        let (start, end) =
-                            Self::calc_playing_timestamps(data.current_time, duration);
+                if let Some(duration) = data.metadata.duration
+                    && duration > 0.0
+                {
+                    let (start, end) = Self::calc_playing_timestamps(data.current_time, duration);
 
-                        // 如果时间戳无效（边界检查失败），跳过此次更新
-                        if start == 0 && end == 0 {
-                            debug!("当前时间超过总时长，跳过时间戳更新");
-                            should_send = false;
-                        } else {
-                            if let Some(last_end) = last_sent_end_timestamp {
-                                let diff = (*last_end - end).abs();
-                                if diff < TIMESTAMP_UPDATE_THRESHOLD_S {
-                                    return true;
-                                }
-                                debug!(
-                                    diff_s = diff,
-                                    threshold_s = TIMESTAMP_UPDATE_THRESHOLD_S,
-                                    "进度变更超过阈值，触发更新"
-                                );
-                            }
-
-                            activity = activity.timestamps(Timestamps::new().start(start).end(end));
-                            new_end_timestamp = Some(end);
-                            should_send = true;
+                    // 频繁调用 Discord RPC 接口会导致限流，所以在跳转发生时再更新时间戳
+                    if let Some(last_end) = last_sent_end_timestamp {
+                        let diff = (*last_end - end).abs();
+                        if diff < TIMESTAMP_UPDATE_THRESHOLD_MS {
+                            return true;
                         }
-                    } else {
-                        should_send = last_sent_end_timestamp.is_some();
-                        if should_send {
-                            warn!("没有时长，清除时间戳");
-                        }
+                        debug!(
+                            diff_ms = diff,
+                            threshold_ms = TIMESTAMP_UPDATE_THRESHOLD_MS,
+                            "进度变更超过阈值，触发更新"
+                        );
                     }
+
+                    activity = activity.timestamps(Timestamps::new().start(start).end(end));
+                    new_end_timestamp = Some(end);
+                    should_send = true;
                 } else {
                     should_send = last_sent_end_timestamp.is_some();
                     if should_send {
@@ -485,19 +481,10 @@ pub fn update_config(payload: DiscordConfigPayload) {
 pub fn update_metadata(payload: MetadataPayload) {
     send(RpcMessage::Metadata(payload));
 }
-
-pub fn update_play_state(status: PlaybackStatus) {
-    send(RpcMessage::PlayState(status));
+pub fn update_play_state(payload: PlayStatePayload) {
+    send(RpcMessage::PlayState(payload));
 }
 
 pub fn update_timeline(payload: TimelinePayload) {
     send(RpcMessage::Timeline(payload));
-}
-
-pub fn shutdown() {
-    if let Ok(mut guard) = SENDER.lock()
-        && guard.take().is_some()
-    {
-        info!("Shutting down Discord RPC thread.");
-    }
 }

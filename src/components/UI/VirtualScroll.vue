@@ -305,7 +305,6 @@ const scrollToIndex = (index: number, behavior: ScrollBehavior = "auto") => {
     }
     top = itemTops.value[targetIndex] || 0;
   }
-
   scrollToPosition(top, behavior);
 };
 

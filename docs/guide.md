@@ -143,7 +143,7 @@ pnpm install
 cp .env.example .env
 # 编辑 .env 文件，配置 API 地址
 
-# 4. 构建原生模块 (Windows)
+# 4. 构建原生模块
 pnpm build:native
 
 # 5. 启动开发服务器

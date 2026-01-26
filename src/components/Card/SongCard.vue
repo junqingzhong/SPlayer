@@ -1,5 +1,5 @@
 <template>
-  <div class="song-card">
+  <div class="song-card" :data-index="index" :data-song-id="song.id">
     <div :class="['song-content', { play: musicStore.playSong.id === song.id }]">
       <!-- 序号 -->
       <div class="num" @dblclick.stop>

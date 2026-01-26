@@ -1,12 +1,12 @@
-import { SongUnlockServer } from "@/core/player/SongManager";
-import type { SettingState } from "../setting";
-import { defaultAMLLDbServer } from "@/utils/meta";
 import { keywords, regexes } from "@/assets/data/exclude";
+import { SongUnlockServer } from "@/core/player/SongManager";
+import { defaultAMLLDbServer } from "@/utils/meta";
+import type { SettingState } from "../setting";
 
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 6;
+export const CURRENT_SETTING_SCHEMA_VERSION = 7;
 
 /**
  * 迁移函数类型
@@ -115,5 +115,40 @@ export const settingMigrations: Record<number, MigrationFunction> = {
       },
     };
   },
-};
+  7: (state) => {
+    interface OldSettingState extends Omit<Partial<SettingState>, "discordRpc"> {
+      discordRpc?: {
+        enabled: boolean;
+        showWhenPaused: boolean;
+        displayMode: string;
+      };
+    }
 
+    const oldState = state as OldSettingState;
+    const oldRpc = oldState.discordRpc;
+
+    if (!oldRpc || !oldRpc.displayMode) {
+      return {};
+    }
+
+    const modeMap: Record<string, "Name" | "State" | "Details"> = {
+      name: "Name",
+      state: "State",
+      details: "Details",
+    };
+
+    const currentMode = oldRpc.displayMode;
+
+    if (Object.prototype.hasOwnProperty.call(modeMap, currentMode)) {
+      return {
+        discordRpc: {
+          enabled: oldRpc.enabled,
+          showWhenPaused: oldRpc.showWhenPaused,
+          displayMode: modeMap[currentMode],
+        },
+      };
+    }
+
+    return {};
+  },
+};

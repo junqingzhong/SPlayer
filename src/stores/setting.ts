@@ -325,7 +325,7 @@ export interface SettingState {
     /** 暂停时显示 */
     showWhenPaused: boolean;
     /** 显示模式 */
-    displayMode: "name" | "state" | "details";
+    displayMode: "Name" | "State" | "Details";
   };
   /** 播放引擎 */
   playbackEngine: "web-audio" | "mpv";
@@ -377,7 +377,6 @@ export const useSettingStore = defineStore("setting", {
       { key: SongUnlockServer.BILIBILI, enabled: true },
       { key: SongUnlockServer.BODIAN, enabled: true },
       { key: SongUnlockServer.GEQUBAO, enabled: true },
-      { key: SongUnlockServer.NETEASE, enabled: true },
     ],
     timeDisplayFormat: 'MM:SS', // 时间显示格式
     // 音频解锁来源平台配置 - 已整合到 songUnlockServer
@@ -398,7 +397,7 @@ export const useSettingStore = defineStore("setting", {
     showPlaylistCount: true,
     showSpectrums: false,
     smtcOpen: true,
-    playSongDemo: true,
+    playSongDemo: false,
     scrobbleSong: false,
     dynamicCover: false,
     lyricFontSize: 46,
@@ -507,7 +506,7 @@ export const useSettingStore = defineStore("setting", {
     discordRpc: {
       enabled: false,
       showWhenPaused: true,
-      displayMode: "name",
+      displayMode: "Name",
     },
     playbackEngine: "web-audio",
     customCss: "",
