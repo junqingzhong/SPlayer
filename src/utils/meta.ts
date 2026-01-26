@@ -31,8 +31,8 @@ export const songLevelData = {
   },
   je: {
     level: "jyeffect",
-    name: "高清环绕",
-    shortName: "环绕",
+    name: "高清臻音",
+    shortName: "臻音",
   },
   sk: {
     level: "sky",
@@ -42,7 +42,7 @@ export const songLevelData = {
   db: {
     level: "dolby",
     name: "杜比全景",
-    shortName: "杜比",
+    shortName: "Dolby",
   },
   jm: {
     level: "jymaster",

@@ -30,6 +30,7 @@ export const useQualityControl = () => {
     const song = musicStore.playSong;
     if (song.path) return "本地";
     if (song.pc) return "云盘";
+    if (statusStore.playUblock) return "解锁";
     if (!quality) return "未知";
     return qualityNameMap[quality] || quality;
   };
@@ -151,7 +152,7 @@ export const useQualityControl = () => {
     getQualityName,
     isOnlineSong: computed(() => {
       const song = musicStore.playSong;
-      return !song.path && !song.pc && song.type === "song";
+      return !song.path && !song.pc && song.type === "song" && !statusStore.playUblock;
     }),
   };
 };

@@ -30,7 +30,13 @@
           </n-tag>
         </div>
       </n-popselect>
-      <n-popover v-else trigger="hover" placement="top" :show-arrow="false">
+      <n-popover
+        v-else
+        :class="{ player: statusStore.showFullPlayer }"
+        trigger="hover"
+        placement="top"
+        :show-arrow="false"
+      >
         <template #trigger>
           <n-tag class="quality-tag hidden" type="primary" size="small">
             {{ getQualityName(statusStore.songQuality) }}
