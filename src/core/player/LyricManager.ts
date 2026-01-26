@@ -554,7 +554,7 @@ class LyricManager {
       try {
         const ttmlContent = typeof ttml === "string" ? ttml : "";
         if (ttmlContent) {
-          ttmlLines = parseTTML(ttmlContent.replace(/\n\s*/g, "")).lines || [];
+          ttmlLines = parseTTML(this.cleanTTMLTranslations(ttmlContent)).lines || [];
           console.log("检测到本地TTML歌词覆盖", ttmlLines);
         }
       } catch (err) {
@@ -626,20 +626,6 @@ class LyricManager {
     if (!statusStore.usingTTMLLyric || settingStore.enableExcludeTTML) {
       yrcData = stripLyricMetadata(yrcData, options);
     }
-
-    const checkInstrumental = (lines: LyricLine[]) => {
-      if (lines.length === 1) {
-        const text = lines[0].words
-          .map((w) => w.word)
-          .join("")
-          .trim();
-        return text.includes("纯音乐");
-      }
-      return false;
-    };
-
-    if (checkInstrumental(lrcData)) lrcData = [];
-    if (checkInstrumental(yrcData)) yrcData = [];
 
     return {
       lrcData,

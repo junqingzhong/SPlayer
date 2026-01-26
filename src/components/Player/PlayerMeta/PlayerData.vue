@@ -114,6 +114,7 @@ import type { RouteLocationRaw } from "vue-router";
 import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
 import { removeBrackets } from "@/utils/format";
+import { SongUnlockServer } from "@/core/player/SongManager";
 
 defineProps<{
   center?: boolean;
@@ -138,11 +139,12 @@ const lyricMode = computed(() => {
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
 });
 
+/** 歌曲解锁服务器名称映射 */
 const sourceMap: Record<string, string> = {
-  netease: "Netease",
-  kuwo: "Kuwo",
-  bodian: "Bodian",
-  gequbao: "Gequbao",
+  [SongUnlockServer.NETEASE]: "Netease",
+  [SongUnlockServer.KUWO]: "Kuwo",
+  [SongUnlockServer.BODIAN]: "Bodian",
+  [SongUnlockServer.GEQUBAO]: "Gequbao",
 };
 
 const audioSourceText = computed(() => {
