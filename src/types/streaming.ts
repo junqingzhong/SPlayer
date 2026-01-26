@@ -7,7 +7,7 @@ import type { SongType, CoverSize } from "./main";
 /**
  * 流媒体服务器类型
  */
-export type StreamingServerType = "navidrome" | "jellyfin" | "opensubsonic";
+export type StreamingServerType = "navidrome" | "jellyfin" | "subsonic" | "opensubsonic" | "emby";
 
 /**
  * 流媒体服务器配置

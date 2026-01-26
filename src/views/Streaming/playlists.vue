@@ -15,7 +15,6 @@
 <script setup lang="ts">
 import type { CoverType } from "@/types/main";
 import { useStreamingStore } from "@/stores";
-import CoverList from "@/components/List/CoverList.vue";
 
 const streamingStore = useStreamingStore();
 
@@ -30,15 +29,6 @@ const playlistData = computed<CoverType[]>(() => {
     description: playlist.description,
     count: playlist.songCount || 0,
   }));
-});
-
-// 初始化加载
-onMounted(async () => {
-  if (streamingStore.isConnected.value) {
-    loading.value = true;
-    await streamingStore.fetchPlaylists();
-    loading.value = false;
-  }
 });
 </script>
 

@@ -10,7 +10,7 @@
           </n-text>
           <n-text class="item server-info">
             <SvgIcon name="Stream" :depth="3" />
-            {{ serverType }}
+            {{ streamingStore.activeServer.value?.type || "未知服务器" }}
           </n-text>
         </n-flex>
       </div>
@@ -152,18 +152,6 @@ const isConnected = computed<boolean>(() => streamingStore.isConnected.value);
 
 // 歌曲数量（用于模板）
 const songsCount = computed<number>(() => streamingStore.songs.value?.length || 0);
-
-// 服务器类型
-const serverType = computed<string>(() => {
-  const type = streamingStore.activeServer.value?.type;
-  if (!type) return "";
-  const typeMap: Record<string, string> = {
-    jellyfin: "Jellyfin",
-    navidrome: "Navidrome",
-    opensubsonic: "Subsonic",
-  };
-  return typeMap[type] || type;
-});
 
 // Tab 状态
 const tabsDisabled = computed<boolean>(() => !streamingStore.isConnected.value);
@@ -343,9 +331,9 @@ const handleRefresh = async () => {
 
 // 播放
 const handlePlay = () => {
-  if (!listData.value.length) return;
+  if (!streamingStore.songs.value.length) return;
   // 将流媒体歌曲转换为播放器可用的格式
-  const songs = listData.value.map((song) => ({
+  const songs = streamingStore.songs.value.map((song) => ({
     ...song,
     id: song.id,
   }));
@@ -358,21 +346,147 @@ const handleTabUpdate = (name: string) => {
   router.push({ name });
 };
 
+// 递归获取剩余歌曲
+const fetchRemainingSongs = async (startOffset: number) => {
+  const limit = 500;
+  let offset = startOffset;
+  let hasMore = true;
+
+  while (
+    hasMore &&
+    streamingStore.isConnected.value &&
+    streamingStore.activeServer.value &&
+    router.currentRoute.value?.name === "streaming-songs"
+  ) {
+    try {
+      const result = await streamingStore.fetchSongs(offset, limit, true);
+      if (result.length < limit) {
+        hasMore = false;
+      } else {
+        offset += limit;
+      }
+    } catch (error) {
+      console.error("Background fetch failed:", error);
+      hasMore = false;
+    }
+  }
+};
+
+// 刷新当前 Tab 数据
+const refreshCurrentTab = async () => {
+  const routeName = router.currentRoute.value?.name as string;
+  loading.value = true;
+  try {
+    switch (routeName) {
+      case "streaming-songs":
+        if (streamingStore.songs.value.length === 0) {
+          const limit = 500;
+          const firstBatch = await streamingStore.fetchSongs(0, limit);
+          if (firstBatch.length === limit) {
+            loading.value = false;
+            fetchRemainingSongs(limit);
+          }
+        }
+        break;
+      case "streaming-artists":
+        if (streamingStore.artists.value.length === 0) {
+          await streamingStore.fetchArtists();
+          if (streamingStore.songs.value.length === 0) {
+            await streamingStore.fetchRandomSongs(50);
+          }
+        }
+        break;
+      case "streaming-albums":
+        if (streamingStore.albums.value.length === 0) {
+          await streamingStore.fetchAlbums();
+          if (streamingStore.songs.value.length === 0) {
+            await streamingStore.fetchRandomSongs(50);
+          }
+        }
+        break;
+      case "streaming-playlists":
+        if (streamingStore.playlists.value.length === 0) {
+          await streamingStore.fetchPlaylists();
+        }
+        break;
+    }
+  } catch (error) {
+    console.error("Failed to refresh tab data:", error);
+    window.$message.error("加载数据失败");
+  } finally {
+    if (loading.value) loading.value = false;
+  }
+};
+
+// 强制刷新当前 Tab
+const forceRefreshCurrentTab = async () => {
+  const routeName = router.currentRoute.value?.name as string;
+  loading.value = true;
+  try {
+    streamingStore.songs.value = [];
+    streamingStore.artists.value = [];
+    streamingStore.albums.value = [];
+    streamingStore.playlists.value = [];
+
+    switch (routeName) {
+      case "streaming-songs": {
+        const limit = 500;
+        // 获取第一页
+        const firstBatch = await streamingStore.fetchSongs(0, limit);
+        // 获取剩余数据
+        if (firstBatch.length === limit) {
+          loading.value = false;
+          fetchRemainingSongs(limit);
+        }
+        break;
+      }
+      case "streaming-artists":
+        await streamingStore.fetchArtists();
+        await streamingStore.fetchRandomSongs(50);
+        break;
+      case "streaming-albums":
+        await streamingStore.fetchAlbums();
+        await streamingStore.fetchRandomSongs(50);
+        break;
+      case "streaming-playlists":
+        await streamingStore.fetchPlaylists();
+        break;
+    }
+  } catch (error) {
+    console.error("Failed to force refresh tab data:", error);
+  } finally {
+    if (loading.value) loading.value = false;
+  }
+};
+
+// 监听服务器变化
+watch(
+  [() => streamingStore.activeServerId.value, () => streamingStore.isConnected.value],
+  ([newServerId, isConnected]) => {
+    if (isConnected && newServerId) {
+      forceRefreshCurrentTab();
+    }
+  },
+);
+
 // 监听路由变化
 watch(
   () => router.currentRoute.value.name,
   (name) => {
     if (name && typeof name === "string" && name.startsWith("streaming")) {
       streamingType.value = name;
+      // 路由变化时，如果已连接，检查是否需要刷新数据
+      if (streamingStore.isConnected.value) {
+        refreshCurrentTab();
+      }
     }
   },
   { immediate: true },
 );
 
-// 初始化
 onMounted(async () => {
   if (streamingStore.isConnected.value) {
-    await loadData();
+    await refreshCurrentTab();
   }
 });
 </script>

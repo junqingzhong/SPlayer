@@ -114,6 +114,8 @@ const getServerTypeLabel = (type: StreamingServerType): string => {
   const labels: Record<StreamingServerType, string> = {
     navidrome: "Navidrome",
     jellyfin: "Jellyfin",
+    emby: "Emby",
+    subsonic: "Subsonic", // 兼容
     opensubsonic: "OpenSubsonic",
   };
   return labels[type] || type;

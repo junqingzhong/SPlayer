@@ -75,6 +75,8 @@ const serverForm = reactive({
 const serverTypeOptions = [
   { label: "Navidrome", value: "navidrome" },
   { label: "Jellyfin", value: "jellyfin" },
+  { label: "Emby", value: "emby" },
+  { label: "Subsonic", value: "subsonic" },
   { label: "OpenSubsonic", value: "opensubsonic" },
 ];
 

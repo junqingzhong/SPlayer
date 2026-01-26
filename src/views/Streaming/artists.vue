@@ -94,13 +94,6 @@ watch(
     if (artistDom) artistDom.scrollIntoView({ behavior: "smooth", block: "center" });
   },
 );
-
-// 初始化加载
-onMounted(async () => {
-  if (streamingStore.isConnected.value && streamingStore.songs.value.length === 0) {
-    await streamingStore.fetchRandomSongs(200);
-  }
-});
 </script>
 
 <style lang="scss" scoped>
