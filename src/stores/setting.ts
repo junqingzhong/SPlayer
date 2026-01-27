@@ -237,6 +237,10 @@ export interface SettingState {
   excludeUserKeywords: string[];
   /** 用户自定义的排除歌词正则表达式 */
   excludeUserRegexes: string[];
+  /** 排除评论关键词 */
+  excludeCommentKeywords: string[];
+  /** 排除评论正则表达式 */
+  excludeCommentRegexes: string[];
   /** 显示默认本地路径 */
   showDefaultLocalPath: boolean;
   /** 本地文件夹显示模式 */
@@ -428,6 +432,8 @@ export const useSettingStore = defineStore("setting", {
     enableExcludeLocalLyrics: false,
     excludeUserKeywords: [],
     excludeUserRegexes: [],
+    excludeCommentKeywords: [],
+    excludeCommentRegexes: [],
     localFilesPath: [],
     localLyricPath: [],
     showDefaultLocalPath: true,

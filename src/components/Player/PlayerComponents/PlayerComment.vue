@@ -29,17 +29,27 @@
           }}
         </span>
       </n-flex>
-      <n-flex
-        class="close"
-        align="center"
-        justify="center"
-        @click="statusStore.showPlayerComment = false"
-      >
-        <SvgIcon name="Music" :size="24" />
-      </n-flex>
+      <div class="actions">
+        <n-flex
+          class="close"
+          align="center"
+          justify="center"
+          @click="showFilterModal = true"
+        >
+          <SvgIcon name="Tag" :size="20" />
+        </n-flex>
+        <n-flex
+          class="close"
+          align="center"
+          justify="center"
+          @click="statusStore.showPlayerComment = false"
+        >
+          <SvgIcon name="Music" :size="24" />
+        </n-flex>
+      </div>
     </n-flex>
     <n-scrollbar ref="commentScroll" class="comment-scroll">
-      <template v-if="commentHotData">
+      <template v-if="filteredCommentHotData && filteredCommentHotData.length > 0">
         <div class="placeholder">
           <div class="title">
             <SvgIcon name="Fire" />
@@ -47,7 +57,7 @@
           </div>
         </div>
         <CommentList
-          :data="commentHotData"
+          :data="filteredCommentHotData"
           :loading="commentHotData?.length === 0"
           :type="songType"
           :res-id="songId"
@@ -61,7 +71,7 @@
         </div>
       </div>
       <CommentList
-        :data="commentData"
+        :data="filteredCommentData"
         :loading="commentLoading"
         :type="songType"
         :loadMore="commentHasMore"
@@ -71,6 +81,48 @@
       />
       <div class="placeholder" />
     </n-scrollbar>
+
+    <!-- 过滤弹窗 -->
+    <n-modal
+      v-model:show="showFilterModal"
+      preset="card"
+      title="评论关键词过滤"
+      class="filter-modal"
+      :style="{ width: '500px' }"
+    >
+      <n-flex vertical>
+        <n-text depth="3">关键词过滤（支持普通文本匹配）</n-text>
+        <n-dynamic-tags v-model:value="filterKeywords" />
+        <n-divider style="margin: 12px 0" />
+        <n-text depth="3">正则过滤（支持 JavaScript 正则表达式）</n-text>
+        <n-dynamic-tags v-model:value="filterRegexes" />
+        <n-flex justify="space-between" style="margin-top: 12px">
+          <n-flex>
+            <n-popconfirm @positive-click="clearFilter">
+              <template #trigger>
+                <n-button type="error" secondary>
+                  <template #icon>
+                    <SvgIcon name="DeleteSweep" />
+                  </template>
+                  清空
+                </n-button>
+              </template>
+              确定要清空所有过滤规则吗？
+            </n-popconfirm>
+            <n-button secondary @click="importFilters">
+              导入
+            </n-button>
+            <n-button secondary @click="exportFilters">
+              导出
+            </n-button>
+          </n-flex>
+          <n-flex>
+            <n-button @click="showFilterModal = false">取消</n-button>
+            <n-button type="primary" @click="saveFilter">保存</n-button>
+          </n-flex>
+        </n-flex>
+      </n-flex>
+    </n-modal>
   </div>
 </template>
 
@@ -106,6 +158,117 @@ const commentData = ref<CommentType[]>([]);
 const commentHotData = ref<CommentType[] | null>([]);
 const commentPage = ref<number>(1);
 const commentHasMore = ref<boolean>(true);
+
+// 过滤相关
+const showFilterModal = ref(false);
+const filterKeywords = ref<string[]>([]);
+const filterRegexes = ref<string[]>([]);
+
+// 初始化过滤关键词
+watch(
+  () => showFilterModal.value,
+  (val) => {
+    if (val) {
+      filterKeywords.value = [...(settingStore.excludeCommentKeywords || [])];
+      filterRegexes.value = [...(settingStore.excludeCommentRegexes || [])];
+    }
+  },
+);
+
+// 清空过滤
+const clearFilter = () => {
+  filterKeywords.value = [];
+  filterRegexes.value = [];
+};
+
+// 导出规则
+const exportFilters = () => {
+  const data = {
+    keywords: settingStore.excludeCommentKeywords || [],
+    regexes: settingStore.excludeCommentRegexes || [],
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "splayer-comment-filters.json";
+  a.click();
+  URL.revokeObjectURL(url);
+  window.$message.success("规则导出成功");
+};
+
+// 导入规则
+const importFilters = () => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.onchange = (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.keywords && Array.isArray(data.keywords)) {
+          settingStore.excludeCommentKeywords = data.keywords;
+        }
+        if (data.regexes && Array.isArray(data.regexes)) {
+          settingStore.excludeCommentRegexes = data.regexes;
+        }
+        window.$message.success("规则导入成功");
+        // 刷新弹窗数据（如果弹窗开着）
+        if (showFilterModal.value) {
+          filterKeywords.value = [...(settingStore.excludeCommentKeywords || [])];
+          filterRegexes.value = [...(settingStore.excludeCommentRegexes || [])];
+        }
+      } catch (error) {
+        console.error("Import filters error:", error);
+        window.$message.error("规则文件解析失败");
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+};
+
+// 保存过滤
+const saveFilter = () => {
+  settingStore.excludeCommentKeywords = filterKeywords.value;
+  settingStore.excludeCommentRegexes = filterRegexes.value;
+  showFilterModal.value = false;
+  window.$message.success("设置已保存");
+};
+
+// 过滤后的数据
+const filterComments = (comments: CommentType[] | null) => {
+  if (!comments) return [];
+  const keywords = settingStore.excludeCommentKeywords || [];
+  const regexes = settingStore.excludeCommentRegexes || [];
+
+  if (!keywords.length && !regexes.length) return comments;
+
+  return comments.filter((item) => {
+    // 关键词过滤
+    const hasKeyword = keywords.some((keyword) => item.content.includes(keyword));
+    if (hasKeyword) return false;
+
+    // 正则过滤
+    const hasRegex = regexes.some((regexStr) => {
+      try {
+        const regex = new RegExp(regexStr);
+        return regex.test(item.content);
+      } catch (e) {
+        return false;
+      }
+    });
+    if (hasRegex) return false;
+
+    return true;
+  });
+};
+
+const filteredCommentData = computed(() => filterComments(commentData.value));
+const filteredCommentHotData = computed(() => filterComments(commentHotData.value));
 
 // 获取热门评论
 const getHotCommentData = async () => {
@@ -216,19 +379,46 @@ onMounted(() => {
     .artist {
       opacity: 0.8;
     }
+    .actions {
+      margin-left: auto;
+      display: flex;
+      gap: 12px;
+      .close {
+        width: 40px;
+        height: 40px;
+        background-color: rgba(var(--main-cover-color), 0.08);
+        border-radius: 8px;
+        transition: background-color 0.3s;
+        cursor: pointer;
+        &:hover {
+          background-color: rgba(var(--main-cover-color), 0.29);
+        }
+      }
+    }
+    // 强制把 close 挤到右边，但因为有两个 close（其中一个是 filter），这里需要微调
+    // 原来的 .close { margin-left: auto; } 会让第一个 .close (filter) 占满中间空间
+    // 我们需要让 filter 靠右，close 也靠右。
+    // 可以给第一个 close 加 .ml-auto
+  }
+  
+  // 修正 .close 样式，确保它们靠右
+  // 由于我不能直接改 css 结构太乱，我会在 template 里用 n-flex 的 spacing 配合 margin-left: auto
+  // 但是 n-flex 默认是 flex-start.
+  // 我需要让第一个 .close 有 margin-left: auto
+  
+  // 实际上我在 replace_file_content 里无法太细致地调整 CSS 除非完全重写 style
+  // 让我们看看原有的 scss
+  /*
     .close {
       width: 40px;
       height: 40px;
       margin-left: auto;
-      background-color: rgba(var(--main-cover-color), 0.08);
-      border-radius: 8px;
-      transition: background-color 0.3s;
-      cursor: pointer;
-      &:hover {
-        background-color: rgba(var(--main-cover-color), 0.29);
-      }
+      ...
     }
-  }
+  */
+  // 如果有两个 .close，第一个会有 margin-left: auto，会把前面的挤开。第二个紧随其后。
+  // 这样是可以的。
+  
   :deep(.comment-scroll) {
     height: calc(100vh - 262px);
     filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));
@@ -280,4 +470,8 @@ onMounted(() => {
     }
   }
 }
+/* Modal 样式需要全局或者 deep，这里直接在 scoped 里写可能需要 :deep 或者放在最外层 */
+/* 但是 n-modal teleport 到 body，所以 scoped 样式通常无效，除非用全局样式或者 n-modal 自带的 style 属性 */
+/* 我上面用了 class="filter-modal" */
 </style>
+
