@@ -118,6 +118,7 @@
         :loading="commentLoading"
         :type="videoType === 'mv' ? 1 : 5"
         :loadMore="commentHasMore"
+        :res-id="videoId"
         @loadMore="loadMoreComment"
       />
     </div>

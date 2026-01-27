@@ -50,6 +50,7 @@
           :data="commentHotData"
           :loading="commentHotData?.length === 0"
           :type="songType"
+          :res-id="songId"
           transparent
         />
       </template>
@@ -64,6 +65,7 @@
         :loading="commentLoading"
         :type="songType"
         :loadMore="commentHasMore"
+        :res-id="songId"
         transparent
         @loadMore="loadMoreComment"
       />
