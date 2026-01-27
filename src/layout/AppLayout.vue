@@ -30,7 +30,7 @@
         'show-player': musicStore.isHasPlayer && statusStore.showPlayBar,
         'show-full-player': statusStore.showFullPlayer,
       }"
-      has-sider
+      :has-sider="isDesktop"
     >
       <!-- 侧边栏 -->
       <n-layout-sider
@@ -207,6 +207,9 @@ onMounted(() => {
   }
   #main-content {
     top: 70px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     background-color: transparent;
     transition: bottom 0.3s;
     .router-view {

@@ -106,16 +106,7 @@
     </div>
     <!-- 控制 -->
     <n-flex :size="8" align="center" justify="center" class="play-control">
-      <!-- 随机按钮 -->
-      <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
-        <div class="play-icon" @click.stop="player.toggleShuffle()">
-          <SvgIcon
-            :name="statusStore.shuffleIcon"
-            :size="20"
-            :depth="statusStore.shuffleMode === 'off' ? 3 : 1"
-          />
-        </div>
-      </template>
+
       <!-- 不喜欢 -->
       <div
         v-if="statusStore.personalFmMode"
@@ -156,13 +147,28 @@
       </div>
       <!-- 循环按钮 -->
       <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
-        <div class="play-icon" @click.stop="player.toggleRepeat()">
-          <SvgIcon
-            :name="statusStore.repeatIcon"
-            :size="20"
-            :depth="statusStore.repeatMode === 'off' ? 3 : 1"
-          />
-        </div>
+        <n-popover trigger="click" placement="top" style="padding: 8px">
+          <template #trigger>
+            <div class="play-icon">
+              <SvgIcon
+                :name="statusStore.repeatIcon"
+                :size="20"
+                :depth="statusStore.repeatMode === 'off' ? 3 : 1"
+              />
+            </div>
+          </template>
+          <n-radio-group
+            :value="statusStore.repeatMode"
+            name="repeat-mode"
+            @update:value="(val) => player.toggleRepeat(val)"
+          >
+            <n-flex vertical>
+              <n-radio value="list">列表循环</n-radio>
+              <n-radio value="one">单曲循环</n-radio>
+              <n-radio value="off">不循环</n-radio>
+            </n-flex>
+          </n-radio-group>
+        </n-popover>
       </template>
     </n-flex>
     <!-- 功能 -->

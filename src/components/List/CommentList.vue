@@ -2,7 +2,7 @@
   <Transition name="fade" mode="out-in">
     <n-flex v-if="data.length > 0" :size="20" :class="['comment-list', { transparent }]" vertical>
       <n-flex v-for="(item, index) in data" :key="index" :size="20" class="comments">
-        <div v-if="!transparent" class="user">
+        <div v-if="!transparent " class="user">
           <div class="avatar">
             <n-image
               :src="

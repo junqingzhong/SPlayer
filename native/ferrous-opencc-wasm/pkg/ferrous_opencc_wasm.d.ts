@@ -1,5 +1,5 @@
 /* tslint:disable */
-/* eslint-disable */
+ 
 
 export class OpenCC {
   free(): void;

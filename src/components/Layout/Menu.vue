@@ -100,6 +100,13 @@ const menuOptions = computed<MenuOption[] | MenuGroupOption[]>(() => {
           }),
         },
         {
+          key: "activities",
+          link: "activities",
+          label: "活动列表",
+          show: true,
+          icon: renderIcon("Time"),
+        },
+        {
           key: "personal-fm",
           label: () =>
             h("div", { class: "user-liked roaming-label" }, [

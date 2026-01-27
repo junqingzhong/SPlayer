@@ -51,7 +51,7 @@ export const songUrl = (
 export const unlockSongUrl = (
   id: number,
   keyword: string,
-  server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili",
+  server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili" | "bodian" | "gequbao",
   level: "standard" | "higher" | "exhigh" | "lossless" | "hires" | "jyeffect" | "sky" | "jymaster" = "exhigh",
 ) => {
   // 音质映射

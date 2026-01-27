@@ -1,6 +1,6 @@
 <template>
   <n-popover
-    :show="userMenuShow"
+    :show="userMenuShow "
     style="padding: 12px; max-width: 160px"
     trigger="manual"
     @clickoutside="userMenuShow = false"
@@ -12,12 +12,17 @@
         @click="openMenu"
       >
         <div class="avatar">
-          <n-avatar
-            v-if="dataStore.userLoginStatus"
-            :src="dataStore.userData?.avatarUrl"
-            fallback-src="/images/avatar.jpg?asset"
-            round
-          />
+          <template v-if="isDesktop">
+            <n-avatar
+              v-if="dataStore.userLoginStatus"
+              :src="dataStore.userData?.avatarUrl"
+              fallback-src="/images/avatar.jpg?asset"
+              round
+            />
+            <n-avatar v-else round>
+              <SvgIcon name="Person" :depth="3" size="26" />
+            </n-avatar>
+          </template>
           <n-avatar v-else round>
             <SvgIcon name="Person" :depth="3" size="26" />
           </n-avatar>

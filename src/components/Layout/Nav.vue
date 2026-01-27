@@ -2,19 +2,29 @@
   <n-layout-header class="nav">
     <!-- 页面导航 -->
     <n-flex class="page-control">
-      <Logo v-if="!isDesktop" :size="40" @click="router.push('/')" />
-      <template v-if="!isSmallScreen">
-        <n-button :focusable="false" tertiary circle @click="router.go(-1)">
-          <template #icon>
-            <SvgIcon name="NavigateBefore" :size="26" />
-          </template>
-        </n-button>
-        <n-button :focusable="false" tertiary circle @click="router.go(1)">
-          <template #icon>
-            <SvgIcon name="NavigateNext" :size="26" />
-          </template>
-        </n-button>
-      </template>
+      <!-- 移动端菜单按钮 -->
+      <n-button
+        v-if="!isDesktop"
+        :focusable="false"
+        tertiary
+        circle
+        @click="showAside = !showAside"
+      >
+        <template #icon>
+          <SvgIcon name="Menu" />
+        </template>
+      </n-button>
+      <!-- 前进后退 -->
+      <n-button :focusable="false" tertiary circle @click="router.go(-1)">
+        <template #icon>
+          <SvgIcon name="NavigateBefore" :size="26" />
+        </template>
+      </n-button>
+      <n-button :focusable="false" tertiary circle @click="router.go(1)">
+        <template #icon>
+          <SvgIcon name="NavigateNext" :size="26" />
+        </template>
+      </n-button>
     </n-flex>
     <!-- 主内容 -->
     <n-flex :wrap="false" justify="end" class="nav-main">
@@ -23,8 +33,7 @@
       <!-- 可拖拽 -->
       <div v-if="isDesktop" class="nav-drag" />
       <n-flex align="center">
-        <!-- 用户 -->
-        <User v-if="settingStore.useOnlineService" />
+        <User v-if="settingStore.useOnlineService && isDesktop" />
         <!-- 设置菜单 -->
         <n-dropdown :options="setOptions" trigger="click" @select="setSelect">
           <n-button :focusable="false" title="设置" tertiary circle>
@@ -33,19 +42,8 @@
             </template>
           </n-button>
         </n-dropdown>
-        <!-- 移动端菜单 -->
-        <n-button
-          v-if="!isDesktop"
-          :focusable="false"
-          tertiary
-          circle
-          @click="showAside = !showAside"
-        >
-          <template #icon>
-            <SvgIcon name="Menu" />
-          </template>
-        </n-button>
-        <n-drawer v-model:show="showAside" :width="240" placement="left">
+        <!-- 移动端侧边栏 -->
+        <n-drawer v-model:show="showAside" :width="drawerWidth" placement="left">
           <n-drawer-content :body-content-style="{ padding: 0 }" :native-scrollbar="false">
             <template #header>
               <n-flex align="center" justify="center" class="aside-logo">
@@ -151,6 +149,7 @@ const useBorderless = ref(true);
 const isMax = ref(false);
 // 是否显示侧边栏
 const showAside = ref(false);
+const drawerWidth = computed(() => (isSmallScreen.value ? 280 : 240));
 
 // 最小化
 const min = () => window.electron.ipcRenderer.send("win-min");

@@ -24,7 +24,7 @@
     "typecheck": "npm run typecheck:node && npm run typecheck:web",
     "build:native": "tsx scripts/build-native.ts",
     "start": "electron-vite preview",
-    "dev": "npm run build:native && tsx scripts/dev.ts",
+    "dev": "npm run build:native -- --skip-if-no-rust && tsx scripts/dev.ts",
     "build": "rimraf dist && npm run build:native && npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:web": "npm run build",

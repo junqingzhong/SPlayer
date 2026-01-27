@@ -12,6 +12,12 @@ const appRoutes: Array<RouteRecordRaw> = [
     name: "home",
     component: () => import("@/views/Home/index.vue"),
   },
+  // 活动
+  {
+    path: "/activities",
+    name: "activities",
+    component: () => import("@/views/Activities/index.vue"),
+  },
   // 搜索
   {
     path: "/search",

@@ -111,10 +111,18 @@ export interface SettingState {
   downloadSongLevel: SongLevelType;
   /** 代理协议 */
   proxyProtocol: "off" | "http" | "https";
+  /** 代理类型 */
+  proxyType: "off" | "system" | "manual" | "pac";
   /** 代理地址 */
   proxyServe: string;
   /** 代理端口 */
   proxyPort: number;
+  /** 代理用户名 */
+  proxyUsername: string;
+  /** 代理密码 */
+  proxyPassword: string;
+  /** PAC 脚本 URL */
+  pacUrl: string;
   /** 歌曲音质 */
   songLevel:
     | "standard"
@@ -273,6 +281,7 @@ export interface SettingState {
     hideLikedPlaylists: boolean;
     /** 隐藏心动模式 */
     hideHeartbeatMode: boolean;
+    hideActivities: boolean;
   };
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
@@ -332,6 +341,12 @@ export interface SettingState {
   disableAiAudio: boolean;
   /** Fuck DJ: 开启后自动跳过 DJ 歌曲 */
   disableDjMode: boolean;
+  /** 布局模式（自动/强制移动端/强制桌面端） */
+  layoutMode: "auto" | "mobile" | "desktop";
+  /** 活动列表 API 域名 */
+  activitiesApiBaseUrl: string;
+  /** 网易云自动登录 Cookie（原始字符串） */
+  autoLoginCookie: string;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -356,6 +371,9 @@ export const useSettingStore = defineStore("setting", {
     menuExpandedKeys: [],
     routeAnimation: "slide",
     playerExpandAnimation: "up",
+    layoutMode: "auto",
+    activitiesApiBaseUrl: "",
+    autoLoginCookie: "",
     useOnlineService: true,
     showCloseAppTip: true,
     closeAppMethod: "hide",
@@ -376,6 +394,9 @@ export const useSettingStore = defineStore("setting", {
       { key: SongUnlockServer.GEQUBAO, enabled: true },
       { key: SongUnlockServer.NETEASE, enabled: true },
       { key: SongUnlockServer.KUWO, enabled: false },
+      { key: SongUnlockServer.QQ, enabled: false },
+      { key: SongUnlockServer.KUGOU, enabled: false },
+      { key: SongUnlockServer.BILIBILI, enabled: false },
     ],
     countDownShow: true,
     barLyricShow: true,
@@ -450,8 +471,12 @@ export const useSettingStore = defineStore("setting", {
     saveMetaFile: false,
     downloadSongLevel: "h",
     proxyProtocol: "off",
+    proxyType: "off",
     proxyServe: "127.0.0.1",
     proxyPort: 80,
+    proxyUsername: "",
+    proxyPassword: "",
+    pacUrl: "",
     useRealIP: false,
     realIP: "",
     showPlayMeta: true,
@@ -470,6 +495,7 @@ export const useSettingStore = defineStore("setting", {
       hideUserPlaylists: false,
       hideLikedPlaylists: false,
       hideHeartbeatMode: false,
+      hideActivities: false,
     },
     enableSearchKeyword: true,
     clearSearchOnBlur: false,

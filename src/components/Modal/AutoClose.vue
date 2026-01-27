@@ -7,7 +7,7 @@
           <Transition name="fade" mode="out-in">
             <n-text v-if="!statusStore.autoClose.enable"> 未开启 </n-text>
             <n-text v-else strong class="time-display time-display--primary auto-close-time">
-              {{ formatTime(statusStore.autoClose.remainTime, settingStore.timeDisplayFormat) }}
+              {{ formatTime(statusStore.autoClose.remainTime) }}
             </n-text>
           </Transition>
         </n-flex>
@@ -65,13 +65,11 @@
 
 <script setup lang="ts">
 import { useStatusStore } from "@/stores";
-import { useSettingStore } from "@/stores/setting";
 import { formatTime } from "@/utils/timeFormat";
 import { usePlayerController } from "@/core/player/PlayerController";
 
 const player = usePlayerController();
 const statusStore = useStatusStore();
-const settingStore = useSettingStore();
 
 // 自定义时长
 const customTime = ref(1);

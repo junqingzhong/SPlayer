@@ -64,17 +64,8 @@
 
           <!-- 主控制按钮 -->
           <div class="control-section">
-            <!-- 随机模式 -->
-            <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
-              <div class="mode-btn" @click.stop="player.toggleShuffle()">
-                <SvgIcon
-                  :name="statusStore.shuffleIcon"
-                  :size="24"
-                  :depth="statusStore.shuffleMode === 'off' ? 3 : 1"
-                />
-              </div>
-            </template>
-            <div v-else class="placeholder"></div>
+
+            <div class="placeholder"></div>
 
             <!-- 上一曲 -->
             <div class="ctrl-btn" @click.stop="player.nextOrPrev('prev')">
@@ -109,13 +100,28 @@
 
             <!-- 循环模式 -->
             <template v-if="musicStore.playSong.type !== 'radio' && !statusStore.personalFmMode">
-              <div class="mode-btn" @click.stop="player.toggleRepeat()">
-                <SvgIcon
-                  :name="statusStore.repeatIcon"
-                  :size="24"
-                  :depth="statusStore.repeatMode === 'off' ? 3 : 1"
-                />
-              </div>
+              <n-popover trigger="click" placement="top" style="padding: 8px">
+                <template #trigger>
+                  <div class="mode-btn">
+                    <SvgIcon
+                      :name="statusStore.repeatIcon"
+                      :size="24"
+                      :depth="statusStore.repeatMode === 'off' ? 3 : 1"
+                    />
+                  </div>
+                </template>
+                <n-radio-group
+                  :value="statusStore.repeatMode"
+                  name="repeat-mode-mobile"
+                  @update:value="(val) => player.toggleRepeat(val)"
+                >
+                  <n-flex vertical>
+                    <n-radio value="list">列表循环</n-radio>
+                    <n-radio value="one">单曲循环</n-radio>
+                    <n-radio value="off">不循环</n-radio>
+                  </n-flex>
+                </n-radio-group>
+              </n-popover>
             </template>
             <div v-else class="placeholder"></div>
           </div>

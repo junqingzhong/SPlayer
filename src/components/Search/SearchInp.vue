@@ -216,7 +216,7 @@ onMounted(() => {
     }
   }
   @media (max-width: 768px) {
-    width: calc(100% - 150px);
+    width: calc(100% - 50px);
     .search-input {
       width: 100%;
     }

@@ -97,14 +97,6 @@ const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
       click: () => win.webContents.send("toggle-like-song"),
     },
     {
-      id: "shuffle",
-      label: shuffleMode === "heartbeat" ? "心动模式" : "随机播放",
-      icon: showIcon("shuffle"),
-      type: "checkbox",
-      checked: shuffleMode !== "off",
-      click: () => win.webContents.send("toggleShuffle"),
-    },
-    {
       id: "repeatMode",
       label: getRepeatLabel(repeatMode),
       icon: showIcon(repeatMode === "one" ? "repeat-once" : "repeat"),

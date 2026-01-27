@@ -521,7 +521,6 @@ const applyCookie = async () => {
     setCookies(autoLoginCookie.value);
     settingStore.autoLoginCookie = autoLoginCookie.value;
     localStorage.setItem('cookie-update-time', Date.now().toString());
-    if (isElectron) window.electron.ipcRenderer.send("reset-setting");
     window.$message.loading("Cookie已成功应用，软件即将热重载", { duration: 3000 });
   } catch (error) {
     console.error('应用Cookie和更新设置时发生错误:', error);
@@ -566,7 +565,6 @@ const modifyCookie = async () => {
             setCookies(autoLoginCookie.value);
             settingStore.autoLoginCookie = autoLoginCookie.value;
             localStorage.setItem('cookie-update-time', Date.now().toString());
-            if (isElectron) window.electron.ipcRenderer.send("reset-setting");
             if (success) {
               window.$message.loading("Cookie已成功修改并应用，软件即将热重载", { duration: 3000 });
             } else {

@@ -9,7 +9,7 @@ import { mediaSessionManager } from "@/core/player/MediaSessionManager";
 import { useDownloadManager } from "@/core/resource/DownloadManager";
 import packageJson from "@/../package.json";
 import log from "./log";
-import config from "@/config";
+import config, { updateConfig } from "@/config";
 
 // 应用初始化时需要执行的操作
 const init = async () => {
@@ -181,7 +181,7 @@ const initGlobalConfig = () => {
     if (configStr) {
       const userConfig = JSON.parse(configStr);
       // 合并配置
-      config.updateConfig(userConfig);
+      updateConfig(userConfig);
       log.info('全局配置已加载', '来自用户自定义配置');
 
       // 应用全局代理配置（如果启用）

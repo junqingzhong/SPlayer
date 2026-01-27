@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="activities-container">
     <div class="activities-header">
       <h2>活动列表</h2>

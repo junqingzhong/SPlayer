@@ -23,6 +23,9 @@ export enum SongUnlockServer {
   BODIAN = "bodian",
   KUWO = "kuwo",
   GEQUBAO = "gequbao",
+  QQ = "qq",
+  KUGOU = "kugou",
+  BILIBILI = "bilibili",
 }
 
 /** 歌曲播放地址信息 */

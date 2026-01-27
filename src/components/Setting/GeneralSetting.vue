@@ -136,6 +136,21 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">界面模式</n-text>
+          <n-text class="tip" :depth="3">自动根据窗口宽度切换，或强制手机/桌面布局</n-text>
+        </div>
+        <n-select
+          v-model:value="settingStore.layoutMode"
+          class="set"
+          :options="[
+            { label: '自动', value: 'auto' },
+            { label: '手机模式', value: 'mobile' },
+            { label: '桌面模式', value: 'desktop' },
+          ]"
+        />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">页面切换动画</n-text>
           <n-text class="tip" :depth="3">选择页面切换时的动画效果</n-text>
         </div>
