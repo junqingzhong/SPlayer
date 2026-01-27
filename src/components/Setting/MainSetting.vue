@@ -10,15 +10,27 @@
           <n-h1>设置</n-h1>
           <n-text :depth="3">个性化与全局设置</n-text>
         </n-flex>
-        <!-- 设置菜单 -->
-        <n-scrollbar style="height: calc(100% - 160px)">
-          <n-menu
-            v-model:value="activeKey"
-            :options="menuOptions"
-            :indent="10"
-            @update:value="onMenuSelect"
+        <!-- 搜索 -->
+        <div class="search-wrapper">
+          <SettingSearch
+            :options="searchOptions"
+            @select="handleSearch"
+            @active-change="(val) => (isSearchActive = val)"
           />
-        </n-scrollbar>
+        </div>
+        <!-- 设置菜单 -->
+        <Transition name="fade" mode="out-in">
+          <div v-show="!isSearchActive" style="height: calc(100% - 210px)">
+            <n-scrollbar>
+              <n-menu
+                v-model:value="activeKey"
+                :options="menuOptions"
+                :indent="10"
+                @update:value="onMenuSelect"
+              />
+            </n-scrollbar>
+          </div>
+        </Transition>
         <!-- 信息 -->
         <div class="power">
           <n-text class="author" :depth="2" @click="toGithub">
@@ -54,23 +66,23 @@
         class="set-content"
         :content-style="{ overflow: 'hidden', padding: '40px 0' }"
       >
-        <Transition name="fade" mode="out-in">
+        <Transition name="fade" mode="out-in" @after-leave="setScrollbar?.scrollTo({ top: 0 })">
           <!-- 常规 -->
-          <GeneralSetting v-if="activeKey === 'general'" />
+          <UniversalSetting v-if="activeKey === 'general'" :groups="generalSettings" />
           <!-- 播放 -->
-          <PlaySetting v-else-if="activeKey === 'play'" />
+          <UniversalSetting v-else-if="activeKey === 'play'" :groups="playSettings" />
           <!-- 歌词 -->
-          <LyricsSetting v-else-if="activeKey === 'lyrics'" :scroll-to="props.scrollTo" />
+          <UniversalSetting v-else-if="activeKey === 'lyrics'" :groups="lyricSettings" />
           <!-- 快捷键 -->
-          <KeyboardSetting v-else-if="activeKey === 'keyboard'" />
+          <UniversalSetting v-else-if="activeKey === 'keyboard'" :groups="keyboardSettings" />
           <!-- 本地 -->
-          <LocalSetting v-else-if="activeKey === 'local'" />
+          <UniversalSetting v-else-if="activeKey === 'local'" :groups="localSettings" />
           <!-- 第三方 -->
-          <ThirdSetting v-else-if="activeKey === 'third'" />
+          <UniversalSetting v-else-if="activeKey === 'third'" :groups="thirdSettings" />
           <!-- 流媒体 -->
-          <StreamingSetting v-else-if="activeKey === 'streaming'" />
+          <UniversalSetting v-else-if="activeKey === 'streaming'" :groups="streamingSettings" />
           <!-- 其他 -->
-          <OtherSetting v-else-if="activeKey === 'other'" />
+          <UniversalSetting v-else-if="activeKey === 'other'" :groups="otherSettings" />
           <!-- 关于 -->
           <AboutSetting v-else-if="activeKey === 'about'" />
           <!-- 空白 -->
@@ -82,15 +94,47 @@
 </template>
 
 <script setup lang="ts">
-import type { MenuOption, NScrollbar } from "naive-ui";
+import type { MenuOption, NScrollbar, SelectOption } from "naive-ui";
+import { SettingItem, SettingGroup } from "@/types/settings";
 import type { SettingType } from "@/types/main";
 import { useMobile } from "@/composables/useMobile";
 import { renderIcon } from "@/utils/helper";
 import { isElectron } from "@/utils/env";
 import { useStatusStore } from "@/stores";
 import packageJson from "@/../package.json";
+import { usePlaySettings } from "./config/play";
+import { useGeneralSettings } from "./config/general";
+import { useLyricSettings } from "./config/lyric";
+import { useKeyboardSettings } from "./config/keyboard";
+import { useLocalSettings } from "./config/local";
+import { useThirdSettings } from "./config/third";
+import { useStreamingSettings } from "./config/streaming";
+import { useOtherSettings } from "./config/other";
 
 const props = defineProps<{ type: SettingType; scrollTo?: string }>();
+
+const playSettings = usePlaySettings();
+const generalSettings = useGeneralSettings();
+const lyricSettings = useLyricSettings();
+const keyboardSettings = useKeyboardSettings();
+const localSettings = useLocalSettings();
+const thirdSettings = useThirdSettings();
+const streamingSettings = useStreamingSettings();
+const otherSettings = useOtherSettings();
+
+// 聚合所有设置
+const allSettingGroups = computed(() => {
+  return [
+    { key: "general", groups: generalSettings },
+    { key: "play", groups: playSettings },
+    { key: "lyrics", groups: lyricSettings },
+    { key: "keyboard", groups: keyboardSettings },
+    { key: "local", groups: localSettings },
+    { key: "third", groups: thirdSettings },
+    { key: "streaming", groups: streamingSettings },
+    { key: "other", groups: otherSettings },
+  ];
+});
 
 const statusStore = useStatusStore();
 const { isSmallScreen } = useMobile();
@@ -113,11 +157,80 @@ const activeKey = ref<SettingType>(props.type);
 
 // 菜单选择处理
 const onMenuSelect = () => {
-  setScrollbar.value?.scrollTo({ top: 0, behavior: "smooth" });
-  // 移动端选择后自动收起菜单
   if (isSmallScreen.value) {
     showLeftMenu.value = false;
   }
+};
+
+const isSearchActive = ref(false);
+
+// 搜索选项
+const searchOptions = computed<SelectOption[]>(() => {
+  const options: SelectOption[] = [];
+
+  allSettingGroups.value.forEach(({ key, groups }) => {
+    // 检查该分类是否应在当前环境显示
+    const menuOption = menuOptions.find((m) => m.key === key);
+    if (menuOption?.show === false) return; // 如果明确设置为 false 则跳过 (isElectron check etc)
+
+    groups.forEach((group: SettingGroup) => {
+      // 检查分组可见性
+      const groupShow =
+        group.show === undefined
+          ? true
+          : typeof group.show === "function"
+            ? group.show()
+            : toValue(group.show);
+      if (!groupShow) return;
+
+      group.items.forEach((item: SettingItem) => {
+        // 检查设置项可见性
+        const itemShow =
+          item.show === undefined
+            ? true
+            : typeof item.show === "function"
+              ? item.show()
+              : toValue(item.show);
+        if (!itemShow) return;
+
+        const label = toValue(item.label);
+        const desc = toValue(item.description);
+
+        options.push({
+          label: label,
+          value: `${key}::${item.key}`,
+          // 用于搜索匹配
+          searchLabel: `${label} ${typeof desc === "string" ? desc : ""} ${item.keywords?.join(" ") || ""}`,
+          desc: typeof desc === "string" ? desc : undefined,
+        });
+      });
+    });
+  });
+
+  return options;
+});
+
+// 处理搜索选择
+const handleSearch = (value: string | number) => {
+  if (!value) return;
+  const keyStr = String(value);
+  const [targetTab, targetKey] = keyStr.split("::");
+  // 切换到对应标签页
+  if (activeKey.value !== targetTab) {
+    activeKey.value = targetTab as SettingType;
+  }
+  // 移动端收起菜单
+  if (isSmallScreen.value) {
+    showLeftMenu.value = false;
+  }
+  nextTick(() => {
+    setTimeout(() => {
+      const element = document.getElementById(`setting-${targetKey}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, 300);
+  });
 };
 
 // 菜单内容
