@@ -18,7 +18,8 @@ import lyricWindow from "../windows/lyric-window";
 type PlayState = "play" | "pause" | "loading";
 
 let repeatMode: RepeatModeType = "list";
-let shuffleMode: ShuffleModeType = "off";
+// @ts-ignore
+let _shuffleMode: ShuffleModeType = "off";
 
 // 全局数据
 let playState: PlayState = "pause";
@@ -276,7 +277,7 @@ class CreateTray implements MainTray {
    */
   setPlayMode(repeat: RepeatModeType, shuffle: ShuffleModeType) {
     repeatMode = repeat;
-    shuffleMode = shuffle;
+    _shuffleMode = shuffle;
     // 更新菜单
     this.initTrayMenu();
   }

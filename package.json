@@ -27,7 +27,7 @@
     "dev": "npm run build:native -- --skip-if-no-rust && tsx scripts/dev.ts",
     "build": "rimraf dist && npm run build:native && npm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
-    "build:web": "npm run build",
+    "build:web": "rimraf dist && npm run build:native -- --skip-if-no-rust && npm run typecheck && electron-vite build",
     "build:unpack": "npm run build && electron-builder --dir",
     "build:win": "npm run build && electron-builder --win --config electron-builder.config.ts",
     "build:mac": "npm run build && electron-builder --mac --config electron-builder.config.ts",
