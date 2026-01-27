@@ -1,9 +1,9 @@
 import { useShortcutStore } from "@/stores";
-import { SettingGroup, SettingItem } from "@/types/settings";
+import { SettingItem, SettingConfig } from "@/types/settings";
 import { computed, markRaw } from "vue";
 import ShortcutRecorder from "../components/ShortcutRecorder.vue";
 
-export const useKeyboardSettings = (): SettingGroup[] => {
+export const useKeyboardSettings = (): SettingConfig => {
   const shortcutStore = useShortcutStore();
 
   const updateGlobalOpen = async (val: boolean) => {
@@ -39,52 +39,54 @@ export const useKeyboardSettings = (): SettingGroup[] => {
     (key) => !pageShortcutKeys.includes(key),
   );
 
-  return [
-    {
-      title: "全局快捷键",
-      items: [
-        {
-          key: "globalOpen",
-          label: "开启全局快捷键",
-          type: "switch",
-          description: "可能会导致与其他软件相互冲突，请谨慎开启",
-          value: computed({
-            get: () => shortcutStore.globalOpen,
-            set: (v) => updateGlobalOpen(v),
-          }),
-        },
-      ],
-    },
-    {
-      title: "全局快捷键更改",
-      items: createShortcutItems(globalShortcutKeys, true),
-    },
-    {
-      title: "恢复全局默认",
-      items: [
-        {
-          key: "resetShortcut",
-          label: "恢复默认",
-          type: "button",
-          buttonLabel: "恢复默认",
-          action: () => {
-            window.$dialog.warning({
-              title: "重置快捷键",
-              content: "确定重置当前快捷键配置？",
-              positiveText: "重置",
-              negativeText: "取消",
-              onPositiveClick: () => {
-                shortcutStore.$reset();
-                window.$message.success("快捷键重置成功");
-              },
-            });
+  return {
+    groups: [
+      {
+        title: "全局快捷键",
+        items: [
+          {
+            key: "globalOpen",
+            label: "开启全局快捷键",
+            type: "switch",
+            description: "可能会导致与其他软件相互冲突，请谨慎开启",
+            value: computed({
+              get: () => shortcutStore.globalOpen,
+              set: (v) => updateGlobalOpen(v),
+            }),
           },
-        },
-      ],
-    },
-    {
-      title: "页面内快捷键",
-      items: createShortcutItems(pageShortcutKeys, false),
-    },
-  ];
+        ],
+      },
+      {
+        title: "全局快捷键更改",
+        items: createShortcutItems(globalShortcutKeys, true),
+      },
+      {
+        title: "恢复全局默认",
+        items: [
+          {
+            key: "resetShortcut",
+            label: "恢复默认全局快捷键",
+            type: "button",
+            buttonLabel: "恢复默认",
+            action: () => {
+              window.$dialog.warning({
+                title: "重置快捷键",
+                content: "确定重置当前快捷键配置？",
+                positiveText: "重置",
+                negativeText: "取消",
+                onPositiveClick: () => {
+                  shortcutStore.$reset();
+                  window.$message.success("快捷键重置成功");
+                },
+              });
+            },
+          },
+        ],
+      },
+      {
+        title: "页面内快捷键",
+        items: createShortcutItems(pageShortcutKeys, false),
+      },
+    ],
+  };
 };

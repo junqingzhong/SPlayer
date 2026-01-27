@@ -266,3 +266,13 @@ export interface SettingGroup {
    */
   show?: boolean | Ref<boolean> | (() => boolean);
 }
+
+/**
+ * 设置配置接口
+ * 用于标准化 Hook 的返回值，支持懒加载
+ */
+export interface SettingConfig {
+  groups: SettingGroup[];
+  onActivate?: () => void;
+  onDeactivate?: () => void;
+}

@@ -24,7 +24,7 @@
           </n-tag>
         </n-text>
         <n-text class="tip" :depth="3" v-if="descriptionContent">
-          <span v-if="typeof descriptionContent === 'string'">{{ descriptionContent }}</span>
+          <span v-if="typeof descriptionContent === 'string'" v-html="descriptionContent" />
           <component v-else :is="descriptionContent" />
         </n-text>
       </div>
@@ -292,19 +292,6 @@ const activeActions = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-}
-.label {
-  display: flex;
-  flex-direction: column;
-  padding-right: 20px;
-  flex-shrink: 0;
-
-  .name {
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
 }
 
 .control-wrapper {

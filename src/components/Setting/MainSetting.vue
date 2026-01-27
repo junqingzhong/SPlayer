@@ -68,21 +68,24 @@
       >
         <Transition name="fade" mode="out-in" @after-leave="setScrollbar?.scrollTo({ top: 0 })">
           <!-- 常规 -->
-          <UniversalSetting v-if="activeKey === 'general'" :groups="generalSettings" />
+          <UniversalSetting v-if="activeKey === 'general'" :groups="generalConfig.groups" />
           <!-- 播放 -->
-          <UniversalSetting v-else-if="activeKey === 'play'" :groups="playSettings" />
+          <UniversalSetting v-else-if="activeKey === 'play'" :groups="playConfig.groups" />
           <!-- 歌词 -->
-          <UniversalSetting v-else-if="activeKey === 'lyrics'" :groups="lyricSettings" />
+          <UniversalSetting v-else-if="activeKey === 'lyrics'" :groups="lyricConfig.groups" />
           <!-- 快捷键 -->
-          <UniversalSetting v-else-if="activeKey === 'keyboard'" :groups="keyboardSettings" />
+          <UniversalSetting v-else-if="activeKey === 'keyboard'" :groups="keyboardConfig.groups" />
           <!-- 本地 -->
-          <UniversalSetting v-else-if="activeKey === 'local'" :groups="localSettings" />
+          <UniversalSetting v-else-if="activeKey === 'local'" :groups="localConfig.groups" />
           <!-- 第三方 -->
-          <UniversalSetting v-else-if="activeKey === 'third'" :groups="thirdSettings" />
+          <UniversalSetting v-else-if="activeKey === 'third'" :groups="thirdConfig.groups" />
           <!-- 流媒体 -->
-          <UniversalSetting v-else-if="activeKey === 'streaming'" :groups="streamingSettings" />
+          <UniversalSetting
+            v-else-if="activeKey === 'streaming'"
+            :groups="streamingConfig.groups"
+          />
           <!-- 其他 -->
-          <UniversalSetting v-else-if="activeKey === 'other'" :groups="otherSettings" />
+          <UniversalSetting v-else-if="activeKey === 'other'" :groups="otherConfig.groups" />
           <!-- 关于 -->
           <AboutSetting v-else-if="activeKey === 'about'" />
           <!-- 空白 -->
@@ -113,26 +116,38 @@ import { useOtherSettings } from "./config/other";
 
 const props = defineProps<{ type: SettingType; scrollTo?: string }>();
 
-const playSettings = usePlaySettings();
-const generalSettings = useGeneralSettings();
-const lyricSettings = useLyricSettings();
-const keyboardSettings = useKeyboardSettings();
-const localSettings = useLocalSettings();
-const thirdSettings = useThirdSettings();
-const streamingSettings = useStreamingSettings();
-const otherSettings = useOtherSettings();
+const playConfig = usePlaySettings();
+const generalConfig = useGeneralSettings();
+const lyricConfig = useLyricSettings();
+const keyboardConfig = useKeyboardSettings();
+const localConfig = useLocalSettings();
+const thirdConfig = useThirdSettings();
+const streamingConfig = useStreamingSettings();
+const otherConfig = useOtherSettings();
+
+// 配置映射表
+const configs: Record<string, any> = {
+  play: playConfig,
+  general: generalConfig,
+  lyrics: lyricConfig,
+  keyboard: keyboardConfig,
+  local: localConfig,
+  third: thirdConfig,
+  streaming: streamingConfig,
+  other: otherConfig,
+};
 
 // 聚合所有设置
 const allSettingGroups = computed(() => {
   return [
-    { key: "general", groups: generalSettings },
-    { key: "play", groups: playSettings },
-    { key: "lyrics", groups: lyricSettings },
-    { key: "keyboard", groups: keyboardSettings },
-    { key: "local", groups: localSettings },
-    { key: "third", groups: thirdSettings },
-    { key: "streaming", groups: streamingSettings },
-    { key: "other", groups: otherSettings },
+    { key: "general", groups: generalConfig.groups },
+    { key: "play", groups: playConfig.groups },
+    { key: "lyrics", groups: lyricConfig.groups },
+    { key: "keyboard", groups: keyboardConfig.groups },
+    { key: "local", groups: localConfig.groups },
+    { key: "third", groups: thirdConfig.groups },
+    { key: "streaming", groups: streamingConfig.groups },
+    { key: "other", groups: otherConfig.groups },
   ];
 });
 
@@ -162,19 +177,33 @@ const onMenuSelect = () => {
   }
 };
 
+// 监听 ActiveKey 变化，触发懒加载事件
+watch(
+  activeKey,
+  (newKey, oldKey) => {
+    // 触发销毁
+    if (oldKey && configs[oldKey]?.onDeactivate) {
+      configs[oldKey].onDeactivate();
+    }
+    // 触发激活
+    if (newKey && configs[newKey]?.onActivate) {
+      configs[newKey].onActivate();
+    }
+  },
+  { immediate: true },
+);
+
 const isSearchActive = ref(false);
 
 // 搜索选项
 const searchOptions = computed<SelectOption[]>(() => {
   const options: SelectOption[] = [];
-
   allSettingGroups.value.forEach(({ key, groups }) => {
-    // 检查该分类是否应在当前环境显示
+    // 分类是否显示
     const menuOption = menuOptions.find((m) => m.key === key);
-    if (menuOption?.show === false) return; // 如果明确设置为 false 则跳过 (isElectron check etc)
-
+    if (menuOption?.show === false) return;
+    // 检查分组可见性
     groups.forEach((group: SettingGroup) => {
-      // 检查分组可见性
       const groupShow =
         group.show === undefined
           ? true
@@ -182,9 +211,8 @@ const searchOptions = computed<SelectOption[]>(() => {
             ? group.show()
             : toValue(group.show);
       if (!groupShow) return;
-
+      // 检查设置项可见性
       group.items.forEach((item: SettingItem) => {
-        // 检查设置项可见性
         const itemShow =
           item.show === undefined
             ? true
@@ -192,21 +220,18 @@ const searchOptions = computed<SelectOption[]>(() => {
               ? item.show()
               : toValue(item.show);
         if (!itemShow) return;
-
         const label = toValue(item.label);
         const desc = toValue(item.description);
-
         options.push({
           label: label,
           value: `${key}::${item.key}`,
-          // 用于搜索匹配
           searchLabel: `${label} ${typeof desc === "string" ? desc : ""} ${item.keywords?.join(" ") || ""}`,
           desc: typeof desc === "string" ? desc : undefined,
+          groupLabel: group.title,
         });
       });
     });
   });
-
   return options;
 });
 
@@ -224,7 +249,7 @@ const handleSearch = (value: string | number) => {
     showLeftMenu.value = false;
   }
   nextTick(() => {
-    setTimeout(() => {
+    useTimeoutFn(() => {
       const element = document.getElementById(`setting-${targetKey}`);
       if (element) {
         element.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -288,6 +313,12 @@ const menuOptions: MenuOption[] = [
 const toGithub = () => {
   window.open(packageJson.github);
 };
+
+onMounted(() => {
+  if (props.scrollTo) {
+    handleSearch(`${props.type}::${props.scrollTo}`);
+  }
+});
 </script>
 
 <style lang="scss" scoped>
@@ -484,6 +515,12 @@ const toGithub = () => {
     }
   }
   .n-menu {
+    padding-bottom: 0;
+    .n-menu-item {
+      &:first-child {
+        margin-top: 0;
+      }
+    }
     .n-menu-item-content {
       &::before {
         left: 0px;

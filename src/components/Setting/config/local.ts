@@ -2,13 +2,13 @@ import { useSettingStore, useStatusStore } from "@/stores";
 import { useCacheManager } from "@/core/resource/CacheManager";
 import { formatFileSize } from "@/utils/helper";
 import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
-import { SettingGroup } from "@/types/settings";
-import { pick } from "lodash-es";
+import { SettingConfig } from "@/types/settings";
 import { openLocalMusicDirectoryModal } from "@/utils/modal";
+import { pick } from "lodash-es";
 import LocalLyricDirectories from "../components/LocalLyricDirectories.vue";
 import CacheSizeLimit from "../components/CacheSizeLimit.vue";
 
-export const useLocalSettings = (): SettingGroup[] => {
+export const useLocalSettings = (): SettingConfig => {
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
   const cacheManager = useCacheManager();
@@ -38,8 +38,10 @@ export const useLocalSettings = (): SettingGroup[] => {
   };
 
   // 初始加载
-  loadCacheSize();
-  loadCachePath();
+  const onActivate = () => {
+    loadCacheSize();
+    loadCachePath();
+  };
 
   // 更改缓存目录
   const changeCachePath = async () => {
@@ -186,298 +188,301 @@ export const useLocalSettings = (): SettingGroup[] => {
     if (path) settingStore.downloadPath = path;
   };
 
-  return [
-    {
-      title: "本地歌曲",
-      items: [
-        {
-          key: "showLocalCover",
-          label: "显示本地歌曲封面",
-          type: "switch",
-          description: "当数量过多时请勿开启，会严重影响性能",
-          value: computed({
-            get: () => settingStore.showLocalCover,
-            set: (v) => (settingStore.showLocalCover = v),
-          }),
-        },
-        {
-          key: "localFolderDisplayMode",
-          label: "本地文件夹显示模式",
-          type: "select",
-          description: "选择本地音乐页面文件夹的显示方式",
-          options: [
-            { label: "标签页模式", value: "tab" },
-            { label: "下拉筛选模式", value: "dropdown" },
-          ],
-          value: computed({
-            get: () => settingStore.localFolderDisplayMode,
-            set: (v) => (settingStore.localFolderDisplayMode = v),
-          }),
-        },
-        {
-          key: "showDefaultLocalPath",
-          label: "显示本地默认歌曲目录",
-          type: "switch",
-          value: computed({
-            get: () => settingStore.showDefaultLocalPath,
-            set: (v) => (settingStore.showDefaultLocalPath = v),
-          }),
-        },
-        {
-          key: "localFilesPath",
-          label: "本地歌曲目录",
-          type: "button",
-          buttonLabel: "管理目录",
-          description: "可在此增删本地歌曲目录，歌曲增删实时同步",
-          action: openLocalMusicDirectoryModal,
-        },
-        {
-          key: "localLyricPath",
-          label: "本地歌词覆盖在线歌词",
-          type: "custom",
-          noWrapper: true,
-          component: markRaw(LocalLyricDirectories),
-        },
-      ],
-    },
-    {
-      title: "缓存配置",
-      items: [
-        {
-          key: "cacheEnabled",
-          label: "启用缓存",
-          type: "switch",
-          description: "开启缓存会加快资源加载速度，但会占用更多磁盘空间",
-          value: computed({
-            get: () => settingStore.cacheEnabled,
-            set: (v) => (settingStore.cacheEnabled = v),
-          }),
-        },
-        {
-          key: "songCacheEnabled",
-          label: "缓存歌曲",
-          type: "switch",
-          description: "是否缓存歌曲音频，关闭后可节省缓存空间",
-          value: computed({
-            get: () => settingStore.songCacheEnabled,
-            set: (v) => (settingStore.songCacheEnabled = v),
-          }),
-          condition: () => settingStore.cacheEnabled,
-        },
-        {
-          key: "cacheLimit",
-          label: "缓存大小上限",
-          type: "custom",
-          description: "达到上限后将清理最旧的缓存，可以是小数，最低 2GB",
-          component: markRaw(CacheSizeLimit),
-          condition: () => settingStore.cacheEnabled,
-          noWrapper: true,
-        },
-        {
-          key: "cachePath",
-          label: "缓存目录",
-          type: "button",
-          description: computed(() => cachePath.value || "未配置时将使用默认缓存目录"),
-          buttonLabel: "更改",
-          action: confirmChangeCachePath,
-          condition: () => settingStore.cacheEnabled,
-        },
-        {
-          key: "clearCache",
-          label: "缓存占用与清理",
-          type: "button",
-          description: () => `当前缓存占用：${cacheSizeDisplay.value}`,
-          buttonLabel: "清空缓存",
-          action: confirmClearCache,
-          componentProps: { type: "error" },
-        },
-      ],
-    },
-    {
-      title: "下载配置",
-      show: statusStore.isDeveloperMode,
-      items: [
-        {
-          key: "downloadPath",
-          label: "默认下载目录",
-          type: "button",
-          description: computed(() => settingStore.downloadPath || "若不设置则无法进行下载"),
-          buttonLabel: "更改",
-          action: chooseDownloadPath,
-          extraButton: {
-            label: "清除选择",
-            type: "primary",
-            secondary: true,
-            strong: true,
-            action: () => (settingStore.downloadPath = ""),
-            show: computed(() => !!settingStore.downloadPath),
-          },
-        },
-        {
-          key: "downloadSongLevel",
-          label: "默认下载音质",
-          type: "select",
-          description: "默认使用的音质，实际可用音质取决于账号权限和歌曲资源",
-          options: downloadQualityOptions,
-          value: computed({
-            get: () => settingStore.downloadSongLevel,
-            set: (v) => (settingStore.downloadSongLevel = v),
-          }),
-        },
-        {
-          key: "downloadMeta",
-          label: "下载歌曲元信息",
-          type: "switch",
-          description: "为当前下载歌曲附加封面及歌词等元信息",
-          value: computed({
-            get: () => settingStore.downloadMeta,
-            set: (v) => (settingStore.downloadMeta = v),
-          }),
-        },
-        {
-          key: "downloadCover",
-          label: "同时下载封面",
-          type: "switch",
-          description: "下载歌曲时同时下载封面",
-          disabled: computed(() => !settingStore.downloadMeta),
-          value: computed({
-            get: () => settingStore.downloadCover,
-            set: (v) => (settingStore.downloadCover = v),
-          }),
-        },
-        {
-          key: "downloadLyric",
-          label: "同时下载歌词",
-          type: "switch",
-          description: "下载歌曲时同时下载歌词",
-          disabled: computed(() => !settingStore.downloadMeta),
-          value: computed({
-            get: () => settingStore.downloadLyric,
-            set: (v) => (settingStore.downloadLyric = v),
-          }),
-        },
-        {
-          key: "downloadLyricTranslation",
-          label: "同时下载歌词翻译",
-          type: "switch",
-          description: "下载歌词时同时包含翻译",
-          disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
-          value: computed({
-            get: () => settingStore.downloadLyricTranslation,
-            set: (v) => (settingStore.downloadLyricTranslation = v),
-          }),
-        },
-        {
-          key: "downloadLyricRomaji",
-          label: "同时下载歌词音译",
-          type: "switch",
-          description: "下载歌词时同时包含音译（罗马音）",
-          disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
-          value: computed({
-            get: () => settingStore.downloadLyricRomaji,
-            set: (v) => (settingStore.downloadLyricRomaji = v),
-          }),
-        },
-        {
-          key: "fileNameFormat",
-          label: "音乐命名格式",
-          type: "select",
-          description: "选择下载文件的命名方式，建议包含歌手信息便于区分",
-          options: fileNameFormatOptions,
-          value: computed({
-            get: () => settingStore.fileNameFormat,
-            set: (v) => (settingStore.fileNameFormat = v),
-          }),
-        },
-        {
-          key: "folderStrategy",
-          label: "文件智能分类",
-          type: "select",
-          description: "自动按歌手或歌手与专辑创建子文件夹进行分类",
-          options: folderStrategyOptions,
-          value: computed({
-            get: () => settingStore.folderStrategy,
-            set: (v) => (settingStore.folderStrategy = v),
-          }),
-        },
-        {
-          key: "usePlaybackForDownload",
-          label: "模拟播放下载",
-          type: "switch",
-          tags: [{ text: "Beta", type: "warning" }],
-          description: "使用播放接口进行下载，可能解决部分下载失败问题",
-          value: computed({
-            get: () => settingStore.usePlaybackForDownload,
-            set: (v) => handlePlaybackDownloadChange(v),
-          }),
-        },
-        {
-          key: "useUnlockForDownload",
-          label: "使用解锁接口下载",
-          type: "switch",
-          tags: [{ text: "Beta", type: "warning" }],
-          description: "利用配置的解锁服务获取下载链接（优先于默认方式）",
-          value: computed({
-            get: () => settingStore.useUnlockForDownload,
-            set: (v) => handleUnlockDownloadChange(v),
-          }),
-        },
-        {
-          key: "downloadMakeYrc",
-          label: "下载时另存逐字歌词文件",
-          type: "switch",
-          tags: [{ text: "Beta", type: "warning" }],
-          description: "在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌LRC）",
-          disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
-          value: computed({
-            get: () => settingStore.downloadMakeYrc,
-            set: (v) => (settingStore.downloadMakeYrc = v),
-          }),
-        },
-        {
-          key: "downloadLyricToTraditional",
-          label: "下载歌词转繁体",
-          type: "switch",
-          description: () =>
-            h("div", {
-              innerHTML:
-                "下载的歌词文件将转换为繁体中文（包括 LRC、YRC、TTML）<br />使用歌词设置中的繁体变体：" +
-                traditionalVariantLabel.value,
+  return {
+    onActivate,
+    groups: [
+      {
+        title: "本地歌曲",
+        items: [
+          {
+            key: "showLocalCover",
+            label: "显示本地歌曲封面",
+            type: "switch",
+            description: "当数量过多时请勿开启，会严重影响性能",
+            value: computed({
+              get: () => settingStore.showLocalCover,
+              set: (v) => (settingStore.showLocalCover = v),
             }),
-          disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
-          value: computed({
-            get: () => settingStore.downloadLyricToTraditional,
-            set: (v) => (settingStore.downloadLyricToTraditional = v),
-          }),
-        },
-        {
-          key: "downloadLyricEncoding",
-          label: "下载的歌词文件编码格式",
-          type: "select",
-          description: "部分车载或老旧播放器可能仅支持 GBK 编码",
-          options: [
-            { label: "UTF-8", value: "utf-8" },
-            { label: "GBK", value: "gbk" },
-            { label: "UTF-16", value: "utf-16" },
-            { label: "ISO-8859-1", value: "iso-8859-1" },
-          ],
-          value: computed({
-            get: () => settingStore.downloadLyricEncoding,
-            set: (v) => handleLyricEncodingChange(v),
-          }),
-        },
-        {
-          key: "saveMetaFile",
-          label: "保留元信息文件",
-          type: "switch",
-          description: "是否在下载目录中保留元信息文件",
-          disabled: computed(() => !settingStore.downloadMeta),
-          value: computed({
-            get: () => settingStore.saveMetaFile,
-            set: (v) => (settingStore.saveMetaFile = v),
-          }),
-        },
-      ],
-    },
-  ];
+          },
+          {
+            key: "localFolderDisplayMode",
+            label: "本地文件夹显示模式",
+            type: "select",
+            description: "选择本地音乐页面文件夹的显示方式",
+            options: [
+              { label: "标签页模式", value: "tab" },
+              { label: "下拉筛选模式", value: "dropdown" },
+            ],
+            value: computed({
+              get: () => settingStore.localFolderDisplayMode,
+              set: (v) => (settingStore.localFolderDisplayMode = v),
+            }),
+          },
+          {
+            key: "showDefaultLocalPath",
+            label: "显示本地默认歌曲目录",
+            type: "switch",
+            value: computed({
+              get: () => settingStore.showDefaultLocalPath,
+              set: (v) => (settingStore.showDefaultLocalPath = v),
+            }),
+          },
+          {
+            key: "localFilesPath",
+            label: "本地歌曲目录",
+            type: "button",
+            buttonLabel: "管理目录",
+            description: "可在此增删本地歌曲目录，歌曲增删实时同步",
+            action: openLocalMusicDirectoryModal,
+          },
+          {
+            key: "localLyricPath",
+            label: "本地歌词覆盖在线歌词",
+            type: "custom",
+            noWrapper: true,
+            component: markRaw(LocalLyricDirectories),
+          },
+        ],
+      },
+      {
+        title: "缓存配置",
+        items: [
+          {
+            key: "cacheEnabled",
+            label: "启用缓存",
+            type: "switch",
+            description: "开启缓存会加快资源加载速度，但会占用更多磁盘空间",
+            value: computed({
+              get: () => settingStore.cacheEnabled,
+              set: (v) => (settingStore.cacheEnabled = v),
+            }),
+          },
+          {
+            key: "songCacheEnabled",
+            label: "缓存歌曲",
+            type: "switch",
+            description: "是否缓存歌曲音频，关闭后可节省缓存空间",
+            value: computed({
+              get: () => settingStore.songCacheEnabled,
+              set: (v) => (settingStore.songCacheEnabled = v),
+            }),
+            condition: () => settingStore.cacheEnabled,
+          },
+          {
+            key: "cacheLimit",
+            label: "缓存大小上限",
+            type: "custom",
+            description: "达到上限后将清理最旧的缓存，可以是小数，最低 2GB",
+            component: markRaw(CacheSizeLimit),
+            condition: () => settingStore.cacheEnabled,
+            noWrapper: true,
+          },
+          {
+            key: "cachePath",
+            label: "缓存目录",
+            type: "button",
+            description: computed(() => cachePath.value || "未配置时将使用默认缓存目录"),
+            buttonLabel: "更改",
+            action: confirmChangeCachePath,
+            condition: () => settingStore.cacheEnabled,
+          },
+          {
+            key: "clearCache",
+            label: "缓存占用与清理",
+            type: "button",
+            description: () => `当前缓存占用：${cacheSizeDisplay.value}`,
+            buttonLabel: "清空缓存",
+            action: confirmClearCache,
+            componentProps: { type: "error" },
+          },
+        ],
+      },
+      {
+        title: "下载配置",
+        show: statusStore.isDeveloperMode,
+        items: [
+          {
+            key: "downloadPath",
+            label: "默认下载目录",
+            type: "button",
+            description: computed(() => settingStore.downloadPath || "若不设置则无法进行下载"),
+            buttonLabel: "更改",
+            action: chooseDownloadPath,
+            extraButton: {
+              label: "清除选择",
+              type: "primary",
+              secondary: true,
+              strong: true,
+              action: () => (settingStore.downloadPath = ""),
+              show: computed(() => !!settingStore.downloadPath),
+            },
+          },
+          {
+            key: "downloadSongLevel",
+            label: "默认下载音质",
+            type: "select",
+            description: "默认使用的音质，实际可用音质取决于账号权限和歌曲资源",
+            options: downloadQualityOptions,
+            value: computed({
+              get: () => settingStore.downloadSongLevel,
+              set: (v) => (settingStore.downloadSongLevel = v),
+            }),
+          },
+          {
+            key: "downloadMeta",
+            label: "下载歌曲元信息",
+            type: "switch",
+            description: "为当前下载歌曲附加封面及歌词等元信息",
+            value: computed({
+              get: () => settingStore.downloadMeta,
+              set: (v) => (settingStore.downloadMeta = v),
+            }),
+          },
+          {
+            key: "downloadCover",
+            label: "同时下载封面",
+            type: "switch",
+            description: "下载歌曲时同时下载封面",
+            disabled: computed(() => !settingStore.downloadMeta),
+            value: computed({
+              get: () => settingStore.downloadCover,
+              set: (v) => (settingStore.downloadCover = v),
+            }),
+          },
+          {
+            key: "downloadLyric",
+            label: "同时下载歌词",
+            type: "switch",
+            description: "下载歌曲时同时下载歌词",
+            disabled: computed(() => !settingStore.downloadMeta),
+            value: computed({
+              get: () => settingStore.downloadLyric,
+              set: (v) => (settingStore.downloadLyric = v),
+            }),
+          },
+          {
+            key: "downloadLyricTranslation",
+            label: "同时下载歌词翻译",
+            type: "switch",
+            description: "下载歌词时同时包含翻译",
+            disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
+            value: computed({
+              get: () => settingStore.downloadLyricTranslation,
+              set: (v) => (settingStore.downloadLyricTranslation = v),
+            }),
+          },
+          {
+            key: "downloadLyricRomaji",
+            label: "同时下载歌词音译",
+            type: "switch",
+            description: "下载歌词时同时包含音译（罗马音）",
+            disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
+            value: computed({
+              get: () => settingStore.downloadLyricRomaji,
+              set: (v) => (settingStore.downloadLyricRomaji = v),
+            }),
+          },
+          {
+            key: "fileNameFormat",
+            label: "音乐命名格式",
+            type: "select",
+            description: "选择下载文件的命名方式，建议包含歌手信息便于区分",
+            options: fileNameFormatOptions,
+            value: computed({
+              get: () => settingStore.fileNameFormat,
+              set: (v) => (settingStore.fileNameFormat = v),
+            }),
+          },
+          {
+            key: "folderStrategy",
+            label: "文件智能分类",
+            type: "select",
+            description: "自动按歌手或歌手与专辑创建子文件夹进行分类",
+            options: folderStrategyOptions,
+            value: computed({
+              get: () => settingStore.folderStrategy,
+              set: (v) => (settingStore.folderStrategy = v),
+            }),
+          },
+          {
+            key: "usePlaybackForDownload",
+            label: "模拟播放下载",
+            type: "switch",
+            tags: [{ text: "Beta", type: "warning" }],
+            description: "使用播放接口进行下载，可能解决部分下载失败问题",
+            value: computed({
+              get: () => settingStore.usePlaybackForDownload,
+              set: (v) => handlePlaybackDownloadChange(v),
+            }),
+          },
+          {
+            key: "useUnlockForDownload",
+            label: "使用解锁接口下载",
+            type: "switch",
+            tags: [{ text: "Beta", type: "warning" }],
+            description: "利用配置的解锁服务获取下载链接（优先于默认方式）",
+            value: computed({
+              get: () => settingStore.useUnlockForDownload,
+              set: (v) => handleUnlockDownloadChange(v),
+            }),
+          },
+          {
+            key: "downloadMakeYrc",
+            label: "下载时另存逐字歌词文件",
+            type: "switch",
+            tags: [{ text: "Beta", type: "warning" }],
+            description: "在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌LRC）",
+            disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
+            value: computed({
+              get: () => settingStore.downloadMakeYrc,
+              set: (v) => (settingStore.downloadMakeYrc = v),
+            }),
+          },
+          {
+            key: "downloadLyricToTraditional",
+            label: "下载歌词转繁体",
+            type: "switch",
+            description: () =>
+              h("div", {
+                innerHTML:
+                  "下载的歌词文件将转换为繁体中文（包括 LRC、YRC、TTML）<br />使用歌词设置中的繁体变体：" +
+                  traditionalVariantLabel.value,
+              }),
+            disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
+            value: computed({
+              get: () => settingStore.downloadLyricToTraditional,
+              set: (v) => (settingStore.downloadLyricToTraditional = v),
+            }),
+          },
+          {
+            key: "downloadLyricEncoding",
+            label: "下载的歌词文件编码格式",
+            type: "select",
+            description: "部分车载或老旧播放器可能仅支持 GBK 编码",
+            options: [
+              { label: "UTF-8", value: "utf-8" },
+              { label: "GBK", value: "gbk" },
+              { label: "UTF-16", value: "utf-16" },
+              { label: "ISO-8859-1", value: "iso-8859-1" },
+            ],
+            value: computed({
+              get: () => settingStore.downloadLyricEncoding,
+              set: (v) => handleLyricEncodingChange(v),
+            }),
+          },
+          {
+            key: "saveMetaFile",
+            label: "保留元信息文件",
+            type: "switch",
+            description: "是否在下载目录中保留元信息文件",
+            disabled: computed(() => !settingStore.downloadMeta),
+            value: computed({
+              get: () => settingStore.saveMetaFile,
+              set: (v) => (settingStore.saveMetaFile = v),
+            }),
+          },
+        ],
+      },
+    ],
+  };
 };

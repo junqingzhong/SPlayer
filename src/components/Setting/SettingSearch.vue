@@ -15,7 +15,7 @@
 
     <Transition name="fadeDown">
       <n-card v-show="isFocus && inputValue" class="search-result" content-style="padding: 0">
-        <n-scrollbar style="max-height: 300px">
+        <n-scrollbar style="max-height: calc(75vh - 280px); border-radius: 8px">
           <div v-if="resultList.length === 0" class="empty">
             <n-text depth="3">未找到相关设置</n-text>
           </div>
@@ -25,6 +25,7 @@
             class="result-item"
             @mousedown.prevent="handleSelect(item.value!)"
           >
+            <div class="group-label" v-if="item.groupLabel">{{ item.groupLabel }}</div>
             <div class="label">{{ item.label }}</div>
             <div class="desc" v-if="item.desc">{{ item.desc }}</div>
           </div>
@@ -35,12 +36,13 @@
 </template>
 
 <script setup lang="ts">
+import type { SelectOption } from "naive-ui";
 import Fuse from "fuse.js";
-import { SelectOption } from "naive-ui";
 
 interface SearchOption extends SelectOption {
   searchLabel?: string;
   desc?: string;
+  groupLabel?: string;
 }
 
 const props = defineProps<{
@@ -53,7 +55,6 @@ const inputValue = ref("");
 const isFocus = ref(false);
 const resultList = ref<SearchOption[]>([]);
 
-// Fuse 实例
 let fuse: Fuse<SearchOption> | null = null;
 
 // 搜索激活状态
@@ -68,7 +69,7 @@ watch(
   () => props.options,
   (newOptions) => {
     fuse = new Fuse(newOptions, {
-      keys: ["label", "searchLabel"],
+      keys: ["label", "searchLabel", "groupLabel"],
       threshold: 0.3,
       ignoreLocation: true,
     });
@@ -87,7 +88,7 @@ watch(inputValue, (val) => {
 
 // 处理失焦
 const handleBlur = () => {
-  isFocus.value = false;
+  // isFocus.value = false;
 };
 
 // 处理选择
@@ -105,12 +106,10 @@ const handleSelect = (value: string | number) => {
   width: 100%;
   margin-bottom: 12px;
   z-index: 100;
-
   .search-input {
     width: 100%;
     border-radius: 8px;
   }
-
   .search-result {
     position: absolute;
     top: 46px;
@@ -118,21 +117,22 @@ const handleSelect = (value: string | number) => {
     width: 100%;
     border-radius: 8px;
     z-index: 101;
-
     .empty {
       padding: 16px;
       text-align: center;
     }
-
     .result-item {
       padding: 12px 16px;
       cursor: pointer;
       transition: background-color 0.2s;
-
       &:hover {
         background-color: var(--n-close-color-hover);
       }
-
+      .group-label {
+        font-size: 12px;
+        opacity: 0.5;
+        margin-bottom: 2px;
+      }
       .label {
         font-size: 14px;
         font-weight: 500;
@@ -141,6 +141,9 @@ const handleSelect = (value: string | number) => {
       .desc {
         font-size: 12px;
         opacity: 0.6;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
   }

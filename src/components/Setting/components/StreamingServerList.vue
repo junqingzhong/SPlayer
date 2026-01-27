@@ -159,29 +159,14 @@ const handleConnect = async (server: StreamingServerConfig) => {
     margin-top: 12px;
     background-color: rgba(var(--primary), 0.05);
   }
+  .n-flex {
+    width: 100%;
+  }
   .n-collapse-transition {
     margin-top: 12px;
   }
-  :deep(.n-card__content) {
-    > .n-flex {
-      width: 100%;
-    }
-  }
   .set {
     width: 200px;
-  }
-}
-.label {
-  display: flex;
-  flex-direction: column;
-  padding-right: 20px;
-  flex-shrink: 0;
-
-  .name {
-    font-size: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 }
 </style>

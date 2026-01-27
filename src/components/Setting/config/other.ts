@@ -1,11 +1,11 @@
 import { useSettingStore, useDataStore } from "@/stores";
 import { isElectron } from "@/utils/env";
-import { SettingGroup } from "@/types/settings";
+import { SettingConfig } from "@/types/settings";
 import { computed, ref, h } from "vue";
 import { debounce } from "lodash-es";
 import { NAlert } from "naive-ui";
 
-export const useOtherSettings = (): SettingGroup[] => {
+export const useOtherSettings = (): SettingConfig => {
   const settingStore = useSettingStore();
   const dataStore = useDataStore();
 
@@ -133,157 +133,159 @@ export const useOtherSettings = (): SettingGroup[] => {
     });
   };
 
-  return [
-    {
-      title: "地区解锁",
-      items: [
-        {
-          key: "useRealIP",
-          label: "使用真实 IP 地址",
-          type: "switch",
-          description: "在海外或部分地区可能会受到限制，可开启此处尝试解决",
-          value: computed({
-            get: () => settingStore.useRealIP,
-            set: (v) => (settingStore.useRealIP = v),
-          }),
-        },
-        {
-          key: "realIP",
-          label: "真实 IP 地址",
-          type: "text-input",
-          description: "可在此处输入国内 IP，不填写则为随机",
-          disabled: computed(() => !settingStore.useRealIP),
-          prefix: "IP",
-          componentProps: { placeholder: "127.0.0.1" },
-          value: computed({
-            get: () => settingStore.realIP,
-            set: (v) => (settingStore.realIP = v),
-          }),
-        },
-      ],
-    },
-    {
-      title: "网络代理",
-      show: isElectron,
-      items: [
-        {
-          key: "proxyProtocol",
-          label: "网络代理",
-          type: "select",
-          description: "修改后请点击保存或重启软件以应用",
-          options: [
-            { label: "关闭代理", value: "off" },
-            { label: "HTTP 代理", value: "HTTP" },
-            { label: "HTTPS 代理", value: "HTTPS" },
-          ],
-          value: computed({
-            get: () => settingStore.proxyProtocol,
-            set: (v) => (settingStore.proxyProtocol = v),
-          }),
-          extraButton: {
-            label: "保存并应用",
-            action: setProxy,
-            type: "primary",
-            secondary: true,
-            strong: true,
+  return {
+    groups: [
+      {
+        title: "地区解锁",
+        items: [
+          {
+            key: "useRealIP",
+            label: "使用真实 IP 地址",
+            type: "switch",
+            description: "在海外或部分地区可能会受到限制，可开启此处尝试解决",
+            value: computed({
+              get: () => settingStore.useRealIP,
+              set: (v) => (settingStore.useRealIP = v),
+            }),
           },
-        },
-        {
-          key: "proxyServe",
-          label: "代理服务器地址",
-          type: "text-input",
-          description: "请填写代理服务器地址，如 127.0.0.1",
-          disabled: computed(() => settingStore.proxyProtocol === "off"),
-          prefix: computed(() =>
-            settingStore.proxyProtocol === "off" ? "-" : settingStore.proxyProtocol,
-          ),
-          componentProps: {
-            placeholder: "请填写代理服务器地址",
+          {
+            key: "realIP",
+            label: "真实 IP 地址",
+            type: "text-input",
+            description: "可在此处输入国内 IP，不填写则为随机",
+            disabled: computed(() => !settingStore.useRealIP),
+            prefix: "IP",
+            componentProps: { placeholder: "127.0.0.1" },
+            value: computed({
+              get: () => settingStore.realIP,
+              set: (v) => (settingStore.realIP = v),
+            }),
           },
-          value: computed({
-            get: () => settingStore.proxyServe,
-            set: (v) => (settingStore.proxyServe = v),
-          }),
-        },
-        {
-          key: "proxyPort",
-          label: "代理服务器端口",
-          type: "input-number",
-          description: "请填写代理服务器端口，如 80",
-          disabled: computed(() => settingStore.proxyProtocol === "off"),
-          componentProps: {
-            min: 1,
-            max: 65535,
-            showButton: false,
-            placeholder: "请填写代理服务器端口",
+        ],
+      },
+      {
+        title: "网络代理",
+        show: isElectron,
+        items: [
+          {
+            key: "proxyProtocol",
+            label: "网络代理",
+            type: "select",
+            description: "修改后请点击保存或重启软件以应用",
+            options: [
+              { label: "关闭代理", value: "off" },
+              { label: "HTTP 代理", value: "HTTP" },
+              { label: "HTTPS 代理", value: "HTTPS" },
+            ],
+            value: computed({
+              get: () => settingStore.proxyProtocol,
+              set: (v) => (settingStore.proxyProtocol = v),
+            }),
+            extraButton: {
+              label: "保存并应用",
+              action: setProxy,
+              type: "primary",
+              secondary: true,
+              strong: true,
+            },
           },
-          value: computed({
-            get: () => settingStore.proxyPort,
-            set: (v) => (settingStore.proxyPort = v),
-          }),
-        },
-        {
-          key: "proxyTest",
-          label: "测试代理",
-          type: "button",
-          description: "测试代理配置是否可正常连通",
-          buttonLabel: "测试代理",
-          action: testProxy,
-          condition: () => settingStore.proxyProtocol !== "off",
-          componentProps: computed(() => ({
-            loading: testProxyLoading.value,
-            type: "primary",
-          })),
-        },
-      ],
-    },
-    {
-      title: "备份与恢复",
-      tags: [{ text: "Beta", type: "warning" }],
-      show: isElectron,
-      items: [
-        {
-          key: "exportSettings",
-          label: "导出设置",
-          type: "button",
-          description: "将当前所有设置导出为 JSON 文件",
-          buttonLabel: "导出设置",
-          action: exportSettings,
-          componentProps: { type: "primary" },
-        },
-        {
-          key: "importSettings",
-          label: "导入设置",
-          type: "button",
-          description: "从 JSON 文件恢复设置（导入后将自动重启）",
-          buttonLabel: "导入设置",
-          action: importSettings,
-          componentProps: { type: "primary" },
-        },
-      ],
-    },
-    {
-      title: "重置",
-      items: [
-        {
-          key: "resetSetting",
-          label: "重置所有设置",
-          type: "button",
-          description: "重置所有设置，恢复软件默认值",
-          buttonLabel: "重置设置",
-          action: resetSetting,
-          componentProps: { type: "warning" },
-        },
-        {
-          key: "clearAllData",
-          label: "清除全部数据",
-          type: "button",
-          description: "重置所有设置，清除全部数据",
-          buttonLabel: "清除全部",
-          action: clearAllData,
-          componentProps: { type: "error" },
-        },
-      ],
-    },
-  ];
+          {
+            key: "proxyServe",
+            label: "代理服务器地址",
+            type: "text-input",
+            description: "请填写代理服务器地址，如 127.0.0.1",
+            disabled: computed(() => settingStore.proxyProtocol === "off"),
+            prefix: computed(() =>
+              settingStore.proxyProtocol === "off" ? "-" : settingStore.proxyProtocol,
+            ),
+            componentProps: {
+              placeholder: "请填写代理服务器地址",
+            },
+            value: computed({
+              get: () => settingStore.proxyServe,
+              set: (v) => (settingStore.proxyServe = v),
+            }),
+          },
+          {
+            key: "proxyPort",
+            label: "代理服务器端口",
+            type: "input-number",
+            description: "请填写代理服务器端口，如 80",
+            disabled: computed(() => settingStore.proxyProtocol === "off"),
+            componentProps: {
+              min: 1,
+              max: 65535,
+              showButton: false,
+              placeholder: "请填写代理服务器端口",
+            },
+            value: computed({
+              get: () => settingStore.proxyPort,
+              set: (v) => (settingStore.proxyPort = v),
+            }),
+          },
+          {
+            key: "proxyTest",
+            label: "测试代理",
+            type: "button",
+            description: "测试代理配置是否可正常连通",
+            buttonLabel: "测试代理",
+            action: testProxy,
+            condition: () => settingStore.proxyProtocol !== "off",
+            componentProps: computed(() => ({
+              loading: testProxyLoading.value,
+              type: "primary",
+            })),
+          },
+        ],
+      },
+      {
+        title: "备份与恢复",
+        tags: [{ text: "Beta", type: "warning" }],
+        show: isElectron,
+        items: [
+          {
+            key: "exportSettings",
+            label: "导出设置",
+            type: "button",
+            description: "将当前所有设置导出为 JSON 文件",
+            buttonLabel: "导出设置",
+            action: exportSettings,
+            componentProps: { type: "primary" },
+          },
+          {
+            key: "importSettings",
+            label: "导入设置",
+            type: "button",
+            description: "从 JSON 文件恢复设置（导入后将自动重启）",
+            buttonLabel: "导入设置",
+            action: importSettings,
+            componentProps: { type: "primary" },
+          },
+        ],
+      },
+      {
+        title: "重置",
+        items: [
+          {
+            key: "resetSetting",
+            label: "重置所有设置",
+            type: "button",
+            description: "重置所有设置，恢复软件默认值",
+            buttonLabel: "重置设置",
+            action: resetSetting,
+            componentProps: { type: "warning" },
+          },
+          {
+            key: "clearAllData",
+            label: "清除全部数据",
+            type: "button",
+            description: "重置所有设置，清除全部数据",
+            buttonLabel: "清除全部",
+            action: clearAllData,
+            componentProps: { type: "error" },
+          },
+        ],
+      },
+    ],
+  };
 };

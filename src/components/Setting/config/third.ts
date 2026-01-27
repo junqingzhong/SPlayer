@@ -1,11 +1,11 @@
 import { useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
-import { SettingGroup } from "@/types/settings";
+import { SettingConfig } from "@/types/settings";
 import { NA } from "naive-ui";
 import { disableDiscordRpc, enableDiscordRpc, updateDiscordConfig } from "@/core/player/PlayerIpc";
 import { getAuthToken, getAuthUrl, getSession } from "@/api/lastfm";
 
-export const useThirdSettings = (): SettingGroup[] => {
+export const useThirdSettings = (): SettingConfig => {
   const settingStore = useSettingStore();
 
   // 更新 Discord 配置
@@ -180,223 +180,226 @@ export const useThirdSettings = (): SettingGroup[] => {
     });
   };
 
-  onMounted(() => {
+  const onActivate = () => {
     initSocketConfig();
-  });
+  };
 
-  return [
-    {
-      title: "系统集成",
-      items: [
-        {
-          key: "smtcOpen",
-          label: "开启系统音频集成",
-          type: "switch",
-          description: "与系统集成以显示媒体元数据，支持高清封面显示",
-          value: computed({
-            get: () => settingStore.smtcOpen,
-            set: (v) => (settingStore.smtcOpen = v),
-          }),
-        },
-      ],
-    },
-    {
-      title: "Last.fm 集成",
-      items: [
-        {
-          key: "lastfm_enabled",
-          label: "启用 Last.fm",
-          type: "switch",
-          description: "开启后可记录播放历史到 Last.fm",
-          value: computed({
-            get: () => settingStore.lastfm.enabled,
-            set: (v) => (settingStore.lastfm.enabled = v),
-          }),
-          children: [
-            {
-              key: "lastfm_apikey",
-              label: "API Key",
-              type: "text-input",
-              description: () =>
-                h("div", null, [
+  return {
+    onActivate,
+    groups: [
+      {
+        title: "系统集成",
+        items: [
+          {
+            key: "smtcOpen",
+            label: "开启系统音频集成",
+            type: "switch",
+            description: "与系统集成以显示媒体元数据，支持高清封面显示",
+            value: computed({
+              get: () => settingStore.smtcOpen,
+              set: (v) => (settingStore.smtcOpen = v),
+            }),
+          },
+        ],
+      },
+      {
+        title: "Last.fm 集成",
+        items: [
+          {
+            key: "lastfm_enabled",
+            label: "启用 Last.fm",
+            type: "switch",
+            description: "开启后可记录播放历史到 Last.fm",
+            value: computed({
+              get: () => settingStore.lastfm.enabled,
+              set: (v) => (settingStore.lastfm.enabled = v),
+            }),
+            children: [
+              {
+                key: "lastfm_apikey",
+                label: "API Key",
+                type: "text-input",
+                description: () =>
                   h("div", null, [
-                    "在 ",
-                    h(
-                      NA,
-                      {
-                        href: "https://www.last.fm/zh/api/account/create",
-                        target: "_blank",
-                      },
-                      { default: () => "Last.fm 创建应用" },
-                    ),
-                    " 获取，只有「程序名称」是必要的",
+                    h("div", null, [
+                      "在 ",
+                      h(
+                        NA,
+                        {
+                          href: "https://www.last.fm/zh/api/account/create",
+                          target: "_blank",
+                        },
+                        { default: () => "Last.fm 创建应用" },
+                      ),
+                      " 获取，只有「程序名称」是必要的",
+                    ]),
+                    h("div", null, [
+                      "如果已经创建过，则可以在 ",
+                      h(
+                        NA,
+                        {
+                          href: "https://www.last.fm/zh/api/accounts",
+                          target: "_blank",
+                        },
+                        { default: () => "Last.fm API 应用程序" },
+                      ),
+                      " 处查看",
+                    ]),
                   ]),
-                  h("div", null, [
-                    "如果已经创建过，则可以在 ",
-                    h(
-                      NA,
-                      {
-                        href: "https://www.last.fm/zh/api/accounts",
-                        target: "_blank",
-                      },
-                      { default: () => "Last.fm API 应用程序" },
-                    ),
-                    " 处查看",
-                  ]),
-                ]),
-              value: computed({
-                get: () => settingStore.lastfm.apiKey,
-                set: (v) => (settingStore.lastfm.apiKey = v),
-              }),
-            },
-            {
-              key: "lastfm_secret",
-              label: "API Secret",
-              type: "text-input",
-              description: "Shared Secret，用于签名验证",
-              componentProps: { type: "password", showPasswordOn: "click" },
-              value: computed({
-                get: () => settingStore.lastfm.apiSecret,
-                set: (v) => (settingStore.lastfm.apiSecret = v),
-              }),
-            },
-            {
-              key: "lastfm_connect",
-              label: computed(() =>
-                !settingStore.lastfm.sessionKey ? "连接 Last.fm 账号" : "已连接账号",
-              ),
-              type: "button",
-              description: computed(() =>
-                !settingStore.lastfm.sessionKey
-                  ? "首次使用需要授权连接"
-                  : settingStore.lastfm.username,
-              ),
-              buttonLabel: computed(() =>
-                !settingStore.lastfm.sessionKey ? "连接账号" : "断开连接",
-              ),
-              action: () =>
-                !settingStore.lastfm.sessionKey ? connectLastfm() : disconnectLastfm(),
-              componentProps: computed(() =>
-                !settingStore.lastfm.sessionKey
-                  ? {
-                      type: "primary",
-                      loading: lastfmAuthLoading.value,
-                      disabled: !settingStore.isLastfmConfigured,
-                    }
-                  : { type: "error" },
-              ),
-            },
-            {
-              key: "lastfm_scrobble",
-              label: "Scrobble（播放记录）",
-              type: "switch",
-              description: "自动记录播放历史到 Last.fm",
-              condition: () => !!settingStore.lastfm.sessionKey,
-              value: computed({
-                get: () => settingStore.lastfm.scrobbleEnabled,
-                set: (v) => (settingStore.lastfm.scrobbleEnabled = v),
-              }),
-            },
-            {
-              key: "lastfm_nowplaying",
-              label: "正在播放状态",
-              type: "switch",
-              description: "向 Last.fm 同步正在播放的歌曲",
-              condition: () => !!settingStore.lastfm.sessionKey,
-              value: computed({
-                get: () => settingStore.lastfm.nowPlayingEnabled,
-                set: (v) => (settingStore.lastfm.nowPlayingEnabled = v),
-              }),
-            },
-          ],
-        },
-      ],
-    },
-    {
-      title: "Discord RPC",
-      show: isElectron,
-      items: [
-        {
-          key: "discord_enabled",
-          label: "启用 Discord RPC",
-          type: "switch",
-          description: "在 Discord 状态中显示正在播放的歌曲",
-          value: computed({
-            get: () => settingStore.discordRpc.enabled,
-            set: (v) => handleDiscordEnabledUpdate(v),
-          }),
-          children: [
-            {
-              key: "discord_paused",
-              label: "暂停时显示",
-              type: "switch",
-              description: "暂停播放时是否保留 Discord 状态",
-              value: computed({
-                get: () => settingStore.discordRpc.showWhenPaused,
-                set: (v) => {
-                  settingStore.discordRpc.showWhenPaused = v;
-                  handleDiscordConfigUpdate();
-                },
-              }),
-            },
-            {
-              key: "discord_mode",
-              label: "简略状态显示",
-              type: "select",
-              description: "不打开详细信息面板时，在用户名下方显示的小字",
-              options: [
-                { label: "应用名", value: "Name" },
-                { label: "歌曲名", value: "Details" },
-                { label: "歌手名", value: "State" },
-              ],
-              value: computed({
-                get: () => settingStore.discordRpc.displayMode,
-                set: (v) => {
-                  settingStore.discordRpc.displayMode = v;
-                  handleDiscordConfigUpdate();
-                },
-              }),
-            },
-          ],
-        },
-      ],
-    },
-    {
-      title: "WebSocket 配置",
-      show: isElectron,
-      items: [
-        {
-          key: "socket_enabled",
-          label: "启用 WebSocket",
-          type: "switch",
-          description: "开启后可通过 WebSocket 获取状态或控制播放器",
-          value: computed({
-            get: () => socketEnabled.value,
-            set: (v) => handleSocketEnabledUpdate(v),
-          }),
-        },
-        {
-          key: "socket_port",
-          label: "WebSocket 端口",
-          type: "input-number",
-          description: "更改后需要测试并保存才能生效",
-          componentProps: { min: 1, max: 65535, showButton: false, placeholder: "请输入端口号" },
-          disabled: computed(() => socketEnabled.value),
-          value: computed({
-            get: () => socketPort.value,
-            set: (v) => (socketPort.value = v || 25885),
-          }),
-        },
-        {
-          key: "socket_test",
-          label: "测试端口配置",
-          type: "button",
-          buttonLabel: "测试并保存",
-          show: computed(() => socketPort.value !== socketPortSaved.value),
-          action: testSocketPort,
-          componentProps: { type: "primary" },
-        },
-      ],
-    },
-  ];
+                value: computed({
+                  get: () => settingStore.lastfm.apiKey,
+                  set: (v) => (settingStore.lastfm.apiKey = v),
+                }),
+              },
+              {
+                key: "lastfm_secret",
+                label: "API Secret",
+                type: "text-input",
+                description: "Shared Secret，用于签名验证",
+                componentProps: { type: "password", showPasswordOn: "click" },
+                value: computed({
+                  get: () => settingStore.lastfm.apiSecret,
+                  set: (v) => (settingStore.lastfm.apiSecret = v),
+                }),
+              },
+              {
+                key: "lastfm_connect",
+                label: computed(() =>
+                  !settingStore.lastfm.sessionKey ? "连接 Last.fm 账号" : "已连接账号",
+                ),
+                type: "button",
+                description: computed(() =>
+                  !settingStore.lastfm.sessionKey
+                    ? "首次使用需要授权连接"
+                    : settingStore.lastfm.username,
+                ),
+                buttonLabel: computed(() =>
+                  !settingStore.lastfm.sessionKey ? "连接账号" : "断开连接",
+                ),
+                action: () =>
+                  !settingStore.lastfm.sessionKey ? connectLastfm() : disconnectLastfm(),
+                componentProps: computed(() =>
+                  !settingStore.lastfm.sessionKey
+                    ? {
+                        type: "primary",
+                        loading: lastfmAuthLoading.value,
+                        disabled: !settingStore.isLastfmConfigured,
+                      }
+                    : { type: "error" },
+                ),
+              },
+              {
+                key: "lastfm_scrobble",
+                label: "Scrobble（播放记录）",
+                type: "switch",
+                description: "自动记录播放历史到 Last.fm",
+                condition: () => !!settingStore.lastfm.sessionKey,
+                value: computed({
+                  get: () => settingStore.lastfm.scrobbleEnabled,
+                  set: (v) => (settingStore.lastfm.scrobbleEnabled = v),
+                }),
+              },
+              {
+                key: "lastfm_nowplaying",
+                label: "正在播放状态",
+                type: "switch",
+                description: "向 Last.fm 同步正在播放的歌曲",
+                condition: () => !!settingStore.lastfm.sessionKey,
+                value: computed({
+                  get: () => settingStore.lastfm.nowPlayingEnabled,
+                  set: (v) => (settingStore.lastfm.nowPlayingEnabled = v),
+                }),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        title: "Discord RPC",
+        show: isElectron,
+        items: [
+          {
+            key: "discord_enabled",
+            label: "启用 Discord RPC",
+            type: "switch",
+            description: "在 Discord 状态中显示正在播放的歌曲",
+            value: computed({
+              get: () => settingStore.discordRpc.enabled,
+              set: (v) => handleDiscordEnabledUpdate(v),
+            }),
+            children: [
+              {
+                key: "discord_paused",
+                label: "暂停时显示",
+                type: "switch",
+                description: "暂停播放时是否保留 Discord 状态",
+                value: computed({
+                  get: () => settingStore.discordRpc.showWhenPaused,
+                  set: (v) => {
+                    settingStore.discordRpc.showWhenPaused = v;
+                    handleDiscordConfigUpdate();
+                  },
+                }),
+              },
+              {
+                key: "discord_mode",
+                label: "简略状态显示",
+                type: "select",
+                description: "不打开详细信息面板时，在用户名下方显示的小字",
+                options: [
+                  { label: "应用名", value: "Name" },
+                  { label: "歌曲名", value: "Details" },
+                  { label: "歌手名", value: "State" },
+                ],
+                value: computed({
+                  get: () => settingStore.discordRpc.displayMode,
+                  set: (v) => {
+                    settingStore.discordRpc.displayMode = v;
+                    handleDiscordConfigUpdate();
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        title: "WebSocket 配置",
+        show: isElectron,
+        items: [
+          {
+            key: "socket_enabled",
+            label: "启用 WebSocket",
+            type: "switch",
+            description: "开启后可通过 WebSocket 获取状态或控制播放器",
+            value: computed({
+              get: () => socketEnabled.value,
+              set: (v) => handleSocketEnabledUpdate(v),
+            }),
+          },
+          {
+            key: "socket_port",
+            label: "WebSocket 端口",
+            type: "input-number",
+            description: "更改后需要测试并保存才能生效",
+            componentProps: { min: 1, max: 65535, showButton: false, placeholder: "请输入端口号" },
+            disabled: computed(() => socketEnabled.value),
+            value: computed({
+              get: () => socketPort.value,
+              set: (v) => (socketPort.value = v || 25885),
+            }),
+          },
+          {
+            key: "socket_test",
+            label: "测试端口配置",
+            type: "button",
+            buttonLabel: "测试并保存",
+            show: computed(() => socketPort.value !== socketPortSaved.value),
+            action: testSocketPort,
+            componentProps: { type: "primary" },
+          },
+        ],
+      },
+    ],
+  };
 };
