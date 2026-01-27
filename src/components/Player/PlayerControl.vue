@@ -132,7 +132,7 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
   }
   .left,
   .right {
-    opacity: 0;
+    opacity: 1;
     height: 100%;
     padding: 0 30px;
     transition: opacity 0.3s;
@@ -158,10 +158,17 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
         transform: scale(1);
       }
     }
-    :deep(.n-badge-sup) {
-      background-color: rgba(var(--main-cover-color), 0.14);
-      .n-base-slot-machine {
+    :deep(.right-menu) {
+      .n-badge-sup {
+        background-color: rgba(var(--main-cover-color), 0.14);
+        .n-base-slot-machine {
+          color: rgb(var(--main-cover-color));
+        }
+      }
+      .quality-tag {
         color: rgb(var(--main-cover-color));
+        background-color: transparent !important;
+        border-color: rgba(var(--main-cover-color), 0.1) !important;
       }
     }
   }
@@ -189,7 +196,6 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
           transform 0.3s;
         cursor: pointer;
         margin: 0 4px;
-
         .n-icon {
           color: rgb(var(--main-cover-color));
         }

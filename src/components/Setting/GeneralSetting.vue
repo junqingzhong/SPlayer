@@ -115,6 +115,13 @@
       </n-card>
       <n-card class="set-item">
         <div class="label">
+          <n-text class="name">显示播放器切换音质按钮</n-text>
+          <n-text class="tip" :depth="3">是否在播放器显示切换音质按钮</n-text>
+        </div>
+        <n-switch class="set" v-model:value="settingStore.showPlayerQuality" :round="false" />
+      </n-card>
+      <n-card class="set-item">
+        <div class="label">
           <n-text class="name">显示特权标签</n-text>
           <n-text class="tip" :depth="3">是否显示如 VIP、EP 等特权标签</n-text>
         </div>

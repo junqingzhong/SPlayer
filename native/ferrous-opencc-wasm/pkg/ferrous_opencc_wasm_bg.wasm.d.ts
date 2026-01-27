@@ -1,5 +1,5 @@
 /* tslint:disable */
- 
+
 export const memory: WebAssembly.Memory;
 export const __wbg_textconverter_free: (a: number, b: number) => void;
 export const textconverter_convert: (a: number, b: number, c: number) => [number, number];

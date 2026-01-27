@@ -1,5 +1,5 @@
 import type { ColorScheme, RGB } from "@/types/main";
-import { QualityType, type SortField, type SortOrder } from "@/types/main";
+import { QualityType, type SongLevelDataType, type SortField, type SortOrder } from "@/types/main";
 import { RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isDevBuild } from "@/utils/env";
 import { defineStore } from "pinia";
@@ -60,6 +60,8 @@ interface StatusState {
   usingQRCLyric: boolean;
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;
+  /** 当前歌曲音源 */
+  audioSource: string | undefined;
   /** 当前播放索引 */
   playIndex: number;
   /** 歌词播放索引 */
@@ -136,6 +138,8 @@ interface StatusState {
     /** 是否为纯色模式 */
     isSolid: boolean;
   };
+  /** 可用音质列表 */
+  availableQualities: SongLevelDataType[];
 }
 
 export const useStatusStore = defineStore("status", {
@@ -160,6 +164,7 @@ export const useStatusStore = defineStore("status", {
     usingTTMLLyric: false,
     usingQRCLyric: false,
     songQuality: undefined,
+    audioSource: undefined,
     playIndex: -1,
     lyricIndex: -1,
     lyricLoading: false,
@@ -206,6 +211,7 @@ export const useStatusStore = defineStore("status", {
       /** 是否为纯色模式 */
       isSolid: false,
     },
+    availableQualities: [],
   }),
   getters: {
     // 播放音量图标

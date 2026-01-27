@@ -35,7 +35,7 @@ app.directive("visible", visibleDirective);
 app.mount("#app");
 
 // 初始化 ipc
-initIpc();
+if (!location.hash.includes("desktop-lyric")) initIpc();
 
 // 根据设置判断是否要注册协议
 if (isElectron) {

@@ -16,7 +16,11 @@
         </template>
       </n-image>
       <n-flex :size="2" class="song-info" vertical>
-        <span class="title text-hidden">{{ settingStore.hideLyricBrackets ? removeBrackets(musicStore.playSong.name) : musicStore.playSong.name }}</span>
+        <span class="title text-hidden">{{
+          settingStore.hideLyricBrackets
+            ? removeBrackets(musicStore.playSong.name)
+            : musicStore.playSong.name
+        }}</span>
         <span class="artist text-hidden">
           {{
             Array.isArray(musicStore.playSong.artists)

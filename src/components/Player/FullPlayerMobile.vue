@@ -133,7 +133,13 @@
         <div class="lyric-header">
           <s-image :src="musicStore.getSongCover('s')" class="lyric-cover" />
           <div class="lyric-info">
-            <div class="name text-hidden">{{ settingStore.hideLyricBrackets ? removeBrackets(musicStore.playSong.name) : musicStore.playSong.name }}</div>
+            <div class="name text-hidden">
+              {{
+                settingStore.hideLyricBrackets
+                  ? removeBrackets(musicStore.playSong.name)
+                  : musicStore.playSong.name
+              }}
+            </div>
             <div class="artist text-hidden">{{ artistName }}</div>
           </div>
           <!-- 喜欢按钮 -->

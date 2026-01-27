@@ -340,7 +340,9 @@
             下载时另存逐字歌词文件
             <n-tag type="warning" size="small" round>Beta</n-tag>
           </n-text>
-          <n-text class="tip" :depth="3">在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌LRC）</n-text>
+          <n-text class="tip" :depth="3"
+            >在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌LRC）</n-text
+          >
         </div>
         <n-switch
           v-model:value="settingStore.downloadMakeYrc"
@@ -431,12 +433,12 @@ const traditionalVariantLabel = computed(() => {
 const downloadQualityOptions = computed(() => {
   const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
   let allData = getSongLevelsData(levels);
-  
+
   if (settingStore.disableAiAudio) {
-      allData = allData.filter((item) => {
-           if (item.level === "dolby") return true; 
-           return !AI_AUDIO_LEVELS.includes(item.level);
-      });
+    allData = allData.filter((item) => {
+      if (item.level === "dolby") return true;
+      return !AI_AUDIO_LEVELS.includes(item.level);
+    });
   }
 
   return allData.map((item) => ({

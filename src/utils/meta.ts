@@ -7,38 +7,47 @@ export const songLevelData = {
   l: {
     level: "standard",
     name: "标准音质",
+    shortName: "标准",
   },
   m: {
     level: "higher",
     name: "较高音质",
+    shortName: "高清",
   },
   h: {
     level: "exhigh",
     name: "极高音质",
+    shortName: "极高",
   },
   sq: {
     level: "lossless",
     name: "无损音质",
+    shortName: "无损",
   },
   hr: {
     level: "hires",
     name: "Hi-Res",
+    shortName: "Hi-Res",
   },
   je: {
     level: "jyeffect",
-    name: "高清环绕声",
+    name: "高清臻音",
+    shortName: "臻音",
   },
   sk: {
     level: "sky",
-    name: "沉浸环绕声",
+    name: "沉浸环绕",
+    shortName: "沉浸",
   },
   db: {
     level: "dolby",
-    name: "杜比全景声",
+    name: "杜比全景",
+    shortName: "Dolby",
   },
   jm: {
     level: "jymaster",
     name: "超清母带",
+    shortName: "母带",
   },
 };
 

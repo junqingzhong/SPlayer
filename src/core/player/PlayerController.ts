@@ -134,6 +134,7 @@ class PlayerController {
       // 更新音质和解锁状态
       statusStore.songQuality = audioSource.quality;
       statusStore.playUblock = audioSource.isUnlocked ?? false;
+      statusStore.audioSource = audioSource.source;
       // 执行底层播放
       await this.loadAndPlay(audioSource.url, autoPlay, seek);
       if (requestToken !== this.currentRequestToken) return;
@@ -178,6 +179,7 @@ class PlayerController {
       // 更新音质和解锁状态
       statusStore.songQuality = audioSource.quality;
       statusStore.playUblock = audioSource.isUnlocked ?? false;
+      statusStore.audioSource = audioSource.source;
       // 停止当前播放
       audioManager.stop();
       // 执行底层播放，保持进度，保持原播放状态

@@ -420,10 +420,15 @@ const importSettings = async () => {
   console.log("[Frontend] Import settings clicked");
   window.$dialog.warning({
     title: "导入设置",
-    content: () => h("div", null, [
-      h(NAlert, { type: "warning", showIcon: true, style: { marginBottom: "12px" } }, { default: () => "目前备份数据功能属于测试阶段，不保证可用性" }),
-      h("div", null, "导入设置将覆盖当前所有配置并重启软件，是否继续？")
-    ]),
+    content: () =>
+      h("div", null, [
+        h(
+          NAlert,
+          { type: "warning", showIcon: true, style: { marginBottom: "12px" } },
+          { default: () => "目前备份数据功能属于测试阶段，不保证可用性" },
+        ),
+        h("div", null, "导入设置将覆盖当前所有配置并重启软件，是否继续？"),
+      ]),
     positiveText: "确定",
     negativeText: "取消",
     onPositiveClick: async () => {
@@ -435,8 +440,10 @@ const importSettings = async () => {
         if (data) {
           // 恢复渲染进程数据
           if (data.renderer) {
-            if (data.renderer["setting-store"]) localStorage.setItem("setting-store", data.renderer["setting-store"]);
-            if (data.renderer["shortcut-store"]) localStorage.setItem("shortcut-store", data.renderer["shortcut-store"]);
+            if (data.renderer["setting-store"])
+              localStorage.setItem("setting-store", data.renderer["setting-store"]);
+            if (data.renderer["shortcut-store"])
+              localStorage.setItem("shortcut-store", data.renderer["shortcut-store"]);
           }
 
           window.$message.success("设置导入成功，即将重启");

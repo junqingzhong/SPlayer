@@ -83,12 +83,7 @@
                   <SvgIcon name="Refresh" />
                 </template>
               </n-button>
-              <n-button
-                type="error"
-                secondary
-                strong
-                @click="handleRemoveDownload(item.song.id)"
-              >
+              <n-button type="error" secondary strong @click="handleRemoveDownload(item.song.id)">
                 <template #icon>
                   <SvgIcon name="Close" />
                 </template>
