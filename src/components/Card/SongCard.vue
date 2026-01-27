@@ -131,10 +131,18 @@
             })
           "
         >
-          {{ song.album?.name || "未知专辑" }}
+          {{
+            settingStore.hideLyricBrackets
+              ? removeBrackets(song.album?.name)
+              : song.album?.name || "未知专辑"
+          }}
         </n-text>
         <n-text v-else class="album-text">
-          {{ song.album || "未知专辑" }}
+          {{
+            settingStore.hideLyricBrackets
+              ? removeBrackets(song.album)
+              : song.album || "未知专辑"
+          }}
         </n-text>
       </div>
       <!-- 操作 -->

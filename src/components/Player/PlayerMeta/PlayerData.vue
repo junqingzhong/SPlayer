@@ -90,10 +90,18 @@
           class="name-text text-hidden"
           @click="jumpPage({ name: 'album', query: { id: musicStore.playSong.album.id } })"
         >
-          {{ musicStore.playSong.album?.name || "未知专辑" }}
+          {{
+            settingStore.hideLyricBrackets
+              ? removeBrackets(musicStore.playSong.album?.name)
+              : musicStore.playSong.album?.name || "未知专辑"
+          }}
         </span>
         <span v-else class="name-text text-hidden">
-          {{ musicStore.playSong.album || "未知专辑" }}
+          {{
+            settingStore.hideLyricBrackets
+              ? removeBrackets(musicStore.playSong.album)
+              : musicStore.playSong.album || "未知专辑"
+          }}
         </span>
       </div>
       <!-- 电台 -->
