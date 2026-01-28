@@ -1,6 +1,7 @@
 <template>
   <div class="setting-search" :class="{ focus: isFocus }">
     <n-input
+      ref="inputInst"
       v-model:value="inputValue"
       clearable
       placeholder="搜索设置项..."
@@ -36,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import type { SelectOption } from "naive-ui";
+import { SelectOption, NInput } from "naive-ui";
 import Fuse from "fuse.js";
 
 interface SearchOption extends SelectOption {
@@ -51,6 +52,7 @@ const props = defineProps<{
 
 const emit = defineEmits(["select", "active-change"]);
 
+const inputInst = ref<InstanceType<typeof NInput> | null>(null);
 const inputValue = ref("");
 const isFocus = ref(false);
 const resultList = ref<SearchOption[]>([]);
@@ -88,7 +90,7 @@ watch(inputValue, (val) => {
 
 // 处理失焦
 const handleBlur = () => {
-  // isFocus.value = false;
+  isFocus.value = false;
 };
 
 // 处理选择
@@ -97,6 +99,7 @@ const handleSelect = (value: string | number) => {
   isFocus.value = false;
   inputValue.value = "";
   emit("active-change", false);
+  inputInst.value?.blur();
 };
 </script>
 
