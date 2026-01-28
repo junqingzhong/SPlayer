@@ -148,7 +148,7 @@
     <n-flex v-else align="center" justify="center" vertical class="router-view">
       <n-empty size="large" description="当前本地歌曲为空">
         <template #extra>
-          <n-button type="primary" strong secondary @click="localPathShow = true">
+          <n-button type="primary" strong secondary @click="openLocalMusicDirectoryModal">
             <template #icon>
               <SvgIcon name="FolderCog" />
             </template>
@@ -157,47 +157,6 @@
         </template>
       </n-empty>
     </n-flex>
-    <!-- 目录管理 -->
-    <n-modal
-      v-model:show="localPathShow"
-      :close-on-esc="false"
-      :mask-closable="false"
-      preset="card"
-      title="目录管理"
-      transform-origin="center"
-      style="width: 600px"
-    >
-      <n-text class="local-list-tip">
-        请选择本地音乐文件夹，将自动扫描您添加的目录，歌曲增删实时同步
-      </n-text>
-      <n-scrollbar style="max-height: 50vh">
-        <n-list class="local-list" hoverable clickable bordered>
-          <n-list-item v-for="(item, index) in settingStore.localFilesPath" :key="index">
-            <template #prefix>
-              <SvgIcon :size="20" name="Folder" />
-            </template>
-            <template #suffix>
-              <n-button :focusable="false" quaternary @click="changeLocalMusicPath(index)">
-                <template #icon>
-                  <SvgIcon :size="20" name="Delete" />
-                </template>
-              </n-button>
-            </template>
-            <n-thing :title="item" />
-          </n-list-item>
-        </n-list>
-      </n-scrollbar>
-      <template #footer>
-        <n-flex justify="center">
-          <n-button class="add-path" strong secondary @click="changeLocalMusicPath()">
-            <template #icon>
-              <SvgIcon name="FolderPlus" />
-            </template>
-            添加文件夹
-          </n-button>
-        </n-flex>
-      </template>
-    </n-modal>
   </div>
 </template>
 
@@ -208,8 +167,8 @@ import { useLocalStore, useSettingStore } from "@/stores";
 import { useMobile } from "@/composables/useMobile";
 import { formatSongsList } from "@/utils/format";
 import { debounce } from "lodash-es";
-import { changeLocalMusicPath, fuzzySearch, renderIcon } from "@/utils/helper";
-import { openBatchList, openCreatePlaylist } from "@/utils/modal";
+import { fuzzySearch, renderIcon } from "@/utils/helper";
+import { openLocalMusicDirectoryModal, openBatchList, openCreatePlaylist } from "@/utils/modal";
 import { usePlayerController } from "@/core/player/PlayerController";
 
 const router = useRouter();
@@ -253,9 +212,6 @@ const folderOptions = computed(() => {
 // 模糊搜索数据
 const searchValue = ref<string>("");
 const filteredSearchResult = ref<SongType[]>([]);
-
-// 目录管理
-const localPathShow = ref<boolean>(false);
 
 // 获取基于文件夹过滤后的数据
 const getFilteredData = (): SongType[] => {
@@ -361,7 +317,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     label: "本地目录管理",
     key: "folder",
     props: {
-      onClick: () => (localPathShow.value = true),
+      onClick: () => openLocalMusicDirectoryModal(),
     },
     icon: renderIcon("FolderCog"),
   },

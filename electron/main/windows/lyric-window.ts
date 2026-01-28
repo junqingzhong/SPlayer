@@ -74,6 +74,9 @@ class LyricWindow {
       maximizable: false,
       // 窗口不能进入全屏状态
       fullscreenable: false,
+      webPreferences: {
+        zoomFactor: 1.0,
+      },
     });
     if (!this.win) return null;
     // 加载地址
