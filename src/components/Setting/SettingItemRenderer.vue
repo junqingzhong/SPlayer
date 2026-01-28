@@ -1,5 +1,9 @@
 <template>
-  <div :id="'setting-' + item.key" class="setting-item-wrapper">
+  <div
+    :id="'setting-' + item.key"
+    class="setting-item-wrapper"
+    :class="{ highlighted: highlighted }"
+  >
     <template v-if="item.noWrapper">
       <component
         v-if="item.type === 'custom' && item.component"
@@ -164,6 +168,7 @@ defineOptions({
 
 const props = defineProps<{
   item: SettingItem;
+  highlighted?: boolean;
 }>();
 
 // 数据双向绑定处理
@@ -281,10 +286,32 @@ const activeActions = computed(() => {
   &:last-child {
     margin-bottom: 0;
   }
+  &.highlighted {
+    .set-item {
+      &::after {
+        animation: highlight-pulse 2.5s cubic-bezier(0.4, 0, 0.2, 1);
+        animation-delay: 0.5s;
+      }
+    }
+  }
 }
 .set-item {
   width: 100%;
   border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(var(--primary), 0.25);
+    z-index: 1;
+    opacity: 0;
+    pointer-events: none;
+  }
 }
 :deep(.n-card__content) {
   display: flex;

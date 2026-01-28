@@ -6,7 +6,7 @@
         v-if="node.type === 'group'"
         class="slide-in-item group-title"
         :class="{ 'first-group': !!node.isFirst }"
-        :style="{ '--delay': `${index * 0.05}s` }"
+        :style="{ '--delay': highlightKey ? '0s' : `${index * 0.05}s` }"
       >
         <n-h3 prefix="bar">
           {{ node.data.title }}
@@ -28,7 +28,8 @@
         v-else
         :item="node.data"
         class="slide-in-item"
-        :style="{ '--delay': `${index * 0.05}s` }"
+        :highlighted="node.data.key === highlightKey"
+        :style="{ '--delay': highlightKey ? '0s' : `${index * 0.05}s` }"
       />
     </template>
   </div>
@@ -40,6 +41,7 @@ import SettingItemRenderer from "./SettingItemRenderer.vue";
 
 const props = defineProps<{
   groups: SettingGroup[];
+  highlightKey?: string;
 }>();
 
 // 判断设置项是否显示

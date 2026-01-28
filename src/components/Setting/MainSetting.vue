@@ -68,24 +68,53 @@
       >
         <Transition name="fade" mode="out-in" @after-leave="setScrollbar?.scrollTo({ top: 0 })">
           <!-- 常规 -->
-          <UniversalSetting v-if="activeKey === 'general'" :groups="generalConfig.groups" />
+          <UniversalSetting
+            v-if="activeKey === 'general'"
+            :groups="generalConfig.groups"
+            :highlight-key="highlightKey"
+          />
           <!-- 播放 -->
-          <UniversalSetting v-else-if="activeKey === 'play'" :groups="playConfig.groups" />
+          <UniversalSetting
+            v-else-if="activeKey === 'play'"
+            :groups="playConfig.groups"
+            :highlight-key="highlightKey"
+          />
           <!-- 歌词 -->
-          <UniversalSetting v-else-if="activeKey === 'lyrics'" :groups="lyricConfig.groups" />
+          <UniversalSetting
+            v-else-if="activeKey === 'lyrics'"
+            :groups="lyricConfig.groups"
+            :highlight-key="highlightKey"
+          />
           <!-- 快捷键 -->
-          <UniversalSetting v-else-if="activeKey === 'keyboard'" :groups="keyboardConfig.groups" />
+          <UniversalSetting
+            v-else-if="activeKey === 'keyboard'"
+            :groups="keyboardConfig.groups"
+            :highlight-key="highlightKey"
+          />
           <!-- 本地 -->
-          <UniversalSetting v-else-if="activeKey === 'local'" :groups="localConfig.groups" />
+          <UniversalSetting
+            v-else-if="activeKey === 'local'"
+            :groups="localConfig.groups"
+            :highlight-key="highlightKey"
+          />
           <!-- 第三方 -->
-          <UniversalSetting v-else-if="activeKey === 'third'" :groups="thirdConfig.groups" />
+          <UniversalSetting
+            v-else-if="activeKey === 'third'"
+            :groups="thirdConfig.groups"
+            :highlight-key="highlightKey"
+          />
           <!-- 流媒体 -->
           <UniversalSetting
             v-else-if="activeKey === 'streaming'"
             :groups="streamingConfig.groups"
+            :highlight-key="highlightKey"
           />
           <!-- 其他 -->
-          <UniversalSetting v-else-if="activeKey === 'other'" :groups="otherConfig.groups" />
+          <UniversalSetting
+            v-else-if="activeKey === 'other'"
+            :groups="otherConfig.groups"
+            :highlight-key="highlightKey"
+          />
           <!-- 关于 -->
           <AboutSetting v-else-if="activeKey === 'about'" />
           <!-- 空白 -->
@@ -193,6 +222,7 @@ watch(
   { immediate: true },
 );
 
+const highlightKey = ref<string>();
 const isSearchActive = ref(false);
 
 // 搜索选项
@@ -240,6 +270,8 @@ const handleSearch = (value: string | number) => {
   if (!value) return;
   const keyStr = String(value);
   const [targetTab, targetKey] = keyStr.split("::");
+  // 标记正在跳转
+  highlightKey.value = targetKey;
   // 切换到对应标签页
   if (activeKey.value !== targetTab) {
     activeKey.value = targetTab as SettingType;
@@ -249,11 +281,18 @@ const handleSearch = (value: string | number) => {
     showLeftMenu.value = false;
   }
   nextTick(() => {
-    useTimeoutFn(() => {
+    setTimeout(() => {
       const element = document.getElementById(`setting-${targetKey}`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (!element) {
+        highlightKey.value = undefined;
+        return;
       }
+      // 滚动到元素位置
+      element.scrollIntoView({ block: "center" });
+      // 清理跳转标记
+      setTimeout(() => {
+        highlightKey.value = undefined;
+      }, 2500);
     }, 300);
   });
 };
