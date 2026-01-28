@@ -567,3 +567,21 @@ export const openScalingModal = async () => {
     },
   });
 };
+
+/** 打开本地音乐目录管理弹窗 */
+export const openLocalMusicDirectoryModal = async () => {
+  const { default: LocalMusicDirectory } =
+    await import("@/components/Modal/Setting/LocalMusicDirectory.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    maskClosable: false,
+    closeOnEsc: false,
+    style: { width: "600px" },
+    title: "目录管理",
+    content: () => {
+      return h(LocalMusicDirectory);
+    },
+  });
+};
