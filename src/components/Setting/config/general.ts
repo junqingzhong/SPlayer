@@ -203,6 +203,16 @@ export const useGeneralSettings = (): SettingConfig => {
             }),
           },
           {
+            key: "hideAllCovers",
+            label: "隐藏歌曲封面",
+            type: "switch",
+            description: "开启后将隐藏列表中所有歌曲的封面",
+            value: computed({
+              get: () => settingStore.hideAllCovers,
+              set: (v) => (settingStore.hideAllCovers = v),
+            }),
+          },
+          {
             key: "menuShowCover",
             label: "侧边栏显示封面",
             type: "switch",

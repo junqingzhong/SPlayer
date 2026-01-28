@@ -88,7 +88,7 @@
                 v-if="item.type === 'song'"
                 :song="item.data"
                 :index="index"
-                :hiddenCover="hiddenCover"
+                :hiddenCover="hiddenCover || settingStore.hideAllCovers"
                 :hiddenAlbum="hiddenAlbum"
                 :hiddenSize="hiddenSize"
                 @click.stop="handleSongClick(item.data)"
@@ -138,7 +138,7 @@
 
 <script setup lang="ts">
 import { SongType, SortField, SortOrder } from "@/types/main";
-import { useMusicStore, useStatusStore } from "@/stores";
+import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { isEmpty } from "lodash-es";
 import { sortFieldOptions, sortOrderOptions } from "@/utils/meta";
 import { usePlayerController } from "@/core/player/PlayerController";
@@ -202,6 +202,7 @@ const emit = defineEmits<{
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
+const settingStore = useSettingStore();
 const player = usePlayerController();
 const { isSmallScreen } = useMobile();
 

@@ -213,6 +213,8 @@ export interface SettingState {
   localSeparators: string[];
   /** 显示本地封面 */
   showLocalCover: boolean;
+  /** 隐藏全部封面 */
+  hideAllCovers: boolean;
   /** 路由动画 */
   routeAnimation: "none" | "fade" | "zoom" | "slide" | "up";
   /** 播放器展开动画 */
@@ -443,6 +445,7 @@ export const useSettingStore = defineStore("setting", {
     localFolderDisplayMode: "tab",
     localSeparators: ["/", "&"],
     showLocalCover: true,
+    hideAllCovers: false,
     downloadPath: "",
     cacheEnabled: true,
     songCacheEnabled: true,
