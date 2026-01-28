@@ -23,6 +23,7 @@ declare module 'vue' {
     CacheSizeLimit: typeof import('./src/components/Setting/components/CacheSizeLimit.vue')['default']
     ChangeRate: typeof import('./src/components/Modal/ChangeRate.vue')['default']
     CloudMatch: typeof import('./src/components/Modal/CloudMatch.vue')['default']
+    CommentFilter: typeof import('./src/components/Modal/CommentFilter.vue')['default']
     CommentList: typeof import('./src/components/List/CommentList.vue')['default']
     ConfigurableInputNumber: typeof import('./src/components/Setting/items/ConfigurableInputNumber.vue')['default']
     CopyLyrics: typeof import('./src/components/Modal/CopyLyrics.vue')['default']

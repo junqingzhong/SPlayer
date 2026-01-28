@@ -131,18 +131,10 @@
             })
           "
         >
-          {{
-            (settingStore.hideLyricBrackets
-              ? removeBrackets(song.album?.name)
-              : song.album?.name) || "未知专辑"
-          }}
+          {{ albumName }}
         </n-text>
         <n-text v-else class="album-text">
-          {{
-            (settingStore.hideLyricBrackets
-              ? removeBrackets(song.album)
-              : song.album) || "未知专辑"
-          }}
+          {{ albumName }}
         </n-text>
       </div>
       <!-- 操作 -->
@@ -224,6 +216,13 @@ const qualityColor = computed(() => {
   if (song.value.quality === QualityType.SQ) return "warning";
   if (song.value.quality === QualityType.HQ) return "info";
   return "primary";
+});
+
+// 专辑名称
+const albumName = computed(() => {
+  const album = song.value.album;
+  const name = isObject(album) ? album.name : album;
+  return (settingStore.hideLyricBrackets ? removeBrackets(name) : name) || "未知专辑";
 });
 
 // 加载本地歌曲封面

@@ -585,3 +585,20 @@ export const openLocalMusicDirectoryModal = async () => {
     },
   });
 };
+
+/** 打开评论过滤弹窗 */
+export const openCommentFilter = async () => {
+  const { default: CommentFilter } = await import("@/components/Modal/CommentFilter.vue");
+  const modal = window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "评论关键词过滤",
+    content: () => {
+      return h(CommentFilter, {
+        onClose: () => modal.destroy(),
+      });
+    },
+  });
+};
