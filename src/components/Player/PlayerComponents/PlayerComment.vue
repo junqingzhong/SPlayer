@@ -29,17 +29,22 @@
           }}
         </span>
       </n-flex>
-      <n-flex
-        class="close"
-        align="center"
-        justify="center"
-        @click="statusStore.showPlayerComment = false"
-      >
-        <SvgIcon name="Music" :size="24" />
-      </n-flex>
+      <div class="actions">
+        <n-flex class="close" align="center" justify="center" @click="openCommentFilter">
+          <SvgIcon name="Tag" :size="20" />
+        </n-flex>
+        <n-flex
+          class="close"
+          align="center"
+          justify="center"
+          @click="statusStore.showPlayerComment = false"
+        >
+          <SvgIcon name="Music" :size="24" />
+        </n-flex>
+      </div>
     </n-flex>
     <n-scrollbar ref="commentScroll" class="comment-scroll">
-      <template v-if="commentHotData">
+      <template v-if="filteredCommentHotData && filteredCommentHotData.length > 0">
         <div class="placeholder">
           <div class="title">
             <SvgIcon name="Fire" />
@@ -47,9 +52,10 @@
           </div>
         </div>
         <CommentList
-          :data="commentHotData"
+          :data="filteredCommentHotData"
           :loading="commentHotData?.length === 0"
           :type="songType"
+          :res-id="songId"
           transparent
         />
       </template>
@@ -60,10 +66,11 @@
         </div>
       </div>
       <CommentList
-        :data="commentData"
+        :data="filteredCommentData"
         :loading="commentLoading"
         :type="songType"
         :loadMore="commentHasMore"
+        :res-id="songId"
         transparent
         @loadMore="loadMoreComment"
       />
@@ -80,6 +87,7 @@ import { isEmpty } from "lodash-es";
 import { formatCommentList, removeBrackets } from "@/utils/format";
 import { NScrollbar } from "naive-ui";
 import { coverLoaded } from "@/utils/helper";
+import { openCommentFilter } from "@/utils/modal";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
@@ -104,6 +112,38 @@ const commentData = ref<CommentType[]>([]);
 const commentHotData = ref<CommentType[] | null>([]);
 const commentPage = ref<number>(1);
 const commentHasMore = ref<boolean>(true);
+
+// 过滤后的数据
+const filterComments = (comments: CommentType[] | null) => {
+  if (!comments) return [];
+  if (!settingStore.enableExcludeComments) return comments;
+  const keywords = settingStore.excludeCommentKeywords || [];
+  const regexes = settingStore.excludeCommentRegexes || [];
+
+  if (!keywords.length && !regexes.length) return comments;
+
+  return comments.filter((item) => {
+    // 关键词过滤
+    const hasKeyword = keywords.some((keyword) => item.content.includes(keyword));
+    if (hasKeyword) return false;
+
+    // 正则过滤
+    const hasRegex = regexes.some((regexStr) => {
+      try {
+        const regex = new RegExp(regexStr);
+        return regex.test(item.content);
+      } catch (e) {
+        return false;
+      }
+    });
+    if (hasRegex) return false;
+
+    return true;
+  });
+};
+
+const filteredCommentData = computed(() => filterComments(commentData.value));
+const filteredCommentHotData = computed(() => filterComments(commentHotData.value));
 
 // 获取热门评论
 const getHotCommentData = async () => {
@@ -214,19 +254,24 @@ onMounted(() => {
     .artist {
       opacity: 0.8;
     }
-    .close {
-      width: 40px;
-      height: 40px;
+    .actions {
       margin-left: auto;
-      background-color: rgba(var(--main-cover-color), 0.08);
-      border-radius: 8px;
-      transition: background-color 0.3s;
-      cursor: pointer;
-      &:hover {
-        background-color: rgba(var(--main-cover-color), 0.29);
+      display: flex;
+      gap: 12px;
+      .close {
+        width: 40px;
+        height: 40px;
+        background-color: rgba(var(--main-cover-color), 0.08);
+        border-radius: 8px;
+        transition: background-color 0.3s;
+        cursor: pointer;
+        &:hover {
+          background-color: rgba(var(--main-cover-color), 0.29);
+        }
       }
     }
   }
+
   :deep(.comment-scroll) {
     height: calc(100vh - 262px);
     filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));

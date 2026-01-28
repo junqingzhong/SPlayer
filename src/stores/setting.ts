@@ -213,6 +213,8 @@ export interface SettingState {
   localSeparators: string[];
   /** 显示本地封面 */
   showLocalCover: boolean;
+  /** 隐藏全部封面 */
+  hideAllCovers: boolean;
   /** 路由动画 */
   routeAnimation: "none" | "fade" | "zoom" | "slide" | "up";
   /** 播放器展开动画 */
@@ -227,6 +229,8 @@ export interface SettingState {
   dynamicCover: boolean;
   /** 是否使用 keep-alive */
   useKeepAlive: boolean;
+  /** 是否启用评论排除 */
+  enableExcludeComments: boolean;
   /** 是否启用排除歌词 */
   enableExcludeLyrics: boolean;
   /** 「排除歌词」是否适用于 TTML */
@@ -237,6 +241,10 @@ export interface SettingState {
   excludeUserKeywords: string[];
   /** 用户自定义的排除歌词正则表达式 */
   excludeUserRegexes: string[];
+  /** 排除评论关键词 */
+  excludeCommentKeywords: string[];
+  /** 排除评论正则表达式 */
+  excludeCommentRegexes: string[];
   /** 显示默认本地路径 */
   showDefaultLocalPath: boolean;
   /** 本地文件夹显示模式 */
@@ -423,17 +431,21 @@ export const useSettingStore = defineStore("setting", {
     lyricHorizontalOffset: 10,
     lyricAlignRight: false,
     hideLyricBrackets: false,
+    enableExcludeComments: false,
     enableExcludeLyrics: true,
     enableExcludeTTML: false,
     enableExcludeLocalLyrics: false,
     excludeUserKeywords: [],
     excludeUserRegexes: [],
+    excludeCommentKeywords: [],
+    excludeCommentRegexes: [],
     localFilesPath: [],
     localLyricPath: [],
     showDefaultLocalPath: true,
     localFolderDisplayMode: "tab",
     localSeparators: ["/", "&"],
     showLocalCover: true,
+    hideAllCovers: false,
     downloadPath: "",
     cacheEnabled: true,
     songCacheEnabled: true,

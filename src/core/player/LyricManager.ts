@@ -712,6 +712,22 @@ class LyricManager {
   }
 
   /**
+   * 规范化歌词行时间
+   * @param lines 歌词行
+   */
+  private normalizeLyricLines(lines: LyricLine[]) {
+    lines.forEach((line) => {
+      // 修复 startTime / endTime 为 0 或 invalid 的情况
+      if ((!line.startTime || line.startTime <= 0) && line.words?.length) {
+        line.startTime = line.words[0].startTime;
+      }
+      if ((!line.endTime || line.endTime <= 0) && line.words?.length) {
+        line.endTime = line.words[line.words.length - 1].endTime;
+      }
+    });
+  }
+
+  /**
    * 设置最终歌词
    * @param lyricData 歌词数据
    * @param req 当前歌词请求
@@ -721,6 +737,11 @@ class LyricManager {
     const statusStore = useStatusStore();
     // 若非本次
     if (this.activeLyricReq !== req) return;
+
+    // 规范化时间
+    this.normalizeLyricLines(lyricData.yrcData);
+    this.normalizeLyricLines(lyricData.lrcData);
+
     // 如果只有逐字歌词
     if (lyricData.lrcData.length === 0 && lyricData.yrcData.length > 0) {
       // 构成普通歌词

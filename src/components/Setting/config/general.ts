@@ -7,6 +7,7 @@ import {
   openFontManager,
   openCustomCode,
   openThemeConfig,
+  openCommentFilter,
 } from "@/utils/modal";
 import { sendRegisterProtocol } from "@/utils/protocol";
 import { SettingConfig } from "@/types/settings";
@@ -190,6 +191,24 @@ export const useGeneralSettings = (): SettingConfig => {
             value: computed({
               get: () => settingStore.hideLyricBrackets,
               set: (v) => (settingStore.hideLyricBrackets = v),
+            }),
+          },
+          {
+            key: "enableExcludeComments",
+            label: "评论排除配置",
+            type: "button",
+            description: "配置排除评论的规则（关键词或正则表达式）",
+            buttonLabel: "配置",
+            action: openCommentFilter,
+          },
+          {
+            key: "hideAllCovers",
+            label: "隐藏歌曲封面",
+            type: "switch",
+            description: "开启后将隐藏列表中所有歌曲的封面",
+            value: computed({
+              get: () => settingStore.hideAllCovers,
+              set: (v) => (settingStore.hideAllCovers = v),
             }),
           },
           {
