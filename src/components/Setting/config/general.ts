@@ -193,6 +193,16 @@ export const useGeneralSettings = (): SettingConfig => {
             }),
           },
           {
+            key: "enableExcludeComments",
+            label: "启用评论排除",
+            type: "switch",
+            description: "开启后可配置排除评论，包含关键词或匹配正则表达式的评论将不会显示",
+            value: computed({
+              get: () => settingStore.enableExcludeComments,
+              set: (v) => (settingStore.enableExcludeComments = v),
+            }),
+          },
+          {
             key: "menuShowCover",
             label: "侧边栏显示封面",
             type: "switch",

@@ -227,6 +227,8 @@ export interface SettingState {
   dynamicCover: boolean;
   /** 是否使用 keep-alive */
   useKeepAlive: boolean;
+  /** 是否启用评论排除 */
+  enableExcludeComments: boolean;
   /** 是否启用排除歌词 */
   enableExcludeLyrics: boolean;
   /** 「排除歌词」是否适用于 TTML */
@@ -427,6 +429,7 @@ export const useSettingStore = defineStore("setting", {
     lyricHorizontalOffset: 10,
     lyricAlignRight: false,
     hideLyricBrackets: false,
+    enableExcludeComments: false,
     enableExcludeLyrics: true,
     enableExcludeTTML: false,
     enableExcludeLocalLyrics: false,

@@ -31,6 +31,7 @@
       </n-flex>
       <div class="actions">
         <n-flex
+          v-if="settingStore.enableExcludeComments"
           class="close"
           align="center"
           justify="center"
@@ -242,6 +243,7 @@ const saveFilter = () => {
 // 过滤后的数据
 const filterComments = (comments: CommentType[] | null) => {
   if (!comments) return [];
+  if (!settingStore.enableExcludeComments) return comments;
   const keywords = settingStore.excludeCommentKeywords || [];
   const regexes = settingStore.excludeCommentRegexes || [];
 
