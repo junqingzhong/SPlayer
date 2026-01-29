@@ -101,7 +101,7 @@
             </n-tag>
             <!-- 脏标 -->
             <n-tag
-              v-if="settingStore.showSongExplicitTag && (song.mark && (song.mark & 1048576))"
+              v-if="settingStore.showSongExplicitTag && (song.mark && (song.mark & EXPLICIT_CONTENT_MARK))"
               :bordered="false"
               class="explicit"
               type="error"
@@ -192,6 +192,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { isElectron } from "@/utils/env";
 import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { useMobile } from "@/composables/useMobile";
+import { EXPLICIT_CONTENT_MARK } from "@/utils/meta";
 
 const props = defineProps<{
   // 歌曲

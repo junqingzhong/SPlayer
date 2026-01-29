@@ -72,7 +72,8 @@
 <script setup lang="ts">
 import type { SongType, SongLevelType } from "@/types/main";
 import { useSettingStore, useDataStore } from "@/stores";
-import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS, isVip, isSvip, AUTHORIZED_QUALITY_LEVELS } from "@/utils/meta";
+import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
+import { getAuthorizedQualityLevels } from "@/utils/auth";
 import { formatFileSize } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
 import { isElectron } from "@/utils/env";
@@ -116,17 +117,12 @@ const qualityOptions = computed(() => {
   let allData = getSongLevelsData(levels);
 
   // 根据 VIP 状态过滤
-  if (dataStore.userLoginStatus) {
-    const vipType = dataStore.userData.vipType || 0;
-    if (!isSvip(vipType)) {
-      const allowedLevels = isVip(vipType)
-        ? AUTHORIZED_QUALITY_LEVELS.VIP
-        : AUTHORIZED_QUALITY_LEVELS.NORMAL;
-      allData = allData.filter((item) => (allowedLevels as readonly string[]).includes(item.level));
-    }
-  } else {
-    // 未登录
-    allData = allData.filter((item) => (AUTHORIZED_QUALITY_LEVELS.NORMAL as readonly string[]).includes(item.level));
+  // 根据 VIP 状态过滤
+  const vipType = dataStore.userLoginStatus ? (dataStore.userData.vipType || 0) : 0;
+  const allowedLevels = getAuthorizedQualityLevels(vipType, dataStore.userLoginStatus);
+  
+  if (allowedLevels) {
+    allData = allData.filter((item) => allowedLevels.includes(item.level));
   }
 
   if (settingStore.disableAiAudio) {

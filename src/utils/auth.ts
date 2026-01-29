@@ -1,5 +1,6 @@
 import { getCookie, removeCookie, setCookies } from "./cookie";
 import type { UserLikeDataType, CoverType, ArtistType, SongType } from "@/types/main";
+import { AUTHORIZED_QUALITY_LEVELS, VIP_LEVELS } from "@/utils/meta";
 
 
 import {
@@ -37,6 +38,43 @@ export const isLogin = (): 0 | 1 | 2 => {
   if (!dataStore.userLoginStatus) return 0;
   if (dataStore.loginType === "uid") return 2;
   return getCookie("MUSIC_U") ? 1 : 0;
+};
+
+/** 检查是否为 SVIP */
+export const isSvip = (vipType: number) => {
+  // 11 is standard SVIP code
+  if (vipType === VIP_LEVELS.SVIP) return true;
+  // Check enriched data from store
+  const dataStore = useDataStore();
+  return !!dataStore.userData.isSvip;
+};
+
+/** 检查是否为 VIP (包括 SVIP) */
+export const isVip = (vipType: number) => {
+  const vipCodes: number[] = [VIP_LEVELS.VIP, VIP_LEVELS.VIP_ANNUAL];
+  return vipCodes.includes(vipType) || isSvip(vipType);
+};
+
+/**
+ * 获取当前用户权限允许的音质列表
+ * @param vipType VIP 类型
+ * @param isLogin 是否登录
+ * @returns 允许的音质列表 (null 表示无限制/全部允许)
+ */
+export const getAuthorizedQualityLevels = (vipType: number, isLogin: boolean): readonly string[] | null => {
+  if (!isLogin) {
+    return AUTHORIZED_QUALITY_LEVELS.NORMAL;
+  }
+  // SVIP 拥有所有权限
+  if (isSvip(vipType)) {
+    return null;
+  }
+  // VIP 权限
+  if (isVip(vipType)) {
+    return AUTHORIZED_QUALITY_LEVELS.VIP;
+  }
+  // 普通用户权限
+  return AUTHORIZED_QUALITY_LEVELS.NORMAL;
 };
 // 退出登录
 export const toLogout = async (clearUserList = false): Promise<void> => {
@@ -99,7 +137,6 @@ export const saveCurrentAccount = () => {
   
   // 校验：如果必须信息缺失，不保存
   if (!userId || !name || name === "未知用户名") {
-     console.warn("User data incomplete, skipping save");
      return;
   }
   

@@ -5,12 +5,10 @@ import { QualityType } from "@/types/main";
 import { formatFileSize, handleSongQuality } from "@/utils/helper";
 import {
   AI_AUDIO_LEVELS,
-  AUTHORIZED_QUALITY_LEVELS,
   getSongLevelsData,
   songLevelData,
-  isSvip,
-  isVip,
 } from "@/utils/meta";
+import { getAuthorizedQualityLevels } from "@/utils/auth";
 import { DropdownOption } from "naive-ui";
 
 // 音质名称映射
@@ -109,31 +107,18 @@ export const useQualityControl = () => {
       const res = await songQuality(songId);
       if (res.data) {
         const levels = getSongLevelsData(songLevelData, res.data);
-        console.log("[QualityControl] Levels from API:", levels);
-        console.log("[QualityControl] User VIP Type:", dataStore.userData.vipType, "Login Status:", dataStore.userLoginStatus);
 
         // 根据 VIP 类型过滤音质
-        if (dataStore.userLoginStatus) {
-            const vipType = dataStore.userData.vipType || 0;
-            // SVIP 拥有所有权限，不需要过滤
-            if (!isSvip(vipType)) {
-              const allowedLevels = isVip(vipType)
-                  ? AUTHORIZED_QUALITY_LEVELS.VIP
-                  : AUTHORIZED_QUALITY_LEVELS.NORMAL;
-      
-              statusStore.availableQualities = levels.filter((q) =>
-                (allowedLevels as readonly string[]).includes(q.level),
-              );
-            } else {
-              // SVIP
-              statusStore.availableQualities = levels;
-            }
+        const vipType = dataStore.userLoginStatus ? (dataStore.userData.vipType || 0) : 0;
+        const allowedLevels = getAuthorizedQualityLevels(vipType, dataStore.userLoginStatus);
+
+        if (allowedLevels) {
+          statusStore.availableQualities = levels.filter((q) =>
+            allowedLevels.includes(q.level),
+          );
         } else {
-            // 未登录视同普通用户
-            const allowedLevels = AUTHORIZED_QUALITY_LEVELS.NORMAL;
-            statusStore.availableQualities = levels.filter((q) =>
-              (allowedLevels as readonly string[]).includes(q.level),
-            );
+          // SVIP / 无限制
+          statusStore.availableQualities = levels;
         }
 
         // Apply Fuck AI Mode filter (Secondary filter)

@@ -11,7 +11,8 @@ import { QualityType, type SongType } from "@/types/main";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
 import { formatSongsList } from "@/utils/format";
-import { AI_AUDIO_LEVELS, AUTHORIZED_QUALITY_LEVELS, isVip, isSvip } from "@/utils/meta";
+import { AI_AUDIO_LEVELS } from "@/utils/meta";
+import { getAuthorizedQualityLevels } from "@/utils/auth";
 import { handleSongQuality } from "@/utils/helper";
 import { openUserLogin } from "@/utils/modal";
 
@@ -128,17 +129,14 @@ class SongManager {
 
     // 权限检查：确保用户有权限播放请求的音质
     const vipType = dataStore.userLoginStatus ? (dataStore.userData.vipType || 0) : 0;
-    // 如果不是 SVIP
-    if (!isSvip(vipType)) {
-      const allowedLevels = isVip(vipType)
-        ? AUTHORIZED_QUALITY_LEVELS.VIP
-        : AUTHORIZED_QUALITY_LEVELS.NORMAL;
+    const allowedLevels = getAuthorizedQualityLevels(vipType, dataStore.userLoginStatus);
 
+    if (allowedLevels) {
+      const allowedStrings = allowedLevels as readonly string[];
       // 如果请求的音质不在允许列表中
-      if (!(allowedLevels as readonly string[]).includes(level)) {
-        console.warn(`⚠️ [${id}] 用户无权播放 ${level}，降级至最高可用音质`);
+      if (!allowedStrings.includes(level)) {
         // 降级策略: 使用允许列表中的最后一个（通常是最高质量）
-        level = allowedLevels[allowedLevels.length - 1] as typeof settingStore.songLevel;
+        level = allowedStrings[allowedStrings.length - 1] as typeof settingStore.songLevel;
       }
     }
 

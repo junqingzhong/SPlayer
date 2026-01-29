@@ -798,17 +798,17 @@ watch(
                       overflow: hidden;
                       gap: 2px;
                       
-                      .res-title, .text-hidden {
-                          font-size: 14px;
-                          font-weight: 600;
-                          // Allow wrapping
-                          white-space: normal !important;
-                          overflow: visible !important;
-                          display: block !important;
-                          -webkit-line-clamp: unset !important;
-                          line-clamp: unset !important;
-                          height: auto !important;
-                      }
+                      .res-title {
+                           font-size: 14px;
+                           font-weight: 600;
+                           // Allow wrapping
+                           white-space: normal;
+                           overflow: visible;
+                           display: block;
+                           -webkit-line-clamp: unset;
+                           line-clamp: unset;
+                           height: auto;
+                       }
                   }
               }
          }

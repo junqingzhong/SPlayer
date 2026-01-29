@@ -57,8 +57,12 @@ export const AI_AUDIO_LEVELS = ["jymaster", "sky", "jyeffect", "vivid"];
 /** AI 增强音质 Key（需要过滤的 key） */
 export const AI_AUDIO_KEYS = ["jm", "sk", "je"];
 
+
 /** Fuck DJ Mode 关键词 */
 export const DJ_MODE_KEYWORDS = ["DJ", "抖音", "0.9", "0.8", "网红", "车载", "热歌", "慢摇"];
+
+/** 歌曲脏标（Explicit Content）位掩码 */
+export const EXPLICIT_CONTENT_MARK = 1048576;
 
 /** VIP 类型 */
 export const VIP_LEVELS = {
@@ -67,23 +71,6 @@ export const VIP_LEVELS = {
   VIP_ANNUAL: 110, // 110 detected as VIP
   SVIP: 11,
 } as const;
-
-import { useDataStore } from "@/stores";
-
-/** 检查是否为 SVIP */
-export const isSvip = (vipType: number) => {
-  // 11 is standard SVIP code
-  if (vipType === VIP_LEVELS.SVIP) return true;
-  // Check enriched data from store
-  const dataStore = useDataStore();
-  return !!dataStore.userData.isSvip;
-};
-
-/** 检查是否为 VIP (包括 SVIP) */
-export const isVip = (vipType: number) => {
-  const vipCodes: number[] = [VIP_LEVELS.VIP, VIP_LEVELS.VIP_ANNUAL];
-  return vipCodes.includes(vipType) || isSvip(vipType);
-};
 
 /** 
  * 不同 VIP 等级允许的音质

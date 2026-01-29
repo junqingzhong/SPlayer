@@ -204,7 +204,7 @@ const handleAddAccount = async () => {
   saveCurrentAccount();
   
   userMenuShow.value = false;
-  
+
   // 打开登录框 (强制模式, 不登出当前用户以保持 cookies 直到新登录成功)
   openUserLogin(false, true, () => {
     // 登录成功回调
