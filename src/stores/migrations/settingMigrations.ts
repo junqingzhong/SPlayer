@@ -6,7 +6,7 @@ import type { SettingState } from "../setting";
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 7;
+export const CURRENT_SETTING_SCHEMA_VERSION = 8;
 
 /**
  * 迁移函数类型
@@ -73,9 +73,10 @@ export const settingMigrations: Record<number, MigrationFunction> = {
     }
 
     return {
+      // 这些字段在 Schema Version 8 时被重命名，导致类型检查报错
       excludeUserKeywords: userKeywords,
       excludeUserRegexes: userRegexes,
-    };
+    } as Partial<SettingState>;
   },
   6: (state) => {
     interface OldSettingState extends Partial<SettingState> {
@@ -148,5 +149,22 @@ export const settingMigrations: Record<number, MigrationFunction> = {
     }
 
     return {};
+  },
+  8: (state) => {
+    interface OldSettingState extends Partial<SettingState> {
+      enableExcludeTTML?: boolean;
+      enableExcludeLocalLyrics?: boolean;
+      excludeUserKeywords?: string[];
+      excludeUserRegexes?: string[];
+    }
+
+    const oldState = state as OldSettingState;
+
+    return {
+      enableExcludeLyricsTTML: oldState.enableExcludeTTML,
+      enableExcludeLyricsLocal: oldState.enableExcludeLocalLyrics,
+      excludeLyricsUserKeywords: oldState.excludeUserKeywords,
+      excludeLyricsUserRegexes: oldState.excludeUserRegexes,
+    };
   },
 };

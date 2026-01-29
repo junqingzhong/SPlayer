@@ -583,13 +583,14 @@ class LyricManager {
     const statusStore = useStatusStore();
     const musicStore = useMusicStore();
 
-    const { enableExcludeLyrics, excludeUserKeywords, excludeUserRegexes } = settingStore;
+    const { enableExcludeLyrics, excludeLyricsUserKeywords, excludeLyricsUserRegexes } =
+      settingStore;
 
     if (!enableExcludeLyrics) return lyricData;
 
     // 合并默认规则和用户自定义规则
-    const mergedKeywords = [...new Set([...defaultKeywords, ...(excludeUserKeywords ?? [])])];
-    const mergedRegexes = [...new Set([...defaultRegexes, ...(excludeUserRegexes ?? [])])];
+    const mergedKeywords = [...new Set([...defaultKeywords, ...(excludeLyricsUserKeywords ?? [])])];
+    const mergedRegexes = [...new Set([...defaultRegexes, ...(excludeLyricsUserRegexes ?? [])])];
 
     const { name, artists } = musicStore.playSong;
     const songMetadataRegexes: string[] = [];
@@ -622,7 +623,7 @@ class LyricManager {
     const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
     let yrcData = lyricData.yrcData || [];
 
-    if (!statusStore.usingTTMLLyric || settingStore.enableExcludeTTML) {
+    if (!statusStore.usingTTMLLyric || settingStore.enableExcludeLyricsTTML) {
       yrcData = stripLyricMetadata(yrcData, options);
     }
 
@@ -836,14 +837,14 @@ class LyricManager {
         // 进行本地歌词对齐
         lyricData = this.alignLocalLyrics(lyricData);
         // 排除本地歌词内容
-        if (settingStore.enableExcludeLocalLyrics) {
+        if (settingStore.enableExcludeLyricsLocal) {
           lyricData = this.handleLyricExclude(lyricData);
         }
         lyricData = await this.applyChineseVariant(lyricData);
       } else if (song.path) {
         lyricData = await this.handleLocalLyric(song.path);
         // 排除本地歌词内容
-        if (settingStore.enableExcludeLocalLyrics) {
+        if (settingStore.enableExcludeLyricsLocal) {
           lyricData = this.handleLyricExclude(lyricData);
         }
       } else {

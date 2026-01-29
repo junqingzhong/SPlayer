@@ -7,7 +7,7 @@ import {
   openFontManager,
   openCustomCode,
   openThemeConfig,
-  openCommentFilter,
+  openExcludeComment,
 } from "@/utils/modal";
 import { sendRegisterProtocol } from "@/utils/protocol";
 import { SettingConfig } from "@/types/settings";
@@ -195,12 +195,12 @@ export const useGeneralSettings = (): SettingConfig => {
             }),
           },
           {
-            key: "enableExcludeComments",
+            key: "configExcludeComment",
             label: "评论排除配置",
             type: "button",
             description: "配置排除评论的规则（关键词或正则表达式）",
             buttonLabel: "配置",
-            action: openCommentFilter,
+            action: openExcludeComment,
           },
           {
             key: "hideAllCovers",

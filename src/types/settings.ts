@@ -122,6 +122,12 @@ export interface SettingItem {
   disabled?: MaybeRefOrGetter<boolean>;
 
   /**
+   * 标题
+   * 一般用作鼠标悬停时会显示的提示
+   */
+  title?: MaybeRefOrGetter<string>;
+
+  /**
    * 子项展开条件
    * 仅当存在 `children` 时有效
    * 默认逻辑是当父级 `value === true` 时展开
