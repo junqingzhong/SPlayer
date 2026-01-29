@@ -159,3 +159,10 @@ export const songChorus = (id: number) => {
     params: { id },
   });
 };
+// 音乐百科 - 简要信息
+export const songWikiSummary = (id: number) => {
+  return request({
+    url: "/song/wiki/summary",
+    params: { id },
+  });
+};
