@@ -200,6 +200,15 @@ watch(
     }
   },
 );
+
+// 监听 VIP 状态或设置变化，重新加载音质
+watch(
+  [() => dataStore.userData.vipType, () => settingStore.disableAiAudio],
+  async () => {
+    statusStore.availableQualities = [];
+    await loadQualities();
+  },
+);
 </script>
 
 <style scoped lang="scss">

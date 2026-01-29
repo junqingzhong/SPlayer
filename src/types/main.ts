@@ -257,6 +257,7 @@ export interface UserDataType {
   userId: number;
   userType: number;
   vipType: number;
+  isSvip?: boolean;
   name: string;
   level?: number;
   avatarUrl?: string;

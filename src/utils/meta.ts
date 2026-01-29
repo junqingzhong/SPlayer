@@ -60,6 +60,42 @@ export const AI_AUDIO_KEYS = ["jm", "sk", "je"];
 /** Fuck DJ Mode 关键词 */
 export const DJ_MODE_KEYWORDS = ["DJ", "抖音", "0.9", "0.8", "网红", "车载", "热歌", "慢摇"];
 
+/** VIP 类型 */
+export const VIP_LEVELS = {
+  NORMAL: 0,
+  VIP: 10,
+  VIP_ANNUAL: 110, // 110 detected as VIP
+  SVIP: 11,
+} as const;
+
+import { useDataStore } from "@/stores";
+
+/** 检查是否为 SVIP */
+export const isSvip = (vipType: number) => {
+  // 11 is standard SVIP code
+  if (vipType === VIP_LEVELS.SVIP) return true;
+  // Check enriched data from store
+  const dataStore = useDataStore();
+  return !!dataStore.userData.isSvip;
+};
+
+/** 检查是否为 VIP (包括 SVIP) */
+export const isVip = (vipType: number) => {
+  const vipCodes: number[] = [VIP_LEVELS.VIP, VIP_LEVELS.VIP_ANNUAL];
+  return vipCodes.includes(vipType) || isSvip(vipType);
+};
+
+/** 
+ * 不同 VIP 等级允许的音质
+ * Normal: Standard, Higher, ExHigh
+ * VIP: Normal + Lossless, Hi-Res, Jyeffect
+ * SVIP: All
+ */
+export const AUTHORIZED_QUALITY_LEVELS = {
+  NORMAL: ["standard", "higher", "exhigh"],
+  VIP: ["standard", "higher", "exhigh", "lossless", "hires", "jyeffect"],
+} as const;
+
 /**
  * 根据传入的 level，筛选出包含该 level 及之前的音质数据
  * @param level 音质等级名称

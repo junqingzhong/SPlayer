@@ -1,9 +1,16 @@
 import { songQuality } from "@/api/song";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { QualityType } from "@/types/main";
 import { formatFileSize, handleSongQuality } from "@/utils/helper";
-import { AI_AUDIO_LEVELS, getSongLevelsData, songLevelData } from "@/utils/meta";
+import {
+  AI_AUDIO_LEVELS,
+  AUTHORIZED_QUALITY_LEVELS,
+  getSongLevelsData,
+  songLevelData,
+  isSvip,
+  isVip,
+} from "@/utils/meta";
 import { DropdownOption } from "naive-ui";
 
 // 音质名称映射
@@ -23,6 +30,7 @@ export const useQualityControl = () => {
   const musicStore = useMusicStore();
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
+  const dataStore = useDataStore();
   const player = usePlayerController();
 
   // 获取音质名称
@@ -101,14 +109,40 @@ export const useQualityControl = () => {
       const res = await songQuality(songId);
       if (res.data) {
         const levels = getSongLevelsData(songLevelData, res.data);
+        console.log("[QualityControl] Levels from API:", levels);
+        console.log("[QualityControl] User VIP Type:", dataStore.userData.vipType, "Login Status:", dataStore.userLoginStatus);
+
+        // 根据 VIP 类型过滤音质
+        if (dataStore.userLoginStatus) {
+            const vipType = dataStore.userData.vipType || 0;
+            // SVIP 拥有所有权限，不需要过滤
+            if (!isSvip(vipType)) {
+              const allowedLevels = isVip(vipType)
+                  ? AUTHORIZED_QUALITY_LEVELS.VIP
+                  : AUTHORIZED_QUALITY_LEVELS.NORMAL;
+      
+              statusStore.availableQualities = levels.filter((q) =>
+                (allowedLevels as readonly string[]).includes(q.level),
+              );
+            } else {
+              // SVIP
+              statusStore.availableQualities = levels;
+            }
+        } else {
+            // 未登录视同普通用户
+            const allowedLevels = AUTHORIZED_QUALITY_LEVELS.NORMAL;
+            statusStore.availableQualities = levels.filter((q) =>
+              (allowedLevels as readonly string[]).includes(q.level),
+            );
+        }
+
+        // Apply Fuck AI Mode filter (Secondary filter)
         // 如果当前播放的是被隐藏的音质，尝试切换到最高可用音质
         if (settingStore.disableAiAudio) {
-          statusStore.availableQualities = levels.filter((q) => {
+          statusStore.availableQualities = statusStore.availableQualities.filter((q) => {
             if (q.level === "dolby") return true;
             return !AI_AUDIO_LEVELS.includes(q.level);
           });
-        } else {
-          statusStore.availableQualities = levels;
         }
       } else if (!isPreload) {
         window.$message.warning("获取音质信息失败");

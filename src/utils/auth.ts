@@ -10,6 +10,7 @@ import {
   userArtist,
   userAlbum,
   userPlaylist,
+  userVipInfo,
 } from "@/api/user";
 import { likeSong } from "@/api/song";
 import { formatCoverList, formatArtistsList, formatSongsList } from "@/utils/format";
@@ -78,13 +79,32 @@ export const updateUserData = async () => {
     // 获取用户信息
     const userDetailData = await userDetail(userId);
     const userData = Object.assign(profile, userDetailData);
+
     // 获取用户订阅信息
     const subcountData = await userSubcount();
+    // 获取用户 VIP 信息
+    let isSvip = false;
+    try {
+      const vipInfo = await userVipInfo();
+      // 判断 SVIP: 检查 redplus 权益是否过期
+      // SVIP 用户通常拥有有效的 redplus 权益
+      if (vipInfo.data) {
+        const { redplus, redPlus } = vipInfo.data;
+        const rights = redplus || redPlus;
+        if (rights && rights.expireTime > Date.now()) {
+          isSvip = true;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch VIP info", e);
+    }
+
     // 更改用户信息
     dataStore.userData = {
       userId,
       userType: userData.userType,
       vipType: userData.vipType,
+      isSvip,
       name: userData.nickname,
       level: userData.level,
       avatarUrl: userData.avatarUrl,
