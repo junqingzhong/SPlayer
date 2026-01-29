@@ -1,5 +1,7 @@
 import { getCookie, removeCookie, setCookies } from "./cookie";
 import type { UserLikeDataType, CoverType, ArtistType, SongType } from "@/types/main";
+
+
 import {
   userAccount,
   userDetail,
@@ -37,7 +39,7 @@ export const isLogin = (): 0 | 1 | 2 => {
   return getCookie("MUSIC_U") ? 1 : 0;
 };
 // 退出登录
-export const toLogout = async (): Promise<void> => {
+export const toLogout = async (clearUserList = false): Promise<void> => {
   const dataStore = useDataStore();
   await logout();
   // 去除 cookie
@@ -45,7 +47,11 @@ export const toLogout = async (): Promise<void> => {
   removeCookie("__csrf");
   sessionStorage.clear();
   // 清除用户数据
+  // 注意：如果是切换账号，不应该清除 userList
   await dataStore.clearUserData();
+  if (clearUserList) {
+    dataStore.userList = [];
+  }
   // 跳转首页
   router.push("/");
   window.$message.success("成功退出登录");
@@ -65,6 +71,127 @@ export const refreshLoginData = async () => {
       localStorage.setItem("lastLoginTime", Date.now().toString());
     }
     return result;
+  }
+};
+
+
+
+/**
+ * 获取原始 Cookie 值 (不解码)
+ */
+const getRawCookie = (name: string) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift();
+  // Fallback to localStorage if not in document.cookie (e.g. after clear)
+  return localStorage.getItem(`cookie-${name}`);
+};
+
+/**
+ * 保存当前账号
+ */
+export const saveCurrentAccount = () => {
+  const dataStore = useDataStore();
+  if (!isLogin()) return;
+
+  const { userId, name, avatarUrl } = dataStore.userData;
+  const loginType = dataStore.loginType;
+  
+  // 校验：如果必须信息缺失，不保存
+  if (!userId || !name || name === "未知用户名") {
+     console.warn("User data incomplete, skipping save");
+     return;
+  }
+  
+  // 获取关键 Cookies
+  const cookies: Record<string, string> = {};
+  const cookieKeys = ["MUSIC_U", "__csrf", "NMTID"];
+  cookieKeys.forEach(key => {
+    // 获取原始值
+    const val = getRawCookie(key);
+    if (val) cookies[key] = val;
+  });
+
+  // 如果没有 MUSIC_U，无法保存
+  if (!cookies["MUSIC_U"]) return;
+
+  const newAccount = {
+    userId,
+    name,
+    avatarUrl: avatarUrl || "",
+    cookies,
+    loginType,
+    lastLoginTime: Date.now(),
+  };
+
+  // 查找是否存在
+  const index = dataStore.userList.findIndex((u) => u.userId === userId);
+  if (index !== -1) {
+    // 更新
+    dataStore.userList[index] = newAccount;
+  } else {
+    // 新增
+    dataStore.userList.push(newAccount);
+  }
+};
+
+
+
+/**
+ * 切换账号
+ * @param userId 用户ID
+ */
+export const switchAccount = async (userId: number) => {
+  const dataStore = useDataStore();
+  const account = dataStore.userList.find((u) => u.userId === userId);
+  if (!account) {
+    window.$message.error("找不到该账号信息");
+    return;
+  }
+
+  // 保存当前（如果已登录且不是要切换的同一个）
+  if (isLogin() && dataStore.userData.userId !== userId) {
+    saveCurrentAccount();
+  }
+
+  // 清除当前状态 (但不清除 userList)
+  removeCookie("MUSIC_U");
+  removeCookie("__csrf");
+  await dataStore.clearUserData();
+
+  // 设置新 Cookies
+  Object.entries(account.cookies).forEach(([key, value]) => {
+    // 直接写入 document.cookie 以保持原始值 (类似 cookie.ts 的 setCookies)
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 50);
+    const expires = `expires=${date.toUTCString()}`;
+    document.cookie = `${key}=${value}; ${expires}; path=/`;
+    // 同步到 localStorage
+    localStorage.setItem(`cookie-${key}`, value as string);
+  });
+  
+  //  更新 Store
+  dataStore.loginType = account.loginType;
+  dataStore.userLoginStatus = true; // 预设为 true
+  // 预先填充部分用户信息，避免刷新后因数据空被重定向回首页
+  dataStore.userData.userId = account.userId;
+  dataStore.userData.name = account.name;
+  dataStore.userData.avatarUrl = account.avatarUrl;
+  
+  // 刷新页面
+  window.location.reload();
+};
+
+/**
+ * 移除账号
+ * @param userId 用户ID
+ */
+export const removeAccount = (userId: number) => {
+  const dataStore = useDataStore();
+  const index = dataStore.userList.findIndex((u) => u.userId === userId);
+  if (index !== -1) {
+    dataStore.userList.splice(index, 1);
+    window.$message.success("账号已移除");
   }
 };
 

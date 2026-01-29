@@ -1,7 +1,7 @@
 <template>
   <n-popover
     :show="userMenuShow"
-    style="padding: 12px; max-width: 160px"
+    style="padding: 12px; max-width: 240px"
     trigger="manual"
     @clickoutside="userMenuShow = false"
   >
@@ -70,6 +70,27 @@
         <n-text :depth="3">部分功能暂不可用</n-text>
       </n-flex>
       <n-divider />
+      <!-- 多账号 -->
+      <div class="account-list" v-if="dataStore.userLoginStatus">
+        <div class="subtitle">切换账号</div>
+        <div
+          v-for="account in otherAccounts"
+          :key="account.userId"
+          class="account-item"
+          @click="handleSwitchAccount(account.userId)"
+        >
+          <n-avatar :src="account.avatarUrl" round size="small" />
+          <div class="account-name text-hidden">{{ account.name }}</div>
+          <div class="delete-btn" @click.stop="handleRemoveAccount(account.userId)">
+            <SvgIcon name="Close" />
+          </div>
+        </div>
+        <div class="add-account" @click="handleAddAccount">
+          <n-icon size="16"><SvgIcon name="Add" /></n-icon>
+          <span>添加账号</span>
+        </div>
+      </div>
+      <n-divider v-if="dataStore.userLoginStatus" />
       <!-- 退出登录 -->
       <n-button :focusable="false" class="logout" strong secondary round @click="isLogout">
         <template #icon>
@@ -86,11 +107,14 @@ import { useDataStore } from "@/stores";
 import { openUserLogin } from "@/utils/modal";
 import { getLoginState } from "@/api/login";
 import {
+  updateUserData,
+  updateSpecialUserData,
   toLogout,
   isLogin,
   refreshLoginData,
-  updateUserData,
-  updateSpecialUserData,
+  saveCurrentAccount,
+  switchAccount,
+  removeAccount,
 } from "@/utils/auth";
 import { useMobile } from "@/composables/useMobile";
 
@@ -158,6 +182,38 @@ const checkLoginStatus = async () => {
   }
 };
 
+// 其他账号列表（排除当前登录的）
+const otherAccounts = computed(() => {
+  return dataStore.userList.filter(u => u.userId !== dataStore.userData.userId);
+});
+
+// 切换账号
+const handleSwitchAccount = async (userId: number) => {
+  userMenuShow.value = false;
+  await switchAccount(userId);
+};
+
+// 移除账号
+const handleRemoveAccount = (userId: number) => {
+  removeAccount(userId);
+};
+
+// 添加新账号 (保存当前 -> 开启强制登录 -> 成功后自动切换)
+const handleAddAccount = async () => {
+  // 1先保存当前账号状态 (快照)
+  saveCurrentAccount();
+  
+  userMenuShow.value = false;
+  
+  // 打开登录框 (强制模式, 不登出当前用户以保持 cookies 直到新登录成功)
+  openUserLogin(false, true, () => {
+    // 登录成功回调
+    // 此时新 cookies 已设置，store 已更新
+    // 刷新页面以确保所有状态重置为新用户
+    window.location.reload();
+  });
+};
+
 // 退出登录
 const isLogout = () => {
   if (!isLogin()) {
@@ -169,7 +225,11 @@ const isLogout = () => {
     content: "确认退出当前用户登录？",
     positiveText: "确认登出",
     negativeText: "取消",
-    onPositiveClick: () => toLogout(),
+    onPositiveClick: () => {
+       // 退出时保存当前账号，方便下次登录
+       saveCurrentAccount();
+       toLogout();
+    },
   });
 };
 
@@ -253,6 +313,67 @@ onBeforeMount(() => {
       .n-text {
         font-size: 12px;
         font-weight: normal;
+        margin-top: 4px;
+      }
+    }
+  }
+  .account-list {
+    margin-bottom: 8px;
+    .subtitle {
+      font-size: 12px;
+      color: var(--n-text-color-3);
+      margin-bottom: 8px;
+      padding-left: 4px;
+    }
+    .account-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      position: relative;
+      
+      .account-name {
+        margin-left: 8px;
+        font-size: 13px;
+        flex: 1;
+      }
+      .delete-btn {
+        opacity: 0;
+        padding: 4px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        transition: all 0.2s;
+        &:hover {
+          background-color: rgba(var(--primary), 0.1);
+          color: var(--primary-color);
+        }
+      }
+      &:hover {
+        background-color: rgba(var(--primary), 0.08);
+        .delete-btn {
+          opacity: 1;
+        }
+      }
+    }
+    .add-account {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 8px;
+      padding: 8px;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px dashed var(--n-border-color);
+      transition: all 0.2s;
+      gap: 4px;
+      &:hover {
+        border-color: var(--primary-color);
+        color: var(--primary-color);
+        background-color: rgba(var(--primary), 0.05);
       }
     }
   }

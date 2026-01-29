@@ -349,3 +349,13 @@ export interface UpdateInfoType {
 
 // 登录方式
 export type LoginType = "qr" | "phone" | "cookie" | "uid";
+
+// 账号信息
+export interface AccountType {
+  userId: number;
+  name: string;
+  avatarUrl: string;
+  cookies: Record<string, string>;
+  loginType: LoginType;
+  lastLoginTime: number;
+}

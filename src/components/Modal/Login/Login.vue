@@ -38,8 +38,13 @@ import { LoginType } from "@/types/main";
 import LoginUID from "./LoginUID.vue";
 import LoginCookie from "./LoginCookie.vue";
 
+const props = defineProps<{
+  force?: boolean;
+}>();
+
 const emit = defineEmits<{
   close: [];
+  success: [];
 }>();
 
 const dataStore = useDataStore();
@@ -67,6 +72,7 @@ const saveLogin = async (loginData: any, type: LoginType = "qr") => {
     } else {
       await updateSpecialUserData(loginData?.profile);
     }
+    emit("success");
   } else {
     window.$message.error(loginData.msg ?? loginData.message ?? "账号或密码错误，请重试");
   }
@@ -94,7 +100,7 @@ const specialLogin = (type: "uid" | "cookie" = "uid") => {
 };
 
 onBeforeMount(() => {
-  if (dataStore.userLoginStatus) {
+  if (dataStore.userLoginStatus && !props.force) {
     window.$message.warning("已登录，请勿再次操作");
     emit("close");
   }
