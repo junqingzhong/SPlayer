@@ -1,15 +1,14 @@
 <template>
   <div class="song-wiki">
     <Transition name="fade" mode="out-in">
-      <!-- 真实内容 -->
       <div v-if="!loading && currentSong" class="wiki-container" key="content">
-        <!-- 头部信息 -->
         <div class="header">
           <div class="cover">
             <n-image
               :src="currentSong.cover"
               class="cover-img"
               object-fit="cover"
+              :render-toolbar="renderToolbar"
               :img-props="{
                 style: { width: '100%', height: '100%', borderRadius: '8px' },
                 alt: 'detail-cover',
@@ -177,7 +176,8 @@
                         width="100%"
                         lazy
                         object-fit="contain"
-                        style="border-radius: 8px; background-color: rgba(255, 255, 255, 0.05)"
+                        :render-toolbar="renderToolbar"
+                        style="border-radius: 8px"
                       />
                     </n-gi>
                   </n-grid>
@@ -207,6 +207,7 @@
                       height="48"
                       lazy
                       style="border-radius: 6px"
+                      :render-toolbar="renderToolbar"
                       :img-props="{ alt: res.title }"
                     />
                     <div style="overflow: hidden; flex: 1">
@@ -234,8 +235,6 @@
           <n-empty description="暂无更多信息" style="margin-top: 48px" />
         </div>
       </div>
-
-      <!-- 加载骨架屏 -->
       <div v-else class="loading-skeleton" key="skeleton">
         <div class="header-skeleton">
           <n-skeleton height="204px" width="204px" style="border-radius: 8px" />
@@ -258,6 +257,7 @@
 <script setup lang="ts">
 import { useRoute } from "vue-router";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { renderToolbar } from "@/utils/meta";
 import {
   songDetail,
   songWikiSummary,
@@ -267,8 +267,7 @@ import {
 } from "@/api/song";
 import { formatSongsList } from "@/utils/format";
 import dayjs from "dayjs";
-import SongList from "@/components/List/SongList.vue";
-import { SongType } from "@/types/main";
+import type { SongType } from "@/types/main";
 import type { WikiViewModel, UserRecord, WikiBlock } from "./types";
 
 const route = useRoute();
@@ -433,9 +432,7 @@ const handlePlay = () => {
   if (currentSong.value) player.addNextSong(currentSong.value, true);
 };
 
-// Removed onMounted to prevent double call with KeepAlive + onActivated
 onActivated(() => {
-  // Check strict match
   const id = Number(route.query.id);
   if (id && id !== currentSongId.value) {
     fetchData();
@@ -462,7 +459,6 @@ onActivated(() => {
 
   .header {
     display: flex;
-    gap: 32px;
     margin-bottom: 32px;
     height: 240px;
     padding: 12px 0 24px 0;
@@ -544,6 +540,21 @@ onActivated(() => {
       }
       .actions {
         margin-top: auto;
+        :deep(.n-button) {
+          height: 40px;
+          padding: 0 24px;
+          font-size: 16px;
+        }
+        @media (max-width: 768px) {
+          :deep(.n-button) {
+            height: 34px;
+            font-size: 13px;
+            padding: 0 14px;
+            .n-icon {
+              font-size: 16px;
+            }
+          }
+        }
       }
     }
   }

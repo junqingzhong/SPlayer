@@ -344,7 +344,7 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
     {
       key: "wiki",
       label: "音乐百科",
-      show: !isLocal,
+      show: !isLocal && isSong,
       props: {
         onClick: () => router.push({ name: "song-wiki", query: { id: musicStore.playSong.id } }),
       },
