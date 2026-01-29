@@ -60,14 +60,6 @@
         opacity: 1;
       }
     }
-    .n-layout-toggle-bar__top,
-    .n-layout-toggle-bar__bottom {
-      background-color: color-mix(
-        in srgb,
-        rgb(var(--primary)) 40%,
-        rgb(var(--background)) 60%
-      ) !important;
-    }
   }
 }
 

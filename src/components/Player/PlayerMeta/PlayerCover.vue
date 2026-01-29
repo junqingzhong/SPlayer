@@ -1,5 +1,24 @@
 <template>
-  <div :class="['player-cover', settingStore.playerType, { playing: statusStore.playStatus }]">
+  <!-- 全屏封面 -->
+  <div
+    v-if="settingStore.playerType === 'fullscreen' && !isTablet"
+    class="full-screen"
+    :style="{ '--gradient-percent': settingStore.playerFullscreenGradient + '%' }"
+  >
+    <s-image
+      :src="musicStore.getSongCover('xl')"
+      :alt="musicStore.playSong.name"
+      :title="musicStore.playSong.name"
+      :lazy="false"
+      :width="'100%'"
+      :height="'100%'"
+    />
+  </div>
+  <!-- 普通封面 -->
+  <div
+    v-else
+    :class="['player-cover', settingStore.playerType, { playing: statusStore.playStatus }]"
+  >
     <!-- 指针 -->
     <img
       v-if="settingStore.playerType === 'record'"
@@ -33,6 +52,7 @@
 
 <script setup lang="ts">
 import { songDynamicCover } from "@/api/song";
+import { useMobile } from "@/composables/useMobile";
 import { useSettingStore, useStatusStore, useMusicStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
 import { isEmpty } from "lodash-es";
@@ -40,6 +60,8 @@ import { isEmpty } from "lodash-es";
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+
+const { isTablet } = useMobile();
 
 // 动态封面
 const dynamicCover = ref<string>("");
@@ -271,6 +293,21 @@ onBeforeUnmount(() => {
     .cover-img {
       animation-play-state: running;
     }
+  }
+}
+.full-screen {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  width: 60vw;
+  z-index: 0;
+  mask-image: linear-gradient(to right, #000 var(--gradient-percent), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, #000 var(--gradient-percent), transparent 100%);
+  :deep(img) {
+    object-fit: cover;
+    width: 100%;
+    height: 100%;
   }
 }
 </style>

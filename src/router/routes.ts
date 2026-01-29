@@ -358,6 +358,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: "/desktop-lyric",
     name: "desktop-lyric",
+    meta: { needApp: true },
     component: () => import("@/views/DesktopLyric/index.vue"),
   },
   // 404

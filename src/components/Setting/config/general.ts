@@ -148,6 +148,7 @@ export const useGeneralSettings = (): SettingConfig => {
             description: "注入自定义 CSS 和 JavaScript 代码",
             buttonLabel: "配置",
             action: openCustomCode,
+            show: statusStore.isDeveloperMode,
           },
         ],
       },

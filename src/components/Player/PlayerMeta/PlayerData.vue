@@ -1,5 +1,8 @@
 <template>
-  <div :class="['player-data', settingStore.playerType, { center, light }]">
+  <div
+    :class="['player-data', settingStore.playerType, { center, light }]"
+    :style="{ marginLeft: leftMargin }"
+  >
     <!-- 名称 -->
     <div class="name">
       <span class="name-text text-hidden">
@@ -124,9 +127,10 @@ import { debounce, isObject } from "lodash-es";
 import { removeBrackets } from "@/utils/format";
 import { SongUnlockServer } from "@/core/player/SongManager";
 
-defineProps<{
+const props = defineProps<{
+  /** 数据居中 */
   center?: boolean;
-  // 少量数据模式
+  /** 少量数据模式 */
   light?: boolean;
 }>();
 
@@ -145,6 +149,13 @@ const lyricMode = computed(() => {
     }
   }
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
+});
+
+// 左侧外边距
+const leftMargin = computed(() => {
+  if (props.center) return "0px";
+  const offset = settingStore.lyricHorizontalOffset;
+  return settingStore.useAMLyrics ? `${offset + 40}px` : `${offset + 10}px`;
 });
 
 /** 歌曲解锁服务器名称映射 */

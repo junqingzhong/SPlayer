@@ -234,7 +234,6 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
         --n-color-hover: rgba(var(--main-cover-color), 0.2);
         --n-color-focus: rgba(var(--main-cover-color), 0.2);
         --n-color-pressed: rgba(var(--main-cover-color), 0.12);
-        backdrop-filter: blur(10px);
         margin: 0 12px;
         transition:
           background-color 0.3s,

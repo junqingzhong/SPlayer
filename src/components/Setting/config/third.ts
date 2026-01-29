@@ -192,9 +192,11 @@ export const useThirdSettings = (): SettingConfig => {
         items: [
           {
             key: "smtcOpen",
-            label: "开启系统音频集成",
+            label: isElectron ? "开启系统音频集成" : "开启浏览器媒体会话",
             type: "switch",
-            description: "与系统集成以显示媒体元数据，支持高清封面显示",
+            description: isElectron
+              ? "与系统集成以显示媒体元数据，支持高清封面显示"
+              : "向浏览器发送 Media Session 媒体元数据",
             value: computed({
               get: () => settingStore.smtcOpen,
               set: (v) => (settingStore.smtcOpen = v),

@@ -295,7 +295,8 @@ export const usePlaySettings = (): SettingConfig => {
             key: "autoPlay",
             label: "自动播放",
             type: "switch",
-            description: isElectron ? "启动时是否自动播放" : "网页端不支持该功能",
+            description: "启动软件时是否自动播放",
+            show: isElectron,
             value: computed({
               get: () => settingStore.autoPlay,
               set: (v) => (settingStore.autoPlay = v),
@@ -466,7 +467,6 @@ export const usePlaySettings = (): SettingConfig => {
             disabled: computed(
               () => settingStore.playbackEngine !== "mpv" && settingStore.audioEngine === "ffmpeg",
             ),
-
             value: computed({
               get: () => settingStore.playDevice,
               set: (v) => playDeviceChange(v),
@@ -477,6 +477,7 @@ export const usePlaySettings = (): SettingConfig => {
       {
         title: "音乐解锁",
         tags: [{ text: "Beta", type: "warning" }],
+        show: isElectron,
         items: [
           {
             key: "useSongUnlock",
@@ -487,7 +488,6 @@ export const usePlaySettings = (): SettingConfig => {
               get: () => settingStore.useSongUnlock,
               set: (v) => (settingStore.useSongUnlock = v),
             }),
-            show: isElectron,
           },
           {
             key: "songUnlockConfig",
@@ -497,7 +497,6 @@ export const usePlaySettings = (): SettingConfig => {
             buttonLabel: "配置",
             action: openSongUnlockManager,
             disabled: computed(() => !settingStore.useSongUnlock),
-            show: isElectron,
           },
         ],
       },
@@ -526,26 +525,47 @@ export const usePlaySettings = (): SettingConfig => {
             options: [
               { label: "封面模式", value: "cover" },
               { label: "唱片模式", value: "record" },
+              { label: "全屏封面", value: "fullscreen" },
             ],
             value: computed({
               get: () => settingStore.playerType,
               set: (v) => (settingStore.playerType = v),
             }),
-          },
-          {
-            key: "playerStyleRatio",
-            label: "封面/歌词占比",
-            type: "slider",
-            description: "调整全屏模式下封面与歌词的宽度比例",
-            min: 30,
-            max: 70,
-            step: 1,
-            marks: { 50: "默认" },
-            formatTooltip: (v) => `${v}%`,
-            value: computed({
-              get: () => settingStore.playerStyleRatio,
-              set: (v) => (settingStore.playerStyleRatio = v),
-            }),
+            condition: () => true,
+            children: [
+              {
+                key: "playerStyleRatio",
+                label: "封面 / 歌词占比",
+                type: "slider",
+                description: "调整全屏播放器的封面与歌词的宽度比例",
+                min: 30,
+                max: 70,
+                step: 1,
+                marks: { 50: "默认" },
+                show: () => settingStore.playerType !== "fullscreen",
+                formatTooltip: (v) => `${v}%`,
+                value: computed({
+                  get: () => settingStore.playerStyleRatio,
+                  set: (v) => (settingStore.playerStyleRatio = v),
+                }),
+              },
+              {
+                key: "playerFullscreenGradient",
+                label: "封面过渡位置",
+                type: "slider",
+                description: "调整全屏封面右侧的渐变过渡位置",
+                show: () => settingStore.playerType === "fullscreen",
+                min: 0,
+                max: 100,
+                step: 1,
+                marks: { 15: "默认" },
+                formatTooltip: (v) => `${v}%`,
+                value: computed({
+                  get: () => settingStore.playerFullscreenGradient,
+                  set: (v) => (settingStore.playerFullscreenGradient = v),
+                }),
+              },
+            ],
           },
           {
             key: "playerBackgroundType",

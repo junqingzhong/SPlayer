@@ -148,7 +148,7 @@ export interface SettingState {
   /** 时间显示格式 **/
   timeFormat: TimeFormat;
   /** 播放器类型 */
-  playerType: "cover" | "record";
+  playerType: "cover" | "record" | "fullscreen";
   /** 背景类型 */
   playerBackgroundType: "none" | "animation" | "blur" | "color";
   /** 背景动画帧率 */
@@ -336,6 +336,8 @@ export interface SettingState {
   customJs: string;
   /** 播放器封面/歌词占比 (0-100) */
   playerStyleRatio: number;
+  /** 全屏封面渐变位置 (0-100) */
+  playerFullscreenGradient: number;
   /** 是否启用流媒体功能 */
   streamingEnabled: boolean;
   /** Fuck AI: 开启后在所有的地方都不显示 Hi-res 以上的音质选项 */
@@ -522,6 +524,7 @@ export const useSettingStore = defineStore("setting", {
     customCss: "",
     customJs: "",
     playerStyleRatio: 50,
+    playerFullscreenGradient: 15,
     streamingEnabled: false,
     disableAiAudio: false,
     disableDjMode: false,
