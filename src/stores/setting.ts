@@ -257,6 +257,8 @@ export interface SettingState {
   showPlayerQuality: boolean;
   /** 显示歌曲特权标签 */
   showSongPrivilegeTag: boolean;
+  /** 显示歌曲脏标 */
+  showSongExplicitTag: boolean;
   /** 显示原唱翻唱标签 */
   showSongOriginalTag: boolean;
   /** 侧边栏隐藏 */
@@ -472,6 +474,7 @@ export const useSettingStore = defineStore("setting", {
     showSongQuality: true,
     showPlayerQuality: true,
     showSongPrivilegeTag: true,
+    showSongExplicitTag: true,
     showSongOriginalTag: true,
     sidebarHide: {
       hideDiscover: false,

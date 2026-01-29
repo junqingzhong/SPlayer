@@ -111,6 +111,8 @@ export type SongType = {
   serverId?: string;
   /** 来源标记 */
   source?: "streaming";
+  /** 标记 */
+  mark?: number;
 };
 
 // Cover

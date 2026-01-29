@@ -99,6 +99,17 @@
             >
               MV
             </n-tag>
+            <!-- 脏标 -->
+            <n-tag
+              v-if="settingStore.showSongExplicitTag && (song.mark && (song.mark & 1048576))"
+              :bordered="false"
+              class="explicit"
+              type="error"
+              round
+              title="Explicit Content"
+            >
+              E
+            </n-tag>
             <!-- 歌手 -->
             <div v-if="Array.isArray(song.artists)" class="artists">
               <n-text
