@@ -4,14 +4,16 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { isElectron, checkIsolationSupport } from "@/utils/env";
 import { renderOption } from "@/utils/helper";
 import { SettingConfig } from "@/types/settings";
-import { AI_AUDIO_LEVELS } from "@/utils/meta";
+import { AI_AUDIO_LEVELS, isVip, isSvip, AUTHORIZED_QUALITY_LEVELS } from "@/utils/meta";
 import { openSongUnlockManager } from "@/utils/modal";
 import { NTooltip, SelectOption } from "naive-ui";
 import { uniqBy } from "lodash-es";
 import { isLogin } from "@/utils/auth";
+import { useDataStore } from "@/stores";
 
 export const usePlaySettings = (): SettingConfig => {
   const settingStore = useSettingStore();
+  const dataStore = useDataStore();
   const player = usePlayerController();
 
   // 音频引擎数据
@@ -255,7 +257,24 @@ export const usePlaySettings = (): SettingConfig => {
 
   // 动态计算音质选项
   const songLevelOptions = computed(() => {
-    const options = Object.values(songLevelData);
+    let options = Object.values(songLevelData);
+
+    // 根据 VIP 状态过滤
+    if (dataStore.userLoginStatus) {
+      const vipType = dataStore.userData.vipType || 0;
+      if (!isSvip(vipType)) {
+        const allowedLevels = isVip(vipType)
+          ? AUTHORIZED_QUALITY_LEVELS.VIP
+          : AUTHORIZED_QUALITY_LEVELS.NORMAL;
+        // @ts-ignore
+        options = options.filter((o) => allowedLevels.includes(o.value));
+      }
+    } else {
+      // 未登录
+      // @ts-ignore
+      options = options.filter((o) => AUTHORIZED_QUALITY_LEVELS.NORMAL.includes(o.value));
+    }
+
     if (settingStore.disableAiAudio) {
       return options.filter((option) => {
         if (option.value === "dolby") return true;
