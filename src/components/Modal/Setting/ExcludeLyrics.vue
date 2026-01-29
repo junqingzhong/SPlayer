@@ -115,8 +115,8 @@ const emit = defineEmits(["close"]);
 const settingStore = useSettingStore();
 
 const enableExcludeLyrics = ref(settingStore.enableExcludeLyrics);
-const enableExcludeTTML = ref(settingStore.enableExcludeTTML);
-const enableExcludeLocalLyrics = ref(settingStore.enableExcludeLocalLyrics);
+const enableExcludeTTML = ref(settingStore.enableExcludeLyricsTTML);
+const enableExcludeLocalLyrics = ref(settingStore.enableExcludeLyricsLocal);
 
 const filterKeywords = ref<string[]>([]);
 const filterRegexes = ref<string[]>([]);
@@ -141,8 +141,8 @@ const clearAll = () => {
 // 导出规则
 const exportFilters = () => {
   const data = {
-    keywords: settingStore.excludeUserKeywords || [],
-    regexes: settingStore.excludeUserRegexes || [],
+    keywords: settingStore.excludeLyricsUserKeywords || [],
+    regexes: settingStore.excludeLyricsUserRegexes || [],
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
@@ -185,10 +185,10 @@ const importFilters = () => {
 // 保存过滤
 const saveFilter = () => {
   settingStore.enableExcludeLyrics = enableExcludeLyrics.value;
-  settingStore.enableExcludeTTML = enableExcludeTTML.value;
-  settingStore.enableExcludeLocalLyrics = enableExcludeLocalLyrics.value;
-  settingStore.excludeUserKeywords = filterKeywords.value;
-  settingStore.excludeUserRegexes = filterRegexes.value;
+  settingStore.enableExcludeLyricsTTML = enableExcludeTTML.value;
+  settingStore.enableExcludeLyricsLocal = enableExcludeLocalLyrics.value;
+  settingStore.excludeLyricsUserKeywords = filterKeywords.value;
+  settingStore.excludeLyricsUserRegexes = filterRegexes.value;
   window.$message.success("设置已保存");
   handleClose();
 };
@@ -199,10 +199,10 @@ const handleClose = () => {
 
 onMounted(() => {
   enableExcludeLyrics.value = settingStore.enableExcludeLyrics;
-  enableExcludeTTML.value = settingStore.enableExcludeTTML;
-  enableExcludeLocalLyrics.value = settingStore.enableExcludeLocalLyrics;
-  filterKeywords.value = [...(settingStore.excludeUserKeywords || [])];
-  filterRegexes.value = [...(settingStore.excludeUserRegexes || [])];
+  enableExcludeTTML.value = settingStore.enableExcludeLyricsTTML;
+  enableExcludeLocalLyrics.value = settingStore.enableExcludeLyricsLocal;
+  filterKeywords.value = [...(settingStore.excludeLyricsUserKeywords || [])];
+  filterRegexes.value = [...(settingStore.excludeLyricsUserRegexes || [])];
 });
 </script>
 

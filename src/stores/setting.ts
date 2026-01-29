@@ -229,18 +229,18 @@ export interface SettingState {
   dynamicCover: boolean;
   /** 是否使用 keep-alive */
   useKeepAlive: boolean;
-  /** 是否启用评论排除 */
-  enableExcludeComments: boolean;
   /** 是否启用排除歌词 */
   enableExcludeLyrics: boolean;
   /** 「排除歌词」是否适用于 TTML */
-  enableExcludeTTML: boolean;
+  enableExcludeLyricsTTML: boolean;
   /** 「排除歌词」是否适用于本地歌词 */
-  enableExcludeLocalLyrics: boolean;
+  enableExcludeLyricsLocal: boolean;
   /** 用户自定义的排除歌词关键字 */
-  excludeUserKeywords: string[];
+  excludeLyricsUserKeywords: string[];
   /** 用户自定义的排除歌词正则表达式 */
-  excludeUserRegexes: string[];
+  excludeLyricsUserRegexes: string[];
+  /** 是否启用评论排除 */
+  enableExcludeComments: boolean;
   /** 排除评论关键词 */
   excludeCommentKeywords: string[];
   /** 排除评论正则表达式 */
@@ -431,12 +431,12 @@ export const useSettingStore = defineStore("setting", {
     lyricHorizontalOffset: 10,
     lyricAlignRight: false,
     hideLyricBrackets: false,
-    enableExcludeComments: false,
     enableExcludeLyrics: true,
-    enableExcludeTTML: false,
-    enableExcludeLocalLyrics: false,
-    excludeUserKeywords: [],
-    excludeUserRegexes: [],
+    enableExcludeLyricsTTML: false,
+    enableExcludeLyricsLocal: false,
+    excludeLyricsUserKeywords: [],
+    excludeLyricsUserRegexes: [],
+    enableExcludeComments: false,
     excludeCommentKeywords: [],
     excludeCommentRegexes: [],
     localFilesPath: [],
