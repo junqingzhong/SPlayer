@@ -300,21 +300,6 @@ export const openUpdateApp = async (data: UpdateInfoType) => {
   });
 };
 
-// 歌词排除内容
-export const openLyricExclude = async () => {
-  const { default: ExcludeLyrics } = await import("@/components/Modal/Setting/ExcludeLyrics.vue");
-  window.$modal.create({
-    preset: "card",
-    transformOrigin: "center",
-    autoFocus: false,
-    style: { width: "600px" },
-    title: "歌词排除内容",
-    content: () => {
-      return h(ExcludeLyrics);
-    },
-  });
-};
-
 /** 打开播放速度弹窗 */
 export const openChangeRate = async () => {
   const { default: ChangeRate } = await import("@/components/Modal/ChangeRate.vue");
@@ -586,17 +571,34 @@ export const openLocalMusicDirectoryModal = async () => {
   });
 };
 
-/** 打开评论过滤弹窗 */
-export const openCommentFilter = async () => {
-  const { default: CommentFilter } = await import("@/components/Modal/CommentFilter.vue");
+/** 打开歌词排除弹窗 */
+export const openExcludeLyric = async () => {
+  const { default: ExcludeLyrics } = await import("@/components/Modal/Setting/ExcludeLyrics.vue");
   const modal = window.$modal.create({
     preset: "card",
     transformOrigin: "center",
     autoFocus: false,
-    style: { width: "500px" },
-    title: "评论关键词过滤",
+    style: { width: "600px" },
+    title: "歌词排除",
     content: () => {
-      return h(CommentFilter, {
+      return h(ExcludeLyrics, {
+        onClose: () => modal.destroy(),
+      });
+    },
+  });
+};
+
+/** 打开评论排除弹窗 */
+export const openExcludeComment = async () => {
+  const { default: ExcludeComment } = await import("@/components/Modal/Setting/ExcludeComment.vue");
+  const modal = window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "600px" },
+    title: "评论排除",
+    content: () => {
+      return h(ExcludeComment, {
         onClose: () => modal.destroy(),
       });
     },

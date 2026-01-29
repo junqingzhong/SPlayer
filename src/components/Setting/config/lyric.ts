@@ -2,7 +2,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { useSettingStore, useStatusStore } from "@/stores";
 import { LyricConfig } from "@/types/desktop-lyric";
 import { isElectron } from "@/utils/env";
-import { openAMLLServer, openFontManager, openLyricExclude } from "@/utils/modal";
+import { openAMLLServer, openFontManager, openExcludeLyric } from "@/utils/modal";
 import { cloneDeep, isEqual } from "lodash-es";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 import { SettingConfig } from "@/types/settings";
@@ -375,47 +375,12 @@ export const useLyricSettings = (): SettingConfig => {
             ],
           },
           {
-            key: "enableExcludeLyrics",
-            label: "启用歌词排除",
-            type: "switch",
-            description: "开启后可配置排除歌词，包含关键词或匹配正则表达式的歌词行将不会显示",
-            value: computed({
-              get: () => settingStore.enableExcludeLyrics,
-              set: (v) => (settingStore.enableExcludeLyrics = v),
-            }),
-            children: [
-              {
-                key: "enableExcludeTTML",
-                label: "TTML 歌词排除",
-                type: "switch",
-                description:
-                  "是否要对 TTML 歌词进行歌词排除\nAMLL TTML DB 对此有硬性规定，不得包含作词、作曲等歌词无关内容，因此大多情况下无需开启",
-                value: computed({
-                  get: () => settingStore.enableExcludeTTML,
-                  set: (v) => (settingStore.enableExcludeTTML = v),
-                }),
-              },
-              {
-                key: "enableExcludeLocalLyrics",
-                label: "本地歌词排除",
-                type: "switch",
-                description:
-                  "是否要对来自本地的歌词进行歌词排除，这包含本地覆盖的在线歌词和本地歌曲中的歌词",
-                show: isElectron,
-                value: computed({
-                  get: () => settingStore.enableExcludeLocalLyrics,
-                  set: (v) => (settingStore.enableExcludeLocalLyrics = v),
-                }),
-              },
-              {
-                key: "lyricExcludeConfig",
-                label: "歌词排除内容",
-                type: "button",
-                description: "包含关键词或匹配正则表达式的歌词行将不会显示",
-                buttonLabel: "配置",
-                action: openLyricExclude,
-              },
-            ],
+            key: "configExcludeLyric",
+            label: "歌词排除配置",
+            type: "button",
+            description: "可配置排除歌词，包含关键词或匹配正则表达式的歌词行将不会显示",
+            buttonLabel: "配置",
+            action: openExcludeLyric,
           },
         ],
       },

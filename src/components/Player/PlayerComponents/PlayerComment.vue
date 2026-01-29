@@ -30,7 +30,7 @@
         </span>
       </n-flex>
       <div class="actions">
-        <n-flex class="close" align="center" justify="center" @click="openCommentFilter">
+        <n-flex class="close" align="center" justify="center" @click="openExcludeComment">
           <SvgIcon name="Tag" :size="20" />
         </n-flex>
         <n-flex
@@ -87,7 +87,7 @@ import { isEmpty } from "lodash-es";
 import { formatCommentList, removeBrackets } from "@/utils/format";
 import { NScrollbar } from "naive-ui";
 import { coverLoaded } from "@/utils/helper";
-import { openCommentFilter } from "@/utils/modal";
+import { openExcludeComment } from "@/utils/modal";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();

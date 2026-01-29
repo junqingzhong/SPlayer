@@ -37,6 +37,7 @@ declare module 'vue' {
     DownloadModal: typeof import('./src/components/Modal/DownloadModal.vue')['default']
     DownloadPathButtons: typeof import('./src/components/Setting/components/DownloadPathButtons.vue')['default']
     Equalizer: typeof import('./src/components/Modal/Equalizer.vue')['default']
+    ExcludeComment: typeof import('./src/components/Modal/Setting/ExcludeComment.vue')['default']
     ExcludeLyrics: typeof import('./src/components/Modal/Setting/ExcludeLyrics.vue')['default']
     FontManager: typeof import('./src/components/Modal/Setting/FontManager.vue')['default']
     FullPlayer: typeof import('./src/components/Player/FullPlayer.vue')['default']
