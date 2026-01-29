@@ -348,7 +348,7 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
       props: {
         onClick: () => router.push({ name: "song-wiki", query: { id: musicStore.playSong.id } }),
       },
-      icon: renderIcon("Book"),
+      icon: renderIcon("Info"),
     },
     {
       key: "comment",

@@ -324,7 +324,7 @@ export const useSongMenu = () => {
         props: {
           onClick: () => router.push({ name: "song-wiki", query: { id: song.id } }),
         },
-        icon: renderIcon("Book"),
+        icon: renderIcon("Info"),
       },
       {
         key: "search",
