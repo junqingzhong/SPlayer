@@ -138,7 +138,7 @@ class SongManager {
       if (!(allowedLevels as readonly string[]).includes(level)) {
         console.warn(`⚠️ [${id}] 用户无权播放 ${level}，降级至最高可用音质`);
         // 降级策略: 使用允许列表中的最后一个（通常是最高质量）
-        level = allowedLevels[allowedLevels.length - 1] as any;
+        level = allowedLevels[allowedLevels.length - 1] as typeof settingStore.songLevel;
       }
     }
 

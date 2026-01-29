@@ -266,13 +266,11 @@ export const usePlaySettings = (): SettingConfig => {
         const allowedLevels = isVip(vipType)
           ? AUTHORIZED_QUALITY_LEVELS.VIP
           : AUTHORIZED_QUALITY_LEVELS.NORMAL;
-        // @ts-ignore
-        options = options.filter((o) => allowedLevels.includes(o.value));
+        options = options.filter((o) => (allowedLevels as readonly string[]).includes(o.value));
       }
     } else {
       // 未登录
-      // @ts-ignore
-      options = options.filter((o) => AUTHORIZED_QUALITY_LEVELS.NORMAL.includes(o.value));
+      options = options.filter((o) => (AUTHORIZED_QUALITY_LEVELS.NORMAL as readonly string[]).includes(o.value));
     }
 
     if (settingStore.disableAiAudio) {

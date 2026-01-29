@@ -116,13 +116,11 @@ export const useLocalSettings = (): SettingConfig => {
         const allowedLevels = isVip(vipType)
           ? AUTHORIZED_QUALITY_LEVELS.VIP
           : AUTHORIZED_QUALITY_LEVELS.NORMAL;
-        // @ts-ignore
-        allData = allData.filter((item) => allowedLevels.includes(item.level));
+        allData = allData.filter((item) => (allowedLevels as readonly string[]).includes(item.level));
       }
     } else {
       // 未登录
-      // @ts-ignore
-      allData = allData.filter((item) => AUTHORIZED_QUALITY_LEVELS.NORMAL.includes(item.level));
+      allData = allData.filter((item) => (AUTHORIZED_QUALITY_LEVELS.NORMAL as readonly string[]).includes(item.level));
     }
 
     if (settingStore.disableAiAudio) {
