@@ -2,7 +2,6 @@ import { getCookie, removeCookie, setCookies } from "./cookie";
 import type { UserLikeDataType, CoverType, ArtistType, SongType } from "@/types/main";
 import { AUTHORIZED_QUALITY_LEVELS, VIP_LEVELS } from "@/utils/meta";
 
-
 import {
   userAccount,
   userDetail,
@@ -61,7 +60,10 @@ export const isVip = (vipType: number) => {
  * @param isLogin 是否登录
  * @returns 允许的音质列表 (null 表示无限制/全部允许)
  */
-export const getAuthorizedQualityLevels = (vipType: number, isLogin: boolean): readonly string[] | null => {
+export const getAuthorizedQualityLevels = (
+  vipType: number,
+  isLogin: boolean,
+): readonly string[] | null => {
   if (!isLogin) {
     return AUTHORIZED_QUALITY_LEVELS.NORMAL;
   }
@@ -75,6 +77,31 @@ export const getAuthorizedQualityLevels = (vipType: number, isLogin: boolean): r
   }
   // 普通用户权限
   return AUTHORIZED_QUALITY_LEVELS.NORMAL;
+};
+
+/**
+ * 根据权限过滤音质选项
+ * @param options 选项列表
+ * @param key用于判断的属性名 (默认 'level')
+ */
+export const filterAuthorizedQualityOptions = <T>(
+  options: T[],
+  key: keyof T = "level" as keyof T,
+): T[] => {
+  const dataStore = useDataStore();
+  const isLogin = dataStore.userLoginStatus;
+  const vipType = isLogin ? dataStore.userData.vipType || 0 : 0;
+
+  const allowedLevels = getAuthorizedQualityLevels(vipType, isLogin);
+
+  if (allowedLevels) {
+    return options.filter((item) => {
+      const level = item[key] as unknown as string;
+      return allowedLevels.includes(level);
+    });
+  }
+
+  return options;
 };
 // 退出登录
 export const toLogout = async (clearUserList = false): Promise<void> => {
@@ -112,8 +139,6 @@ export const refreshLoginData = async () => {
   }
 };
 
-
-
 /**
  * 获取原始 Cookie 值 (不解码)
  */
@@ -121,7 +146,6 @@ const getRawCookie = (name: string) => {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
   if (parts.length === 2) return parts.pop()?.split(";").shift();
-  // Fallback to localStorage if not in document.cookie (e.g. after clear)
   return localStorage.getItem(`cookie-${name}`);
 };
 
@@ -134,16 +158,17 @@ export const saveCurrentAccount = () => {
 
   const { userId, name, avatarUrl } = dataStore.userData;
   const loginType = dataStore.loginType;
-  
+
   // 校验：如果必须信息缺失，不保存
   if (!userId || !name || name === "未知用户名") {
-     return;
+    console.warn("用户信息不完整，无法保存");
+    return;
   }
-  
+
   // 获取关键 Cookies
   const cookies: Record<string, string> = {};
   const cookieKeys = ["MUSIC_U", "__csrf", "NMTID"];
-  cookieKeys.forEach(key => {
+  cookieKeys.forEach((key) => {
     // 获取原始值
     const val = getRawCookie(key);
     if (val) cookies[key] = val;
@@ -172,8 +197,6 @@ export const saveCurrentAccount = () => {
   }
 };
 
-
-
 /**
  * 切换账号
  * @param userId 用户ID
@@ -185,17 +208,14 @@ export const switchAccount = async (userId: number) => {
     window.$message.error("找不到该账号信息");
     return;
   }
-
   // 保存当前（如果已登录且不是要切换的同一个）
   if (isLogin() && dataStore.userData.userId !== userId) {
     saveCurrentAccount();
   }
-
   // 清除当前状态 (但不清除 userList)
   removeCookie("MUSIC_U");
   removeCookie("__csrf");
   await dataStore.clearUserData();
-
   // 设置新 Cookies
   Object.entries(account.cookies).forEach(([key, value]) => {
     // 直接写入 document.cookie 以保持原始值 (类似 cookie.ts 的 setCookies)
@@ -206,7 +226,6 @@ export const switchAccount = async (userId: number) => {
     // 同步到 localStorage
     localStorage.setItem(`cookie-${key}`, value as string);
   });
-  
   //  更新 Store
   dataStore.loginType = account.loginType;
   dataStore.userLoginStatus = true; // 预设为 true
@@ -214,9 +233,28 @@ export const switchAccount = async (userId: number) => {
   dataStore.userData.userId = account.userId;
   dataStore.userData.name = account.name;
   dataStore.userData.avatarUrl = account.avatarUrl;
-  
+
   // 刷新页面
-  window.location.reload();
+  // window.location.reload();
+  // 重新获取用户数据
+  window.$message.loading("正在切换账号...");
+  try {
+    // 恢复上次登录时间
+    if (account.lastLoginTime) {
+      localStorage.setItem("lastLoginTime", account.lastLoginTime.toString());
+    }
+    await refreshLoginData();
+    await updateUserData();
+    window.$message.success("切换账号成功");
+    // 跳转首页
+    router.push("/");
+  } catch (error) {
+    console.error("Failed to switch account:", error);
+    window.$message.error("切换账号失败");
+    // 回滚或踢出
+    dataStore.userLoginStatus = false;
+    router.push("/");
+  }
 };
 
 /**

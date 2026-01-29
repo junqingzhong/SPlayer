@@ -71,9 +71,9 @@
 
 <script setup lang="ts">
 import type { SongType, SongLevelType } from "@/types/main";
-import { useSettingStore, useDataStore } from "@/stores";
+import { useSettingStore } from "@/stores";
 import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
-import { getAuthorizedQualityLevels } from "@/utils/auth";
+import { filterAuthorizedQualityOptions } from "@/utils/auth";
 import { formatFileSize } from "@/utils/helper";
 import { openSetting } from "@/utils/modal";
 import { isElectron } from "@/utils/env";
@@ -81,7 +81,6 @@ import { songDetail } from "@/api/song";
 import { formatSongsList } from "@/utils/format";
 import { pick } from "lodash-es";
 import { useDownloadManager } from "@/core/resource/DownloadManager";
-import SongDataCard from "@/components/Card/SongDataCard.vue";
 
 const props = defineProps<{
   songs?: SongType[];
@@ -94,7 +93,6 @@ const emit = defineEmits<{
 }>();
 
 const settingStore = useSettingStore();
-const dataStore = useDataStore();
 const downloadManager = useDownloadManager();
 const loading = ref<boolean>(false);
 const songs = ref<SongType[]>(props.songs || []);
@@ -107,7 +105,7 @@ const downloadPath = computed(() => settingStore.downloadPath);
 
 // 是否可以下载（需要配置下载目录）
 const canDownload = computed(() => {
-  if (!isElectron) return true; // 非 Electron 环境允许下载
+  if (!isElectron) return true;
   return !!downloadPath.value;
 });
 
@@ -117,13 +115,7 @@ const qualityOptions = computed(() => {
   let allData = getSongLevelsData(levels);
 
   // 根据 VIP 状态过滤
-  // 根据 VIP 状态过滤
-  const vipType = dataStore.userLoginStatus ? (dataStore.userData.vipType || 0) : 0;
-  const allowedLevels = getAuthorizedQualityLevels(vipType, dataStore.userLoginStatus);
-  
-  if (allowedLevels) {
-    allData = allData.filter((item) => allowedLevels.includes(item.level));
-  }
+  allData = filterAuthorizedQualityOptions(allData);
 
   if (settingStore.disableAiAudio) {
     allData = allData.filter((item) => {

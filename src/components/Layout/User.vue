@@ -22,8 +22,8 @@
             <SvgIcon name="Person" :depth="3" size="26" />
           </n-avatar>
         </div>
-        <n-flex v-if="isDesktop" class="user-data" size="small">
-          <n-text class="name">
+        <n-flex v-if="isDesktop" :wrap="false" class="user-data" size="small">
+          <n-text class="name text-hidden">
             {{ dataStore.userLoginStatus ? dataStore.userData.name || "未知用户名" : "未登录" }}
           </n-text>
           <!-- VIP -->
@@ -72,7 +72,7 @@
       <n-divider />
       <!-- 多账号 -->
       <div class="account-list" v-if="dataStore.userLoginStatus">
-        <div class="subtitle">切换账号</div>
+        <n-text class="subtitle" :depth="3">切换账号</n-text>
         <div
           v-for="account in otherAccounts"
           :key="account.userId"
@@ -85,10 +85,12 @@
             <SvgIcon name="Close" />
           </div>
         </div>
-        <div class="add-account" @click="handleAddAccount">
-          <n-icon size="16"><SvgIcon name="Add" /></n-icon>
-          <span>添加账号</span>
-        </div>
+        <n-button class="add-account" ghost block @click="handleAddAccount">
+          <template #icon>
+            <SvgIcon name="Add" />
+          </template>
+          添加账号
+        </n-button>
       </div>
       <n-divider v-if="dataStore.userLoginStatus" />
       <!-- 退出登录 -->
@@ -184,7 +186,7 @@ const checkLoginStatus = async () => {
 
 // 其他账号列表（排除当前登录的）
 const otherAccounts = computed(() => {
-  return dataStore.userList.filter(u => u.userId !== dataStore.userData.userId);
+  return dataStore.userList.filter((u) => u.userId !== dataStore.userData.userId);
 });
 
 // 切换账号
@@ -202,15 +204,21 @@ const handleRemoveAccount = (userId: number) => {
 const handleAddAccount = async () => {
   // 1先保存当前账号状态 (快照)
   saveCurrentAccount();
-  
+
   userMenuShow.value = false;
 
   // 打开登录框 (强制模式, 不登出当前用户以保持 cookies 直到新登录成功)
-  openUserLogin(false, true, () => {
+  openUserLogin(false, true, async () => {
     // 登录成功回调
     // 此时新 cookies 已设置，store 已更新
-    // 刷新页面以确保所有状态重置为新用户
-    window.location.reload();
+    window.$message.loading("正在更新数据...");
+    try {
+      await updateUserData();
+      window.$message.success("登录成功");
+      // router.push("/");
+    } catch (error) {
+      console.error("Login update failed", error);
+    }
   });
 };
 
@@ -226,9 +234,9 @@ const isLogout = () => {
     positiveText: "确认登出",
     negativeText: "取消",
     onPositiveClick: () => {
-       // 退出时保存当前账号，方便下次登录
-       saveCurrentAccount();
-       toLogout();
+      // 退出时保存当前账号，方便下次登录
+      saveCurrentAccount();
+      toLogout();
     },
   });
 };
@@ -293,6 +301,7 @@ onBeforeMount(() => {
   .user-info {
     .nickname {
       font-weight: bold;
+      max-width: 220px;
     }
     .n-tag {
       height: 18px;
@@ -318,22 +327,21 @@ onBeforeMount(() => {
     }
   }
   .account-list {
-    margin-bottom: 8px;
     .subtitle {
       font-size: 12px;
-      color: var(--n-text-color-3);
-      margin-bottom: 8px;
       padding-left: 4px;
+      margin-bottom: 8px;
+      display: block;
     }
     .account-item {
       display: flex;
       align-items: center;
       padding: 6px 8px;
+      margin-bottom: 8px;
       border-radius: 8px;
       cursor: pointer;
       transition: background-color 0.2s;
       position: relative;
-      
       .account-name {
         margin-left: 8px;
         font-size: 13px;
@@ -345,7 +353,9 @@ onBeforeMount(() => {
         border-radius: 4px;
         display: flex;
         align-items: center;
-        transition: all 0.2s;
+        transition:
+          background-color 0.2s,
+          color 0.2s;
         &:hover {
           background-color: rgba(var(--primary), 0.1);
           color: var(--primary-color);
@@ -359,22 +369,7 @@ onBeforeMount(() => {
       }
     }
     .add-account {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 8px;
-      padding: 8px;
       border-radius: 8px;
-      font-size: 13px;
-      cursor: pointer;
-      border: 1px dashed var(--n-border-color);
-      transition: all 0.2s;
-      gap: 4px;
-      &:hover {
-        border-color: var(--primary-color);
-        color: var(--primary-color);
-        background-color: rgba(var(--primary), 0.05);
-      }
     }
   }
   .n-divider {

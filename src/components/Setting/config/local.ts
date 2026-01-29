@@ -1,17 +1,17 @@
-import { useSettingStore, useStatusStore, useDataStore } from "@/stores";
+import { useSettingStore, useStatusStore } from "@/stores";
 import { useCacheManager } from "@/core/resource/CacheManager";
 import { formatFileSize } from "@/utils/helper";
-import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS, isVip, isSvip, AUTHORIZED_QUALITY_LEVELS } from "@/utils/meta";
+import { songLevelData, getSongLevelsData, AI_AUDIO_LEVELS } from "@/utils/meta";
 import { SettingConfig } from "@/types/settings";
 import { openLocalMusicDirectoryModal } from "@/utils/modal";
 import { pick } from "lodash-es";
 import LocalLyricDirectories from "../components/LocalLyricDirectories.vue";
 import CacheSizeLimit from "../components/CacheSizeLimit.vue";
+import { filterAuthorizedQualityOptions } from "@/utils/auth";
 
 export const useLocalSettings = (): SettingConfig => {
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
-  const dataStore = useDataStore();
   const cacheManager = useCacheManager();
 
   // --- 缓存逻辑 ---
@@ -110,18 +110,7 @@ export const useLocalSettings = (): SettingConfig => {
     let allData = getSongLevelsData(levels);
 
     // 根据 VIP 状态过滤
-    if (dataStore.userLoginStatus) {
-      const vipType = dataStore.userData.vipType || 0;
-      if (!isSvip(vipType)) {
-        const allowedLevels = isVip(vipType)
-          ? AUTHORIZED_QUALITY_LEVELS.VIP
-          : AUTHORIZED_QUALITY_LEVELS.NORMAL;
-        allData = allData.filter((item) => (allowedLevels as readonly string[]).includes(item.level));
-      }
-    } else {
-      // 未登录
-      allData = allData.filter((item) => (AUTHORIZED_QUALITY_LEVELS.NORMAL as readonly string[]).includes(item.level));
-    }
+    allData = filterAuthorizedQualityOptions(allData);
 
     if (settingStore.disableAiAudio) {
       allData = allData.filter((item) => {
