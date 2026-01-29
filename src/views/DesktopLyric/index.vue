@@ -61,7 +61,9 @@
           <span class="artist">{{ lyricData.artistName }}</span>
         </n-flex>
       </div>
-      <n-flex
+      <TransitionGroup
+        tag="div"
+        :name="transitionName"
         :style="{
           fontSize: lyricConfig.fontSize + 'px',
           fontFamily: lyricConfig.fontFamily,
@@ -69,12 +71,9 @@
           textShadow: `0 0 4px ${lyricConfig.shadowColor}`,
         }"
         :class="['lyric-container', lyricConfig.position]"
-        :size="0"
-        justify="space-around"
-        vertical
       >
-        <span
-          v-for="line in renderLyricLines"
+        <div
+          v-for="(line, index) in renderLyricLines"
           :key="line.key"
           :class="[
             'lyric-line',
@@ -82,10 +81,14 @@
               active: line.active,
               'is-yrc': Boolean(lyricData?.yrcData?.length && line.line?.words?.length > 1),
               'has-background-mask': lyricConfig.textBackgroundMask,
+              'is-next': !line.active && lyricConfig.isDoubleLine,
             },
           ]"
           :style="{
             color: line.active ? lyricConfig.playedColor : lyricConfig.unplayedColor,
+            top: getLineTop(index),
+            fontSize: index > 0 ? '0.8em' : '1em',
+            '--line-index': index,
           }"
           :ref="(el) => setLineRef(el, line.key)"
         >
@@ -134,10 +137,12 @@
               {{ line.line?.words?.[0]?.word || "" }}
             </span>
           </template>
-        </span>
+        </div>
         <!-- 占位 -->
-        <span v-if="renderLyricLines.length === 1" class="lyric-line"> &nbsp; </span>
-      </n-flex>
+        <span v-if="renderLyricLines.length === 0" class="lyric-line" key="placeholder">
+          &nbsp;
+        </span>
+      </TransitionGroup>
     </div>
   </n-config-provider>
 </template>
@@ -276,6 +281,25 @@ const placeholder = (word: string): RenderLine[] => [
 ];
 
 /**
+ * 渲染的歌词行 transition name
+ */
+const transitionName = computed(() => {
+  if (lyricConfig.showTran && (lyricData.lrcData?.length || 0) > 0) return "lyric-fade";
+  if (lyricConfig.isDoubleLine) return "lyric-slide";
+  return "lyric-fade";
+});
+
+/**
+ * 根据索引计算 absolute top
+ */
+const getLineTop = (index: number) => {
+  // 统一使用 px 单位，避免因字体大小不同导致的 em 计算差异
+  // 1.9 倍行距，折中方案
+  if (index === 0) return "0px";
+  return `${lyricConfig.fontSize * 1.9}px`;
+};
+
+/**
  * 渲染的歌词行
  * @returns 渲染的歌词行数组
  */
@@ -301,13 +325,11 @@ const renderLyricLines = computed<RenderLine[]>(() => {
   const next = lyrics[idx + 1];
   if (!current) return [];
   const safeEnd = getSafeEndTime(lyrics, idx);
-  if (
-    lyricConfig.showTran &&
-    current.translatedLyric &&
-    current.translatedLyric.trim().length > 0
-  ) {
+  // 翻译模式：显示 原文 + 翻译
+  if (lyricConfig.showTran && current.translatedLyric) {
+    // 使用稳定的 Key，避免 update 时重建
     const lines: RenderLine[] = [
-      { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
+      { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}-orig`, active: true },
       {
         line: {
           startTime: current.startTime,
@@ -326,54 +348,35 @@ const renderLyricLines = computed<RenderLine[]>(() => {
           isDuet: false,
         },
         index: idx,
-        key: `${idx}:tran`,
+        key: `${idx}-tran`,
         active: false,
       },
     ];
-    return lines.filter((l) => {
-      const s = (l.line?.words || [])
-        .map((w) => w.word)
-        .join("")
-        .trim();
-      return s.length > 0;
-    });
+    return lines;
   }
-  if (!lyricConfig.isDoubleLine) {
-    return [
-      { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
-    ].filter((l) => {
-      const s = (l.line?.words || [])
-        .map((w) => w.word)
-        .join("")
-        .trim();
-      return s.length > 0;
+  // 双行模式：显示 当前 + 下一句
+  if (lyricConfig.isDoubleLine) {
+    const lines: RenderLine[] = [];
+    // 当前行
+    lines.push({
+      line: { ...current, endTime: safeEnd },
+      index: idx,
+      key: `${idx}-orig`,
+      active: true,
     });
+    // 下一句
+    if (next) {
+      lines.push({
+        line: next,
+        index: idx + 1,
+        key: `${idx + 1}-orig`, // 保持 Key 唯一且稳定
+        active: false,
+      });
+    }
+    return lines;
   }
-  const isEven = idx % 2 === 0;
-  if (isEven) {
-    const lines: RenderLine[] = [
-      { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
-      ...(next ? [{ line: next, index: idx + 1, key: `${idx + 1}:next`, active: false }] : []),
-    ];
-    return lines.filter((l) => {
-      const s = (l.line?.words || [])
-        .map((w) => w.word)
-        .join("")
-        .trim();
-      return s.length > 0;
-    });
-  }
-  const lines: RenderLine[] = [
-    ...(next ? [{ line: next, index: idx + 1, key: `${idx + 1}:next`, active: false }] : []),
-    { line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}:orig`, active: true },
-  ];
-  return lines.filter((l) => {
-    const s = (l.line?.words || [])
-      .map((w) => w.word)
-      .join("")
-      .trim();
-    return s.length > 0;
-  });
+  // 单行模式
+  return [{ line: { ...current, endTime: safeEnd }, index: idx, key: `${idx}-orig`, active: true }];
 });
 
 /**
@@ -927,14 +930,26 @@ onBeforeUnmount(() => {
     height: 100%;
     padding: 0 8px;
     cursor: move;
+    position: relative; // 相对定位，供子元素绝对定位参考
+
     .lyric-line {
+      position: absolute; // 绝对定位
       width: 100%;
+      left: 0;
       line-height: normal;
       padding: 4px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      position: relative;
+      transition:
+        top 0.5s ease,
+        font-size 0.5s ease,
+        color 0.5s ease,
+        opacity 0.5s ease,
+        transform 0.5s ease;
+      will-change: top, font-size, transform;
+      transform-origin: left center;
+
       &.has-background-mask {
         .scroll-content {
           background-color: var(--mask-bg-color);
@@ -981,9 +996,9 @@ onBeforeUnmount(() => {
       }
     }
     &.center {
-      align-items: center;
       .lyric-line {
         text-align: center;
+        transform-origin: center center;
         &.is-yrc {
           .content {
             justify-content: center;
@@ -992,9 +1007,9 @@ onBeforeUnmount(() => {
       }
     }
     &.right {
-      align-items: flex-end;
       .lyric-line {
         text-align: right;
+        transform-origin: right center;
         &.is-yrc {
           .content {
             justify-content: flex-end;
@@ -1004,17 +1019,52 @@ onBeforeUnmount(() => {
     }
     &.both {
       .lyric-line {
-        &:nth-child(2n) {
+        &:nth-child(even) {
           text-align: right;
+          transform-origin: right center;
+        }
+        &:nth-child(odd) {
+          text-align: left;
+          transform-origin: left center;
         }
       }
-      .lyric-line.is-yrc:nth-child(2n) {
+      .lyric-line.is-yrc:nth-child(even) {
         .content {
           justify-content: flex-end;
         }
       }
     }
   }
+
+  // Slide Mode
+  .lyric-slide-move {
+    transition: transform 0.5s ease;
+  }
+  .lyric-slide-enter-from {
+    opacity: 0;
+    transform: translateY(1em) scale(0.9);
+  }
+  .lyric-slide-leave-to {
+    opacity: 0;
+    transform: translateY(-1em) scale(1);
+  }
+  .lyric-slide-leave-active {
+    position: absolute;
+  }
+
+  // Fade Mode
+  .lyric-fade-move {
+    transition: transform 0.5s ease;
+  }
+  .lyric-fade-enter-from,
+  .lyric-fade-leave-to {
+    opacity: 0;
+  }
+  .lyric-fade-leave-active {
+    position: absolute;
+    transition: opacity 0.5s ease;
+  }
+
   &.hovered {
     &:not(.locked) {
       background-color: rgba(0, 0, 0, 0.6);
