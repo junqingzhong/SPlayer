@@ -53,6 +53,7 @@
           class="set"
           :round="false"
           :disabled="isDisabled"
+          :title="resolve(props.item.title)"
           v-bind="item.componentProps"
         />
 
@@ -63,6 +64,7 @@
           :options="normalizedOptions"
           class="set"
           :disabled="isDisabled"
+          :title="resolve(props.item.title)"
           v-bind="item.componentProps"
         />
 
@@ -75,6 +77,7 @@
           :max="resolve(item.max)"
           :step="resolve(item.step)"
           :disabled="isDisabled"
+          :title="resolve(props.item.title)"
           v-bind="item.componentProps"
         >
           <template #prefix v-if="item.prefix">{{ resolve(item.prefix) }}</template>
@@ -90,6 +93,7 @@
           :type="item.componentProps?.type || 'text'"
           :show-password-on="item.componentProps?.showPasswordOn"
           :disabled="isDisabled"
+          :title="resolve(props.item.title)"
           v-bind="item.componentProps"
         >
           <template #prefix v-if="item.prefix">{{ resolve(item.prefix) }}</template>
@@ -107,6 +111,7 @@
           :marks="item.marks"
           :format-tooltip="item.formatTooltip"
           :disabled="isDisabled"
+          :title="resolve(props.item.title)"
           v-bind="item.componentProps"
         />
 
@@ -118,6 +123,7 @@
           secondary
           @click="handleAction"
           :disabled="isDisabled"
+          :title="resolve(props.item.title)"
           v-bind="item.componentProps"
         >
           {{ resolve(item.buttonLabel) || "配置" }}
@@ -131,6 +137,7 @@
           :show-alpha="item.componentProps?.showAlpha ?? false"
           :modes="item.componentProps?.modes ?? ['hex']"
           :disabled="isDisabled"
+          :title="resolve(props.item.title)"
           @complete="handleAction"
         />
 

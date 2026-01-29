@@ -124,6 +124,7 @@ export const useLyricSettings = (): SettingConfig => {
             max: 40,
             suffix: "px",
             disabled: computed(() => settingStore.useAMLyrics),
+            title: computed(() => settingStore.useAMLyrics ? "由 AMLL 自动控制" : ""),
             value: computed({
               get: () => tranFontSize.value,
               set: (v) => (tranFontSize.value = v || 22),
@@ -139,6 +140,7 @@ export const useLyricSettings = (): SettingConfig => {
             max: 40,
             suffix: "px",
             disabled: computed(() => settingStore.useAMLyrics),
+            title: computed(() => settingStore.useAMLyrics ? "由 AMLL 自动控制" : ""),
             value: computed({
               get: () => romaFontSize.value,
               set: (v) => (romaFontSize.value = v || 18),

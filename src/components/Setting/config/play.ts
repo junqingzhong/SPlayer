@@ -59,6 +59,16 @@ export const usePlaySettings = (): SettingConfig => {
         },
       );
     }
+    if (option.value === "mpv" && option.disabled) {
+      return h(
+        NTooltip,
+        { placement: "left", keepAliveOnHover: false },
+        {
+          trigger: () => h("div", { style: "cursor: not-allowed;" }, [node]),
+          default: () => "当前环境不支持 MPV 引擎",
+        },
+      );
+    }
     return node;
   };
 
@@ -70,7 +80,11 @@ export const usePlaySettings = (): SettingConfig => {
       value: "ffmpeg",
       disabled: !checkIsolationSupport(),
     },
-    { label: "MPV", value: "mpv" },
+    {
+      label: "MPV",
+      value: "mpv",
+      disabled: !isElectron,
+    },
   ];
 
   // 当前选中的引擎值
@@ -98,7 +112,11 @@ export const usePlaySettings = (): SettingConfig => {
     }
 
     // 如果切换到 MPV 引擎，先检查是否已安装
-    if (targetPlaybackEngine === "mpv" && isElectron) {
+    if (targetPlaybackEngine === "mpv") {
+      if (!isElectron) {
+        window.$message.warning("当前环境不支持 MPV 引擎，已回退至默认引擎");
+        return;
+      }
       try {
         const result = await window.electron.ipcRenderer.invoke("mpv-check-installed");
         if (!result.installed) {
@@ -477,6 +495,7 @@ export const usePlaySettings = (): SettingConfig => {
       {
         title: "音乐解锁",
         tags: [{ text: "Beta", type: "warning" }],
+        show: isElectron,
         items: [
           {
             key: "useSongUnlock",
@@ -487,7 +506,6 @@ export const usePlaySettings = (): SettingConfig => {
               get: () => settingStore.useSongUnlock,
               set: (v) => (settingStore.useSongUnlock = v),
             }),
-            show: isElectron,
           },
           {
             key: "songUnlockConfig",
@@ -497,7 +515,6 @@ export const usePlaySettings = (): SettingConfig => {
             buttonLabel: "配置",
             action: openSongUnlockManager,
             disabled: computed(() => !settingStore.useSongUnlock),
-            show: isElectron,
           },
         ],
       },
