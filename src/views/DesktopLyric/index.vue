@@ -152,6 +152,8 @@ import { LyricLine, LyricWord } from "@applemusic-like-lyrics/lyric";
 import { LyricConfig, LyricData, RenderLine } from "@/types/desktop-lyric";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
+const INITIALIZATION_DELAY = 250; // 歌词窗口初始化延迟，用于防止闪烁
+
 // 桌面歌词数据
 const lyricData = reactive<LyricData>({
   playName: "",
@@ -778,7 +780,7 @@ onMounted(() => {
   // 延迟结束初始化状态
   useTimeoutFn(() => {
     isInitializing.value = false;
-  }, 250);
+  }, INITIALIZATION_DELAY);
 
   // 启动 RAF 插值
   if (lyricData.playStatus) {
