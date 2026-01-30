@@ -152,7 +152,7 @@ import { LyricLine, LyricWord } from "@applemusic-like-lyrics/lyric";
 import { LyricConfig, LyricData, RenderLine } from "@/types/desktop-lyric";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 
-const INITIALIZATION_DELAY = 250; // 歌词窗口初始化延迟，用于防止闪烁
+const FALLBACK_INITIALIZATION_TIMEOUT = 2000; // 歌词窗口初始化后备超时时间，用于防止无数据时无限期空白
 
 // 桌面歌词数据
 const lyricData = reactive<LyricData>({
@@ -728,6 +728,10 @@ onMounted(() => {
     "update-desktop-lyric-data",
     (_event, data: LyricData & { sendTimestamp?: number }) => {
       Object.assign(lyricData, data);
+      // 首次接收到歌词数据时，立即结束初始化状态
+      if (isInitializing.value) {
+        isInitializing.value = false;
+      }
       // 更新锚点：以传入的 currentTime + songOffset 建立毫秒级基准，并重置帧时间
       if (typeof lyricData.currentTime === "number") {
         const offset = Number(lyricData.songOffset ?? 0);
@@ -777,10 +781,12 @@ onMounted(() => {
   // 初始化缓存边界数据
   updateCachedBounds();
 
-  // 延迟结束初始化状态
+  // 后备超时结束初始化状态：如果 IPC 事件未触发，则在超时后结束初始化
   useTimeoutFn(() => {
-    isInitializing.value = false;
-  }, INITIALIZATION_DELAY);
+    if (isInitializing.value) {
+      isInitializing.value = false;
+    }
+  }, FALLBACK_INITIALIZATION_TIMEOUT);
 
   // 启动 RAF 插值
   if (lyricData.playStatus) {
