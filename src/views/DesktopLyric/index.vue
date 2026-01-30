@@ -214,12 +214,6 @@ const isHovered = ref<boolean>(false);
 // 初始化状态
 const isInitializing = ref(true);
 
-onMounted(() => {
-  // 在组件挂载后短暂延迟，以避免初始内容闪烁
-  setTimeout(() => {
-    isInitializing.value = false;
-  }, 250);
-});
 
 const { start: startHoverTimer } = useTimeoutFn(
   () => {
@@ -784,7 +778,7 @@ onMounted(() => {
   // 延迟结束初始化状态
   useTimeoutFn(() => {
     isInitializing.value = false;
-  }, 500);
+  }, 250);
 
   // 启动 RAF 插值
   if (lyricData.playStatus) {
