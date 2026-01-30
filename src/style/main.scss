@@ -45,6 +45,11 @@
       border-color: rgba(var(--primary), 0.1) !important;
       backdrop-filter: blur(20px);
     }
+    .n-list {
+      --n-merged-color-hover: rgba(var(--background), 0.2) !important;
+      --n-merged-color: transparent !important;
+      --n-merged-border-color: rgba(var(--background), 0.2) !important;
+    }
     .n-layout-toggle-bar {
       opacity: 0.3;
       transition: opacity 0.3s var(--n-bezier);
