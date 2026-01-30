@@ -214,6 +214,13 @@ const isHovered = ref<boolean>(false);
 // 初始化状态
 const isInitializing = ref(true);
 
+onMounted(() => {
+  // 在组件挂载后短暂延迟，以避免初始内容闪烁
+  setTimeout(() => {
+    isInitializing.value = false;
+  }, 250);
+});
+
 const { start: startHoverTimer } = useTimeoutFn(
   () => {
     isHovered.value = false;
@@ -304,6 +311,11 @@ const getLineTop = (index: number) => {
  * @returns 渲染的歌词行数组
  */
 const renderLyricLines = computed<RenderLine[]>(() => {
+  // 在初始化阶段，不渲染任何内容
+  if (isInitializing.value) {
+    return [];
+  }
+
   const lyrics =
     lyricConfig.showYrc && lyricData?.yrcData?.length ? lyricData.yrcData : lyricData.lrcData;
   // 无歌曲名且无歌词
