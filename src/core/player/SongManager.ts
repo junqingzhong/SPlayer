@@ -128,7 +128,7 @@ class SongManager {
     let level = isPc ? "exhigh" : settingStore.songLevel;
 
     // 权限检查：确保用户有权限播放请求的音质
-    const vipType = dataStore.userLoginStatus ? (dataStore.userData.vipType || 0) : 0;
+    const vipType = dataStore.userLoginStatus ? dataStore.userData.vipType || 0 : 0;
     const allowedLevels = getAuthorizedQualityLevels(vipType, dataStore.userLoginStatus);
 
     if (allowedLevels) {

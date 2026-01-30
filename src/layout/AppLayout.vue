@@ -97,7 +97,9 @@
     <!-- 全局播放器 -->
     <MainPlayer />
     <!-- 全屏播放器 -->
-    <FullPlayer />
+    <PlayerProvider>
+      <FullPlayer />
+    </PlayerProvider>
   </div>
 </template>
 

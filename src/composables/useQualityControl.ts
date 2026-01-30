@@ -3,11 +3,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { QualityType } from "@/types/main";
 import { formatFileSize, handleSongQuality } from "@/utils/helper";
-import {
-  AI_AUDIO_LEVELS,
-  getSongLevelsData,
-  songLevelData,
-} from "@/utils/meta";
+import { AI_AUDIO_LEVELS, getSongLevelsData, songLevelData } from "@/utils/meta";
 import { getAuthorizedQualityLevels } from "@/utils/auth";
 import { DropdownOption } from "naive-ui";
 
@@ -109,13 +105,11 @@ export const useQualityControl = () => {
         const levels = getSongLevelsData(songLevelData, res.data);
 
         // 根据 VIP 类型过滤音质
-        const vipType = dataStore.userLoginStatus ? (dataStore.userData.vipType || 0) : 0;
+        const vipType = dataStore.userLoginStatus ? dataStore.userData.vipType || 0 : 0;
         const allowedLevels = getAuthorizedQualityLevels(vipType, dataStore.userLoginStatus);
 
         if (allowedLevels) {
-          statusStore.availableQualities = levels.filter((q) =>
-            allowedLevels.includes(q.level),
-          );
+          statusStore.availableQualities = levels.filter((q) => allowedLevels.includes(q.level));
         } else {
           // SVIP / 无限制
           statusStore.availableQualities = levels;

@@ -135,12 +135,5 @@ const formatTooltip = (value: number) => {
       }
     }
   }
-  &.player {
-    --n-rail-color: rgba(var(--main-cover-color), 0.14);
-    --n-rail-color-hover: rgba(var(--main-cover-color), 0.3);
-    --n-fill-color: rgb(var(--main-cover-color));
-    --n-handle-color: rgb(var(--main-cover-color));
-    --n-fill-color-hover: rgb(var(--main-cover-color));
-  }
 }
 </style>

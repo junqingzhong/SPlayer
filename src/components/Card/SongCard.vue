@@ -101,7 +101,9 @@
             </n-tag>
             <!-- 脏标 -->
             <n-tag
-              v-if="settingStore.showSongExplicitTag && (song.mark && (song.mark & EXPLICIT_CONTENT_MARK))"
+              v-if="
+                settingStore.showSongExplicitTag && song.mark && song.mark & EXPLICIT_CONTENT_MARK
+              "
               :bordered="false"
               class="explicit"
               type="error"

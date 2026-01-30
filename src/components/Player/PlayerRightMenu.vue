@@ -7,7 +7,6 @@
         v-model:show="showQualityPopover"
         :value="currentPlayingLevel"
         :options="qualityOptions"
-        :class="{ player: statusStore.showFullPlayer }"
         trigger="manual"
         placement="top"
         @update:value="handleQualitySelect"
@@ -30,13 +29,7 @@
           </n-tag>
         </div>
       </n-popselect>
-      <n-popover
-        v-else
-        :class="{ player: statusStore.showFullPlayer }"
-        trigger="hover"
-        placement="top"
-        :show-arrow="false"
-      >
+      <n-popover v-else trigger="hover" placement="top" :show-arrow="false">
         <template #trigger>
           <n-tag class="quality-tag hidden" type="primary" size="small">
             {{ getQualityName(statusStore.songQuality) }}
@@ -52,22 +45,13 @@
       </div>
     </n-badge>
     <!-- 其他控制 -->
-    <n-dropdown
-      :options="controlsOptions"
-      :show-arrow="false"
-      :class="{ player: statusStore.showFullPlayer }"
-      @select="handleControls"
-    >
+    <n-dropdown :options="controlsOptions" :show-arrow="false" @select="handleControls">
       <div class="menu-icon hidden">
         <SvgIcon name="Controls" />
       </div>
     </n-dropdown>
     <!-- 音量 -->
-    <n-popover
-      :show-arrow="false"
-      :style="{ padding: 0 }"
-      :class="{ player: statusStore.showFullPlayer }"
-    >
+    <n-popover :show-arrow="false" :style="{ padding: 0 }">
       <template #trigger>
         <div class="menu-icon hidden" @click.stop="player.toggleMute" @wheel="player.setVolume">
           <SvgIcon :name="statusStore.playVolumeIcon" />
@@ -202,13 +186,10 @@ watch(
 );
 
 // 监听 VIP 状态或设置变化，重新加载音质
-watch(
-  [() => dataStore.userData.vipType, () => settingStore.disableAiAudio],
-  async () => {
-    statusStore.availableQualities = [];
-    await loadQualities();
-  },
-);
+watch([() => dataStore.userData.vipType, () => settingStore.disableAiAudio], async () => {
+  statusStore.availableQualities = [];
+  await loadQualities();
+});
 </script>
 
 <style scoped lang="scss">
@@ -275,7 +256,6 @@ watch(
   .slider-num {
     margin-top: 8px;
     font-size: 13px;
-    color: var(--color);
     white-space: nowrap;
   }
 }

@@ -153,7 +153,7 @@ const lyricMode = computed(() => {
 
 // 左侧外边距
 const leftMargin = computed(() => {
-  if (props.center) return "0px";
+  if (props.center || !props.light) return "0px";
   const offset = settingStore.lyricHorizontalOffset;
   return settingStore.useAMLyrics ? `${offset + 40}px` : `${offset + 10}px`;
 });

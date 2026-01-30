@@ -105,13 +105,13 @@
           <!-- 进度条 -->
           <div class="slider">
             <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
-            <PlayerSlider class="player" :show-tooltip="false" />
+            <PlayerSlider :show-tooltip="false" />
             <span @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
           </div>
         </div>
         <n-flex class="right" align="center" justify="end">
           <!-- 功能区 -->
-          <PlayerRightMenu player />
+          <PlayerRightMenu />
         </n-flex>
       </div>
     </Transition>

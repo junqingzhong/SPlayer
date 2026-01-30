@@ -496,19 +496,6 @@ onActivated(() => {
     margin-bottom: 32px;
     height: 240px;
     padding: 12px 0 24px 0;
-    @media (max-width: 600px) {
-      flex-direction: column;
-      height: auto;
-      align-items: center;
-      text-align: center;
-      .data {
-        padding-right: 0 !important;
-        align-items: center;
-      }
-      .cover {
-        margin-right: 0 !important;
-      }
-    }
     .cover {
       height: 100%;
       aspect-ratio: 1/1;
@@ -587,6 +574,24 @@ onActivated(() => {
               font-size: 16px;
             }
           }
+        }
+      }
+    }
+    @media (max-width: 600px) {
+      flex-direction: column;
+      height: auto;
+      align-items: center;
+      text-align: center;
+      gap: 20px;
+      .cover {
+        margin-right: 0;
+        max-width: calc(100% - 60%);
+      }
+      .data {
+        padding-right: 0;
+        align-items: center;
+        .actions {
+          margin-top: 12px;
         }
       }
     }

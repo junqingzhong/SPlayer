@@ -50,7 +50,7 @@ const settingStore = useSettingStore();
 // 操作系统主题
 const osTheme = useOsTheme();
 
-// 全局主题（使用 shallowRef 避免深层追踪开销）
+// 全局主题
 const themeOverrides = shallowRef<GlobalThemeOverrides>({});
 // 轻量的 rgba 构造器
 const toRGBA = (rgb: string, alpha: number) => `rgba(${rgb}, ${alpha})`;
