@@ -28,7 +28,11 @@
                 <SvgIcon name="Person" :depth="3" />
                 <div class="artists text-hidden">
                   <template v-if="Array.isArray(currentSong.artists)">
-                    <n-text v-for="(ar, index) in currentSong.artists" :key="ar.id">
+                    <n-text
+                      v-for="(ar, index) in currentSong.artists"
+                      :key="ar.id"
+                      @click="$router.push({ name: 'artist', query: { id: ar.id } })"
+                    >
                       {{ ar.name }}
                       <span v-if="index < currentSong.artists.length - 1"> / </span>
                     </n-text>
@@ -38,9 +42,14 @@
               </div>
               <div class="item" v-if="currentSong.album">
                 <SvgIcon name="Album" :depth="3" />
-                <n-text class="text-hidden">{{
-                  typeof currentSong.album === "string" ? currentSong.album : currentSong.album.name
-                }}</n-text>
+                <n-text
+                  v-if="typeof currentSong.album !== 'string'"
+                  class="text-hidden"
+                  @click="$router.push({ name: 'album', query: { id: currentSong.album.id } })"
+                >
+                  {{ currentSong.album.name }}
+                </n-text>
+                <n-text v-else class="text-hidden">{{ currentSong.album }}</n-text>
               </div>
             </div>
             <div class="actions">
@@ -60,10 +69,9 @@
             </div>
           </div>
         </div>
-
         <!-- 数据展示区域 -->
         <div v-if="viewModel" class="wiki-content">
-          <!-- 1. 音乐故事 -->
+          <!-- 音乐故事 -->
           <div v-if="viewModel.story" class="section">
             <n-h3 prefix="bar">音乐故事</n-h3>
             <n-grid x-gap="16" y-gap="16" cols="1 s:2 m:3" responsive="screen">
@@ -127,8 +135,7 @@
               </n-gi>
             </n-grid>
           </div>
-
-          <!-- 2. 音乐简介 -->
+          <!-- 音乐简介 -->
           <div v-if="viewModel.basicInfo.length > 0" class="section">
             <n-h3 prefix="bar">音乐简介</n-h3>
             <n-grid x-gap="16" y-gap="16" cols="1 s:2 m:3 l:4" responsive="screen">
@@ -150,8 +157,7 @@
               </n-gi>
             </n-grid>
           </div>
-
-          <!-- 3. 乐谱 (Collapse) -->
+          <!-- 乐谱 -->
           <div v-if="viewModel.sheets.length > 0" class="section">
             <n-h3 prefix="bar">乐谱</n-h3>
             <n-collapse @item-header-click="handleSheetExpand">
@@ -186,8 +192,7 @@
               </n-collapse-item>
             </n-collapse>
           </div>
-
-          <!-- 4. 获奖与影视 -->
+          <!-- 获奖与影视 -->
           <div
             v-if="viewModel.awards.length > 0 || viewModel.credentials.length > 0"
             class="section"
@@ -211,20 +216,19 @@
                       :img-props="{ alt: res.title }"
                     />
                     <div style="overflow: hidden; flex: 1">
-                      <n-text strong class="text-hidden" style="display: block">{{
-                        res.title
-                      }}</n-text>
-                      <n-text depth="3" size="small" class="text-hidden" style="display: block">{{
-                        res.subTitle
-                      }}</n-text>
+                      <n-text strong class="text-hidden" style="display: block">
+                        {{ res.title }}
+                      </n-text>
+                      <n-text depth="3" size="small" class="text-hidden" style="display: block">
+                        {{ res.subTitle }}
+                      </n-text>
                     </div>
                   </n-flex>
                 </n-card>
               </n-gi>
             </n-grid>
           </div>
-
-          <!-- 5. 相似歌曲 -->
+          <!-- 相似歌曲 -->
           <div v-if="viewModel.similarSongs.length > 0" class="section">
             <n-h3 prefix="bar">相似歌曲</n-h3>
             <SongList :data="similarSongsList" height="auto" disabledSort />
@@ -255,7 +259,8 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from "vue-router";
+import type { SongType } from "@/types/main";
+import type { WikiViewModel, UserRecord, SongWikiData, ListenData, SheetData } from "./types";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { renderToolbar } from "@/utils/meta";
 import {
@@ -267,8 +272,6 @@ import {
 } from "@/api/song";
 import { formatSongsList } from "@/utils/format";
 import dayjs from "dayjs";
-import type { SongType } from "@/types/main";
-import type { WikiViewModel, UserRecord, WikiBlock } from "./types";
 
 const route = useRoute();
 const player = usePlayerController();
@@ -281,7 +284,11 @@ const similarSongsList = ref<SongType[]>([]);
 const sheetLoading = ref<Record<number, boolean>>({});
 
 // 简单的转换逻辑，避免过多判断
-const normalizeWikiData = (wiki: any, listen: any, sheets: any): WikiViewModel => {
+const normalizeWikiData = (
+  wiki: SongWikiData | null,
+  listen: ListenData | null,
+  sheets: SheetData | null,
+): WikiViewModel => {
   const model: WikiViewModel = {
     basicInfo: [],
     sheets: [],
@@ -293,10 +300,16 @@ const normalizeWikiData = (wiki: any, listen: any, sheets: any): WikiViewModel =
   const record: UserRecord = {};
   const firstDto = listen?.musicFirstListenDto || wiki?.musicFirstListenDto;
   if (firstDto) {
+    const listenDate = firstDto.date
+      ? firstDto.date
+      : firstDto.listenTime
+        ? dayjs(firstDto.listenTime).format("YYYY.MM.DD")
+        : "";
+
     record.firstListen = {
       season: firstDto.season,
       period: firstDto.period,
-      date: firstDto.date || dayjs(firstDto.listenTime).format("YYYY.MM.DD"),
+      date: listenDate,
       meetDurationDesc: firstDto.meetDurationDesc,
       sceneText: firstDto.sceneText,
     };
@@ -312,7 +325,7 @@ const normalizeWikiData = (wiki: any, listen: any, sheets: any): WikiViewModel =
 
   const sheetList = sheets?.musicSheetSimpleInfoVOS;
   if (Array.isArray(sheetList)) {
-    model.sheets = sheetList.map((s: any) => ({
+    model.sheets = sheetList.map((s) => ({
       id: s.id,
       name: s.name,
       playVersion: s.playVersion,
@@ -321,7 +334,7 @@ const normalizeWikiData = (wiki: any, listen: any, sheets: any): WikiViewModel =
     }));
   }
 
-  const blocks = (wiki?.blocks as WikiBlock[]) || [];
+  const blocks = wiki?.blocks || [];
   for (const block of blocks) {
     if (!block.creatives) continue;
 
@@ -353,7 +366,7 @@ const normalizeWikiData = (wiki: any, listen: any, sheets: any): WikiViewModel =
     } else if (block.code === "SONG_PLAY_ABOUT_SIMILAR_SONG") {
       for (const creative of block.creatives) {
         creative.resources?.forEach((r) => {
-          if (r.resourceId) model.similarSongs.push(r.resourceId);
+          if (r.resourceId) model.similarSongs.push(Number(r.resourceId));
         });
       }
     }
@@ -362,36 +375,34 @@ const normalizeWikiData = (wiki: any, listen: any, sheets: any): WikiViewModel =
   return model;
 };
 
+// 获取歌曲信息
 const fetchData = async () => {
   const id = Number(route.query.id);
   if (!id || id === currentSongId.value) return;
-
   loading.value = true;
   currentSongId.value = id;
   viewModel.value = null;
   similarSongsList.value = [];
   sheetLoading.value = {};
-
   try {
     const detailRes = await songDetail(id);
     if (!detailRes.songs?.[0]) throw new Error("Song not found");
     currentSong.value = formatSongsList(detailRes.songs)[0];
-
     const [wikiRes, listenRes, sheetRes] = await Promise.allSettled([
       songWikiSummary(id),
       songFirstListenInfo(id),
       songSheetList(id),
     ]);
-
+    // 获取歌曲信息
     const wikiData = wikiRes.status === "fulfilled" ? wikiRes.value.data || wikiRes.value : {};
     const listenData =
       listenRes.status === "fulfilled"
         ? listenRes.value.data?.data || listenRes.value.data || listenRes.value
         : {};
     const sheetData = sheetRes.status === "fulfilled" ? sheetRes.value.data || sheetRes.value : {};
-
+    // 归一化数据
     viewModel.value = normalizeWikiData(wikiData, listenData, sheetData);
-
+    // 获取相似歌曲
     if (viewModel.value.similarSongs.length > 0) {
       try {
         const sims = await songDetail(viewModel.value.similarSongs);
@@ -408,14 +419,14 @@ const fetchData = async () => {
   }
 };
 
+// 展开乐谱
 const handleSheetExpand = async ({ name, expanded }: { name: number; expanded: boolean }) => {
   if (!expanded || !viewModel.value) return;
   const sheet = viewModel.value.sheets[name];
   if (!sheet || sheet.images?.length) return;
-
   sheetLoading.value[sheet.id] = true;
   try {
-    const res: any = await songSheetPreview(sheet.id);
+    const res = await songSheetPreview(sheet.id);
     const data = res?.data ?? res;
     const rawList = Array.isArray(data) ? data : data.pageList || data.pages || [];
     sheet.images = rawList
@@ -428,6 +439,7 @@ const handleSheetExpand = async ({ name, expanded }: { name: number; expanded: b
   }
 };
 
+// 播放歌曲
 const handlePlay = () => {
   if (currentSong.value) player.addNextSong(currentSong.value, true);
 };
@@ -444,25 +456,39 @@ onActivated(() => {
 .song-wiki {
   width: 100%;
   height: 100%;
-
-  .wiki-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding-bottom: 80px;
-  }
-
+  padding-bottom: 80px;
   .loading-skeleton {
-    max-width: 1200px;
     margin: 0 auto;
     padding-top: 12px;
+    .header-skeleton {
+      display: flex;
+      height: 240px;
+      margin-bottom: 32px;
+      padding: 12px 0 24px 0;
+      gap: 20px;
+      .info-skeleton {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+      }
+      @media (max-width: 600px) {
+        flex-direction: column;
+        height: auto;
+        align-items: center;
+        gap: 20px;
+        .info-skeleton {
+          width: 100%;
+          align-items: center;
+        }
+      }
+    }
   }
-
   .header {
     display: flex;
     margin-bottom: 32px;
     height: 240px;
     padding: 12px 0 24px 0;
-
     @media (max-width: 600px) {
       flex-direction: column;
       height: auto;
@@ -476,7 +502,6 @@ onActivated(() => {
         margin-right: 0 !important;
       }
     }
-
     .cover {
       height: 100%;
       aspect-ratio: 1/1;
@@ -484,7 +509,6 @@ onActivated(() => {
       flex-shrink: 0;
       margin-right: 20px;
       position: relative;
-
       .cover-img {
         position: relative;
         z-index: 1;
@@ -492,7 +516,6 @@ onActivated(() => {
         width: 100%;
         height: 100%;
       }
-
       .cover-shadow {
         position: absolute;
         top: 6px;
@@ -506,7 +529,6 @@ onActivated(() => {
         object-fit: cover;
       }
     }
-
     .data {
       display: flex;
       flex-direction: column;
@@ -525,16 +547,20 @@ onActivated(() => {
         gap: 8px;
         font-size: 14px;
         opacity: 0.8;
-
         .item {
           display: flex;
           align-items: center;
           flex-wrap: nowrap;
-
           .n-icon {
             font-size: 20px;
             margin-right: 4px;
             flex-shrink: 0;
+          }
+          .n-text {
+            cursor: pointer;
+            &:hover {
+              color: var(--primary-hex);
+            }
           }
         }
       }
@@ -558,26 +584,22 @@ onActivated(() => {
       }
     }
   }
-
   .wiki-content {
     display: flex;
     flex-direction: column;
     gap: 40px;
   }
-
   .loading-container {
     display: flex;
     justify-content: center;
     padding: 20px;
   }
 }
-
 .text-hidden {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .main-text {
   font-size: 16px;
   font-weight: bold;
