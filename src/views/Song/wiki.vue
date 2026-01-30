@@ -81,7 +81,7 @@
                   size="small"
                   embedded
                   :bordered="false"
-                  style="border-radius: 8px"
+                  style="border-radius: 8px; height: 100%"
                 >
                   <template #header-extra>
                     <n-text depth="3" style="font-size: 12px">
@@ -105,7 +105,7 @@
                   size="small"
                   embedded
                   :bordered="false"
-                  style="border-radius: 8px"
+                  style="border-radius: 8px; height: 100%"
                 >
                   <div class="card-content main-text">
                     累计播放 {{ viewModel.story.totalPlay.playCount }} 次
@@ -123,7 +123,7 @@
                   size="small"
                   embedded
                   :bordered="false"
-                  style="border-radius: 8px"
+                  style="border-radius: 8px; height: 100%"
                 >
                   <div class="card-content main-text">{{ viewModel.story.likeSong.text }}</div>
                   <template #footer v-if="viewModel.story.likeSong.redDesc">
@@ -145,7 +145,7 @@
                   size="small"
                   embedded
                   :bordered="false"
-                  style="border-radius: 8px"
+                  style="border-radius: 8px; height: 100%"
                 >
                   <n-flex v-if="item.tags && item.tags.length" size="small">
                     <n-tag v-for="tag in item.tags" :key="tag" :bordered="false" round size="small">
@@ -174,7 +174,10 @@
                 <div v-if="sheetLoading[sheet.id]" class="loading-container">
                   <n-spin size="small" />
                 </div>
-                <n-image-group v-else-if="sheet.images && sheet.images.length > 0">
+                <n-image-group
+                  v-else-if="sheet.images && sheet.images.length > 0"
+                  :render-toolbar="renderToolbar"
+                >
                   <n-grid x-gap="16" y-gap="16" cols="2 s:3 m:4 l:5" responsive="screen">
                     <n-gi v-for="(img, idx) in sheet.images" :key="idx">
                       <n-image
@@ -182,7 +185,6 @@
                         width="100%"
                         lazy
                         object-fit="contain"
-                        :render-toolbar="renderToolbar"
                         style="border-radius: 8px"
                       />
                     </n-gi>
@@ -203,7 +205,12 @@
                 v-for="(res, index) in [...viewModel.awards, ...viewModel.credentials]"
                 :key="index"
               >
-                <n-card size="small" embedded :bordered="false" style="border-radius: 8px">
+                <n-card
+                  size="small"
+                  embedded
+                  :bordered="false"
+                  style="border-radius: 8px; height: 100%"
+                >
                   <n-flex align="center">
                     <n-image
                       v-if="res.image"

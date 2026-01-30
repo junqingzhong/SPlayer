@@ -57,7 +57,6 @@ export const AI_AUDIO_LEVELS = ["jymaster", "sky", "jyeffect", "vivid"];
 /** AI 增强音质 Key（需要过滤的 key） */
 export const AI_AUDIO_KEYS = ["jm", "sk", "je"];
 
-
 /** Fuck DJ Mode 关键词 */
 export const DJ_MODE_KEYWORDS = ["DJ", "抖音", "0.9", "0.8", "网红", "车载", "热歌", "慢摇"];
 
@@ -72,7 +71,7 @@ export const VIP_LEVELS = {
   SVIP: 11,
 } as const;
 
-/** 
+/**
  * 不同 VIP 等级允许的音质
  * Normal: Standard, Higher, ExHigh
  * VIP: Normal + Lossless, Hi-Res, Jyeffect
@@ -185,6 +184,7 @@ export const renderToolbar = ({ nodes }: ImageRenderToolbarProps) => {
     nodes.resizeToOriginalSize,
     nodes.zoomOut,
     nodes.zoomIn,
+    nodes.download,
     nodes.close,
   ];
 };
