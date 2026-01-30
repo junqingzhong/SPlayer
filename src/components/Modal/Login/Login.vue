@@ -12,10 +12,17 @@
     </n-tabs>
     <!-- 其他方式 -->
     <n-flex align="center" class="other">
-      <n-button :focusable="false" size="small" quaternary round @click="specialLogin('uid')">
+      <n-button
+        v-if="!disableUid"
+        :focusable="false"
+        size="small"
+        quaternary
+        round
+        @click="specialLogin('uid')"
+      >
         UID 登录
       </n-button>
-      <n-divider vertical />
+      <n-divider v-if="!disableUid" vertical />
       <n-button :focusable="false" size="small" quaternary round @click="specialLogin('cookie')">
         Cookie 登录
       </n-button>
@@ -39,7 +46,10 @@ import LoginUID from "./LoginUID.vue";
 import LoginCookie from "./LoginCookie.vue";
 
 const props = defineProps<{
+  /** 强制登录 */
   force?: boolean;
+  /** 禁用 UID 登录 */
+  disableUid?: boolean;
 }>();
 
 const emit = defineEmits<{

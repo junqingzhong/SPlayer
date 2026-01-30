@@ -80,18 +80,9 @@
           <RouterView v-slot="{ Component }">
             <Transition :name="`router-${settingStore.routeAnimation}`" mode="out-in">
               <KeepAlive v-if="settingStore.useKeepAlive" :max="20" :exclude="['layout']">
-                <component
-                  :is="Component"
-                  :key="$route.fullPath + dataStore.userData.userId"
-                  class="router-view"
-                />
+                <component :is="Component" class="router-view" />
               </KeepAlive>
-              <component
-                v-else
-                :is="Component"
-                :key="$route.fullPath + dataStore.userData.userId"
-                class="router-view"
-              />
+              <component v-else :is="Component" class="router-view" />
             </Transition>
           </RouterView>
           <!-- 回顶 -->

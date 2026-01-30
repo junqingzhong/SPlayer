@@ -73,6 +73,7 @@ export const openUserLogin = async (
   showTip: boolean = false,
   force: boolean = false,
   onSuccess?: () => void,
+  disableUid: boolean = false,
 ) => {
   if (showTip) window.$message.warning("请登录后使用");
   const { default: Login } = await import("@/components/Modal/Login/Login.vue");
@@ -87,6 +88,7 @@ export const openUserLogin = async (
     content: () => {
       return h(Login, {
         force,
+        disableUid,
         onClose: () => modal.destroy(),
         onSuccess: () => {
           modal.destroy();

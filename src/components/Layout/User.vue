@@ -71,7 +71,7 @@
       </n-flex>
       <n-divider />
       <!-- 多账号 -->
-      <div class="account-list" v-if="dataStore.userLoginStatus">
+      <div class="account-list" v-if="dataStore.userLoginStatus && dataStore.loginType !== 'uid'">
         <n-text class="subtitle" :depth="3">切换账号</n-text>
         <div
           v-for="account in otherAccounts"
@@ -202,24 +202,35 @@ const handleRemoveAccount = (userId: number) => {
 
 // 添加新账号 (保存当前 -> 开启强制登录 -> 成功后自动切换)
 const handleAddAccount = async () => {
+  // 限制账号数量
+  if (dataStore.userList.length >= 3) {
+    window.$message.warning("最多只能保留 3 个账号");
+    return;
+  }
+
   // 1先保存当前账号状态 (快照)
   saveCurrentAccount();
 
   userMenuShow.value = false;
 
-  // 打开登录框 (强制模式, 不登出当前用户以保持 cookies 直到新登录成功)
-  openUserLogin(false, true, async () => {
-    // 登录成功回调
-    // 此时新 cookies 已设置，store 已更新
-    window.$message.loading("正在更新数据...");
-    try {
-      await updateUserData();
-      window.$message.success("登录成功");
-      // router.push("/");
-    } catch (error) {
-      console.error("Login update failed", error);
-    }
-  });
+  // 打开登录框 (强制模式, 不登出当前用户以保持 cookies 直到新登录成功, 禁用 UID 登录)
+  openUserLogin(
+    false,
+    true,
+    async () => {
+      // 登录成功回调
+      // 此时新 cookies 已设置，store 已更新
+      window.$message.loading("正在更新数据...");
+      try {
+        await updateUserData();
+        window.$message.success("登录成功");
+        // router.push("/");
+      } catch (error) {
+        console.error("Login update failed", error);
+      }
+    },
+    true,
+  );
 };
 
 // 退出登录
@@ -329,7 +340,7 @@ onBeforeMount(() => {
   .account-list {
     .subtitle {
       font-size: 12px;
-      padding-left: 4px;
+      text-align: center;
       margin-bottom: 8px;
       display: block;
     }
