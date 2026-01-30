@@ -267,7 +267,16 @@ const getPlaylistDetail = async (
   // 本地歌单
   if (isLocal) handleLocalPlaylist(id);
   // 在线歌单
-  else await handleOnlinePlaylist(id, getList, refresh);
+  else {
+    try {
+      await handleOnlinePlaylist(id, getList, refresh);
+    } catch (error) {
+      console.error("Failed to load playlist", error);
+      window.$message.error("获取歌单详情失败");
+      setLoading(false);
+      router.push("/");
+    }
+  }
 };
 
 // 重置歌单数据

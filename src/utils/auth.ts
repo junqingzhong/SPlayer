@@ -1,5 +1,7 @@
 import { getCookie, removeCookie, setCookies } from "./cookie";
 import type { UserLikeDataType, CoverType, ArtistType, SongType } from "@/types/main";
+import { AUTHORIZED_QUALITY_LEVELS, VIP_LEVELS } from "@/utils/meta";
+
 import {
   userAccount,
   userDetail,
@@ -10,6 +12,7 @@ import {
   userArtist,
   userAlbum,
   userPlaylist,
+  userVipInfo,
 } from "@/api/user";
 import { likeSong } from "@/api/song";
 import { formatCoverList, formatArtistsList, formatSongsList } from "@/utils/format";
@@ -35,8 +38,73 @@ export const isLogin = (): 0 | 1 | 2 => {
   if (dataStore.loginType === "uid") return 2;
   return getCookie("MUSIC_U") ? 1 : 0;
 };
+
+/** 检查是否为 SVIP */
+export const isSvip = (vipType: number) => {
+  // 11 is standard SVIP code
+  if (vipType === VIP_LEVELS.SVIP) return true;
+  // Check enriched data from store
+  const dataStore = useDataStore();
+  return !!dataStore.userData.isSvip;
+};
+
+/** 检查是否为 VIP (包括 SVIP) */
+export const isVip = (vipType: number) => {
+  const vipCodes: number[] = [VIP_LEVELS.VIP, VIP_LEVELS.VIP_ANNUAL];
+  return vipCodes.includes(vipType) || isSvip(vipType);
+};
+
+/**
+ * 获取当前用户权限允许的音质列表
+ * @param vipType VIP 类型
+ * @param isLogin 是否登录
+ * @returns 允许的音质列表 (null 表示无限制/全部允许)
+ */
+export const getAuthorizedQualityLevels = (
+  vipType: number,
+  isLogin: boolean,
+): readonly string[] | null => {
+  if (!isLogin) {
+    return AUTHORIZED_QUALITY_LEVELS.NORMAL;
+  }
+  // SVIP 拥有所有权限
+  if (isSvip(vipType)) {
+    return null;
+  }
+  // VIP 权限
+  if (isVip(vipType)) {
+    return AUTHORIZED_QUALITY_LEVELS.VIP;
+  }
+  // 普通用户权限
+  return AUTHORIZED_QUALITY_LEVELS.NORMAL;
+};
+
+/**
+ * 根据权限过滤音质选项
+ * @param options 选项列表
+ * @param key用于判断的属性名 (默认 'level')
+ */
+export const filterAuthorizedQualityOptions = <T>(
+  options: T[],
+  key: keyof T = "level" as keyof T,
+): T[] => {
+  const dataStore = useDataStore();
+  const isLogin = dataStore.userLoginStatus;
+  const vipType = isLogin ? dataStore.userData.vipType || 0 : 0;
+
+  const allowedLevels = getAuthorizedQualityLevels(vipType, isLogin);
+
+  if (allowedLevels) {
+    return options.filter((item) => {
+      const level = item[key] as unknown as string;
+      return allowedLevels.includes(level);
+    });
+  }
+
+  return options;
+};
 // 退出登录
-export const toLogout = async (): Promise<void> => {
+export const toLogout = async (clearUserList = false): Promise<void> => {
   const dataStore = useDataStore();
   await logout();
   // 去除 cookie
@@ -44,7 +112,11 @@ export const toLogout = async (): Promise<void> => {
   removeCookie("__csrf");
   sessionStorage.clear();
   // 清除用户数据
+  // 注意：如果是切换账号，不应该清除 userList
   await dataStore.clearUserData();
+  if (clearUserList) {
+    dataStore.userList = [];
+  }
   // 跳转首页
   router.push("/");
   window.$message.success("成功退出登录");
@@ -67,6 +139,137 @@ export const refreshLoginData = async () => {
   }
 };
 
+/**
+ * 获取原始 Cookie 值 (不解码)
+ */
+const getRawCookie = (name: string) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(";").shift();
+  return localStorage.getItem(`cookie-${name}`);
+};
+
+/**
+ * 保存当前账号
+ */
+export const saveCurrentAccount = () => {
+  const dataStore = useDataStore();
+  if (!isLogin()) return;
+
+  const { userId, name, avatarUrl } = dataStore.userData;
+  const loginType = dataStore.loginType;
+
+  // 校验：如果必须信息缺失，不保存
+  if (!userId || !name || name === "未知用户名") {
+    console.warn("用户信息不完整，无法保存");
+    return;
+  }
+
+  // 获取关键 Cookies
+  const cookies: Record<string, string> = {};
+  const cookieKeys = ["MUSIC_U", "__csrf", "NMTID"];
+  cookieKeys.forEach((key) => {
+    // 获取原始值
+    const val = getRawCookie(key);
+    if (val) cookies[key] = val;
+  });
+
+  // 如果没有 MUSIC_U，无法保存
+  if (!cookies["MUSIC_U"]) return;
+
+  const newAccount = {
+    userId,
+    name,
+    avatarUrl: avatarUrl || "",
+    cookies,
+    loginType,
+    lastLoginTime: Date.now(),
+  };
+
+  // 查找是否存在
+  const index = dataStore.userList.findIndex((u) => u.userId === userId);
+  if (index !== -1) {
+    // 更新
+    dataStore.userList[index] = newAccount;
+  } else {
+    // 新增
+    dataStore.userList.push(newAccount);
+  }
+};
+
+/**
+ * 切换账号
+ * @param userId 用户ID
+ */
+export const switchAccount = async (userId: number) => {
+  const dataStore = useDataStore();
+  const account = dataStore.userList.find((u) => u.userId === userId);
+  if (!account) {
+    window.$message.error("找不到该账号信息");
+    return;
+  }
+  // 保存当前（如果已登录且不是要切换的同一个）
+  if (isLogin() && dataStore.userData.userId !== userId) {
+    saveCurrentAccount();
+  }
+  // 清除当前状态 (但不清除 userList)
+  removeCookie("MUSIC_U");
+  removeCookie("__csrf");
+  await dataStore.clearUserData();
+  // 设置新 Cookies
+  Object.entries(account.cookies).forEach(([key, value]) => {
+    // 直接写入 document.cookie 以保持原始值 (类似 cookie.ts 的 setCookies)
+    const date = new Date();
+    date.setFullYear(date.getFullYear() + 50);
+    const expires = `expires=${date.toUTCString()}`;
+    document.cookie = `${key}=${value}; ${expires}; path=/`;
+    // 同步到 localStorage
+    localStorage.setItem(`cookie-${key}`, value as string);
+  });
+  //  更新 Store
+  dataStore.loginType = account.loginType;
+  dataStore.userLoginStatus = true; // 预设为 true
+  // 预先填充部分用户信息，避免刷新后因数据空被重定向回首页
+  dataStore.userData.userId = account.userId;
+  dataStore.userData.name = account.name;
+  dataStore.userData.avatarUrl = account.avatarUrl;
+
+  // 刷新页面
+  // window.location.reload();
+  // 重新获取用户数据
+  window.$message.loading("正在切换账号...");
+  try {
+    // 恢复上次登录时间
+    if (account.lastLoginTime) {
+      localStorage.setItem("lastLoginTime", account.lastLoginTime.toString());
+    }
+    await refreshLoginData();
+    await updateUserData();
+    window.$message.success("切换账号成功");
+    // 跳转首页
+    router.push("/");
+  } catch (error) {
+    console.error("Failed to switch account:", error);
+    window.$message.error("切换账号失败");
+    // 回滚或踢出
+    dataStore.userLoginStatus = false;
+    router.push("/");
+  }
+};
+
+/**
+ * 移除账号
+ * @param userId 用户ID
+ */
+export const removeAccount = (userId: number) => {
+  const dataStore = useDataStore();
+  const index = dataStore.userList.findIndex((u) => u.userId === userId);
+  if (index !== -1) {
+    dataStore.userList.splice(index, 1);
+    window.$message.success("账号已移除");
+  }
+};
+
 // 更新用户信息
 export const updateUserData = async () => {
   try {
@@ -78,13 +281,32 @@ export const updateUserData = async () => {
     // 获取用户信息
     const userDetailData = await userDetail(userId);
     const userData = Object.assign(profile, userDetailData);
+
     // 获取用户订阅信息
     const subcountData = await userSubcount();
+    // 获取用户 VIP 信息
+    let isSvip = false;
+    try {
+      const vipInfo = await userVipInfo();
+      // 判断 SVIP: 检查 redplus 权益是否过期
+      // SVIP 用户通常拥有有效的 redplus 权益
+      if (vipInfo.data) {
+        const { redplus, redPlus } = vipInfo.data;
+        const rights = redplus || redPlus;
+        if (rights && rights.expireTime > Date.now()) {
+          isSvip = true;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to fetch VIP info", e);
+    }
+
     // 更改用户信息
     dataStore.userData = {
       userId,
       userType: userData.userType,
       vipType: userData.vipType,
+      isSvip,
       name: userData.nickname,
       level: userData.level,
       avatarUrl: userData.avatarUrl,

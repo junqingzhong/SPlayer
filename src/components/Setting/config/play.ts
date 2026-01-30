@@ -8,7 +8,7 @@ import { AI_AUDIO_LEVELS } from "@/utils/meta";
 import { openSongUnlockManager } from "@/utils/modal";
 import { NTooltip, SelectOption } from "naive-ui";
 import { uniqBy } from "lodash-es";
-import { isLogin } from "@/utils/auth";
+import { isLogin, filterAuthorizedQualityOptions } from "@/utils/auth";
 
 export const usePlaySettings = (): SettingConfig => {
   const settingStore = useSettingStore();
@@ -273,7 +273,11 @@ export const usePlaySettings = (): SettingConfig => {
 
   // 动态计算音质选项
   const songLevelOptions = computed(() => {
-    const options = Object.values(songLevelData);
+    let options = Object.values(songLevelData);
+
+    // 根据 VIP 状态过滤
+    options = filterAuthorizedQualityOptions(options, "value");
+
     if (settingStore.disableAiAudio) {
       return options.filter((option) => {
         if (option.value === "dolby") return true;

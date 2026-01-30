@@ -1,9 +1,14 @@
 import { songQuality } from "@/api/song";
 import { usePlayerController } from "@/core/player/PlayerController";
-import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
+import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { QualityType } from "@/types/main";
 import { formatFileSize, handleSongQuality } from "@/utils/helper";
-import { AI_AUDIO_LEVELS, getSongLevelsData, songLevelData } from "@/utils/meta";
+import {
+  AI_AUDIO_LEVELS,
+  getSongLevelsData,
+  songLevelData,
+} from "@/utils/meta";
+import { getAuthorizedQualityLevels } from "@/utils/auth";
 import { DropdownOption } from "naive-ui";
 
 // 音质名称映射
@@ -23,6 +28,7 @@ export const useQualityControl = () => {
   const musicStore = useMusicStore();
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
+  const dataStore = useDataStore();
   const player = usePlayerController();
 
   // 获取音质名称
@@ -101,14 +107,27 @@ export const useQualityControl = () => {
       const res = await songQuality(songId);
       if (res.data) {
         const levels = getSongLevelsData(songLevelData, res.data);
+
+        // 根据 VIP 类型过滤音质
+        const vipType = dataStore.userLoginStatus ? (dataStore.userData.vipType || 0) : 0;
+        const allowedLevels = getAuthorizedQualityLevels(vipType, dataStore.userLoginStatus);
+
+        if (allowedLevels) {
+          statusStore.availableQualities = levels.filter((q) =>
+            allowedLevels.includes(q.level),
+          );
+        } else {
+          // SVIP / 无限制
+          statusStore.availableQualities = levels;
+        }
+
+        // Apply Fuck AI Mode filter (Secondary filter)
         // 如果当前播放的是被隐藏的音质，尝试切换到最高可用音质
         if (settingStore.disableAiAudio) {
-          statusStore.availableQualities = levels.filter((q) => {
+          statusStore.availableQualities = statusStore.availableQualities.filter((q) => {
             if (q.level === "dolby") return true;
             return !AI_AUDIO_LEVELS.includes(q.level);
           });
-        } else {
-          statusStore.availableQualities = levels;
         }
       } else if (!isPreload) {
         window.$message.warning("获取音质信息失败");

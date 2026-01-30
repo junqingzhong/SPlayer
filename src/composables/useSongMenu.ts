@@ -318,6 +318,15 @@ export const useSongMenu = () => {
         icon: renderIcon("AutoFix"),
       },
       {
+        key: "wiki",
+        label: "音乐百科",
+        show: type === "song" && !isLocal,
+        props: {
+          onClick: () => router.push({ name: "song-wiki", query: { id: song.id } }),
+        },
+        icon: renderIcon("Info"),
+      },
+      {
         key: "search",
         label: "同名搜索",
         show: settingStore.useOnlineService,

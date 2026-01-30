@@ -342,6 +342,15 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
       icon: renderIcon("Download"),
     },
     {
+      key: "wiki",
+      label: "音乐百科",
+      show: !isLocal && isSong,
+      props: {
+        onClick: () => router.push({ name: "song-wiki", query: { id: musicStore.playSong.id } }),
+      },
+      icon: renderIcon("Info"),
+    },
+    {
       key: "comment",
       label: "查看评论",
       show: !isLocal,

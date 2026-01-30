@@ -76,6 +76,7 @@ export const formatSongsList = (data: any[]): SongType[] => {
       originCoverType: item?.originCoverType,
       free: item.fee || 0,
       mv: item.mv,
+      mark: item.mark,
       size: Number(item.size || 0),
       path: item.path,
       pc: !!item.pc,

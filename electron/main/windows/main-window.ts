@@ -48,6 +48,20 @@ class MainWindow {
       }
       return { action: "deny" };
     });
+
+    // 拦截页面导航
+    this.win.webContents.on("will-navigate", (event, url) => {
+      // 检查是否为图片文件（通过扩展名简单判断）
+      const imageExtensions = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp", ".ico"];
+      const isImage = imageExtensions.some((ext) => url.toLowerCase().split("?")[0].endsWith(ext));
+
+      // 如果是图片，阻止导航并下载
+      if (isImage) {
+        event.preventDefault();
+        this.win?.webContents.downloadURL(url);
+      }
+    });
+
     // 窗口显示时
     this.win?.on("show", () => {
       this.win?.webContents.send("lyricsScroll");

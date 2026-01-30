@@ -269,6 +269,16 @@ export const useGeneralSettings = (): SettingConfig => {
             }),
           },
           {
+            key: "showSongExplicitTag",
+            label: "显示脏标",
+            type: "switch",
+            description: "是否显示歌曲脏标（🅴）",
+            value: computed({
+              get: () => settingStore.showSongExplicitTag,
+              set: (v) => (settingStore.showSongExplicitTag = v),
+            }),
+          },
+          {
             key: "showSongOriginalTag",
             label: "显示原唱翻唱标签",
             type: "switch",

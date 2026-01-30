@@ -111,6 +111,8 @@ export type SongType = {
   serverId?: string;
   /** 来源标记 */
   source?: "streaming";
+  /** 标记 */
+  mark?: number;
 };
 
 // Cover
@@ -257,6 +259,7 @@ export interface UserDataType {
   userId: number;
   userType: number;
   vipType: number;
+  isSvip?: boolean;
   name: string;
   level?: number;
   avatarUrl?: string;
@@ -348,3 +351,13 @@ export interface UpdateInfoType {
 
 // 登录方式
 export type LoginType = "qr" | "phone" | "cookie" | "uid";
+
+// 账号信息
+export interface AccountType {
+  userId: number;
+  name: string;
+  avatarUrl: string;
+  cookies: Record<string, string>;
+  loginType: LoginType;
+  lastLoginTime: number;
+}

@@ -60,6 +60,28 @@ export const AI_AUDIO_KEYS = ["jm", "sk", "je"];
 /** Fuck DJ Mode 关键词 */
 export const DJ_MODE_KEYWORDS = ["DJ", "抖音", "0.9", "0.8", "网红", "车载", "热歌", "慢摇"];
 
+/** 歌曲脏标（Explicit Content）位掩码 */
+export const EXPLICIT_CONTENT_MARK = 1048576;
+
+/** VIP 类型 */
+export const VIP_LEVELS = {
+  NORMAL: 0,
+  VIP: 10,
+  VIP_ANNUAL: 110, // 110 detected as VIP
+  SVIP: 11,
+} as const;
+
+/**
+ * 不同 VIP 等级允许的音质
+ * Normal: Standard, Higher, ExHigh
+ * VIP: Normal + Lossless, Hi-Res, Jyeffect
+ * SVIP: All
+ */
+export const AUTHORIZED_QUALITY_LEVELS = {
+  NORMAL: ["standard", "higher", "exhigh"],
+  VIP: ["standard", "higher", "exhigh", "lossless", "hires", "jyeffect"],
+} as const;
+
 /**
  * 根据传入的 level，筛选出包含该 level 及之前的音质数据
  * @param level 音质等级名称
@@ -162,6 +184,7 @@ export const renderToolbar = ({ nodes }: ImageRenderToolbarProps) => {
     nodes.resizeToOriginalSize,
     nodes.zoomOut,
     nodes.zoomIn,
+    nodes.download,
     nodes.close,
   ];
 };

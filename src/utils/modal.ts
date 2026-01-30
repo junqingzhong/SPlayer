@@ -69,7 +69,12 @@ export const openUserAgreement = async () => {
 };
 
 // 用户登录
-export const openUserLogin = async (showTip: boolean = false) => {
+export const openUserLogin = async (
+  showTip: boolean = false,
+  force: boolean = false,
+  onSuccess?: () => void,
+  disableUid: boolean = false,
+) => {
   if (showTip) window.$message.warning("请登录后使用");
   const { default: Login } = await import("@/components/Modal/Login/Login.vue");
   const modal = window.$modal.create({
@@ -81,7 +86,15 @@ export const openUserLogin = async (showTip: boolean = false) => {
     closable: false,
     style: { width: "400px" },
     content: () => {
-      return h(Login, { onClose: () => modal.destroy() });
+      return h(Login, {
+        force,
+        disableUid,
+        onClose: () => modal.destroy(),
+        onSuccess: () => {
+          modal.destroy();
+          if (onSuccess) onSuccess();
+        },
+      });
     },
   });
 };
