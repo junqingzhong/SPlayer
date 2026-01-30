@@ -440,8 +440,8 @@ const handleTabChange = (value: "songs" | "comments") => {
 
 // 播放全部歌曲
 const playAllSongs = useDebounceFn(() => {
-  if (!detailData.value || !listData.value?.length) return;
-  playAllSongsAction(listData.value, playlistId.value);
+  if (!detailData.value || !displayData.value?.length) return;
+  playAllSongsAction(displayData.value, playlistId.value);
 }, 300);
 
 // 加载提示
