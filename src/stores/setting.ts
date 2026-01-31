@@ -302,6 +302,14 @@ export interface SettingState {
   showSongExplicitTag: boolean;
   /** 显示原唱翻唱标签 */
   showSongOriginalTag: boolean;
+  /** 显示歌曲专辑 */
+  showSongAlbum: boolean;
+  /** 显示歌曲时长 */
+  showSongDuration: boolean;
+  /** 显示歌曲操作 */
+  showSongOperations: boolean;
+  /** 显示歌曲歌手 */
+  showSongArtist: boolean;
   /** 侧边栏隐藏 */
   sidebarHide: {
     /** 隐藏发现音乐 */
@@ -548,6 +556,10 @@ export const useSettingStore = defineStore("setting", {
     showSongPrivilegeTag: true,
     showSongExplicitTag: true,
     showSongOriginalTag: true,
+    showSongAlbum: true,
+    showSongDuration: true,
+    showSongOperations: true,
+    showSongArtist: true,
     sidebarHide: {
       hideDiscover: false,
       hidePersonalFM: false,

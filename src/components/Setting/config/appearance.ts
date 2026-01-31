@@ -441,6 +441,61 @@ export const useAppearanceSettings = (): SettingConfig => {
               set: (v) => (settingStore.timeFormat = v),
             }),
           },
+        ],
+      },
+      {
+        title: "歌曲列表显示",
+        items: [
+          {
+            key: "showSongAlbum",
+            label: "显示专辑",
+            type: "switch",
+            description: "在歌曲列表中显示专辑列",
+            value: computed({
+              get: () => settingStore.showSongAlbum,
+              set: (v) => (settingStore.showSongAlbum = v),
+            }),
+          },
+          {
+            key: "showSongArtist",
+            label: "显示歌手",
+            type: "switch",
+            description: "在歌曲列表中显示歌手信息",
+            value: computed({
+              get: () => settingStore.showSongArtist,
+              set: (v) => (settingStore.showSongArtist = v),
+            }),
+          },
+          {
+            key: "showSongDuration",
+            label: "显示时长",
+            type: "switch",
+            description: "在歌曲列表中显示时长列",
+            value: computed({
+              get: () => settingStore.showSongDuration,
+              set: (v) => (settingStore.showSongDuration = v),
+            }),
+          },
+          {
+            key: "showSongOperations",
+            label: "显示操作",
+            type: "switch",
+            description: "在歌曲列表中显示操作列（收藏等）",
+            value: computed({
+              get: () => settingStore.showSongOperations,
+              set: (v) => (settingStore.showSongOperations = v),
+            }),
+          },
+          {
+            key: "showSongQuality",
+            label: "显示歌曲音质",
+            type: "switch",
+            description: "是否列表中显示歌曲音质",
+            value: computed({
+              get: () => settingStore.showSongQuality,
+              set: (v) => (settingStore.showSongQuality = v),
+            }),
+          },
           {
             key: "showSongPrivilegeTag",
             label: "显示特权标签",

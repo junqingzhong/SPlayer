@@ -62,13 +62,28 @@
               </div>
             </n-popover>
             <n-text v-else class="title">标题</n-text>
-            <n-text v-if="type !== 'radio' && !hiddenAlbum && !isSmallScreen" class="album">
+            <n-text
+              v-if="
+                type !== 'radio' &&
+                !hiddenAlbum &&
+                !isSmallScreen &&
+                settingStore.showSongAlbum
+              "
+              class="album"
+            >
               专辑
             </n-text>
-            <n-text v-if="type !== 'radio'" class="actions">操作</n-text>
+            <n-text
+              v-if="type !== 'radio' && settingStore.showSongOperations"
+              class="actions"
+            >
+              操作
+            </n-text>
             <n-text v-if="type === 'radio' && !isSmallScreen" class="meta date">更新日期</n-text>
             <n-text v-if="type === 'radio' && !isSmallScreen" class="meta">播放量</n-text>
-            <n-text v-if="!isSmallScreen" class="meta">时长</n-text>
+            <n-text v-if="!isSmallScreen && settingStore.showSongDuration" class="meta">
+              时长
+            </n-text>
             <n-text v-if="data?.[0].size && !hiddenSize && !isSmallScreen" class="meta size">
               大小
             </n-text>
