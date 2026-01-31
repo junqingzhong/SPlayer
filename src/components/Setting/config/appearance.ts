@@ -50,10 +50,15 @@ export const useAppearanceSettings = (): SettingConfig => {
             label: "主题模式",
             type: "select",
             description: () =>
-              statusStore.themeBackgroundMode === "image"
-                ? "请关闭自定义背景图后调节"
+              statusStore.themeBackgroundMode === "image" ||
+              statusStore.themeBackgroundMode === "video"
+                ? "请关闭自定义背景后调节"
                 : "调整全局主题明暗模式",
-            disabled: computed(() => statusStore.themeBackgroundMode === "image"),
+            disabled: computed(
+              () =>
+                statusStore.themeBackgroundMode === "image" ||
+                statusStore.themeBackgroundMode === "video",
+            ),
             options: [
               { label: "跟随系统", value: "auto" },
               { label: "浅色模式", value: "light" },

@@ -117,7 +117,7 @@ interface StatusState {
    * 主题背景模式
    * color: 颜色模式 | image: 图片模式
    */
-  themeBackgroundMode: "color" | "image";
+  themeBackgroundMode: "color" | "image" | "video";
   /** 背景图配置 */
   backgroundConfig: {
     /** 背景放大倍数 (1-2) */
