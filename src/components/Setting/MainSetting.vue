@@ -522,6 +522,8 @@ onMounted(() => {
         padding-right: 20px;
         .name {
           font-size: 16px;
+          display: inline-flex;
+          gap: 6px;
         }
       }
       .n-flex {
