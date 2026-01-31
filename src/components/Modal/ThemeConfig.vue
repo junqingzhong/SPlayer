@@ -329,7 +329,7 @@ const handleFileSelect = async (event: Event) => {
   const isVideo = file.type.startsWith("video/");
   const isImage = file.type.startsWith("image/");
   if (!isImage && !isVideo) {
-    window.$message.error("请选择图片 or 视频文件");
+    window.$message.error("请选择图片或视频文件");
     input.value = "";
     return;
   }

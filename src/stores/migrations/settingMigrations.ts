@@ -169,6 +169,21 @@ export const settingMigrations: Record<number, MigrationFunction> = {
   },
   9: () => {
     return {
+      showSongAlbum: true,
+      showSongDuration: true,
+      showSongOperations: true,
+      showSongArtist: true,
+      fullscreenPlayerElements: {
+        like: true,
+        addToPlaylist: true,
+        download: true,
+        comments: true,
+        desktopLyric: true,
+        moreSettings: true,
+        copyLyric: true,
+        lyricOffset: true,
+        lyricSettings: true,
+      },
       contextMenuOptions: {
         play: true,
         playNext: true,
