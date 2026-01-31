@@ -9,6 +9,7 @@ import {
   openPlaylistPageManager,
   openFullscreenPlayerManager,
   openCoverManager,
+  openContextMenuManager,
 } from "@/utils/modal";
 import { SettingConfig } from "@/types/settings";
 import { computed, ref } from "vue";
@@ -138,6 +139,14 @@ export const useAppearanceSettings = (): SettingConfig => {
             description: "自定义全屏播放器的显示元素（喜欢、下载、评论等）",
             buttonLabel: "配置",
             action: openFullscreenPlayerManager,
+          },
+          {
+            key: "contextMenu",
+            label: "右键菜单",
+            type: "button",
+            description: "自定义歌曲右键菜单的显示选项",
+            buttonLabel: "配置",
+            action: openContextMenuManager,
           },
           {
             key: "menuShowCover",

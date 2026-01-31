@@ -100,6 +100,22 @@ export const openFullscreenPlayerManager = async () => {
   });
 };
 
+/** 打开右键菜单配置弹窗 */
+export const openContextMenuManager = async () => {
+  const { default: ContextMenuManager } =
+    await import("@/components/Modal/Setting/ContextMenuManager.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "右键菜单配置",
+    content: () => {
+      return h(ContextMenuManager);
+    },
+  });
+};
+
 // 用户登录
 export const openUserLogin = async (
   showTip: boolean = false,

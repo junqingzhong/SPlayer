@@ -355,6 +355,24 @@ export interface SettingState {
     lyricOffset: boolean;
     lyricSettings: boolean;
   };
+  /** 右键菜单显示配置 */
+  contextMenuOptions: {
+    play: boolean;
+    playNext: boolean;
+    addToPlaylist: boolean;
+    mv: boolean;
+    dislike: boolean;
+    more: boolean;
+    cloudImport: boolean;
+    deleteFromPlaylist: boolean;
+    deleteFromCloud: boolean;
+    deleteFromLocal: boolean;
+    openFolder: boolean;
+    cloudMatch: boolean;
+    wiki: boolean;
+    search: boolean;
+    download: boolean;
+  };
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
   /** 失焦后自动清空搜索框 */
@@ -601,6 +619,23 @@ export const useSettingStore = defineStore("setting", {
       copyLyric: true,
       lyricOffset: true,
       lyricSettings: true,
+    },
+    contextMenuOptions: {
+      play: true,
+      playNext: true,
+      addToPlaylist: true,
+      mv: true,
+      dislike: true,
+      more: true,
+      cloudImport: true,
+      deleteFromPlaylist: true,
+      deleteFromCloud: true,
+      deleteFromLocal: true,
+      openFolder: true,
+      cloudMatch: true,
+      wiki: true,
+      search: true,
+      download: true,
     },
     enableSearchKeyword: true,
     clearSearchOnBlur: false,
