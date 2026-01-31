@@ -40,12 +40,12 @@
               class="name-text"
             >
               {{
-                settingStore.hideLyricBrackets
+                settingStore.hideBracketedContent
                   ? removeBrackets(song?.name)
                   : song?.name || "未知曲目"
               }}
               <n-text
-                v-if="song.alia?.length && !settingStore.hideLyricBrackets"
+                v-if="song.alia?.length && !settingStore.hideBracketedContent"
                 class="alia"
                 depth="3"
               >
@@ -120,14 +120,22 @@
                 class="ar"
                 @click="openJumpArtist(song.artists, ar.id)"
               >
-                {{ ar.name }}
+                {{
+                  settingStore.hideBracketedContent ? removeBrackets(ar.name) : ar.name
+                }}
               </n-text>
             </div>
             <div v-else-if="song.type === 'radio'" class="artists">
               <n-text class="ar"> 电台节目 </n-text>
             </div>
             <div v-else class="artists" @click="openJumpArtist(song.artists)">
-              <n-text class="ar"> {{ song.artists || "未知艺术家" }} </n-text>
+              <n-text class="ar">
+                {{
+                  settingStore.hideBracketedContent
+                    ? removeBrackets(song.artists)
+                    : song.artists || "未知艺术家"
+                }}
+              </n-text>
             </div>
           </n-flex>
         </n-flex>
@@ -236,7 +244,7 @@ const qualityColor = computed(() => {
 const albumName = computed(() => {
   const album = song.value.album;
   const name = isObject(album) ? album.name : album;
-  return (settingStore.hideLyricBrackets ? removeBrackets(name) : name) || "未知专辑";
+  return (settingStore.hideBracketedContent ? removeBrackets(name) : name) || "未知专辑";
 });
 
 // 加载本地歌曲封面

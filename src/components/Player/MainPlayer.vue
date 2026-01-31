@@ -16,6 +16,7 @@
       <!-- 封面 -->
       <Transition name="fade" mode="out-in">
         <div
+          v-if="!settingStore.hiddenCovers.player"
           :key="musicStore.playSong.cover"
           class="cover"
           @click.stop="statusStore.showFullPlayer = true"
@@ -45,12 +46,16 @@
             <TextContainer
               :key="musicStore.playSong.name"
               :text="
-                settingStore.hideLyricBrackets
+                settingStore.hideBracketedContent
                   ? removeBrackets(musicStore.playSong.name)
                   : musicStore.playSong.name
               "
               :speed="0.2"
               class="name"
+              style="cursor: pointer"
+              @click.stop="
+                settingStore.hiddenCovers.player && (statusStore.showFullPlayer = true)
+              "
             />
             <!-- 倍速 -->
             <n-tag
@@ -97,11 +102,21 @@
                   class="ar-item"
                   @click="openJumpArtist(musicStore.playSong.artists, item.id)"
                 >
-                  {{ item.name }}
+                  {{
+                    settingStore.hideBracketedContent ? removeBrackets(item.name) : item.name
+                  }}
                 </n-text>
               </template>
-              <n-text v-else class="ar-item" @click="openJumpArtist(musicStore.playSong.artists)">
-                {{ musicStore.playSong.artists || "未知艺术家" }}
+              <n-text
+                v-else
+                class="ar-item"
+                @click="openJumpArtist(musicStore.playSong.artists)"
+              >
+                {{
+                  settingStore.hideBracketedContent
+                    ? removeBrackets(musicStore.playSong.artists)
+                    : musicStore.playSong.artists || "未知艺术家"
+                }}
               </n-text>
             </div>
           </Transition>

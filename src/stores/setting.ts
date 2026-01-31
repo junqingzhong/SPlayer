@@ -74,7 +74,13 @@ export interface SettingState {
   /** 歌词默认靠右（对唱互换） */
   lyricAlignRight: boolean;
   /** 隐藏歌词括号内容和别名 */
-  hideLyricBrackets: boolean;
+  hideBracketedContent: boolean;
+  /** 替换歌词括号内容 */
+  replaceLyricBrackets: boolean;
+  /** 歌词括号替换预设 */
+  bracketReplacementPreset: "dash" | "angleBrackets" | "cornerBrackets" | "custom";
+  /** 自定义歌词括号替换内容 */
+  customBracketReplacement: string;
   /** 下载路径 */
   downloadPath: string;
   /** 是否启用缓存 */
@@ -137,6 +143,10 @@ export interface SettingState {
   songVolumeFade: boolean;
   /** 渐入渐出时间 */
   songVolumeFadeTime: number;
+  /** 是否启用 ReplayGain (音量平衡) */
+  enableReplayGain: boolean;
+  /** ReplayGain 模式: 轨道增益 (track) 或 专辑增益 (album) */
+  replayGainMode: "track" | "album";
   /** 是否使用解灰 */
   useSongUnlock: boolean;
   /** 歌曲解锁音源 */
@@ -213,12 +223,43 @@ export interface SettingState {
   localSeparators: string[];
   /** 显示本地封面 */
   showLocalCover: boolean;
+  /** 封面显示配置 */
+  hiddenCovers: {
+    /** 为我推荐 */
+    home: boolean;
+    /** 歌单广场 */
+    playlist: boolean;
+    /** 排行榜 */
+    toplist: boolean;
+    /** 歌手 */
+    artist: boolean;
+    /** 最新音乐 */
+    new: boolean;
+    /** 播放器 */
+    player: boolean;
+    /** 歌单详情/歌曲列表 */
+    list: boolean;
+    /** 私人FM */
+    personalFM: boolean;
+    /** 歌手详情 */
+    artistDetail: boolean;
+    /** 播客电台 */
+    radio: boolean;
+    /** 我的收藏 */
+    like: boolean;
+    /** 视频 */
+    video: boolean;
+    /** 视频详情页 */
+    videoDetail: boolean;
+  };
   /** 隐藏全部封面 */
   hideAllCovers: boolean;
+  /** 隐藏迷你播放器封面 */
+  hideMiniPlayerCover: boolean;
   /** 路由动画 */
-  routeAnimation: "none" | "fade" | "zoom" | "slide" | "up";
+  routeAnimation: "none" | "fade" | "zoom" | "slide" | "up" | "flow" | "mask-left" | "mask-top";
   /** 播放器展开动画 */
-  playerExpandAnimation: "up" | "smooth";
+  playerExpandAnimation: "up" | "flow";
   /** 是否使用真实 IP */
   useRealIP: boolean;
   /** 真实 IP 地址 */
@@ -285,6 +326,14 @@ export interface SettingState {
     hideLikedPlaylists: boolean;
     /** 隐藏心动模式 */
     hideHeartbeatMode: boolean;
+  };
+  /** 歌单界面元素显示配置 */
+  // Controls the visibility of elements on the playlist detail page
+  playlistPageElements: {
+    tags: boolean;
+    creator: boolean;
+    time: boolean;
+    description: boolean;
   };
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
@@ -384,6 +433,8 @@ export const useSettingStore = defineStore("setting", {
     useNextPrefetch: true,
     songVolumeFade: true,
     songVolumeFadeTime: 300,
+    enableReplayGain: false,
+    replayGainMode: "track",
     useSongUnlock: true,
     songUnlockServer: [
       { key: SongUnlockServer.BODIAN, enabled: true },
@@ -434,7 +485,10 @@ export const useSettingStore = defineStore("setting", {
     lyricsScrollOffset: 0.25,
     lyricHorizontalOffset: 10,
     lyricAlignRight: false,
-    hideLyricBrackets: false,
+    hideBracketedContent: false,
+    replaceLyricBrackets: false,
+    bracketReplacementPreset: "dash",
+    customBracketReplacement: "-",
     enableExcludeLyrics: true,
     enableExcludeLyricsTTML: false,
     enableExcludeLyricsLocal: false,
@@ -449,7 +503,23 @@ export const useSettingStore = defineStore("setting", {
     localFolderDisplayMode: "tab",
     localSeparators: ["/", "&"],
     showLocalCover: true,
+    hiddenCovers: {
+      home: false,
+      playlist: false,
+      toplist: false,
+      artist: false,
+      new: false,
+      player: false,
+      list: false,
+      personalFM: false,
+      artistDetail: false,
+      radio: false,
+      like: false,
+      video: false,
+      videoDetail: false,
+    },
     hideAllCovers: false,
+    hideMiniPlayerCover: false,
     downloadPath: "",
     cacheEnabled: true,
     songCacheEnabled: true,
@@ -490,6 +560,12 @@ export const useSettingStore = defineStore("setting", {
       hideUserPlaylists: false,
       hideLikedPlaylists: false,
       hideHeartbeatMode: false,
+    },
+    playlistPageElements: {
+      tags: true,
+      creator: true,
+      time: true,
+      description: true,
     },
     enableSearchKeyword: true,
     clearSearchOnBlur: false,
