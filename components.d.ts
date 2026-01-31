@@ -44,6 +44,7 @@ declare module 'vue' {
     FontManager: typeof import('./src/components/Modal/Setting/FontManager.vue')['default']
     FullPlayer: typeof import('./src/components/Player/FullPlayer.vue')['default']
     FullPlayerMobile: typeof import('./src/components/Player/FullPlayerMobile.vue')['default']
+    FullscreenPlayerManager: typeof import('./src/components/Modal/Setting/FullscreenPlayerManager.vue')['default']
     GeneralSetting: typeof import('./src/components/Setting/old/GeneralSetting.vue')['default']
     HomePageSectionManager: typeof import('./src/components/Modal/Setting/HomePageSectionManager.vue')['default']
     JumpArtist: typeof import('./src/components/Modal/JumpArtist.vue')['default']

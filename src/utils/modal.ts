@@ -84,6 +84,22 @@ export const openPlaylistPageManager = async () => {
   });
 };
 
+/** 打开全屏播放器配置弹窗 */
+export const openFullscreenPlayerManager = async () => {
+  const { default: FullscreenPlayerManager } =
+    await import("@/components/Modal/Setting/FullscreenPlayerManager.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "全屏播放器配置",
+    content: () => {
+      return h(FullscreenPlayerManager);
+    },
+  });
+};
+
 // 用户登录
 export const openUserLogin = async (
   showTip: boolean = false,

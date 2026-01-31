@@ -7,6 +7,7 @@ import {
   openSidebarHideManager,
   openHomePageSectionManager,
   openPlaylistPageManager,
+  openFullscreenPlayerManager,
   openCoverManager,
 } from "@/utils/modal";
 import { SettingConfig } from "@/types/settings";
@@ -129,6 +130,14 @@ export const useAppearanceSettings = (): SettingConfig => {
             description: "自定义歌单界面的标签、拥有者、时间、描述显示",
             buttonLabel: "配置",
             action: openPlaylistPageManager,
+          },
+          {
+            key: "fullscreenPlayer",
+            label: "全屏播放器",
+            type: "button",
+            description: "自定义全屏播放器的显示元素（喜欢、下载、评论等）",
+            buttonLabel: "配置",
+            action: openFullscreenPlayerManager,
           },
           {
             key: "menuShowCover",

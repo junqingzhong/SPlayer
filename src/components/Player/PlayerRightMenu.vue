@@ -39,13 +39,13 @@
       </n-popover>
     </template>
     <!-- 桌面歌词 -->
-    <n-badge v-if="isElectron" value="ON" :show="statusStore.showDesktopLyric">
+    <n-badge v-if="isElectron && settingStore.fullscreenPlayerElements.desktopLyric" value="ON" :show="statusStore.showDesktopLyric">
       <div class="menu-icon hidden" @click.stop="player.toggleDesktopLyric()">
         <SvgIcon name="DesktopLyric2" :depth="statusStore.showDesktopLyric ? 1 : 3" />
       </div>
     </n-badge>
     <!-- 其他控制 -->
-    <n-dropdown :options="controlsOptions" :show-arrow="false" @select="handleControls">
+    <n-dropdown v-if="settingStore.fullscreenPlayerElements.moreSettings" :options="controlsOptions" :show-arrow="false" @select="handleControls">
       <div class="menu-icon hidden">
         <SvgIcon name="Controls" />
       </div>

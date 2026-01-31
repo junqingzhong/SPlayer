@@ -343,6 +343,18 @@ export interface SettingState {
     time: boolean;
     description: boolean;
   };
+  /** 全屏播放器界面元素显示配置 */
+  fullscreenPlayerElements: {
+    like: boolean;
+    addToPlaylist: boolean;
+    download: boolean;
+    comments: boolean;
+    desktopLyric: boolean;
+    moreSettings: boolean;
+    copyLyric: boolean;
+    lyricOffset: boolean;
+    lyricSettings: boolean;
+  };
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
   /** 失焦后自动清空搜索框 */
@@ -578,6 +590,17 @@ export const useSettingStore = defineStore("setting", {
       creator: true,
       time: true,
       description: true,
+    },
+    fullscreenPlayerElements: {
+      like: true,
+      addToPlaylist: true,
+      download: true,
+      comments: true,
+      desktopLyric: true,
+      moreSettings: true,
+      copyLyric: true,
+      lyricOffset: true,
+      lyricSettings: true,
     },
     enableSearchKeyword: true,
     clearSearchOnBlur: false,
