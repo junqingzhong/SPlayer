@@ -234,7 +234,7 @@ const audioSourceText = computed(() => {
   if (statusStore.audioSource) {
     return sourceMap[statusStore.audioSource] || statusStore.audioSource.toUpperCase();
   }
-  return "ONLINE";
+  return "Netease";
 });
 
 const jumpPage = debounce(
