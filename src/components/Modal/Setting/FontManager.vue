@@ -9,7 +9,10 @@
         </div>
         <n-switch v-model:value="settingStore.useCustomFont" class="set" :round="false" />
       </n-card>
-      <n-card class="set-item">
+      <n-card
+        class="set-item"
+        :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
+      >
         <div class="label">
           <n-text class="name">全局字体</n-text>
           <n-text class="tip" :depth="3">应用到软件内所有非特定区域的字体</n-text>
@@ -45,7 +48,10 @@
     </div>
     <div class="set-list" v-if="isElectron">
       <n-h3 prefix="bar">桌面歌词</n-h3>
-      <n-card class="set-item">
+      <n-card
+        class="set-item"
+        :class="{ 'input-mode': settingStore.useCustomFont }"
+      >
         <div class="label">
           <n-text class="name">桌面歌词字体</n-text>
           <n-text class="tip" :depth="3"> 桌面歌词使用的字体 </n-text>
@@ -88,7 +94,12 @@
     </div>
     <div class="set-list">
       <n-h3 prefix="bar">歌词字体</n-h3>
-      <n-card v-for="font in lyricFontConfigs" :key="font.keySetting" class="set-item">
+      <n-card
+        v-for="font in lyricFontConfigs"
+        :key="font.keySetting"
+        class="set-item"
+        :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
+      >
         <div class="label">
           <n-text class="name">{{ font.name }}</n-text>
           <n-text class="tip" :depth="3">{{ font.tip }}</n-text>
@@ -257,6 +268,29 @@ onMounted(() => {
       @media (max-width: 768px) {
         width: 140px;
         min-width: 140px;
+      }
+    }
+    &.input-mode {
+      :deep(.n-card__content) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+      .label {
+        padding-right: 0;
+      }
+      .n-flex {
+        width: 100%;
+        flex-flow: wrap !important;
+        justify-content: flex-end !important;
+      }
+      .set {
+        width: 100%;
+        max-width: none;
+        order: -1;
+      }
+      .n-button {
+        margin-left: auto;
       }
     }
   }

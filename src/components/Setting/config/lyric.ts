@@ -7,7 +7,7 @@ import { cloneDeep, isEqual } from "lodash-es";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 import { SettingConfig } from "@/types/settings";
 import LyricPreview from "../components/LyricPreview.vue";
-import { descMultiline } from "./utils";
+import { descMultiline, forceDisplaySettingIf } from "./utils";
 
 export const useLyricSettings = (): SettingConfig => {
   const player = usePlayerController();
