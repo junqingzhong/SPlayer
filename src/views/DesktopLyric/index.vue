@@ -82,6 +82,8 @@
               'is-yrc': Boolean(lyricData?.yrcData?.length && line.line?.words?.length > 1),
               'has-background-mask': lyricConfig.textBackgroundMask,
               'is-next': !line.active && lyricConfig.isDoubleLine,
+              'align-left': lyricConfig.position === 'both' && line.index % 2 === 0,
+              'align-right': lyricConfig.position === 'both' && line.index % 2 !== 0,
             },
           ]"
           :style="{
@@ -1019,16 +1021,16 @@ onBeforeUnmount(() => {
     }
     &.both {
       .lyric-line {
-        &:nth-child(even) {
+        &.align-right {
           text-align: right;
           transform-origin: right center;
         }
-        &:nth-child(odd) {
+        &.align-left {
           text-align: left;
           transform-origin: left center;
         }
       }
-      .lyric-line.is-yrc:nth-child(even) {
+      .lyric-line.is-yrc.align-right {
         .content {
           justify-content: flex-end;
         }
