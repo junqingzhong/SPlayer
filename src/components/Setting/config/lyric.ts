@@ -7,23 +7,12 @@ import { cloneDeep, isEqual } from "lodash-es";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 import { SettingConfig } from "@/types/settings";
 import LyricPreview from "../components/LyricPreview.vue";
+import { forceDisplaySettingIf, descMultiline } from "./utils";
 
 export const useLyricSettings = (): SettingConfig => {
   const player = usePlayerController();
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
-
-  const fontSizeComputed = (key: string) =>
-    computed({
-      get: () =>
-        settingStore.useAMLyrics
-          ? Math.max(0.5 * settingStore.lyricFontSize, 10)
-          : settingStore[key],
-      set: (value) => (settingStore[key] = value),
-    });
-
-  const tranFontSize = fontSizeComputed("lyricTranFontSize");
-  const romaFontSize = fontSizeComputed("lyricRomaFontSize");
 
   // 桌面歌词配置
   const desktopLyricConfig = reactive<LyricConfig>({ ...defaultDesktopLyricConfig });
@@ -123,12 +112,15 @@ export const useLyricSettings = (): SettingConfig => {
             min: 5,
             max: 40,
             suffix: "px",
-            disabled: computed(() => settingStore.useAMLyrics),
             title: computed(() => (settingStore.useAMLyrics ? "由 AMLL 自动控制" : "")),
-            value: computed({
-              get: () => tranFontSize.value,
-              set: (v) => (tranFontSize.value = v || 22),
-            }),
+            ...forceDisplaySettingIf(
+              () => settingStore.useAMLyrics,
+              () => Math.max(0.5 * settingStore.lyricFontSize, 10),
+              computed({
+                get: () => settingStore.lyricTranFontSize,
+                set: (v) => (settingStore.lyricTranFontSize = v || 22),
+              }),
+            ),
             defaultValue: 22,
           },
           {
@@ -139,12 +131,15 @@ export const useLyricSettings = (): SettingConfig => {
             min: 5,
             max: 40,
             suffix: "px",
-            disabled: computed(() => settingStore.useAMLyrics),
             title: computed(() => (settingStore.useAMLyrics ? "由 AMLL 自动控制" : "")),
-            value: computed({
-              get: () => romaFontSize.value,
-              set: (v) => (romaFontSize.value = v || 18),
-            }),
+            ...forceDisplaySettingIf(
+              () => settingStore.useAMLyrics,
+              () => Math.max(0.5 * settingStore.lyricFontSize, 10),
+              computed({
+                get: () => settingStore.lyricRomaFontSize,
+                set: (v) => (settingStore.lyricRomaFontSize = v || 18),
+              }),
+            ),
             defaultValue: 18,
           },
           {
@@ -173,16 +168,19 @@ export const useLyricSettings = (): SettingConfig => {
             label: "歌词位置",
             type: "select",
             description: "歌词的默认垂直位置",
-            disabled: computed(() => settingStore.useAMLyrics),
             options: [
               { label: "居左", value: "flex-start" },
               { label: "居中", value: "center" },
               { label: "居右", value: "flex-end" },
             ],
-            value: computed({
-              get: () => settingStore.lyricsPosition,
-              set: (v) => (settingStore.lyricsPosition = v),
-            }),
+            ...forceDisplaySettingIf(
+              () => settingStore.useAMLyrics,
+              () => settingStore.lyricsPosition,
+              computed({
+                get: () => settingStore.lyricsPosition,
+                set: (v) => (settingStore.lyricsPosition = v),
+              }),
+            ),
           },
           {
             key: "lyricHorizontalOffset",
@@ -326,11 +324,14 @@ export const useLyricSettings = (): SettingConfig => {
             label: "调换翻译与音译位置",
             type: "switch",
             description: "开启后音译显示在翻译上方",
-            disabled: computed(() => !settingStore.showTran || !settingStore.showRoma),
-            value: computed({
-              get: () => settingStore.swapTranRoma,
-              set: (v) => (settingStore.swapTranRoma = v),
-            }),
+            ...forceDisplaySettingIf(
+              () => !settingStore.showTran || !settingStore.showRoma,
+              () => settingStore.swapTranRoma,
+              computed({
+                get: () => settingStore.swapTranRoma,
+                set: (v) => (settingStore.swapTranRoma = v),
+              }),
+            ),
           },
           {
             key: "lyricsBlur",
@@ -459,8 +460,13 @@ export const useLyricSettings = (): SettingConfig => {
                 key: "wordFadeWidth",
                 label: "文字动画的渐变宽度",
                 type: "input-number",
-                description:
-                  "单位以歌词行的主文字字体大小的倍数为单位 <br /> 默认为 0.5，即一个全角字符的一半宽度 <br /> 若模拟 Apple Music for Android 的效果，可以设为 1 <br /> 若模拟 Apple Music for iPad 的效果，可以设为 0.5 <br /> 若需近乎禁用渐变，可设为非常接近 0 的小数，如 0.01",
+                description: descMultiline`
+                  单位以歌词行的主文字字体大小的倍数为单位
+                  默认为 0.5，即一个全角字符的一半宽度
+                  若模拟 Apple Music for Android 的效果，可以设为 1
+                  若模拟 Apple Music for iPad 的效果，可以设为 0.5
+                  若需近乎禁用渐变，可设为非常接近 0 的小数，如 0.01
+                `,
                 min: 0.01,
                 max: 1,
                 step: 0.01,
