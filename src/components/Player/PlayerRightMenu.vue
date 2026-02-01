@@ -92,7 +92,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { useDataStore, useSettingStore, useStatusStore, useMusicStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
-import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
+import { openAutoClose, openChangeRate, openEqualizer, openABLoop } from "@/utils/modal";
 import type { DropdownOption } from "naive-ui";
 import { useQualityControl } from "@/composables/useQualityControl";
 
@@ -147,6 +147,11 @@ const controlsOptions = computed<DropdownOption[]>(() => [
     icon: renderIcon("TimeAuto"),
   },
   {
+    label: "AB 循环",
+    key: "abLoop",
+    icon: renderIcon("Repeat"),
+  },
+  {
     label: "播放速度",
     key: "rate",
     disabled: settingStore.playbackEngine === "mpv",
@@ -166,6 +171,9 @@ const handleControls = (key: string) => {
       break;
     case "autoClose":
       openAutoClose();
+      break;
+    case "abLoop":
+      openABLoop();
       break;
     case "rate":
       openChangeRate();
