@@ -1,14 +1,17 @@
-import { nativeImage } from "electron";
-import { join, basename } from "path";
-import { mkdir } from "fs/promises";
-import { CacheService } from "./CacheService";
-import { existsSync } from "fs";
+import type { AudioMeta } from "@emi";
 import { createHash } from "crypto";
-import { useStore } from "../store";
-import { type IAudioMetadata, parseFile } from "music-metadata";
-import { LocalMusicDB, type MusicTrack } from "../database/LocalMusicDB";
+import { nativeImage } from "electron";
 import FastGlob, { type Entry } from "fast-glob";
+import { existsSync } from "fs";
+import { mkdir } from "fs/promises";
+import { type IAudioMetadata, parseFile } from "music-metadata";
 import pLimit from "p-limit";
+import { basename, join } from "path";
+import { LocalMusicDB, type MusicTrack } from "../database/LocalMusicDB";
+import { useStore } from "../store";
+import { loadNativeModule } from "../utils/native-loader";
+import { CacheService } from "./CacheService";
+type EmiModule = typeof import("@emi");
 
 const UNTITLED_TRACK_MIN_DURATION = 30; // seconds
 const UNTITLED_TRACK_MIN_SIZE = 1024 * 1024; // 1MB
@@ -154,17 +157,45 @@ export class LocalMusicService {
 
     // 音乐文件扩展名
     const musicExtensions = ["mp3", "wav", "flac", "aac", "webm", "m4a", "ogg", "aiff", "aif"];
-    // 构造 Glob 模式数组
-    const patterns = dirPaths.map((dir) =>
-      join(dir, `**/*.{${musicExtensions.join(",")}}`).replace(/\\/g, "/"),
-    );
-    // 扫描磁盘
-    const entries: Entry[] = await FastGlob(patterns, {
-      stats: true,
-      absolute: true,
-      onlyFiles: true,
-      ignore: [`${cacheDir.replace(/\\/g, "/")}/**`],
-    });
+
+    // 尝试使用 Rust 扫描器
+    const emi = loadNativeModule(
+      "external-media-integration.node",
+      "external-media-integration",
+    ) as EmiModule | null;
+    let entries: (AudioMeta | Entry)[] = [];
+    let usedRustScanner = false;
+
+    if (emi && emi.scanMusicDirs) {
+      try {
+        console.time("RustScan");
+        entries = await emi.scanMusicDirs(dirPaths);
+        usedRustScanner = true;
+        console.timeEnd("RustScan");
+        console.log(`[RustScanner] Found ${entries.length} files.`);
+        if (entries.length > 0) {
+          console.log(`[RustScanner] First file sample:`, entries[0]);
+        }
+      } catch (e) {
+        console.error("Rust scanner failed, falling back to FastGlob:", e);
+      }
+    }
+
+    // 如果 Rust 扫描失败或未启用，使用 FastGlob
+    if (entries.length === 0 && !usedRustScanner) {
+      // 构造 Glob 模式数组
+      const patterns = dirPaths.map((dir) =>
+        join(dir, `**/*.{${musicExtensions.join(",")}}`).replace(/\\/g, "/"),
+      );
+      // 扫描磁盘
+      entries = await FastGlob(patterns, {
+        stats: true,
+        absolute: true,
+        onlyFiles: true,
+        ignore: [`${cacheDir.replace(/\\/g, "/")}/**`],
+      });
+    }
+
     /** 总文件数 */
     const totalFiles = entries.length;
     /** 已处理文件数 */
@@ -189,13 +220,26 @@ export class LocalMusicService {
       const chunk = entries.slice(i, i + PROCESS_BATCH_SIZE);
       const tasks = chunk.map((entry) => {
         return this.limit(async () => {
-          const filePath = entry.path;
-          const stats = entry.stats;
-          if (!stats) return;
-          /** 修改时间 */
-          const mtime = stats.mtimeMs;
-          /** 文件大小 */
-          const size = stats.size;
+          let filePath: string;
+          let mtime: number;
+          let size: number;
+
+          // Check if it is AudioMeta (Rust) or Entry (FastGlob)
+          const isRustEntry = (e: any): e is AudioMeta =>
+            "duration" in e && typeof e.duration === "number";
+
+          if (isRustEntry(entry)) {
+            filePath = entry.path;
+            mtime = entry.mtime;
+            size = entry.size;
+          } else {
+            filePath = (entry as Entry).path;
+            const stats = (entry as Entry).stats;
+            if (!stats) return;
+            mtime = stats.mtimeMs;
+            size = stats.size;
+          }
+
           scannedPaths.add(filePath);
 
           /** 缓存 */
@@ -228,30 +272,64 @@ export class LocalMusicService {
           // 解析元数据
           try {
             const id = this.getFileId(filePath);
-            const metadata = await parseFile(filePath);
-            // 过滤规则
-            // 仅当无标题时才过滤
-            if (!metadata.common.title) {
-              // 时长 < 30s
-              if (metadata.format.duration && metadata.format.duration < UNTITLED_TRACK_MIN_DURATION) return;
-              // 大小 < 1MB
-              if (size < UNTITLED_TRACK_MIN_SIZE) return;
+            let track: MusicTrack;
+            let coverPath: string | undefined;
+
+            if (isRustEntry(entry)) {
+              // Rust 已经提供了元数据，我们尝试获取封面
+              try {
+                // 仅为了封面而解析
+                const metadata = await parseFile(filePath);
+                coverPath = await this.extractCover(metadata, id);
+              } catch (e) {
+                // 忽略封面解析错误，使用 Rust 提供的基本信息
+              }
+
+              track = {
+                id,
+                path: filePath,
+                title: entry.title || basename(filePath),
+                artist: entry.artist || "Unknown Artist",
+                album: entry.album || "Unknown Album",
+                duration: entry.duration * 1000, // 秒转毫秒
+                mtime,
+                size,
+                cover: coverPath,
+                bitrate: entry.bitrate || 0,
+              };
+            } else {
+              // FastGlob 分支，需要完整解析
+              const metadata = await parseFile(filePath);
+
+              // 过滤规则 (保留 HEAD 逻辑：仅当无标题时才过滤，且使用顶部定义的常量)
+              if (!metadata.common.title) {
+                // 时长 < 30s
+                if (
+                  metadata.format.duration &&
+                  metadata.format.duration < UNTITLED_TRACK_MIN_DURATION
+                )
+                  return;
+                // 大小 < 1MB
+                if (size < UNTITLED_TRACK_MIN_SIZE) return;
+              }
+
+              // 提取封面
+              coverPath = await this.extractCover(metadata, id);
+
+              // 构建音乐数据
+              track = {
+                id,
+                path: filePath,
+                title: metadata.common.title || basename(filePath),
+                artist: metadata.common.artist || "Unknown Artist",
+                album: metadata.common.album || "Unknown Album",
+                duration: (metadata.format.duration || 0) * 1000,
+                mtime,
+                size,
+                cover: coverPath,
+                bitrate: metadata.format.bitrate ?? 0,
+              };
             }
-            // 提取封面
-            const coverPath = await this.extractCover(metadata, id);
-            // 构建音乐数据
-            const track: MusicTrack = {
-              id,
-              path: filePath,
-              title: metadata.common.title || basename(filePath),
-              artist: metadata.common.artist || "Unknown Artist",
-              album: metadata.common.album || "Unknown Album",
-              duration: (metadata.format.duration || 0) * 1000,
-              mtime,
-              size,
-              cover: coverPath,
-              bitrate: metadata.format.bitrate ?? 0,
-            };
 
             // 返回 track，在 limit 外面处理写入
             return track;
