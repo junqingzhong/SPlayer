@@ -82,7 +82,7 @@
     </n-card>
 
     <n-text depth="3" style="font-size: 12px">
-      提示：若 B 点小于 A 点，循环将不会生效。
+      提示：若 B 点小于或等于 A 点，循环将不会生效。
     </n-text>
   </n-flex>
 </template>
@@ -112,21 +112,13 @@ const setPoint = (point: "A" | "B") => {
   const current = audioManager.currentTime;
   if (point === "A") {
     statusStore.abLoop.pointA = Number(current.toFixed(2));
-    // Auto disable if invalid
-    if (
-      statusStore.abLoop.pointB !== null &&
-      statusStore.abLoop.pointA >= statusStore.abLoop.pointB
-    ) {
-      statusStore.abLoop.enable = false;
-    }
   } else {
     statusStore.abLoop.pointB = Number(current.toFixed(2));
-    if (
-      statusStore.abLoop.pointA !== null &&
-      statusStore.abLoop.pointA >= statusStore.abLoop.pointB
-    ) {
-      statusStore.abLoop.enable = false;
-    }
+  }
+  // Auto disable if invalid
+  const { pointA, pointB } = statusStore.abLoop;
+  if (pointA !== null && pointB !== null && pointA >= pointB) {
+    statusStore.abLoop.enable = false;
   }
 };
 
