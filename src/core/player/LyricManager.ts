@@ -489,7 +489,6 @@ class LyricManager {
       };
 
       const candidates: Record<string, SongLyric> = {};
-      let isEmbeddedUsed = false;
 
       const processLyric = (
         rawLyric: string,
@@ -534,20 +533,18 @@ class LyricManager {
         return null;
       };
 
-      // 1. 解析内嵌歌词 (优先)
+      // 1. 解析内嵌歌词
       if (embedded) {
         const res = processLyric(embedded.lyric, embedded.format);
         if (res) {
           candidates[res.type] = res.data;
-          isEmbeddedUsed = true;
         }
       }
 
-      // 2. 解析外部文件
+      // 2. 解析外部文件 (如果有相同类型，覆盖内嵌歌词)
       if (external) {
         const res = processLyric(external.lyric, external.format);
-        // 如果已经存在内嵌歌词，则忽略外部歌词（优先内嵌）
-        if (res && !isEmbeddedUsed) {
+        if (res) {
           candidates[res.type] = res.data;
         }
       } else if (lyric && !embedded) {
@@ -557,7 +554,7 @@ class LyricManager {
       }
 
       // 3. QQ 音乐匹配
-      if (settingStore.localLyricQQMusicMatch && musicStore.playSong && !isEmbeddedUsed) {
+      if (settingStore.localLyricQQMusicMatch && musicStore.playSong) {
         const qqLyric = await this.fetchQQMusicLyric(musicStore.playSong);
         if (qqLyric && (qqLyric.lrcData.length > 0 || qqLyric.yrcData.length > 0)) {
           // 如果本地是 LRC，且 QQ 提供了 YRC，我们可以混合使用（QQ YRC + 本地 LRC）
