@@ -148,45 +148,54 @@ class PlayerController {
     }
 
     try {
-      // 停止当前播放
+      // 设置加载状态
+      statusStore.playLoading = true;
+
+      // 1. 预加载音频 (最耗时操作，期间保持旧歌播放)
+      const audioSource = await songManager.getAudioSource(playSongData);
+
+      // 检查请求是否过期
+      if (requestToken !== this.currentRequestToken) {
+        console.log(`🚫 [${playSongData.id}] 请求已过期，舍弃`);
+        return;
+      }
+      if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
+
+      // === 切换点 (Point of Switch) ===
+
+      // 2. 停止当前播放
       audioManager.stop();
+      
+      // 3. 更新核心状态
       musicStore.playSong = playSongData;
 
       statusStore.currentTime = options.seek ?? 0;
-      const duration = this.getDuration() || statusStore.duration;
-      if (duration > 0) {
-        statusStore.progress = calculateProgress(statusStore.currentTime, duration);
-      } else {
-        statusStore.progress = 0;
-      }
+      // 重置进度 (新歌时长未知，暂设计算)
+      statusStore.progress = 0;
+      
       statusStore.lyricIndex = -1;
+      
       // 重置重试计数
       const sid = playSongData.type === "radio" ? playSongData.dj?.id : playSongData.id;
       if (this.retryInfo.songId !== sid) {
         this.retryInfo = { songId: sid || 0, count: 0 };
       }
-      // 设置加载状态
-      statusStore.playLoading = true;
+
       statusStore.lyricLoading = true;
       // 重置 AB 循环
       statusStore.abLoop.enable = false;
       statusStore.abLoop.pointA = null;
       statusStore.abLoop.pointB = null;
+      
       // 通知桌面歌词
       if (isElectron) {
         window.electron.ipcRenderer.send("update-desktop-lyric-data", {
           lyricLoading: true,
         });
       }
-      // 获取歌词
+      // 获取歌词 (在切换后获取，避免旧歌配新词)
       lyricManager.handleLyric(playSongData);
-      // 获取音频
-      const audioSource = await songManager.getAudioSource(playSongData);
-      if (requestToken !== this.currentRequestToken) {
-        console.log(`🚫 [${playSongData.id}] 请求已过期，舍弃`);
-        return;
-      }
-      if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
+
       console.log(`🎧 [${playSongData.id}] 最终播放信息:`, audioSource);
       // 更新音质和解锁状态
       statusStore.songQuality = audioSource.quality;
