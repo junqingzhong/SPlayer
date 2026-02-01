@@ -68,6 +68,8 @@ const init = async () => {
     downloadManager.init();
     // 显示窗口
     window.electron.ipcRenderer.send("win-loaded");
+    // 同步任务栏歌词状态
+    window.electron.ipcRenderer.send("taskbar:toggle", statusStore.showTaskbarLyric);
     // 显示桌面歌词
     window.electron.ipcRenderer.send("toggle-desktop-lyric", statusStore.showDesktopLyric);
     // 检查更新

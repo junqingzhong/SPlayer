@@ -1,7 +1,7 @@
 import { usePlayerController } from "@/core/player/PlayerController";
 import { useSettingStore, useStatusStore } from "@/stores";
 import { LyricConfig } from "@/types/desktop-lyric";
-import { isElectron } from "@/utils/env";
+import { isElectron, isWin } from "@/utils/env";
 import { openAMLLServer, openFontManager, openExcludeLyric } from "@/utils/modal";
 import { cloneDeep, isEqual } from "lodash-es";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
@@ -239,7 +239,11 @@ export const useLyricSettings = (): SettingConfig => {
             label: "自定义替换内容",
             type: "text-input",
             description: "输入自定义的替换字符。支持单个分隔符（如 - ）或成对符号（如 () ）",
-            disabled: computed(() => !settingStore.replaceLyricBrackets || settingStore.bracketReplacementPreset !== "custom"),
+            disabled: computed(
+              () =>
+                !settingStore.replaceLyricBrackets ||
+                settingStore.bracketReplacementPreset !== "custom",
+            ),
             value: computed({
               get: () => settingStore.customBracketReplacement,
               set: (v) => {
@@ -711,6 +715,24 @@ export const useLyricSettings = (): SettingConfig => {
             description: "恢复默认桌面歌词配置",
             buttonLabel: "恢复默认",
             action: restoreDesktopLyricConfig,
+          },
+        ],
+      },
+      {
+        title: "任务栏歌词",
+        show: isElectron && isWin,
+        items: [
+          {
+            key: "showTaskbarLyric",
+            label: "开启任务栏歌词",
+            type: "switch",
+            description: "开启后将在任务栏显示歌词",
+            value: computed({
+              get: () => statusStore.showTaskbarLyric,
+              set: (v) => {
+                player.setTaskbarLyricShow(v);
+              },
+            }),
           },
         ],
       },
