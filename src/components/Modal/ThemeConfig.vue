@@ -278,10 +278,6 @@ const blobURLManager = useBlobURLManager();
 // 文件输入引用
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
-// 是否为图片模式
-const isImageMode = computed(() => statusStore.themeBackgroundMode === "image");
-// 是否为视频模式
-const isVideoMode = computed(() => statusStore.themeBackgroundMode === "video");
 // 是否为自定义背景模式
 const isCustomBackground = computed(() => statusStore.isCustomBackground);
 
@@ -340,7 +336,7 @@ const handleFileSelect = async (event: Event) => {
     // 强制清理旧的 URL，确保生成新的
     blobURLManager.revokeBlobURL("background-image");
     const url = blobURLManager.createBlobURL(arrayBuffer, file.type, "background-image");
-    
+
     if (isImage) {
       // 提取图片主色
       const image = new Image();
