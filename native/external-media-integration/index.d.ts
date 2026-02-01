@@ -18,6 +18,8 @@ export interface AudioMeta {
   size: number
   /** 比特率 (bps) */
   bitrate?: number
+  /** 封面数据 */
+  coverData?: Buffer
 }
 
 /** 关闭 Discord RPC */

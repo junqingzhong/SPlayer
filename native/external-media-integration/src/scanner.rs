@@ -3,7 +3,7 @@ use walkdir::WalkDir;
 use lofty::probe::Probe;
 use lofty::prelude::{TaggedFileExt, Accessor, AudioFile};
 use rayon::prelude::*;
-use napi::bindgen_prelude::Result;
+use napi::bindgen_prelude::{Result, Buffer};
 
 /// 音频元数据结构体
 #[napi(object)]
@@ -23,7 +23,9 @@ pub struct AudioMeta {
     /// 文件大小
     pub size: i64,
     /// 比特率 (bps)
-    pub bitrate: Option<f64>, 
+    pub bitrate: Option<f64>,
+    /// 封面数据
+    pub cover_data: Option<Buffer>,
 }
 
 fn scan_dirs_internal(paths: Vec<String>) -> Vec<AudioMeta> {
@@ -75,6 +77,13 @@ fn scan_dirs_internal(paths: Vec<String>) -> Vec<AudioMeta> {
                     }
 
                     let tag = tagged_file.primary_tag().or_else(|| tagged_file.first_tag());
+                    
+                    // Extract cover
+                    let cover_data = if let Some(t) = tag {
+                        t.pictures().first().map(|p| p.data().into())
+                    } else {
+                        None
+                    };
 
                     Some(AudioMeta {
                         title: tag.and_then(|t| t.title().map(|s| s.to_string())),
@@ -85,6 +94,7 @@ fn scan_dirs_internal(paths: Vec<String>) -> Vec<AudioMeta> {
                         mtime,
                         size,
                         bitrate: properties.audio_bitrate().map(|b| (b * 1000) as f64),
+                        cover_data,
                     })
                 })
         })
