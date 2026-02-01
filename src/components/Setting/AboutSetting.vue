@@ -67,7 +67,8 @@
           @click="openLink(item.url)"
         >
           <n-flex align="center">
-            <n-avatar round
+            <n-avatar
+            round
             :size="40"
             :src="item.avatar"
             fallback-src="/images/avatar.jpg?asset"
