@@ -249,6 +249,60 @@ class PlayerController {
   }
 
   /**
+   * 切换音频源
+   * @param source 音频源标识
+   */
+  public async switchAudioSource(source: string) {
+    const statusStore = useStatusStore();
+    const songManager = useSongManager();
+    const musicStore = useMusicStore();
+    const audioManager = useAudioManager();
+
+    const playSongData = musicStore.playSong;
+    if (!playSongData || playSongData.path) return;
+
+    try {
+      statusStore.playLoading = true;
+
+      // 保存偏好
+      await songManager.saveAudioSourcePreference(playSongData.id, source);
+      statusStore.preferredAudioSource = source;
+
+      // 清除预取缓存
+      songManager.clearPrefetch();
+
+      // 获取新音频源 (直接请求指定源，避免并发请求所有源导致卡顿)
+      const audioSource = await songManager.getAudioSourceFromSpecificServer(playSongData, source);
+
+      if (!audioSource.url) {
+        window.$message.error("切换音频源失败：无法获取播放链接");
+        statusStore.playLoading = false;
+        return;
+      }
+
+      console.log(`🔄 [${playSongData.id}] 切换音频源:`, audioSource);
+
+      // 更新状态
+      statusStore.songQuality = audioSource.quality;
+      statusStore.playUblock = audioSource.isUnlocked ?? false;
+      statusStore.audioSource = audioSource.source;
+
+      // 停止当前播放
+      audioManager.stop();
+
+      // 保持当前进度和播放状态
+      const seek = statusStore.currentTime;
+      const shouldAutoPlay = statusStore.playStatus;
+
+      await this.loadAndPlay(audioSource.url, shouldAutoPlay, seek);
+    } catch (error) {
+      console.error("❌ 切换音频源失败:", error);
+      statusStore.playLoading = false;
+      window.$message.error("切换音频源失败");
+    }
+  }
+
+  /**
    * 加载音频流并播放
    */
   private async loadAndPlay(url: string, autoPlay: boolean, seek: number) {
