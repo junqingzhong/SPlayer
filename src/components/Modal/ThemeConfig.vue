@@ -317,7 +317,7 @@ const randomizeTheme = () => {
 
   // 3. 随机变体
   const randomVariant = variantOptions[Math.floor(Math.random() * variantOptions.length)];
-  settingStore.themeVariant = randomVariant.value as any;
+  settingStore.themeVariant = randomVariant.value as typeof settingStore.themeVariant;
 
   // 4. 随机颜色 (生成随机 Hex 并应用到自定义)
   const randomHex = `#${Math.floor(Math.random() * 16777215)

@@ -407,8 +407,21 @@ class SongManager {
           if (unlockUrl && (unlockUrl.includes(".flac") || unlockUrl.includes(".wav"))) {
             quality = QualityType.SQ;
           }
+
+          // 检查本地缓存
+          const cachedUrl = await this.checkLocalCache(songId, quality);
+          if (cachedUrl) {
+            return {
+              id: songId,
+              url: cachedUrl,
+              isUnlocked: true,
+              quality,
+              source: source,
+            };
+          }
+
           // 触发缓存下载
-          this.triggerCacheDownload(songId, unlockUrl);
+          this.triggerCacheDownload(songId, unlockUrl, quality);
           
           return {
             id: songId,
