@@ -535,13 +535,14 @@ class SongManager {
         statusStore.audioSource = selected.source;
         // 如果是解锁源，触发缓存下载 (getOnlineUrl 已内部处理官方源缓存)
         if (selected.isUnlocked && selected.url) {
-          this.triggerCacheDownload(songId, selected.url);
-          // 检查本地缓存是否已存在（覆盖远程 URL）
-          const cachedUrl = await this.checkLocalCache(songId);
+          // 检查本地缓存是否已存在
+          const cachedUrl = await this.checkLocalCache(songId, selected.quality);
           if (cachedUrl) {
             console.log(`🚀 [${songId}] 使用本地缓存 (Source: ${selected.source})`);
             return { ...selected, url: cachedUrl };
           }
+          // 未找到缓存，触发下载并使用远程 URL
+          this.triggerCacheDownload(songId, selected.url, selected.quality);
         }
         return selected;
       }
