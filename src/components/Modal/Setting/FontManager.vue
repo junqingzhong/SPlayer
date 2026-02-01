@@ -14,21 +14,25 @@
         :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
       >
         <div class="label">
-          <n-text class="name">全局字体</n-text>
-          <n-text class="tip" :depth="3">应用到软件内所有非特定区域的字体</n-text>
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <div class="info" style="display: flex; flex-direction: column">
+              <n-text class="name">全局字体</n-text>
+              <n-text class="tip" :depth="3">应用到软件内所有非特定区域的字体</n-text>
+            </div>
+            <Transition name="fade" mode="out-in">
+              <n-button
+                :disabled="settingStore.globalFont === 'default'"
+                type="primary"
+                strong
+                secondary
+                @click="settingStore.globalFont = 'default'"
+              >
+                恢复默认
+              </n-button>
+            </Transition>
+          </div>
         </div>
         <n-flex align="center">
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="settingStore.globalFont !== 'default'"
-              type="primary"
-              strong
-              secondary
-              @click="settingStore.globalFont = 'default'"
-            >
-              恢复默认
-            </n-button>
-          </Transition>
           <s-input
             v-if="settingStore.useCustomFont || !isElectron"
             v-model:value="settingStore.globalFont"
@@ -53,26 +57,30 @@
         :class="{ 'input-mode': settingStore.useCustomFont }"
       >
         <div class="label">
-          <n-text class="name">桌面歌词字体</n-text>
-          <n-text class="tip" :depth="3"> 桌面歌词使用的字体 </n-text>
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <div class="info" style="display: flex; flex-direction: column">
+              <n-text class="name">桌面歌词字体</n-text>
+              <n-text class="tip" :depth="3"> 桌面歌词使用的字体 </n-text>
+            </div>
+            <Transition name="fade" mode="out-in">
+              <n-button
+                :disabled="desktopLyricConfig.fontFamily === 'system-ui'"
+                type="primary"
+                strong
+                secondary
+                @click="
+                  () => {
+                    desktopLyricConfig.fontFamily = 'system-ui';
+                    saveDesktopLyricConfig();
+                  }
+                "
+              >
+                恢复默认
+              </n-button>
+            </Transition>
+          </div>
         </div>
         <n-flex align="center">
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="desktopLyricConfig.fontFamily !== 'system-ui'"
-              type="primary"
-              strong
-              secondary
-              @click="
-                () => {
-                  desktopLyricConfig.fontFamily = 'system-ui';
-                  saveDesktopLyricConfig();
-                }
-              "
-            >
-              恢复默认
-            </n-button>
-          </Transition>
           <s-input
             v-if="settingStore.useCustomFont"
             v-model:value="desktopLyricConfig.fontFamily"
@@ -101,21 +109,25 @@
         :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
       >
         <div class="label">
-          <n-text class="name">{{ font.name }}</n-text>
-          <n-text class="tip" :depth="3">{{ font.tip }}</n-text>
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <div class="info" style="display: flex; flex-direction: column">
+              <n-text class="name">{{ font.name }}</n-text>
+              <n-text class="tip" :depth="3">{{ font.tip }}</n-text>
+            </div>
+            <Transition name="fade" mode="out-in">
+              <n-button
+                :disabled="settingStore[font.keySetting] === font.default"
+                type="primary"
+                strong
+                secondary
+                @click="settingStore[font.keySetting] = font.default"
+              >
+                恢复默认
+              </n-button>
+            </Transition>
+          </div>
         </div>
         <n-flex align="center">
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="settingStore[font.keySetting] !== font.default"
-              type="primary"
-              strong
-              secondary
-              @click="settingStore[font.keySetting] = font.default"
-            >
-              恢复默认
-            </n-button>
-          </Transition>
           <s-input
             v-if="settingStore.useCustomFont || !isElectron"
             v-model:value="settingStore[font.keySetting]"
@@ -249,6 +261,7 @@ onMounted(() => {
       padding: 16px;
     }
     .label {
+      flex: 1;
       display: flex;
       flex-direction: column;
       padding-right: 20px;
