@@ -57,7 +57,7 @@
         :class="{ 'input-mode': settingStore.useCustomFont }"
       >
         <div class="label">
-          <div style="display: flex; justify-content: space-between; align-items: center">
+          <div class="label-header">
             <div class="info" style="display: flex; flex-direction: column">
               <n-text class="name">桌面歌词字体</n-text>
               <n-text class="tip" :depth="3"> 桌面歌词使用的字体 </n-text>
@@ -109,7 +109,7 @@
         :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
       >
         <div class="label">
-          <div style="display: flex; justify-content: space-between; align-items: center">
+          <div class="label-header">
             <div class="info" style="display: flex; flex-direction: column">
               <n-text class="name">{{ font.name }}</n-text>
               <n-text class="tip" :depth="3">{{ font.tip }}</n-text>
@@ -265,6 +265,11 @@ onMounted(() => {
       display: flex;
       flex-direction: column;
       padding-right: 20px;
+      .label-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
       .name {
         font-size: 16px;
       }

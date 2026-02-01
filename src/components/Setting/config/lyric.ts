@@ -7,7 +7,7 @@ import { cloneDeep, isEqual } from "lodash-es";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 import { SettingConfig } from "@/types/settings";
 import LyricPreview from "../components/LyricPreview.vue";
-import { descMultiline, forceDisplaySettingIf } from "./utils";
+import { descMultiline } from "./utils";
 
 export const useLyricSettings = (): SettingConfig => {
   const player = usePlayerController();
@@ -113,14 +113,14 @@ export const useLyricSettings = (): SettingConfig => {
             max: 40,
             suffix: "px",
             title: computed(() => (settingStore.useAMLyrics ? "由 AMLL 自动控制" : "")),
-            ...forceDisplaySettingIf(
-              () => settingStore.useAMLyrics,
-              () => Math.max(0.5 * settingStore.lyricFontSize, 10),
-              computed({
-                get: () => settingStore.lyricTranFontSize,
-                set: (v) => (settingStore.lyricTranFontSize = v || 22),
-              }),
-            ),
+            value: computed({
+              get: () => settingStore.lyricTranFontSize,
+              set: (v) => (settingStore.lyricTranFontSize = v || 22),
+            }),
+            forceIf: {
+              condition: () => settingStore.useAMLyrics,
+              forcedValue: () => Math.max(0.5 * settingStore.lyricFontSize, 10),
+            },
             defaultValue: 22,
           },
           {
@@ -132,14 +132,14 @@ export const useLyricSettings = (): SettingConfig => {
             max: 40,
             suffix: "px",
             title: computed(() => (settingStore.useAMLyrics ? "由 AMLL 自动控制" : "")),
-            ...forceDisplaySettingIf(
-              () => settingStore.useAMLyrics,
-              () => Math.max(0.5 * settingStore.lyricFontSize, 10),
-              computed({
-                get: () => settingStore.lyricRomaFontSize,
-                set: (v) => (settingStore.lyricRomaFontSize = v || 18),
-              }),
-            ),
+            value: computed({
+              get: () => settingStore.lyricRomaFontSize,
+              set: (v) => (settingStore.lyricRomaFontSize = v || 18),
+            }),
+            forceIf: {
+              condition: () => settingStore.useAMLyrics,
+              forcedValue: () => Math.max(0.5 * settingStore.lyricFontSize, 10),
+            },
             defaultValue: 18,
           },
           {

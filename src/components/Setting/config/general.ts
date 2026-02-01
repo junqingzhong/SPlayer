@@ -83,8 +83,8 @@ export const useGeneralSettings = (): SettingConfig => {
       const rendererData = {
         "setting-store": localStorage.getItem("setting-store"),
         "shortcut-store": localStorage.getItem("shortcut-store"),
-        "status-store": localStorage.getItem("status-store"),
-        "music-store": localStorage.getItem("music-store"),
+        // "status-store": localStorage.getItem("status-store"),
+        // "music-store": localStorage.getItem("music-store"),
       };
       const result = await window.api.store.export(rendererData);
       if (result && result.success) {
@@ -124,8 +124,8 @@ export const useGeneralSettings = (): SettingConfig => {
               const storesToRestore = [
                 "setting-store",
                 "shortcut-store",
-                "status-store",
-                "music-store",
+                // "status-store",
+                // "music-store",
               ];
               
               storesToRestore.forEach(key => {
