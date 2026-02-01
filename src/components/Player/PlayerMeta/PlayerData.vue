@@ -169,14 +169,10 @@ const lyricMode = computed(() => {
 });
 
 const lyricSourceOptions = computed(() => {
-  return statusStore.availableLyricSources.map((source) => {
-    let label = source;
-    if (source === "QM") label = "QM";
-    else if (source === "YRC") label = "YRC";
-    else if (source === "LRC") label = "LRC";
-    else if (source === "TTML") label = "TTML";
-    return { label, value: source };
-  });
+  return statusStore.availableLyricSources.map((source) => ({
+    label: source,
+    value: source,
+  }));
 });
 
 // 当前使用的歌词源（用于显示勾选状态）

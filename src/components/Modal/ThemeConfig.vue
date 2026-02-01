@@ -283,7 +283,7 @@ const isImageMode = computed(() => statusStore.themeBackgroundMode === "image");
 // 是否为视频模式
 const isVideoMode = computed(() => statusStore.themeBackgroundMode === "video");
 // 是否为自定义背景模式
-const isCustomBackground = computed(() => isImageMode.value || isVideoMode.value);
+const isCustomBackground = computed(() => statusStore.isCustomBackground);
 
 // 主题颜色变体选项
 const variantOptions = [

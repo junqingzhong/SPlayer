@@ -248,6 +248,10 @@ export const useStatusStore = defineStore("status", {
       if (!mainColor) return "239, 239, 239";
       return `${mainColor.r}, ${mainColor.g}, ${mainColor.b}`;
     },
+    /** 是否为自定义背景模式 */
+    isCustomBackground(state) {
+      return state.themeBackgroundMode === "image" || state.themeBackgroundMode === "video";
+    },
     /** 是否为开发者模式 */
     isDeveloperMode(state) {
       return state.developerMode || isDevBuild;

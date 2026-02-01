@@ -64,9 +64,7 @@ export const useAppearanceSettings = (): SettingConfig => {
               set: (v) => (settingStore.themeMode = v),
             }),
             forceIf: {
-              condition: () =>
-                statusStore.themeBackgroundMode === "image" ||
-                statusStore.themeBackgroundMode === "video",
+              condition: () => statusStore.isCustomBackground,
               forcedValue: () => settingStore.themeMode,
             },
           },
