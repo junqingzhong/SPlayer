@@ -141,6 +141,12 @@ interface StatusState {
   };
   /** 可用音质列表 */
   availableQualities: SongLevelDataType[];
+  /** AB 循环 */
+  abLoop: {
+    enable: boolean;
+    pointA: number | null;
+    pointB: number | null;
+  };
 }
 
 export const useStatusStore = defineStore("status", {
@@ -213,6 +219,11 @@ export const useStatusStore = defineStore("status", {
       isSolid: false,
     },
     availableQualities: [],
+    abLoop: {
+      enable: false,
+      pointA: null,
+      pointB: null,
+    },
   }),
   getters: {
     // 播放音量图标

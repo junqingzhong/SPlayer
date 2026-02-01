@@ -168,6 +168,10 @@ class PlayerController {
       // 设置加载状态
       statusStore.playLoading = true;
       statusStore.lyricLoading = true;
+      // 重置 AB 循环
+      statusStore.abLoop.enable = false;
+      statusStore.abLoop.pointA = null;
+      statusStore.abLoop.pointB = null;
       // 通知桌面歌词
       if (isElectron) {
         window.electron.ipcRenderer.send("update-desktop-lyric-data", {
@@ -509,6 +513,16 @@ class PlayerController {
       playerIpc.sendSocketProgress(currentTime, duration);
     }, 200);
     audioManager.addEventListener("timeupdate", this.onTimeUpdate);
+
+    // AB 循环监听
+    audioManager.addEventListener("timeupdate", () => {
+      const { enable, pointA, pointB } = statusStore.abLoop;
+      if (enable && pointA !== null && pointB !== null) {
+        if (audioManager.currentTime >= pointB) {
+          audioManager.seek(pointA);
+        }
+      }
+    });
 
     // 错误处理
     audioManager.addEventListener("error", (e) => {

@@ -391,6 +391,21 @@ export const openAutoClose = async () => {
   });
 };
 
+/** 打开 AB 循环弹窗 */
+export const openABLoop = async () => {
+  const { default: ABLoop } = await import("@/components/Modal/ABLoop.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "AB 循环",
+    content: () => {
+      return h(ABLoop);
+    },
+  });
+};
+
 /** 打开均衡器弹窗 */
 export const openEqualizer = async () => {
   const { default: Equalizer } = await import("@/components/Modal/Equalizer.vue");
