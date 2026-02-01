@@ -12,7 +12,8 @@ const isRustAvailable = () => {
   }
 };
 
-dotenv.config({ path: path.resolve(import.meta.dirname, "../.env") });
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 if (process.env.SKIP_NATIVE_BUILD === "true") {
   console.log("[BuildNative] SKIP_NATIVE_BUILD 已设置，跳过原生模块构建");
