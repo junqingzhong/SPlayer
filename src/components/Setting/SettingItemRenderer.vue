@@ -152,11 +152,11 @@
     </n-card>
 
     <!-- Children (Nested items) -->
-    <template v-if="item.children && item.children.length > 0">
+    <template v-if="resolvedChildren && resolvedChildren.length > 0">
       <n-collapse-transition :show="isChildrenExpanded">
         <!-- 递归渲染子项 -->
         <SettingItemRenderer
-          v-for="child in item.children"
+          v-for="child in resolvedChildren"
           :key="child.key"
           :item="child"
           v-show="isShow(child)"
@@ -243,6 +243,12 @@ const modelValue = computed({
 const isDisabled = computed(() => {
   if (isForcedConditionMet.value) return true;
   return baseDisabled.value;
+});
+
+// 解析子项
+const resolvedChildren = computed(() => {
+  if (!props.item.children) return [];
+  return toValue(props.item.children);
 });
 
 // 计算子项是否展开

@@ -211,40 +211,49 @@ export const useAppearanceSettings = (): SettingConfig => {
               get: () => settingStore.playerType,
               set: (v) => (settingStore.playerType = v),
             }),
-            children: [
-              {
-                key: "playerStyleRatio",
-                label: "封面 / 歌词占比",
-                type: "slider",
-                description: "调整全屏播放器的封面与歌词的宽度比例",
-                min: 30,
-                max: 70,
-                step: 1,
-                marks: { 50: "默认" },
-                show: () => settingStore.playerType !== "fullscreen",
-                formatTooltip: (v) => `${v}%`,
-                value: computed({
-                  get: () => settingStore.playerStyleRatio,
-                  set: (v) => (settingStore.playerStyleRatio = v),
-                }),
-              },
-              {
-                key: "playerFullscreenGradient",
-                label: "封面过渡位置",
-                type: "slider",
-                description: "调整全屏封面右侧的渐变过渡位置",
-                show: () => settingStore.playerType === "fullscreen",
-                min: 0,
-                max: 100,
-                step: 1,
-                marks: { 15: "默认" },
-                formatTooltip: (v) => `${v}%`,
-                value: computed({
-                  get: () => settingStore.playerFullscreenGradient,
-                  set: (v) => (settingStore.playerFullscreenGradient = v),
-                }),
-              },
-            ],
+            condition: () => true,
+            children: computed(() => {
+              const type = settingStore.playerType;
+              if (type === "cover" || type === "record") {
+                return [
+                  {
+                    key: "playerStyleRatio",
+                    label: "封面 / 歌词占比",
+                    type: "slider",
+                    description: "调整全屏播放器的封面与歌词的宽度比例",
+                    min: 30,
+                    max: 70,
+                    step: 1,
+                    marks: { 50: "默认" },
+                    formatTooltip: (v) => `${v}%`,
+                    value: computed({
+                      get: () => settingStore.playerStyleRatio,
+                      set: (v) => (settingStore.playerStyleRatio = v),
+                    }),
+                  },
+                ];
+              }
+              if (type === "fullscreen") {
+                return [
+                  {
+                    key: "playerFullscreenGradient",
+                    label: "封面过渡位置",
+                    type: "slider",
+                    description: "调整全屏封面右侧的渐变过渡位置",
+                    min: 0,
+                    max: 100,
+                    step: 1,
+                    marks: { 15: "默认" },
+                    formatTooltip: (v) => `${v}%`,
+                    value: computed({
+                      get: () => settingStore.playerFullscreenGradient,
+                      set: (v) => (settingStore.playerFullscreenGradient = v),
+                    }),
+                  },
+                ];
+              }
+              return [];
+            }),
           },
           {
             key: "playerBackgroundType",

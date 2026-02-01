@@ -259,7 +259,7 @@ export interface SettingItem {
    * 当满足特定条件（通常是父级开关开启）时，显示子项列表
    * 渲染在一个 `n-collapse-transition` 中
    */
-  children?: SettingItem[];
+  children?: MaybeRefOrGetter<SettingItem[]>;
 }
 
 /**
