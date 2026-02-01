@@ -58,6 +58,10 @@ interface StatusState {
   usingTTMLLyric: boolean;
   /** 当前是否正使用 QRC 歌词（来自QQ音乐） */
   usingQRCLyric: boolean;
+  /** 可用的歌词源列表 */
+  availableLyricSources: string[];
+  /** 用户偏好的歌词源（用于切换） */
+  preferredLyricSource: string | null;
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;
   /** 当前歌曲音源 */
@@ -160,6 +164,8 @@ export const useStatusStore = defineStore("status", {
     pureLyricMode: false,
     usingTTMLLyric: false,
     usingQRCLyric: false,
+    availableLyricSources: [],
+    preferredLyricSource: null,
     songQuality: undefined,
     audioSource: undefined,
     playIndex: -1,
