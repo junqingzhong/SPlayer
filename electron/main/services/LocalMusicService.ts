@@ -10,6 +10,9 @@ import { LocalMusicDB, type MusicTrack } from "../database/LocalMusicDB";
 import FastGlob, { type Entry } from "fast-glob";
 import pLimit from "p-limit";
 
+const UNTITLED_TRACK_MIN_DURATION = 30; // seconds
+const UNTITLED_TRACK_MIN_SIZE = 1024 * 1024; // 1MB
+
 /** 本地音乐服务 */
 export class LocalMusicService {
   /** 数据库实例 */
@@ -230,9 +233,9 @@ export class LocalMusicService {
             // 仅当无标题时才过滤
             if (!metadata.common.title) {
               // 时长 < 30s
-              if (metadata.format.duration && metadata.format.duration < 30) return;
+              if (metadata.format.duration && metadata.format.duration < UNTITLED_TRACK_MIN_DURATION) return;
               // 大小 < 1MB
-              if (size < 1024 * 1024) return;
+              if (size < UNTITLED_TRACK_MIN_SIZE) return;
             }
             // 提取封面
             const coverPath = await this.extractCover(metadata, id);
