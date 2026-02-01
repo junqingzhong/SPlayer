@@ -49,11 +49,7 @@ export const useAppearanceSettings = (): SettingConfig => {
             key: "themeMode",
             label: "主题模式",
             type: "select",
-            description: () =>
-              statusStore.themeBackgroundMode === "image" ||
-              statusStore.themeBackgroundMode === "video"
-                ? "请关闭自定义背景后调节"
-                : "调整全局主题明暗模式",
+            description: "调整全局主题明暗模式",
             options: [
               { label: "跟随系统", value: "auto" },
               { label: "浅色模式", value: "light" },
@@ -65,7 +61,8 @@ export const useAppearanceSettings = (): SettingConfig => {
             }),
             forceIf: {
               condition: () => statusStore.isCustomBackground,
-              forcedValue: () => settingStore.themeMode,
+              forcedValue: "auto",
+              forcedDescription: "请关闭自定义背景后调节",
             },
           },
           {
@@ -371,6 +368,7 @@ export const useAppearanceSettings = (): SettingConfig => {
             forceIf: {
               condition: () => isLogin() !== 1,
               forcedValue: false,
+              forcedTitle: "请先正常登录",
             },
           },
           {
@@ -378,10 +376,7 @@ export const useAppearanceSettings = (): SettingConfig => {
             label: "音乐频谱",
             type: "switch",
             show: isElectron,
-            description:
-              settingStore.playbackEngine === "mpv"
-                ? "MPV 引擎暂不支持显示音乐频谱"
-                : "开启音乐频谱会影响性能或增加内存占用，如遇问题请关闭",
+            description: "开启音乐频谱会影响性能或增加内存占用，如遇问题请关闭",
             value: computed({
               get: () => settingStore.showSpectrums,
               set: (v) => (settingStore.showSpectrums = v),
@@ -389,6 +384,7 @@ export const useAppearanceSettings = (): SettingConfig => {
             forceIf: {
               condition: () => settingStore.playbackEngine === "mpv",
               forcedValue: false,
+              forcedDescription: "MPV 引擎暂不支持显示音乐频谱",
             },
           },
         ],

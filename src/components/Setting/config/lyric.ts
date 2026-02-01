@@ -112,7 +112,6 @@ export const useLyricSettings = (): SettingConfig => {
             min: 5,
             max: 40,
             suffix: "px",
-            title: computed(() => (settingStore.useAMLyrics ? "由 AMLL 自动控制" : "")),
             value: computed({
               get: () => settingStore.lyricTranFontSize,
               set: (v) => (settingStore.lyricTranFontSize = v || 22),
@@ -120,6 +119,7 @@ export const useLyricSettings = (): SettingConfig => {
             forceIf: {
               condition: () => settingStore.useAMLyrics,
               forcedValue: () => Math.max(0.5 * settingStore.lyricFontSize, 10),
+              forcedTitle: "由 AMLL 自动控制",
             },
             defaultValue: 22,
           },
@@ -131,7 +131,6 @@ export const useLyricSettings = (): SettingConfig => {
             min: 5,
             max: 40,
             suffix: "px",
-            title: computed(() => (settingStore.useAMLyrics ? "由 AMLL 自动控制" : "")),
             value: computed({
               get: () => settingStore.lyricRomaFontSize,
               set: (v) => (settingStore.lyricRomaFontSize = v || 18),
@@ -139,6 +138,7 @@ export const useLyricSettings = (): SettingConfig => {
             forceIf: {
               condition: () => settingStore.useAMLyrics,
               forcedValue: () => Math.max(0.5 * settingStore.lyricFontSize, 10),
+              forcedTitle: "由 AMLL 自动控制",
             },
             defaultValue: 18,
           },
@@ -179,7 +179,8 @@ export const useLyricSettings = (): SettingConfig => {
             }),
             forceIf: {
               condition: () => settingStore.useAMLyrics,
-              forcedValue: () => settingStore.lyricsPosition,
+              forcedValue: "flex-start",
+              forcedDescription: "歌词的默认垂直位置，AMLL 默认居左",
             },
           },
           {
@@ -285,7 +286,7 @@ export const useLyricSettings = (): SettingConfig => {
             }),
             forceIf: {
               condition: () => !settingStore.showTran || !settingStore.showRoma,
-              forcedValue: () => settingStore.swapTranRoma,
+              forcedValue: false,
             },
           },
           {
@@ -406,7 +407,8 @@ export const useLyricSettings = (): SettingConfig => {
                     key: "customBracketReplacement",
                     label: "自定义替换内容",
                     type: "text-input",
-                    description: "输入自定义的替换字符。支持单个分隔符（如 - ）或成对符号（如 () ）",
+                    description:
+                      "输入自定义的替换字符。支持单个分隔符（如 - ）或成对符号（如 () ）",
                     value: computed({
                       get: () => settingStore.customBracketReplacement,
                       set: (v) => {
