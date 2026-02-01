@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import os from "node:os";
 import process from "node:process";
 import dotenv from "dotenv";
 import path from "node:path";
@@ -11,6 +12,9 @@ const isRustAvailable = () => {
     return false;
   }
 };
+
+const platform = os.platform();
+const isWindows = platform === "win32";
 
 dotenv.config({ path: path.resolve(import.meta.dirname, "../.env") });
 
@@ -37,13 +41,23 @@ try {
     stdio: "inherit",
   });
 
+  console.log("[BuildNative] 构建 tools 原生模块...");
+  execSync("pnpm --filter tools build", {
+    stdio: "inherit",
+  });
+
+  if (isWindows) {
+    console.log("[BuildNative] 构建任务栏歌词原生模块...");
+    execSync("pnpm --filter taskbar-lyric build", {
+      stdio: "inherit",
+    });
+  }
+
   // 有人抱怨编译 wasm 总是有问题，暂时注释掉
   // console.log("[BuildNative] 构建 ferrous-opencc-wasm...");
   // execSync("pnpm --filter ferrous-opencc-wasm build", {
   //   stdio: "inherit",
   // });
-
-  console.log("[BuildNative] 模块构建成功");
 } catch (error) {
   console.error("[BuildNative] 模块构建失败", error);
   process.exit(1);
