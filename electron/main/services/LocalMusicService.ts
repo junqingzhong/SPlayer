@@ -231,8 +231,6 @@ export class LocalMusicService {
             if (!metadata.common.title) {
               // 时长 < 30s
               if (metadata.format.duration && metadata.format.duration < 30) return;
-              // 时长 > 2h (7200s)
-              if (metadata.format.duration && metadata.format.duration > 7200) return;
               // 大小 < 1MB
               if (size < 1024 * 1024) return;
             }
