@@ -9,23 +9,30 @@
         </div>
         <n-switch v-model:value="settingStore.useCustomFont" class="set" :round="false" />
       </n-card>
-      <n-card class="set-item">
+      <n-card
+        class="set-item"
+        :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
+      >
         <div class="label">
-          <n-text class="name">全局字体</n-text>
-          <n-text class="tip" :depth="3">应用到软件内所有非特定区域的字体</n-text>
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <div class="info" style="display: flex; flex-direction: column">
+              <n-text class="name">全局字体</n-text>
+              <n-text class="tip" :depth="3">应用到软件内所有非特定区域的字体</n-text>
+            </div>
+            <Transition name="fade" mode="out-in">
+              <n-button
+                :disabled="settingStore.globalFont === 'default'"
+                type="primary"
+                strong
+                secondary
+                @click="settingStore.globalFont = 'default'"
+              >
+                恢复默认
+              </n-button>
+            </Transition>
+          </div>
         </div>
         <n-flex align="center">
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="settingStore.globalFont !== 'default'"
-              type="primary"
-              strong
-              secondary
-              @click="settingStore.globalFont = 'default'"
-            >
-              恢复默认
-            </n-button>
-          </Transition>
           <s-input
             v-if="settingStore.useCustomFont || !isElectron"
             v-model:value="settingStore.globalFont"
@@ -45,28 +52,35 @@
     </div>
     <div class="set-list" v-if="isElectron">
       <n-h3 prefix="bar">桌面歌词</n-h3>
-      <n-card class="set-item">
+      <n-card
+        class="set-item"
+        :class="{ 'input-mode': settingStore.useCustomFont }"
+      >
         <div class="label">
-          <n-text class="name">桌面歌词字体</n-text>
-          <n-text class="tip" :depth="3"> 桌面歌词使用的字体 </n-text>
+          <div class="label-header">
+            <div class="info" style="display: flex; flex-direction: column">
+              <n-text class="name">桌面歌词字体</n-text>
+              <n-text class="tip" :depth="3"> 桌面歌词使用的字体 </n-text>
+            </div>
+            <Transition name="fade" mode="out-in">
+              <n-button
+                :disabled="desktopLyricConfig.fontFamily === 'system-ui'"
+                type="primary"
+                strong
+                secondary
+                @click="
+                  () => {
+                    desktopLyricConfig.fontFamily = 'system-ui';
+                    saveDesktopLyricConfig();
+                  }
+                "
+              >
+                恢复默认
+              </n-button>
+            </Transition>
+          </div>
         </div>
         <n-flex align="center">
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="desktopLyricConfig.fontFamily !== 'system-ui'"
-              type="primary"
-              strong
-              secondary
-              @click="
-                () => {
-                  desktopLyricConfig.fontFamily = 'system-ui';
-                  saveDesktopLyricConfig();
-                }
-              "
-            >
-              恢复默认
-            </n-button>
-          </Transition>
           <s-input
             v-if="settingStore.useCustomFont"
             v-model:value="desktopLyricConfig.fontFamily"
@@ -88,23 +102,32 @@
     </div>
     <div class="set-list">
       <n-h3 prefix="bar">歌词字体</n-h3>
-      <n-card v-for="font in lyricFontConfigs" :key="font.keySetting" class="set-item">
+      <n-card
+        v-for="font in lyricFontConfigs"
+        :key="font.keySetting"
+        class="set-item"
+        :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
+      >
         <div class="label">
-          <n-text class="name">{{ font.name }}</n-text>
-          <n-text class="tip" :depth="3">{{ font.tip }}</n-text>
+          <div class="label-header">
+            <div class="info" style="display: flex; flex-direction: column">
+              <n-text class="name">{{ font.name }}</n-text>
+              <n-text class="tip" :depth="3">{{ font.tip }}</n-text>
+            </div>
+            <Transition name="fade" mode="out-in">
+              <n-button
+                :disabled="settingStore[font.keySetting] === font.default"
+                type="primary"
+                strong
+                secondary
+                @click="settingStore[font.keySetting] = font.default"
+              >
+                恢复默认
+              </n-button>
+            </Transition>
+          </div>
         </div>
         <n-flex align="center">
-          <Transition name="fade" mode="out-in">
-            <n-button
-              v-if="settingStore[font.keySetting] !== font.default"
-              type="primary"
-              strong
-              secondary
-              @click="settingStore[font.keySetting] = font.default"
-            >
-              恢复默认
-            </n-button>
-          </Transition>
           <s-input
             v-if="settingStore.useCustomFont || !isElectron"
             v-model:value="settingStore[font.keySetting]"
@@ -238,9 +261,15 @@ onMounted(() => {
       padding: 16px;
     }
     .label {
+      flex: 1;
       display: flex;
       flex-direction: column;
       padding-right: 20px;
+      .label-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
       .name {
         font-size: 16px;
       }
@@ -257,6 +286,29 @@ onMounted(() => {
       @media (max-width: 768px) {
         width: 140px;
         min-width: 140px;
+      }
+    }
+    &.input-mode {
+      :deep(.n-card__content) {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+      .label {
+        padding-right: 0;
+      }
+      .n-flex {
+        width: 100%;
+        flex-flow: wrap !important;
+        justify-content: flex-end !important;
+      }
+      .set {
+        width: 100%;
+        max-width: none;
+        order: -1;
+      }
+      .n-button {
+        margin-left: auto;
       }
     }
   }

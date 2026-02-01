@@ -58,6 +58,10 @@ interface StatusState {
   usingTTMLLyric: boolean;
   /** 当前是否正使用 QRC 歌词（来自QQ音乐） */
   usingQRCLyric: boolean;
+  /** 可用的歌词源列表 */
+  availableLyricSources: string[];
+  /** 用户偏好的歌词源（用于切换） */
+  preferredLyricSource: string | null;
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;
   /** 当前歌曲音源 */
@@ -117,7 +121,7 @@ interface StatusState {
    * 主题背景模式
    * color: 颜色模式 | image: 图片模式
    */
-  themeBackgroundMode: "color" | "image";
+  themeBackgroundMode: "color" | "image" | "video";
   /** 背景图配置 */
   backgroundConfig: {
     /** 背景放大倍数 (1-2) */
@@ -160,6 +164,8 @@ export const useStatusStore = defineStore("status", {
     pureLyricMode: false,
     usingTTMLLyric: false,
     usingQRCLyric: false,
+    availableLyricSources: [],
+    preferredLyricSource: null,
     songQuality: undefined,
     audioSource: undefined,
     playIndex: -1,
@@ -241,6 +247,10 @@ export const useStatusStore = defineStore("status", {
       const mainColor = state.songCoverTheme?.main;
       if (!mainColor) return "239, 239, 239";
       return `${mainColor.r}, ${mainColor.g}, ${mainColor.b}`;
+    },
+    /** 是否为自定义背景模式 */
+    isCustomBackground(state) {
+      return state.themeBackgroundMode === "image" || state.themeBackgroundMode === "video";
     },
     /** 是否为开发者模式 */
     isDeveloperMode(state) {

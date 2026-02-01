@@ -12,7 +12,9 @@
       ]"
       :style="{
         '--amll-lp-color': 'rgb(var(--main-cover-color, 239 239 239))',
-        '--amll-lp-hover-bg-color': 'rgba(var(--main-cover-color), 0.08)',
+        '--amll-lp-hover-bg-color': statusStore.playerMetaShow
+          ? 'rgba(var(--main-cover-color), 0.08)'
+          : 'transparent',
         '--amll-lyric-left-padding': settingStore.lyricAlignRight
           ? ''
           : `${settingStore.lyricHorizontalOffset}px`,

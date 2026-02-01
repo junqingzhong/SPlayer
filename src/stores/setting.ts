@@ -302,6 +302,14 @@ export interface SettingState {
   showSongExplicitTag: boolean;
   /** 显示原唱翻唱标签 */
   showSongOriginalTag: boolean;
+  /** 显示歌曲专辑 */
+  showSongAlbum: boolean;
+  /** 显示歌曲时长 */
+  showSongDuration: boolean;
+  /** 显示歌曲操作 */
+  showSongOperations: boolean;
+  /** 显示歌曲歌手 */
+  showSongArtist: boolean;
   /** 侧边栏隐藏 */
   sidebarHide: {
     /** 隐藏发现音乐 */
@@ -334,6 +342,36 @@ export interface SettingState {
     creator: boolean;
     time: boolean;
     description: boolean;
+  };
+  /** 全屏播放器界面元素显示配置 */
+  fullscreenPlayerElements: {
+    like: boolean;
+    addToPlaylist: boolean;
+    download: boolean;
+    comments: boolean;
+    desktopLyric: boolean;
+    moreSettings: boolean;
+    copyLyric: boolean;
+    lyricOffset: boolean;
+    lyricSettings: boolean;
+  };
+  /** 右键菜单显示配置 */
+  contextMenuOptions: {
+    play: boolean;
+    playNext: boolean;
+    addToPlaylist: boolean;
+    mv: boolean;
+    dislike: boolean;
+    more: boolean;
+    cloudImport: boolean;
+    deleteFromPlaylist: boolean;
+    deleteFromCloud: boolean;
+    deleteFromLocal: boolean;
+    openFolder: boolean;
+    cloudMatch: boolean;
+    wiki: boolean;
+    search: boolean;
+    download: boolean;
   };
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
@@ -548,6 +586,10 @@ export const useSettingStore = defineStore("setting", {
     showSongPrivilegeTag: true,
     showSongExplicitTag: true,
     showSongOriginalTag: true,
+    showSongAlbum: true,
+    showSongDuration: true,
+    showSongOperations: true,
+    showSongArtist: true,
     sidebarHide: {
       hideDiscover: false,
       hidePersonalFM: false,
@@ -566,6 +608,34 @@ export const useSettingStore = defineStore("setting", {
       creator: true,
       time: true,
       description: true,
+    },
+    fullscreenPlayerElements: {
+      like: true,
+      addToPlaylist: true,
+      download: true,
+      comments: true,
+      desktopLyric: true,
+      moreSettings: true,
+      copyLyric: true,
+      lyricOffset: true,
+      lyricSettings: true,
+    },
+    contextMenuOptions: {
+      play: true,
+      playNext: true,
+      addToPlaylist: true,
+      mv: true,
+      dislike: true,
+      more: true,
+      cloudImport: true,
+      deleteFromPlaylist: true,
+      deleteFromCloud: true,
+      deleteFromLocal: true,
+      openFolder: true,
+      cloudMatch: true,
+      wiki: true,
+      search: true,
+      download: true,
     },
     enableSearchKeyword: true,
     clearSearchOnBlur: false,

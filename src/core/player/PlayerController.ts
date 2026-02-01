@@ -724,11 +724,30 @@ class PlayerController {
 
     // 计算索引
     let nextIndex = statusStore.playIndex;
-    nextIndex += type === "next" ? 1 : -1;
+    let attempts = 0;
+    const maxAttempts = playListLength;
 
-    // 边界处理 (索引越界)
-    if (nextIndex >= playListLength) nextIndex = 0;
-    if (nextIndex < 0) nextIndex = playListLength - 1;
+    // Fuck DJ Mode: 寻找下一个不被跳过的歌曲
+    while (attempts < maxAttempts) {
+      nextIndex += type === "next" ? 1 : -1;
+
+      // 边界处理 (索引越界)
+      if (nextIndex >= playListLength) nextIndex = 0;
+      if (nextIndex < 0) nextIndex = playListLength - 1;
+
+      const nextSong = dataStore.playList[nextIndex];
+      if (!this.shouldSkipSong(nextSong)) {
+        break;
+      }
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      window.$message.warning("播放列表中没有可播放的歌曲 (Fuck DJ Mode)");
+      audioManager.stop();
+      statusStore.playStatus = false;
+      return;
+    }
 
     // 更新状态并播放
     statusStore.playIndex = nextIndex;

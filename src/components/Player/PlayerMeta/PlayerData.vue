@@ -56,7 +56,16 @@
           {{ !statusStore.songQuality ? "未知音质" : statusStore.songQuality }}
         </span>
         <!-- 歌词模式 -->
-        <span class="meta-item">{{ lyricMode }}</span>
+        <n-popselect
+          v-if="lyricSourceOptions.length > 1"
+          trigger="click"
+          :value="currentLyricSource"
+          :options="lyricSourceOptions"
+          @update:value="handleLyricSourceChange"
+        >
+          <span class="meta-item clickable">{{ lyricMode }}</span>
+        </n-popselect>
+        <span v-else class="meta-item">{{ lyricMode }}</span>
         <!-- 是否在线 -->
         <span class="meta-item">
           {{ audioSourceText }}
@@ -132,6 +141,7 @@ import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
 import { removeBrackets } from "@/utils/format";
 import { SongUnlockServer } from "@/core/player/SongManager";
+import { useLyricManager } from "@/core/player/LyricManager";
 
 const props = defineProps<{
   /** 数据居中 */
@@ -144,6 +154,7 @@ const router = useRouter();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const lyricManager = useLyricManager();
 
 // 当前歌词模式
 const lyricMode = computed(() => {
@@ -156,6 +167,27 @@ const lyricMode = computed(() => {
   }
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
 });
+
+const lyricSourceOptions = computed(() => {
+  return statusStore.availableLyricSources.map((source) => ({
+    label: source,
+    value: source,
+  }));
+});
+
+// 当前使用的歌词源（用于显示勾选状态）
+const currentLyricSource = computed(() => {
+  if (statusStore.usingTTMLLyric) return "TTML";
+  if (statusStore.usingQRCLyric) return "QM";
+  // 默认优先级推断
+  if (musicStore.isHasYrc) return "YRC";
+  if (musicStore.isHasLrc) return "LRC";
+  return null;
+});
+
+const handleLyricSourceChange = (val: string) => {
+  lyricManager.switchLyricSource(val);
+};
 
 // 左侧外边距
 const leftMargin = computed(() => {
