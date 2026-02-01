@@ -1,5 +1,7 @@
 import { execSync } from "node:child_process";
 import process from "node:process";
+import dotenv from "dotenv";
+import path from "node:path";
 
 const isRustAvailable = () => {
   try {
@@ -9,6 +11,8 @@ const isRustAvailable = () => {
     return false;
   }
 };
+
+dotenv.config({ path: path.resolve(import.meta.dirname, "../.env") });
 
 if (process.env.SKIP_NATIVE_BUILD === "true") {
   console.log("[BuildNative] SKIP_NATIVE_BUILD 已设置，跳过原生模块构建");
