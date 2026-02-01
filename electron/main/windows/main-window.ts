@@ -5,8 +5,10 @@ import { isLinux, isWin, mainWinUrl } from "../utils/config";
 import { loadNativeModule } from "../utils/native-loader";
 import { createWindow } from "./index";
 
-type toolModule = typeof import("@native/tools");
-const tools: toolModule = loadNativeModule("tools.node", "tools");
+interface ToolsModule {
+  getTaskbarCreatedMessageId(): number;
+}
+const tools = loadNativeModule("tools.node", "tools") as ToolsModule;
 
 class MainWindow {
   private win: BrowserWindow | null = null;
