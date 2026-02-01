@@ -390,12 +390,6 @@ class LyricManager {
     const candidates: Record<string, SongLyric> = {};
     const sources: string[] = [];
 
-    // QM (QQ Music)
-    if (qqData && (qqData.lrcData.length > 0 || qqData.yrcData.length > 0)) {
-      candidates["QM"] = qqData;
-      sources.push("QM");
-    }
-
     // TTML
     if (ttmlData && typeof ttmlData === "string") {
       const sorted = this.cleanTTMLTranslations(ttmlData);
@@ -404,6 +398,12 @@ class LyricManager {
         candidates["TTML"] = { lrcData: [], yrcData: parsed.lines };
         sources.push("TTML");
       }
+    }
+
+    // QM (QQ Music)
+    if (qqData && (qqData.lrcData.length > 0 || qqData.yrcData.length > 0)) {
+      candidates["QM"] = qqData;
+      sources.push("QM");
     }
 
     // 网易云 (YRC/LRC)
@@ -480,67 +480,103 @@ class LyricManager {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
       const settingStore = useSettingStore();
-      const { lyric, format }: { lyric?: string; format?: "lrc" | "ttml" | "yrc" } =
-        await window.electron.ipcRenderer.invoke("get-music-lyric", path);
+      const result = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
+      const { lyric, format, external, embedded } = result as {
+        lyric?: string;
+        format?: "lrc" | "ttml" | "yrc";
+        external?: { lyric: string; format: "lrc" | "ttml" | "yrc" };
+        embedded?: { lyric: string; format: "lrc" };
+      };
 
       const candidates: Record<string, SongLyric> = {};
-      const sources: string[] = [];
-      let localSourceType = "";
-      let localData: SongLyric = { lrcData: [], yrcData: [] };
+      let isEmbeddedUsed = false;
 
-      // 1. 解析本地文件
-      if (lyric) {
-        if (format === "yrc") {
+      const processLyric = (
+        rawLyric: string,
+        rawFormat: "lrc" | "ttml" | "yrc",
+      ): { type: string; data: SongLyric } | null => {
+        let type = "";
+        let data: SongLyric = { lrcData: [], yrcData: [] };
+
+        if (rawFormat === "yrc") {
           let lines: LyricLine[] = [];
           // 检测是否为 XML 格式 (QRC)
-          if (lyric.trim().startsWith("<") || lyric.includes("<QrcInfos>")) {
-            lines = this.parseQRCLyric(lyric);
-            localSourceType = "QM";
+          if (rawLyric.trim().startsWith("<") || rawLyric.includes("<QrcInfos>")) {
+            lines = this.parseQRCLyric(rawLyric);
+            type = "QM";
           } else {
-            lines = parseYrc(lyric) || [];
-            localSourceType = "YRC";
+            lines = parseYrc(rawLyric) || [];
+            type = "YRC";
           }
-          localData.yrcData = lines;
-        } else if (format === "ttml") {
-          localSourceType = "TTML";
-          const sorted = this.cleanTTMLTranslations(lyric);
+          data.yrcData = lines;
+        } else if (rawFormat === "ttml") {
+          type = "TTML";
+          const sorted = this.cleanTTMLTranslations(rawLyric);
           const ttml = parseTTML(sorted);
-          localData.yrcData = ttml?.lines || [];
+          data.yrcData = ttml?.lines || [];
         } else {
           // 解析本地歌词（智能识别格式）
-          const { format: lrcFormat, lines: parsedLines } = parseSmartLrc(lyric);
+          const { format: lrcFormat, lines: parsedLines } = parseSmartLrc(rawLyric);
           // 如果是逐字格式，直接作为 yrcData
           if (isWordLevelFormat(lrcFormat)) {
-            localSourceType = "YRC";
-            localData.yrcData = parsedLines;
+            type = "YRC";
+            data.yrcData = parsedLines;
           } else {
             // 普通格式
-            localSourceType = "LRC";
-            localData = this.alignLocalLyrics({ lrcData: parsedLines, yrcData: [] });
+            type = "LRC";
+            data = this.alignLocalLyrics({ lrcData: parsedLines, yrcData: [] });
           }
         }
 
-        if (localData.lrcData.length > 0 || localData.yrcData.length > 0) {
-          candidates[localSourceType] = localData;
-          sources.push(localSourceType);
+        if (data.lrcData.length > 0 || data.yrcData.length > 0) {
+          return { type, data };
+        }
+        return null;
+      };
+
+      // 1. 解析内嵌歌词 (优先)
+      if (embedded) {
+        const res = processLyric(embedded.lyric, embedded.format);
+        if (res) {
+          candidates[res.type] = res.data;
+          isEmbeddedUsed = true;
         }
       }
 
-      // 2. QQ 音乐匹配
-      if (settingStore.localLyricQQMusicMatch && musicStore.playSong) {
+      // 2. 解析外部文件
+      if (external) {
+        const res = processLyric(external.lyric, external.format);
+        // 如果已经存在内嵌歌词，则忽略外部歌词（优先内嵌）
+        if (res && !isEmbeddedUsed) {
+          candidates[res.type] = res.data;
+        }
+      } else if (lyric && !embedded) {
+        // 兼容旧逻辑（虽然现在应该都走 external/embedded 字段了）
+        const res = processLyric(lyric, format || "lrc");
+        if (res) candidates[res.type] = res.data;
+      }
+
+      // 3. QQ 音乐匹配
+      if (settingStore.localLyricQQMusicMatch && musicStore.playSong && !isEmbeddedUsed) {
         const qqLyric = await this.fetchQQMusicLyric(musicStore.playSong);
         if (qqLyric && (qqLyric.lrcData.length > 0 || qqLyric.yrcData.length > 0)) {
           // 如果本地是 LRC，且 QQ 提供了 YRC，我们可以混合使用（QQ YRC + 本地 LRC）
           // 但为了简化切换逻辑，这里将 QQ 作为独立源 "QM"
           candidates["QM"] = qqLyric;
-          if (!sources.includes("QM")) sources.push("QM");
         }
       }
+
+      // 4. 构建可用源列表 (顺序决定 UI 显示顺序: TTML > QM > YRC > LRC)
+      const sources: string[] = [];
+      if (candidates["TTML"]) sources.push("TTML");
+      if (candidates["QM"]) sources.push("QM");
+      if (candidates["YRC"]) sources.push("YRC");
+      if (candidates["LRC"]) sources.push("LRC");
 
       // 更新可用源
       statusStore.availableLyricSources = sources;
 
-      // 3. 选择源
+      // 5. 选择源
       let selected = statusStore.preferredLyricSource;
       if (!selected || !candidates[selected]) {
         // 默认优先级
@@ -551,11 +587,7 @@ class LyricManager {
         else if (sources.length > 0) selected = sources[0];
       }
 
-      // 4. 后处理 (Local 特有逻辑: alignLocalLyrics 已经做过了，或者 fetchQQMusicLyric 做过了)
-      // fetchQQMusicLyric 已经做过 alignLyrics
-      // alignLocalLyrics 已经在解析 LRC 时做过了
-      
-      // 注意：handleLyric 会再调用 handleLyricExclude
+      // 6. 后处理
       const finalData = (selected && candidates[selected]) || { lrcData: [], yrcData: [] };
       statusStore.usingTTMLLyric = selected === "TTML";
       statusStore.usingQRCLyric = selected === "QM";

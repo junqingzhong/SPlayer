@@ -175,6 +175,7 @@ const lyricSourceOptions = computed(() => {
     else if (source === "YRC") label = "YRC";
     else if (source === "LRC") label = "LRC";
     else if (source === "TTML") label = "TTML";
+    else if (source === "Embedded") label = "LRC";
     return { label, value: source };
   });
 });

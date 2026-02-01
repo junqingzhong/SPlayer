@@ -253,6 +253,8 @@ const initFileIpc = (): void => {
     ): Promise<{
       lyric: string;
       format: "lrc" | "ttml" | "yrc";
+      external?: { lyric: string; format: "lrc" | "ttml" | "yrc" };
+      embedded?: { lyric: string; format: "lrc" };
     }> => {
       try {
         // 获取文件基本信息
@@ -268,7 +270,11 @@ const initFileIpc = (): void => {
           ipcLog.error("❌ Failed to read directory:", dir);
           throw error;
         }
-        // 遍历优先级
+
+        let external: { lyric: string; format: "lrc" | "ttml" | "yrc" } | undefined;
+        let embedded: { lyric: string; format: "lrc" } | undefined;
+
+        // 1. 查找外部歌词文件 (遍历优先级)
         for (const format of ["ttml", "yrc", "lrc"] as const) {
           // 构造期望目标文件名
           const targetNameLower = `${baseName}.${format}`.toLowerCase();
@@ -281,7 +287,8 @@ const initFileIpc = (): void => {
               // 若不为空
               if (lyric && lyric.trim() !== "") {
                 ipcLog.info(`✅ Local lyric found (${format}): ${lyricPath}`);
-                return { lyric, format };
+                external = { lyric, format };
+                break; // 找到最高优先级的外部歌词后停止
               }
             } catch {
               // 读取失败则尝试下一种格式
@@ -289,22 +296,34 @@ const initFileIpc = (): void => {
             }
           }
         }
-        // 如果本地文件没找到，尝试读取内置元数据 (ID3 Tags)
-        const { common } = await parseFile(absPath);
-        const syncedLyric = common?.lyrics?.[0]?.syncText;
-        if (syncedLyric && syncedLyric.length > 0) {
-          return {
-            lyric: metaDataLyricsArrayToLrc(syncedLyric),
-            format: "lrc",
-          };
-        } else if (common?.lyrics?.[0]?.text) {
-          return {
-            lyric: common?.lyrics?.[0]?.text,
-            format: "lrc",
-          };
+
+        // 2. 读取内置元数据 (ID3 Tags)
+        try {
+          const { common } = await parseFile(absPath);
+          const syncedLyric = common?.lyrics?.[0]?.syncText;
+          if (syncedLyric && syncedLyric.length > 0) {
+            embedded = {
+              lyric: metaDataLyricsArrayToLrc(syncedLyric),
+              format: "lrc",
+            };
+          } else if (common?.lyrics?.[0]?.text) {
+            embedded = {
+              lyric: common?.lyrics?.[0]?.text,
+              format: "lrc",
+            };
+          }
+        } catch (e) {
+          ipcLog.warn(`⚠️ Failed to parse metadata for lyrics: ${absPath}`, e);
         }
-        // 都没有找到
-        return { lyric: "", format: "lrc" };
+
+        // 3. 确定主要返回结果 (优先使用外部歌词，兼容旧逻辑)
+        const main = external || embedded || { lyric: "", format: "lrc" as const };
+
+        return {
+          ...main,
+          external,
+          embedded,
+        };
       } catch (error) {
         ipcLog.error("❌ Error fetching music lyric:", error);
         throw error;
