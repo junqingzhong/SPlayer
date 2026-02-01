@@ -170,7 +170,7 @@ export const useNetworkSettings = (): SettingConfig => {
               window.$message.success(`已成功连接到 Last.fm 账号: ${sessionResponse.session.name}`);
               lastfmAuthLoading.value = false;
             }
-          } catch (error) {
+          } catch {
             // 用户还未授权，继续等待
           }
         }, 2000);
