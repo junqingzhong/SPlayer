@@ -178,8 +178,8 @@ const props = defineProps<{
   highlighted?: boolean;
 }>();
 
-// 数据双向绑定处理
-const modelValue = computed({
+// 基础数据双向绑定处理
+const baseModelValue = computed({
   get: () => {
     if (props.item.value !== undefined) {
       return toValue(props.item.value);
@@ -195,11 +195,54 @@ const modelValue = computed({
   },
 });
 
-// 计算禁用状态
-const isDisabled = computed(() => {
+// 基础禁用状态
+const baseDisabled = computed(() => {
   if (props.item.disabled === undefined) return false;
   if (typeof props.item.disabled === "function") return props.item.disabled();
   return toValue(props.item.disabled);
+});
+
+// 强制显示条件判断
+const isForcedConditionMet = computed(() => {
+  if (!props.item.forceIf) return false;
+  const condition = props.item.forceIf.condition;
+  if (typeof condition === "function") {
+    return condition();
+  }
+  return unref(condition);
+});
+
+// 强制显示的值
+const forcedValue = computed(() => {
+  if (!props.item.forceIf) return undefined;
+  const val = props.item.forceIf.forcedValue;
+  if (typeof val === "function") {
+    return (val as any)();
+  }
+  return unref(val);
+});
+
+// 最终使用的 modelValue
+const modelValue = computed({
+  get: () => {
+    if (isForcedConditionMet.value) {
+      return forcedValue.value;
+    }
+    return baseModelValue.value;
+  },
+  set: (val) => {
+    // 如果条件满足，则不允许修改原始值（或者视需求而定，通常互斥时不仅显示强制值，且禁用）
+    // 这里的逻辑是：如果被强制显示了，set 操作不应该影响原始值，或者应该被忽略
+    if (!isForcedConditionMet.value) {
+      baseModelValue.value = val;
+    }
+  },
+});
+
+// 最终使用的禁用状态
+const isDisabled = computed(() => {
+  if (isForcedConditionMet.value) return true;
+  return baseDisabled.value;
 });
 
 // 计算子项是否展开

@@ -233,6 +233,24 @@ export interface SettingItem {
    */
   extraButton?: SettingAction;
 
+  /**
+   * 强制显示条件
+   * 当满足特定条件时，强制禁用该设置项并显示为特定值
+   * 通常用于互斥功能的逻辑处理
+   */
+  forceIf?: {
+    /**
+     * 判断条件
+     * 当返回 true 时，强制生效
+     */
+    condition: boolean | Ref<boolean> | (() => boolean);
+    /**
+     * 强制显示的值
+     * 当条件满足时，显示的数值
+     */
+    forcedValue: any | Ref<any> | (() => any);
+  };
+
   // --- 嵌套子项 (Nested Children) ---
 
   /**

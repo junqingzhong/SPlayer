@@ -14,7 +14,6 @@ import {
 import { SettingConfig } from "@/types/settings";
 import { computed, ref } from "vue";
 import { isLogin } from "@/utils/auth";
-import { forceDisplaySettingIf } from "./utils";
 
 export const useAppearanceSettings = (): SettingConfig => {
   const settingStore = useSettingStore();
@@ -60,16 +59,16 @@ export const useAppearanceSettings = (): SettingConfig => {
               { label: "浅色模式", value: "light" },
               { label: "深色模式", value: "dark" },
             ],
-            ...forceDisplaySettingIf(
-              () =>
+            value: computed({
+              get: () => settingStore.themeMode,
+              set: (v) => (settingStore.themeMode = v),
+            }),
+            forceIf: {
+              condition: () =>
                 statusStore.themeBackgroundMode === "image" ||
                 statusStore.themeBackgroundMode === "video",
-              () => settingStore.themeMode,
-              computed({
-                get: () => settingStore.themeMode,
-                set: (v) => (settingStore.themeMode = v),
-              }),
-            ),
+              forcedValue: () => settingStore.themeMode,
+            },
           },
           {
             key: "themeConfig",
@@ -357,14 +356,14 @@ export const useAppearanceSettings = (): SettingConfig => {
             label: "动态封面",
             type: "switch",
             description: "可展示部分歌曲的动态封面，仅在封面模式有效",
-            ...forceDisplaySettingIf(
-              () => isLogin() !== 1,
-              false,
-              computed({
-                get: () => settingStore.dynamicCover,
-                set: (v) => (settingStore.dynamicCover = v),
-              }),
-            ),
+            value: computed({
+              get: () => settingStore.dynamicCover,
+              set: (v) => (settingStore.dynamicCover = v),
+            }),
+            forceIf: {
+              condition: () => isLogin() !== 1,
+              forcedValue: false,
+            },
           },
           {
             key: "showSpectrums",
@@ -375,14 +374,14 @@ export const useAppearanceSettings = (): SettingConfig => {
               settingStore.playbackEngine === "mpv"
                 ? "MPV 引擎暂不支持显示音乐频谱"
                 : "开启音乐频谱会影响性能或增加内存占用，如遇问题请关闭",
-            ...forceDisplaySettingIf(
-              () => settingStore.playbackEngine === "mpv",
-              false,
-              computed({
-                get: () => settingStore.showSpectrums,
-                set: (v) => (settingStore.showSpectrums = v),
-              }),
-            ),
+            value: computed({
+              get: () => settingStore.showSpectrums,
+              set: (v) => (settingStore.showSpectrums = v),
+            }),
+            forceIf: {
+              condition: () => settingStore.playbackEngine === "mpv",
+              forcedValue: false,
+            },
           },
         ],
       },

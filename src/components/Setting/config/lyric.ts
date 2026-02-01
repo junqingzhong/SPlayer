@@ -7,7 +7,7 @@ import { cloneDeep, isEqual } from "lodash-es";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 import { SettingConfig } from "@/types/settings";
 import LyricPreview from "../components/LyricPreview.vue";
-import { forceDisplaySettingIf, descMultiline } from "./utils";
+import { descMultiline } from "./utils";
 
 export const useLyricSettings = (): SettingConfig => {
   const player = usePlayerController();
@@ -173,14 +173,14 @@ export const useLyricSettings = (): SettingConfig => {
               { label: "居中", value: "center" },
               { label: "居右", value: "flex-end" },
             ],
-            ...forceDisplaySettingIf(
-              () => settingStore.useAMLyrics,
-              () => settingStore.lyricsPosition,
-              computed({
-                get: () => settingStore.lyricsPosition,
-                set: (v) => (settingStore.lyricsPosition = v),
-              }),
-            ),
+            value: computed({
+              get: () => settingStore.lyricsPosition,
+              set: (v) => (settingStore.lyricsPosition = v),
+            }),
+            forceIf: {
+              condition: () => settingStore.useAMLyrics,
+              forcedValue: () => settingStore.lyricsPosition,
+            },
           },
           {
             key: "lyricHorizontalOffset",
@@ -324,14 +324,14 @@ export const useLyricSettings = (): SettingConfig => {
             label: "调换翻译与音译位置",
             type: "switch",
             description: "开启后音译显示在翻译上方",
-            ...forceDisplaySettingIf(
-              () => !settingStore.showTran || !settingStore.showRoma,
-              () => settingStore.swapTranRoma,
-              computed({
-                get: () => settingStore.swapTranRoma,
-                set: (v) => (settingStore.swapTranRoma = v),
-              }),
-            ),
+            value: computed({
+              get: () => settingStore.swapTranRoma,
+              set: (v) => (settingStore.swapTranRoma = v),
+            }),
+            forceIf: {
+              condition: () => !settingStore.showTran || !settingStore.showRoma,
+              forcedValue: () => settingStore.swapTranRoma,
+            },
           },
           {
             key: "lyricsBlur",
