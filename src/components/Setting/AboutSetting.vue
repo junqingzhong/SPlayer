@@ -68,11 +68,11 @@
         >
           <n-flex align="center">
             <n-avatar
-            round
-            :size="40"
-            :src="item.avatar"
-            fallback-src="/images/avatar.jpg?asset"
-            :img-props="{ crossorigin: 'anonymous' }"
+              round
+              :size="40"
+              :src="item.avatar"
+              fallback-src="/images/avatar.jpg?asset"
+              :img-props="{ crossorigin: 'anonymous' }"
             />
             <n-flex vertical :gap="4">
               <n-text class="name" strong> {{ item.name }} </n-text>
