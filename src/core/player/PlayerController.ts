@@ -38,8 +38,7 @@ class PlayerController {
   /** 负责管理播放模式相关的逻辑 */
   private playModeManager = new PlayModeManager();
 
-  private throttledTimeUpdate: DebouncedFunc<() => void> | null = null;
-  private onTimeUpdate: (() => void) | null = null;
+  private onTimeUpdate: DebouncedFunc<() => void> | null = null;
   /** 上次错误处理时间 */
   private lastErrorTime = 0;
 
@@ -468,8 +467,16 @@ class PlayerController {
       this.nextOrPrev("next", true, true);
     });
 
-    // 进度更新 (Throttled for UI)
-    this.throttledTimeUpdate = throttle(() => {
+    // 进度更新
+    this.onTimeUpdate = throttle(() => {
+      // 1. AB 循环 (200ms 精度)
+      const { enable, pointA, pointB } = statusStore.abLoop;
+      if (enable && pointA !== null && pointB !== null) {
+        if (audioManager.currentTime >= pointB) {
+          audioManager.seek(pointA);
+        }
+      }
+
       const rawTime = audioManager.currentTime;
       const currentTime = Math.floor(rawTime * 1000);
       const duration = Math.floor(audioManager.duration * 1000) || statusStore.duration;
@@ -513,21 +520,6 @@ class PlayerController {
       // Socket 进度
       playerIpc.sendSocketProgress(currentTime, duration);
     }, 200);
-
-    // 主 TimeUpdate 监听器 (包含 AB 循环和 UI 更新)
-    this.onTimeUpdate = () => {
-      // 1. AB 循环 (高精度，不节流)
-      const { enable, pointA, pointB } = statusStore.abLoop;
-      if (enable && pointA !== null && pointB !== null) {
-        if (audioManager.currentTime >= pointB) {
-          audioManager.seek(pointA);
-        }
-      }
-
-      // 2. UI 更新 (节流)
-      this.throttledTimeUpdate?.();
-    };
-
     audioManager.addEventListener("timeupdate", this.onTimeUpdate);
 
     // 错误处理
@@ -797,8 +789,8 @@ class PlayerController {
    * @param time 时间 (ms)
    */
   public setSeek(time: number) {
-    if (this.throttledTimeUpdate) {
-      this.throttledTimeUpdate.cancel();
+    if (this.onTimeUpdate) {
+      this.onTimeUpdate.cancel();
     }
     const statusStore = useStatusStore();
     const audioManager = useAudioManager();
