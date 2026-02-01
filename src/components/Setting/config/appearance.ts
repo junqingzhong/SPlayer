@@ -260,6 +260,7 @@ export const useAppearanceSettings = (): SettingConfig => {
               get: () => settingStore.playerBackgroundType,
               set: (v) => (settingStore.playerBackgroundType = v),
             }),
+            condition: () => settingStore.playerBackgroundType === "animation",
             children: [
               {
                 key: "playerBackgroundFps",
