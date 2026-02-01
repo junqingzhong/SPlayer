@@ -1,6 +1,5 @@
 import { personalFm, personalFmToTrash } from "@/api/rec";
 import { songUrl, unlockSongUrl } from "@/api/song";
-import { useCacheManager } from "@/core/resource/CacheManager";
 import {
   useDataStore,
   useMusicStore,
@@ -180,45 +179,12 @@ class SongManager {
   };
 
   /**
-   * 获取音频源偏好
-   */
-  private async getAudioSourcePreference(id: number | string): Promise<string | null> {
-    const settingStore = useSettingStore();
-    if (!isElectron || !settingStore.cacheEnabled) return null;
-    try {
-      const cacheManager = useCacheManager();
-      const result = await cacheManager.get("list-data", `audio_pref_${id}`);
-      if (result.success && result.data) {
-        const decoder = new TextDecoder();
-        return decoder.decode(result.data);
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * 保存音频源偏好
-   */
-  public async saveAudioSourcePreference(id: number | string, source: string) {
-    const settingStore = useSettingStore();
-    if (!isElectron || !settingStore.cacheEnabled) return;
-    try {
-      const cacheManager = useCacheManager();
-      await cacheManager.set("list-data", `audio_pref_${id}`, source);
-    } catch (error) {
-      console.error("写入音频源偏好失败:", error);
-    }
-  }
-
-  /**
    * 获取所有可用解锁源
    */
   public getAvailableUnlockSources = async (song: SongType): Promise<AudioSource[]> => {
     const settingStore = useSettingStore();
     const songId = song.id;
-    
+
     const artist = Array.isArray(song.artists) ? song.artists[0].name : song.artists;
     const keyWord = song.name + "-" + artist;
     if (!songId || !keyWord) {
@@ -422,7 +388,7 @@ class SongManager {
 
           // 触发缓存下载
           this.triggerCacheDownload(songId, unlockUrl, quality);
-          
+
           return {
             id: songId,
             url: unlockUrl,
@@ -481,7 +447,8 @@ class SongManager {
     if (!songId) return { id: 0, url: undefined, quality: undefined, isUnlocked: false };
 
     // 获取偏好
-    const pref = await this.getAudioSourcePreference(songId);
+    const dataStore = useDataStore();
+    const pref = await dataStore.getAudioSourcePreference(songId);
     statusStore.preferredAudioSource = pref;
 
     // 检查缓存并返回 (如果偏好匹配)
@@ -528,7 +495,7 @@ class SongManager {
 
       // 选择源
       let selected: AudioSource | undefined;
-      
+
       // 1. 尝试使用偏好源
       if (pref) {
         selected = candidates.find((s) => s.source === pref);

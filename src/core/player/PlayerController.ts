@@ -99,14 +99,17 @@ class PlayerController {
 
     // 简单的防削波保护 (如果有峰值信息)
     // 目标: gain * peak <= 1.0
-    const peak = settingStore.replayGainMode === "album" ? (albumPeak ?? trackPeak) : (trackPeak ?? albumPeak);
+    const peak =
+      settingStore.replayGainMode === "album" ? (albumPeak ?? trackPeak) : (trackPeak ?? albumPeak);
     if (peak && peak > 0) {
       if (targetGain * peak > 1.0) {
         targetGain = 1.0 / peak;
       }
     }
 
-    console.log(`🔊 [ReplayGain] Applied: ${targetGain.toFixed(4)} (Mode: ${settingStore.replayGainMode})`);
+    console.log(
+      `🔊 [ReplayGain] Applied: ${targetGain.toFixed(4)} (Mode: ${settingStore.replayGainMode})`,
+    );
     audioManager.setReplayGain(targetGain);
   }
 
@@ -148,45 +151,30 @@ class PlayerController {
     }
 
     try {
-      // 设置加载状态
       statusStore.playLoading = true;
-
-      // 1. 预加载音频 (最耗时操作，期间保持旧歌播放)
       const audioSource = await songManager.getAudioSource(playSongData);
-
       // 检查请求是否过期
       if (requestToken !== this.currentRequestToken) {
         console.log(`🚫 [${playSongData.id}] 请求已过期，舍弃`);
         return;
       }
       if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
-
-      // === 切换点 (Point of Switch) ===
-
-      // 2. 停止当前播放
       audioManager.stop();
-      
-      // 3. 更新核心状态
       musicStore.playSong = playSongData;
-
       statusStore.currentTime = options.seek ?? 0;
-      // 重置进度 (新歌时长未知，暂设计算)
+      // 重置进度
       statusStore.progress = 0;
-      
       statusStore.lyricIndex = -1;
-      
       // 重置重试计数
       const sid = playSongData.type === "radio" ? playSongData.dj?.id : playSongData.id;
       if (this.retryInfo.songId !== sid) {
         this.retryInfo = { songId: sid || 0, count: 0 };
       }
-
       statusStore.lyricLoading = true;
       // 重置 AB 循环
       statusStore.abLoop.enable = false;
       statusStore.abLoop.pointA = null;
       statusStore.abLoop.pointB = null;
-      
       // 通知桌面歌词
       if (isElectron) {
         window.electron.ipcRenderer.send("update-desktop-lyric-data", {
@@ -195,7 +183,6 @@ class PlayerController {
       }
       // 获取歌词 (在切换后获取，避免旧歌配新词)
       lyricManager.handleLyric(playSongData);
-
       console.log(`🎧 [${playSongData.id}] 最终播放信息:`, audioSource);
       // 更新音质和解锁状态
       statusStore.songQuality = audioSource.quality;
@@ -262,25 +249,21 @@ class PlayerController {
    * @param source 音频源标识
    */
   public async switchAudioSource(source: string) {
+    const dataStore = useDataStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();
     const musicStore = useMusicStore();
     const audioManager = useAudioManager();
-
     const playSongData = musicStore.playSong;
     if (!playSongData || playSongData.path) return;
-
     try {
       statusStore.playLoading = true;
-
       // 保存偏好
-      await songManager.saveAudioSourcePreference(playSongData.id, source);
+      await dataStore.setAudioSourcePreference(playSongData.id, source);
       statusStore.preferredAudioSource = source;
-
       // 清除预取缓存
       songManager.clearPrefetch();
-
-      // 获取新音频源 (直接请求指定源，避免并发请求所有源导致卡顿)
+      // 获取新音频源
       const audioSource = await songManager.getAudioSourceFromSpecificServer(playSongData, source);
 
       if (!audioSource.url) {
@@ -296,13 +279,11 @@ class PlayerController {
       statusStore.playUblock = audioSource.isUnlocked ?? false;
       statusStore.audioSource = audioSource.source;
 
-      // 停止当前播放
-      audioManager.stop();
-
       // 保持当前进度和播放状态
       const seek = statusStore.currentTime;
       const shouldAutoPlay = statusStore.playStatus;
-
+      // 停止当前播放
+      audioManager.stop();
       await this.loadAndPlay(audioSource.url, shouldAutoPlay, seek);
     } catch (error) {
       console.error("❌ 切换音频源失败:", error);

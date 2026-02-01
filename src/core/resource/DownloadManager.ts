@@ -11,7 +11,7 @@ import { getPlayerInfoObj } from "@/utils/format";
 import { getConverter, type ConverterMode } from "@/utils/opencc";
 import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc } from "@/utils/lyricParser";
 import { generateASS } from "@/utils/assGenerator";
-import { parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
+import { parseTTML, parseYrc, type LyricLine } from "@applemusic-like-lyrics/lyric";
 
 interface DownloadTask {
   song: SongType;
@@ -505,13 +505,13 @@ class DownloadManager {
 
         if (result.status !== "cancelled" && result.status !== "error" && downloadSaveAsAss) {
           try {
-            let lines: any[] = [];
-            // 1. Try TTML (highest precision)
+            let lines: LyricLine[] = [];
+            // Try TTML
             if (ttmlLyric) {
               const parsed = parseTTML(ttmlLyric);
               if (parsed?.lines) lines = parsed.lines;
             }
-            // 2. Try YRC (QRC)
+            // Try YRC (QRC)
             else if (yrcLyric) {
               // yrcLyric might be QRC XML
               if (yrcLyric.trim().startsWith("<") || yrcLyric.includes("<QrcInfos>")) {
@@ -520,7 +520,7 @@ class DownloadManager {
                 lines = parseYrc(yrcLyric) || [];
               }
             }
-            // 3. Fallback to LRC (embedded lyric)
+            // Fallback to LRC (embedded lyric)
             else if (lyric) {
               const parsed = parseSmartLrc(lyric);
               if (parsed?.lines) lines = parsed.lines;
