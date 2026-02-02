@@ -1,5 +1,11 @@
 import type { ColorScheme, RGB } from "@/types/main";
-import { QualityType, type SongLevelDataType, type SortField, type SortOrder } from "@/types/main";
+import {
+  QualityType,
+  type SongLevelDataType,
+  type SortField,
+  type SortOrder,
+  type AudioSourceType,
+} from "@/types/main";
 import { RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isDevBuild } from "@/utils/env";
 import { defineStore } from "pinia";
@@ -58,18 +64,10 @@ interface StatusState {
   usingTTMLLyric: boolean;
   /** 当前是否正使用 QRC 歌词（来自QQ音乐） */
   usingQRCLyric: boolean;
-  /** 可用的歌词源列表 */
-  availableLyricSources: string[];
-  /** 用户偏好的歌词源（用于切换） */
-  preferredLyricSource: string | null;
-  /** 可用的音频源列表 */
-  availableAudioSources: string[];
-  /** 用户偏好的音频源（用于切换） */
-  preferredAudioSource: string | null;
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;
   /** 当前歌曲音源 */
-  audioSource: string | undefined;
+  audioSource: AudioSourceType | undefined;
   /** 当前播放索引 */
   playIndex: number;
   /** 歌词播放索引 */
@@ -84,8 +82,6 @@ interface StatusState {
   progress: number;
   /** 每首歌曲的进度偏移（按歌曲 id 记忆） */
   currentTimeOffsetMap: Record<number, number>;
-  /** 是否为解锁歌曲 */
-  playUblock: boolean;
   /** 主内容高度 */
   mainContentHeight: number;
   /** 列表排序字段 */
@@ -164,7 +160,6 @@ export const useStatusStore = defineStore("status", {
     showPlayBar: true,
     playStatus: false,
     playLoading: true,
-    playUblock: false,
     playListShow: false,
     showFullPlayer: false,
     playerMetaShow: true,
@@ -176,10 +171,6 @@ export const useStatusStore = defineStore("status", {
     pureLyricMode: false,
     usingTTMLLyric: false,
     usingQRCLyric: false,
-    availableLyricSources: [],
-    preferredLyricSource: null,
-    availableAudioSources: [],
-    preferredAudioSource: null,
     songQuality: undefined,
     audioSource: undefined,
     playIndex: -1,
@@ -246,23 +237,25 @@ export const useStatusStore = defineStore("status", {
             ? "VolumeDown"
             : "VolumeUp";
     },
+    /** 播放模式图标 */
     shuffleIcon(state) {
       if (state.shuffleMode === "heartbeat") {
         return "HeartBit";
       }
       return "Shuffle";
     },
+    /** 循环模式图标 */
     repeatIcon(state) {
       if (state.repeatMode === "one") {
         return "RepeatSong";
       }
       return "Repeat";
     },
-    // 音量百分比
+    /** 音量百分比 */
     playVolumePercent(state) {
       return Math.round(state.playVolume * 100);
     },
-    // 播放器主色
+    /** 播放器主色 */
     mainColor(state) {
       const mainColor = state.songCoverTheme?.main;
       if (!mainColor) return "239, 239, 239";
@@ -275,6 +268,16 @@ export const useStatusStore = defineStore("status", {
     /** 是否为开发者模式 */
     isDeveloperMode(state) {
       return state.developerMode || isDevBuild;
+    },
+    /** 是否解锁 */
+    isUnlocked(state) {
+      const audioSource = state.audioSource;
+      return (
+        !!audioSource &&
+        audioSource !== "official" &&
+        audioSource !== "local" &&
+        audioSource !== "streaming"
+      );
     },
   },
   actions: {

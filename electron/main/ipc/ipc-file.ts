@@ -270,11 +270,11 @@ const initFileIpc = (): void => {
           ipcLog.error("❌ Failed to read directory:", dir);
           throw error;
         }
-
+        // 外部歌词
         let external: { lyric: string; format: "lrc" | "ttml" | "yrc" } | undefined;
+        // 内置歌词
         let embedded: { lyric: string; format: "lrc" } | undefined;
-
-        // 1. 查找外部歌词文件 (遍历优先级)
+        // 查找外部歌词文件
         for (const format of ["ttml", "yrc", "lrc"] as const) {
           // 构造期望目标文件名
           const targetNameLower = `${baseName}.${format}`.toLowerCase();
@@ -296,8 +296,7 @@ const initFileIpc = (): void => {
             }
           }
         }
-
-        // 2. 读取内置元数据 (ID3 Tags)
+        // 读取内置元数据 (ID3 Tags)
         try {
           const { common } = await parseFile(absPath);
           const syncedLyric = common?.lyrics?.[0]?.syncText;
@@ -315,10 +314,8 @@ const initFileIpc = (): void => {
         } catch (e) {
           ipcLog.warn(`⚠️ Failed to parse metadata for lyrics: ${absPath}`, e);
         }
-
-        // 3. 确定主要返回结果 (优先使用外部歌词，兼容旧逻辑)
+        // 返回结果
         const main = external || embedded || { lyric: "", format: "lrc" as const };
-
         return {
           ...main,
           external,
@@ -668,7 +665,8 @@ const initFileIpc = (): void => {
 
         songFile.tag.title = songData?.name || "未知曲目";
         songFile.tag.album =
-          (typeof songData?.album === "string" ? songData.album : songData?.album?.name) || "未知专辑";
+          (typeof songData?.album === "string" ? songData.album : songData?.album?.name) ||
+          "未知专辑";
         // 处理歌手信息（兼容字符串和数组格式）
         const getArtistNames = (artists: any): string[] => {
           if (Array.isArray(artists)) {

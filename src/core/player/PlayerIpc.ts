@@ -1,4 +1,5 @@
 import { useSettingStore } from "@/stores/setting";
+import { SongLyric } from "@/types/lyric";
 import type { PlayModePayload, RepeatModeType, ShuffleModeType } from "@/types/shared";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
@@ -117,8 +118,19 @@ export interface TaskbarLyricsPayload {
   type: "line" | "word";
 }
 
-export const sendTaskbarLyrics = (lyrics: TaskbarLyricsPayload) => {
-  if (isElectron) window.electron.ipcRenderer.send("taskbar:update-lyrics", lyrics);
+/**
+ * 发送任务栏歌词
+ * @param lyrics 歌词数据
+ */
+export const sendTaskbarLyrics = (lyrics: SongLyric) => {
+  if (!isElectron) return;
+  // 处理结构
+  const taskbarLyrics = (lyrics.yrcData.length > 0 ? lyrics.yrcData : lyrics.lrcData) ?? [];
+  const payload: TaskbarLyricsPayload = {
+    lines: toRaw(taskbarLyrics),
+    type: lyrics.yrcData.length > 0 ? "word" : "line",
+  };
+  window.electron.ipcRenderer.send("taskbar:update-lyrics", payload);
 };
 
 export interface TaskbarProgressPayload {

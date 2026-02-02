@@ -9,7 +9,7 @@ import { qqMusicMatch } from "@/api/qqmusic";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 import { getConverter, type ConverterMode } from "@/utils/opencc";
-import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc } from "@/utils/lyricParser";
+import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc } from "@/utils/lyric/lyricParser";
 import { generateASS } from "@/utils/assGenerator";
 import { parseTTML, parseYrc, type LyricLine } from "@applemusic-like-lyrics/lyric";
 

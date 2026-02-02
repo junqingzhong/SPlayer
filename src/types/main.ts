@@ -42,6 +42,16 @@ export enum QualityType {
   LQ = "LQ", // l: 128kbps
 }
 
+/** 音频源类型 */
+export type AudioSourceType =
+  | "official"
+  | "netease"
+  | "kuwo"
+  | "bodian"
+  | "gequbao"
+  | "local"
+  | "streaming";
+
 export type UserType = {
   id: number;
   name: string;
@@ -268,7 +278,6 @@ export interface UserDataType {
   userId: number;
   userType: number;
   vipType: number;
-  isSvip?: boolean;
   name: string;
   level?: number;
   avatarUrl?: string;

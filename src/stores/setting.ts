@@ -25,6 +25,8 @@ export interface SettingState {
   themeVariant: "primary" | "secondary" | "tertiary" | "neutral" | "neutralVariant" | "error";
   /** 主题跟随封面 */
   themeFollowCover: boolean;
+  /** 字体设置样式 */
+  fontSettingStyle: "single" | "multi" | "custom";
   /** 全局字体 */
   globalFont: "default" | string;
   /** 歌词区域字体 */
@@ -205,9 +207,11 @@ export interface SettingState {
   lyricOffsetStep: number;
   /** 启用在线 TTML 歌词 */
   enableOnlineTTMLLyric: boolean;
-  /** 优先使用 QQ 音乐歌词源 */
-  preferQQMusicLyric: boolean;
-  /** 本地歌曲使用 QQ 音乐歌词匹配 */
+  /** 启用 QM 歌词 */
+  enableQQMusicLyric: boolean;
+  /** 歌词源优先级 */
+  lyricPriority: "auto" | "qm" | "ttml";
+  /** 本地歌曲使用 QM 歌词匹配 */
   localLyricQQMusicMatch: boolean;
   /** AMLL DB 服务地址 */
   amllDbServer: string;
@@ -408,8 +412,6 @@ export interface SettingState {
   playerFollowCoverColor: boolean;
   /** 进度条悬浮时显示歌词 */
   progressLyricShow: boolean;
-  /** 是否使用自定义字体输入 */
-  useCustomFont: boolean;
   /** Discord RPC 配置 */
   discordRpc: {
     /** 是否启用 Discord RPC */
@@ -448,6 +450,7 @@ export const useSettingStore = defineStore("setting", {
     themeFollowCover: false,
     themeGlobalColor: false,
     themeVariant: "secondary",
+    fontSettingStyle: "single",
     globalFont: "default",
     LyricFont: "follow",
     japaneseLyricFont: "follow",
@@ -512,7 +515,8 @@ export const useSettingStore = defineStore("setting", {
     wordFadeWidth: 0.5,
     lyricOffsetStep: 500,
     enableOnlineTTMLLyric: false,
-    preferQQMusicLyric: false,
+    enableQQMusicLyric: false,
+    lyricPriority: "auto",
     localLyricQQMusicMatch: false,
     amllDbServer: defaultAMLLDbServer,
     showYrc: true,
@@ -666,7 +670,6 @@ export const useSettingStore = defineStore("setting", {
     },
     playerFollowCoverColor: true,
     progressLyricShow: true,
-    useCustomFont: false,
     discordRpc: {
       enabled: false,
       showWhenPaused: true,

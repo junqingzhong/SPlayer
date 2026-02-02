@@ -132,7 +132,7 @@ import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { getLyricLanguage } from "@/utils/format";
 import { isElectron } from "@/utils/env";
-import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
+import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
 
 const props = defineProps({
   currentTime: {

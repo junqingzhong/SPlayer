@@ -67,7 +67,13 @@
           @click="openLink(item.url)"
         >
           <n-flex align="center">
-            <n-avatar round :size="40" :src="item.avatar" fallback-src="/images/avatar.jpg?asset" />
+            <n-avatar
+              round
+              :size="40"
+              :src="item.avatar"
+              fallback-src="/images/avatar.jpg?asset"
+              :img-props="{ crossorigin: 'anonymous' }"
+            />
             <n-flex vertical :gap="4">
               <n-text class="name" strong> {{ item.name }} </n-text>
               <n-text class="tip" :depth="3" style="font-size: 12px">
@@ -96,6 +102,7 @@
                     :size="40"
                     :src="item.avatar"
                     fallback-src="/images/avatar.jpg?asset"
+                    :img-props="{ crossorigin: 'anonymous' }"
                   />
                   <n-flex vertical :gap="4">
                     <n-text class="name" strong> {{ item.name }} </n-text>

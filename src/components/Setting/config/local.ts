@@ -7,7 +7,6 @@ import { openLocalMusicDirectoryModal } from "@/utils/modal";
 import { pick } from "lodash-es";
 import LocalLyricDirectories from "../components/LocalLyricDirectories.vue";
 import CacheSizeLimit from "../components/CacheSizeLimit.vue";
-import { filterAuthorizedQualityOptions } from "@/utils/auth";
 
 export const useLocalSettings = (): SettingConfig => {
   const statusStore = useStatusStore();
@@ -108,9 +107,6 @@ export const useLocalSettings = (): SettingConfig => {
   const downloadQualityOptions = computed(() => {
     const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
     let allData = getSongLevelsData(levels);
-
-    // 根据 VIP 状态过滤
-    allData = filterAuthorizedQualityOptions(allData);
 
     if (settingStore.disableAiAudio) {
       allData = allData.filter((item) => {
@@ -435,7 +431,7 @@ export const useLocalSettings = (): SettingConfig => {
             label: "下载时另存逐字歌词文件",
             type: "switch",
             tags: [{ text: "Beta", type: "warning" }],
-            description: "在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌LRC）",
+            description: "在有条件时保存独立的 YRC/TTML 逐字歌词文件（源文件仍内嵌 LRC）",
             disabled: computed(() => !settingStore.downloadMeta || !settingStore.downloadLyric),
             value: computed({
               get: () => settingStore.downloadMakeYrc,
