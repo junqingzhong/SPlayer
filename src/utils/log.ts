@@ -94,4 +94,103 @@ const log = () => {
   };
 };
 
+type ConsoleBufferOptions = {
+  maxSize?: number;
+  bufferKey?: string;
+  onError?: (message: string, args: unknown[]) => void;
+};
+
+export const createConsoleBuffer = (options: ConsoleBufferOptions = {}) => {
+  const buffer: string[] = [];
+  const maxSize = options.maxSize ?? 500;
+  const bufferKey = options.bufferKey ?? "__splayerConsoleBuffer";
+  const onError = options.onError;
+
+  const formatConsoleValue = (value: unknown) => {
+    if (value instanceof Error) return value.stack || value.message;
+    if (typeof value === "string") return value;
+    if (typeof value === "number") return String(value);
+    if (typeof value === "boolean") return value ? "true" : "false";
+    if (typeof value === "bigint") return value.toString();
+    if (typeof value === "function") return value.name ? `[Function ${value.name}]` : "[Function]";
+    if (value === undefined) return "undefined";
+    if (value === null) return "null";
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  };
+
+  const formatArgs = (args: unknown[]) => args.map(formatConsoleValue).join(" ");
+
+  const push = (level: string, args: unknown[]) => {
+    const time = new Date().toISOString();
+    const message = formatArgs(args);
+    buffer.push(`[${time}] [${level}] ${message}`);
+    if (buffer.length > maxSize) {
+      buffer.splice(0, buffer.length - maxSize);
+    }
+  };
+
+  const init = () => {
+    const consoleWithKey = console as Console & Record<string, boolean | undefined>;
+    if (consoleWithKey[bufferKey]) return;
+    consoleWithKey[bufferKey] = true;
+
+    const originalLog = console.log.bind(console);
+    const originalInfo = console.info.bind(console);
+    const originalWarn = console.warn.bind(console);
+    const originalError = console.error.bind(console);
+    const originalDebug = console.debug.bind(console);
+
+    console.log = (...args) => {
+      push("log", args);
+      originalLog(...args);
+    };
+    console.info = (...args) => {
+      push("info", args);
+      originalInfo(...args);
+    };
+    console.warn = (...args) => {
+      push("warn", args);
+      originalWarn(...args);
+    };
+    console.error = (...args) => {
+      const message = formatArgs(args);
+      push("error", args);
+      onError?.(message, args);
+      originalError(...args);
+    };
+    console.debug = (...args) => {
+      push("debug", args);
+      originalDebug(...args);
+    };
+  };
+
+  const formatErrorEventMessage = (event: ErrorEvent | PromiseRejectionEvent) => {
+    if (event instanceof ErrorEvent) {
+      if (event.error instanceof Error) return event.error.stack || event.error.message;
+      return event.message || "Unknown Error";
+    }
+    const reason = event.reason;
+    if (reason instanceof Error) return reason.stack || reason.message;
+    if (typeof reason === "string") return reason;
+    try {
+      return JSON.stringify(reason);
+    } catch {
+      return String(reason);
+    }
+  };
+
+  const getLogs = () => buffer.slice();
+
+  return {
+    init,
+    push,
+    getLogs,
+    formatErrorEventMessage,
+  };
+};
+
 export default log();
