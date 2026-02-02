@@ -4,14 +4,32 @@
       <n-h3 prefix="bar">通用字体</n-h3>
       <n-card v-if="isElectron" class="set-item">
         <div class="label">
-          <n-text class="name">自定义 CSS 字体</n-text>
-          <n-text class="tip" :depth="3"> 开启后可手动输入字体名称，支持 CSS 字体族 </n-text>
+          <n-text class="name">字体设置样式</n-text>
+          <n-text class="tip" :depth="3"> 下面的字体如何显示，如何设置 </n-text>
         </div>
-        <n-switch v-model:value="settingStore.useCustomFont" class="set" :round="false" />
+        <n-select
+          v-model:value="settingStore.fontSettingStyle"
+          :options="[
+            {
+              label: '自定义 CSS 字体',
+              value: 'custom',
+            },
+            {
+              label: '多字体备选',
+              value: 'multi',
+            },
+            {
+              label: '单字体选择',
+              value: 'single',
+            },
+          ]"
+          class="set"
+          :round="false"
+        />
       </n-card>
       <n-card
         class="set-item"
-        :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
+        :class="{ 'input-mode': isInputMode }"
       >
         <div class="label">
           <div style="display: flex; justify-content: space-between; align-items: center">
@@ -34,14 +52,24 @@
         </div>
         <n-flex align="center">
           <s-input
-            v-if="settingStore.useCustomFont || !isElectron"
+            v-if="settingStore.fontSettingStyle === 'custom' || !isElectron"
             v-model:value="settingStore.globalFont"
             :update-value-on-input="false"
             placeholder="输入字体名称"
             class="set"
           />
           <n-select
-            v-else
+            v-else-if="settingStore.fontSettingStyle === 'multi'"
+            :value="settingStore.globalFont.split(',').map(s => s.trim())"
+            :on-update-value="(value: Array<string>) => settingStore.globalFont = value.join(', ')"
+            :options="getOptions('globalFont')"
+            class="set"
+            filterable
+            multiple
+            tag
+          />
+          <n-select
+            v-else-if="settingStore.fontSettingStyle === 'single'"
             v-model:value="settingStore.globalFont"
             :options="getOptions('globalFont')"
             class="set"
@@ -54,7 +82,7 @@
       <n-h3 prefix="bar">桌面歌词</n-h3>
       <n-card
         class="set-item"
-        :class="{ 'input-mode': settingStore.useCustomFont }"
+        :class="{ 'input-mode': isInputMode }"
       >
         <div class="label">
           <div class="label-header">
@@ -82,7 +110,7 @@
         </div>
         <n-flex align="center">
           <s-input
-            v-if="settingStore.useCustomFont"
+            v-if="settingStore.fontSettingStyle === 'custom'"
             v-model:value="desktopLyricConfig.fontFamily"
             :update-value-on-input="false"
             placeholder="输入字体名称"
@@ -90,7 +118,17 @@
             @change="saveDesktopLyricConfig"
           />
           <n-select
-            v-else
+            v-else-if="settingStore.fontSettingStyle === 'multi'"
+            :value="desktopLyricConfig.fontFamily.split(',').map(s => s.trim())"
+            :on-update-value="(value: Array<string>) => desktopLyricConfig.fontFamily = value.join(', ')"
+            :options="getOptions('desktop')"
+            class="set"
+            filterable
+            multiple
+            tag
+          />
+          <n-select
+            v-else-if="settingStore.fontSettingStyle === 'single'"
             v-model:value="desktopLyricConfig.fontFamily"
             :options="getOptions('desktop')"
             class="set"
@@ -106,7 +144,7 @@
         v-for="font in lyricFontConfigs"
         :key="font.keySetting"
         class="set-item"
-        :class="{ 'input-mode': settingStore.useCustomFont || !isElectron }"
+        :class="{ 'input-mode': isInputMode }"
       >
         <div class="label">
           <div class="label-header">
@@ -129,14 +167,24 @@
         </div>
         <n-flex align="center">
           <s-input
-            v-if="settingStore.useCustomFont || !isElectron"
+            v-if="settingStore.fontSettingStyle === 'custom' || !isElectron"
             v-model:value="settingStore[font.keySetting]"
             :update-value-on-input="false"
             placeholder="输入字体名称"
             class="set"
           />
           <n-select
-            v-else
+            v-else-if="settingStore.fontSettingStyle === 'multi'"
+            :value="settingStore[font.keySetting].split(',').map(s => s.trim())"
+            :on-update-value="(value: Array<string>) => settingStore[font.keySetting] = value.join(', ')"
+            :options="getOptions(font.keySetting)"
+            class="set"
+            filterable
+            multiple
+            tag
+          />
+          <n-select
+            v-else-if="settingStore.fontSettingStyle === 'single'"
             v-model:value="settingStore[font.keySetting]"
             :options="getOptions(font.keySetting)"
             class="set"
@@ -164,6 +212,9 @@ const systemFonts = ref<SelectOption[]>([]);
 
 // 桌面歌词配置
 const desktopLyricConfig = reactive<LyricConfig>({ ...defaultDesktopLyricConfig });
+
+// 是否为输入模式
+const isInputMode = computed(() => settingStore.fontSettingStyle !== "single" || !isElectron);
 
 // 获取下拉选项
 const getOptions = (key: string) => {

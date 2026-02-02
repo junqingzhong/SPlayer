@@ -243,12 +243,24 @@ export interface SettingItem {
      * 判断条件
      * 当返回 true 时，强制生效
      */
-    condition: boolean | Ref<boolean> | (() => boolean);
+    condition: MaybeRefOrGetter<boolean>;
     /**
      * 强制显示的值
-     * 当条件满足时，显示的数值
+     * 当条件满足时，显示的值
      */
-    forcedValue: any | Ref<any> | (() => any);
+    forcedValue?: MaybeRefOrGetter<any>;
+    /**
+     * 强制显示的标题
+     * 当条件满足时，显示的标题文字
+     * @see SettingItem.title
+     */
+    forcedTitle?: MaybeRefOrGetter<string>;
+    /**
+     * 强制显示的描述
+     * 当条件满足时，显示的描述文字
+     * @see SettingItem.description
+     */
+    forcedDescription?: MaybeRefOrGetter<string> | (() => any);
   };
 
   // --- 嵌套子项 (Nested Children) ---

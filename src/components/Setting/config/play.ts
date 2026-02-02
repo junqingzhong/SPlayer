@@ -484,7 +484,7 @@ export const usePlaySettings = (): SettingConfig => {
               return () => {
                 if (settingStore.audioEngine === "ffmpeg") return "FFmpeg 引擎不支持切换输出设备";
                 if (settingStore.playbackEngine === "mpv")
-                  return '如不知怎么选择，请选择"Autoselect"或者"Default"设备，选错可能导致无声，或处于锁死状态，重新选择"Autoselect"后切歌即可解决';
+                  return '如不知怎么选择，请选择 "Autoselect" 或者 "Default" 设备，选错可能导致无声，或处于锁死状态，重新选择 "Autoselect" 后切歌即可解决';
                 return "新增或移除音频设备后请重新打开设置";
               };
             })(),
