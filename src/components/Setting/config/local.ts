@@ -7,7 +7,6 @@ import { openLocalMusicDirectoryModal } from "@/utils/modal";
 import { pick } from "lodash-es";
 import LocalLyricDirectories from "../components/LocalLyricDirectories.vue";
 import CacheSizeLimit from "../components/CacheSizeLimit.vue";
-import { filterAuthorizedQualityOptions } from "@/utils/auth";
 
 export const useLocalSettings = (): SettingConfig => {
   const statusStore = useStatusStore();
@@ -108,9 +107,6 @@ export const useLocalSettings = (): SettingConfig => {
   const downloadQualityOptions = computed(() => {
     const levels = pick(songLevelData, ["l", "m", "h", "sq", "hr", "je", "sk", "db", "jm"]);
     let allData = getSongLevelsData(levels);
-
-    // 根据 VIP 状态过滤
-    allData = filterAuthorizedQualityOptions(allData);
 
     if (settingStore.disableAiAudio) {
       allData = allData.filter((item) => {

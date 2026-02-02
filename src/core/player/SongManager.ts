@@ -12,7 +12,6 @@ import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
 import { formatSongsList } from "@/utils/format";
 import { AI_AUDIO_LEVELS } from "@/utils/meta";
-import { getAuthorizedQualityLevels } from "@/utils/auth";
 import { handleSongQuality } from "@/utils/helper";
 import { openUserLogin } from "@/utils/modal";
 
@@ -124,21 +123,7 @@ class SongManager {
    */
   public getOnlineUrl = async (id: number, isPc: boolean = false): Promise<AudioSource> => {
     const settingStore = useSettingStore();
-    const dataStore = useDataStore();
     let level = isPc ? "exhigh" : settingStore.songLevel;
-
-    // 权限检查：确保用户有权限播放请求的音质
-    const vipType = dataStore.userLoginStatus ? dataStore.userData.vipType || 0 : 0;
-    const allowedLevels = getAuthorizedQualityLevels(vipType, dataStore.userLoginStatus);
-
-    if (allowedLevels) {
-      const allowedStrings = allowedLevels as readonly string[];
-      // 如果请求的音质不在允许列表中
-      if (!allowedStrings.includes(level)) {
-        // 降级策略: 使用允许列表中的最后一个（通常是最高质量）
-        level = allowedStrings[allowedStrings.length - 1] as typeof settingStore.songLevel;
-      }
-    }
 
     // Fuck AI Mode: 如果开启，且请求的 level 是 AI 音质，降级为 hires
     if (settingStore.disableAiAudio && AI_AUDIO_LEVELS.includes(level)) {
@@ -465,69 +450,62 @@ class SongManager {
     try {
       // 是否可解锁
       const canUnlock = isElectron && song.type !== "radio" && settingStore.useSongUnlock;
-
-      // 并行获取官方和解锁源
-      const officialPromise = this.getOnlineUrl(songId, !!song.pc);
-      const unlockPromise = canUnlock ? this.getAvailableUnlockSources(song) : Promise.resolve([]);
-
-      const [officialRes, unlockSources] = await Promise.all([officialPromise, unlockPromise]);
-
-      // 构建候选列表
-      const candidates: AudioSource[] = [];
-      // 官方源
-      if (
+      // 尝试获取官方源
+      const officialRes = await this.getOnlineUrl(songId, !!song.pc);
+      const isOfficialUsable =
         officialRes.url &&
-        (!officialRes.isTrial || (officialRes.isTrial && settingStore.playSongDemo))
-      ) {
-        candidates.push({ ...officialRes, source: "netease" });
+        (!officialRes.isTrial || (officialRes.isTrial && settingStore.playSongDemo));
+      // 如果官方源可用
+      if (isOfficialUsable) {
+        statusStore.availableAudioSources = ["netease"];
+        statusStore.audioSource = "netease";
+        // 检查是否需要缓存
+        if (officialRes.url) return { ...officialRes, source: "netease" };
       }
-      // 解锁源
-      // candidates.push(...unlockSources);
-      // 解锁源去重添加
-      for (const s of unlockSources) {
-        if (!candidates.some((c) => c.source === s.source)) {
+      // 官方不可用，尝试解锁
+      if (canUnlock) {
+        // 获取解锁源
+        const unlockSources = await this.getAvailableUnlockSources(song);
+        const candidates: AudioSource[] = [];
+        if (officialRes.url) {
+          // 即使不可用（如试听），也放入候选列表作为兜底
+          candidates.push({ ...officialRes, source: "netease" });
+        }
+        for (const s of unlockSources) {
           candidates.push(s);
         }
-      }
-
-      // 更新可用源列表
-      statusStore.availableAudioSources = candidates.map((s) => s.source || "unknown");
-
-      // 选择源
-      let selected: AudioSource | undefined;
-
-      // 1. 尝试使用偏好源
-      if (pref) {
-        selected = candidates.find((s) => s.source === pref);
-      }
-
-      // 2. 如果没有偏好或偏好不可用，使用默认策略
-      if (!selected) {
-        // 优先官方
-        selected = candidates.find((s) => s.source === "netease");
-        // 其次解锁源
+        // 更新可用源列表
+        statusStore.availableAudioSources = candidates.map((s) => s.source || "unknown");
+        let selected: AudioSource | undefined;
+        // 优先使用偏好
+        if (pref) {
+          selected = candidates.find((s) => s.source === pref);
+        }
+        // 默认策略：解锁源优先
+        if (!selected && unlockSources.length > 0) {
+          selected = unlockSources[0];
+        }
         if (!selected && candidates.length > 0) {
-          selected = candidates[0];
+          selected = candidates.find((s) => s.source === "netease") || candidates[0];
         }
-      }
-
-      if (selected) {
-        statusStore.audioSource = selected.source;
-        // 如果是解锁源，触发缓存下载 (getOnlineUrl 已内部处理官方源缓存)
-        if (selected.isUnlocked && selected.url) {
-          // 检查本地缓存是否已存在
-          const cachedUrl = await this.checkLocalCache(songId, selected.quality);
-          if (cachedUrl) {
-            console.log(`🚀 [${songId}] 使用本地缓存 (Source: ${selected.source})`);
-            return { ...selected, url: cachedUrl };
+        if (selected) {
+          statusStore.audioSource = selected.source;
+          if (selected.isUnlocked && selected.url) {
+            const cachedUrl = await this.checkLocalCache(songId, selected.quality);
+            if (cachedUrl) {
+              console.log(`🚀 [${songId}] 使用本地缓存 (Source: ${selected.source})`);
+              return { ...selected, url: cachedUrl };
+            }
+            this.triggerCacheDownload(songId, selected.url, selected.quality);
           }
-          // 未找到缓存，触发下载并使用远程 URL
-          this.triggerCacheDownload(songId, selected.url, selected.quality);
+          return selected;
         }
-        return selected;
+      } else {
+        // 无法解锁，仅返回官方结果
+        statusStore.availableAudioSources = ["netease"];
+        return { ...officialRes, source: "netease" };
       }
-
-      // 3. 最后的兜底：检查本地是否有缓存（不区分音质）
+      // 检查本地是否有缓存
       const fallbackUrl = await this.checkLocalCache(songId);
       if (fallbackUrl) {
         console.log(`🚀 [${songId}] 网络请求失败，使用本地缓存兜底`, fallbackUrl);

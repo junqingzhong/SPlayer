@@ -8,7 +8,7 @@ import { AI_AUDIO_LEVELS } from "@/utils/meta";
 import { openSongUnlockManager } from "@/utils/modal";
 import { NTooltip, SelectOption } from "naive-ui";
 import { uniqBy } from "lodash-es";
-import { filterAuthorizedQualityOptions } from "@/utils/auth";
+
 import { computed, ref, h, watch } from "vue";
 
 export const usePlaySettings = (): SettingConfig => {
@@ -276,9 +276,6 @@ export const usePlaySettings = (): SettingConfig => {
   const songLevelOptions = computed(() => {
     let options = Object.values(songLevelData);
 
-    // 根据 VIP 状态过滤
-    options = filterAuthorizedQualityOptions(options, "value");
-
     if (settingStore.disableAiAudio) {
       return options.filter((option) => {
         if (option.value === "dolby") return true;
@@ -507,7 +504,8 @@ export const usePlaySettings = (): SettingConfig => {
             key: "enableReplayGain",
             label: "音量平衡",
             type: "switch",
-            description: "平衡不同音频内容之间的音量大小（需要本地歌曲标签中有 replayGain 数据才会生效）",
+            description:
+              "平衡不同音频内容之间的音量大小（需要本地歌曲标签中有 replayGain 数据才会生效）",
             value: computed({
               get: () => settingStore.enableReplayGain,
               set: (v) => (settingStore.enableReplayGain = v),

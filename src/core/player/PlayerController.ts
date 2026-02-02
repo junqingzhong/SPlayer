@@ -151,6 +151,8 @@ class PlayerController {
     }
 
     try {
+      // 立即停止当前播放
+      audioManager.stop();
       statusStore.playLoading = true;
       const audioSource = await songManager.getAudioSource(playSongData);
       // 检查请求是否过期
@@ -159,7 +161,6 @@ class PlayerController {
         return;
       }
       if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
-      audioManager.stop();
       musicStore.playSong = playSongData;
       statusStore.currentTime = options.seek ?? 0;
       // 重置进度
