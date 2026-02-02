@@ -62,6 +62,7 @@
                       : state.lyricType
                   "
                   :progress="item.itemType === 'main' ? currentLineProgress : 0"
+                  @resize-width="(w) => handleLyricResize(item.key, w)"
                 />
               </div>
             </TransitionGroup>
@@ -79,10 +80,10 @@ import type {
   TaskbarProgressPayload,
   TaskbarStatePayload,
 } from "@/core/player/PlayerIpc";
+import { useSettingStore } from "@/stores";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { type CSSProperties, computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import LyricScroll from "./LyricScroll.vue";
-import { useSettingStore } from "@/stores";
 
 const settingStore = useSettingStore();
 
@@ -264,6 +265,51 @@ const currentLineProgress = computed(() => {
 
   return Math.max(0, Math.min(rawProgress, 1));
 });
+
+const lyricsWidthMap = new Map<string | number, number>();
+const lastRequestedWidth = ref(0);
+
+const handleLyricResize = (key: string | number, width: number) => {
+  lyricsWidthMap.set(key, width);
+  calculateAndResizeWindow();
+};
+
+const calculateAndResizeWindow = () => {
+  const ipc = window.electron?.ipcRenderer;
+  if (!ipc) return;
+
+  const activeKeys = new Set(itemsToRender.value.map((i) => i.key));
+  let maxTextWidth = 0;
+
+  for (const [key, width] of lyricsWidthMap) {
+    if (activeKeys.has(key)) {
+      if (width > maxTextWidth) maxTextWidth = width;
+    } else {
+      lyricsWidthMap.delete(key);
+    }
+  }
+
+  const requiredWidth = 200 + maxTextWidth;
+
+  console.log(requiredWidth)
+
+  if (requiredWidth > lastRequestedWidth.value) {
+    lastRequestedWidth.value = requiredWidth;
+    ipc.send("taskbar:set-width", requiredWidth);
+  } else if (requiredWidth < lastRequestedWidth.value) {
+    if (isHovering.value) return;
+    lastRequestedWidth.value = requiredWidth;
+    ipc.send("taskbar:set-width", requiredWidth);
+  }
+};
+
+watch(
+  () => state.title,
+  () => {
+    lyricsWidthMap.clear();
+    lastRequestedWidth.value = 0;
+  },
+);
 
 const currentLyricText = computed(() => {
   if (!state.lyrics.length || state.lyricIndex < 0) return "";
@@ -452,7 +498,7 @@ $radius: 4px;
   border-radius: $radius;
   user-select: none;
   font-family: v-bind(lyricFontFamily);
-  font-weight: v-bind('settingStore.taskbarLyricFontWeight');
+  font-weight: v-bind("settingStore.taskbarLyricFontWeight");
 
   will-change: opacity, filter;
   transition:

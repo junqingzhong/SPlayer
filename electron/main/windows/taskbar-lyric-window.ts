@@ -5,7 +5,7 @@ import type {
   TrayWatcher,
   UiaWatcher,
 } from "@native/taskbar-lyric";
-import { app, type BrowserWindow, nativeTheme, screen } from "electron";
+import { app, type BrowserWindow, ipcMain, nativeTheme, screen } from "electron";
 import { debounce } from "lodash-es";
 import { join } from "node:path";
 import { processLog } from "../logger";
@@ -47,6 +47,7 @@ class TaskbarLyricWindow {
   private service: TaskbarService | null = null;
   private useAnimation = false;
   private isNativeDisposed = false;
+  private contentWidth = 300;
 
   private debouncedUpdateLayout = debounce(() => {
     this.updateLayout(true);
@@ -118,6 +119,14 @@ class TaskbarLyricWindow {
     }
 
     sendTheme();
+
+    ipcMain.removeAllListeners("taskbar:set-width");
+    ipcMain.on("taskbar:set-width", (_, width: number) => {
+      if (this.contentWidth !== width) {
+        this.contentWidth = width;
+        this.debouncedUpdateLayout();
+      }
+    });
 
     this.win.once("ready-to-show", () => {
       if (this.win) {
@@ -207,7 +216,8 @@ class TaskbarLyricWindow {
       const store = useStore();
       const maxWidthSetting = store.get("taskbar.maxWidth", 300);
       const positionSetting = store.get("taskbar.position", "automatic");
-      const MAX_WIDTH_PHYSICAL = maxWidthSetting * scaleFactor;
+      const MAX_WIDTH_PHYSICAL =
+        Math.min(maxWidthSetting, this.contentWidth) * scaleFactor;
       const MIN_WIDTH_PHYSICAL = 50 * scaleFactor;
 
       let targetBounds: Electron.Rectangle = {
