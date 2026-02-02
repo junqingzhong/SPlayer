@@ -34,9 +34,10 @@ export const initNcmAPI = async (fastify: FastifyInstance) => {
       return reply.status(404).send({ error: "API not found" });
     }
 
-    const neteaseApi = (NeteaseCloudMusicApi as Record<string, (params: unknown) => Promise<any>>)[
-      routerName
-    ];
+    const neteaseApi = (NeteaseCloudMusicApi as unknown as Record<
+      string,
+      (params: unknown) => Promise<any>
+    >)[routerName];
     serverLog.log("🌐 Request NcmAPI:", requestPath);
 
     try {
@@ -48,13 +49,16 @@ export const initNcmAPI = async (fastify: FastifyInstance) => {
       return reply.send(result.body);
     } catch (error: unknown) {
       serverLog.error("❌ NcmAPI Error:", error);
-      const err = error as { status: number; body: unknown; message?: string };
-      if ([400, 301].includes(err.status)) {
-        return reply.status(err.status).send(err.body);
+      if (typeof error === 'object' && error) {
+        const err = error as { status: number; body: unknown; message?: string };
+        if ([400, 301].includes(err.status)) {
+          return reply.status(err.status).send(err.body);
+        }
+        return reply
+          .status(500)
+          .send(err.body || { error: err.message || "Internal Server Error" });
       }
-      return reply
-        .status(500)
-        .send(err.body || { error: err.message || "Internal Server Error" });
+      return reply.status(500).send({ error: String(error) });
     }
   };
 
