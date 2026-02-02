@@ -135,7 +135,10 @@ fn load_db_snapshot(db_path: &str) -> Result<HashMap<String, TrackSnapshot>> {
 }
 
 fn process_cover(tag: &TaggedFile, file_id: &str, cover_dir: &Path) -> Option<String> {
-    let picture = tag.primary_tag().and_then(|t| t.pictures().first())?;
+    let picture = tag
+        .primary_tag()
+        .or_else(|| tag.tags().first())
+        .and_then(|t| t.pictures().first())?;
 
     let file_name = format!("{file_id}.jpg");
     let save_path = cover_dir.join(&file_name);
@@ -283,7 +286,9 @@ fn process_single_track(
 
     // TODO: 返回打不开的文件列表给前端？
     let tagged_file = Probe::open(path_buf).ok()?.read().ok()?;
-    let tag = tagged_file.primary_tag()?;
+    let tag = tagged_file
+        .primary_tag()
+        .or_else(|| tagged_file.tags().first())?;
     let properties = tagged_file.properties();
 
     let title = tag
