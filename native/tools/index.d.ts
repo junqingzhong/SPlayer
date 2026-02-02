@@ -6,6 +6,33 @@ export declare function downloadFile(id: number, url: string, filePath: string, 
 
 export declare function getTaskbarCreatedMessageId(): number
 
+export interface MusicTrack {
+  id: string
+  path: string
+  title: string
+  artist: string
+  album: string
+  duration: number
+  cover?: string
+  mtime: number
+  size: number
+  bitrate: number
+}
+
+export interface ScanEvent {
+  event: string
+  tracks?: Array<MusicTrack>
+  progress?: ScanProgress
+  deletedPaths?: Array<string>
+}
+
+export declare function scanMusicLibrary(dbPath: string, musicDirs: Array<string>, coverDir: string, callback: ((err: Error | null, arg: ScanEvent) => any)): Promise<void>
+
+export interface ScanProgress {
+  current: number
+  total: number
+}
+
 export interface SongMetadata {
   title: string
   artist: string

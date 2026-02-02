@@ -1,14 +1,15 @@
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
-import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "path";
-import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
+import FastGlob from "fast-glob";
+import type { Options as GlobOptions } from "fast-glob/out/settings";
 import { parseFile } from "music-metadata";
-import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
+import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { basename, dirname, extname, isAbsolute, join, relative, resolve } from "node:path";
+import pLimit from "p-limit";
+import type { MusicTrack } from "../database/LocalMusicDB";
 import { ipcLog } from "../logger";
-import { Options as GlobOptions } from "fast-glob/out/settings";
 import { LocalMusicService } from "../services/LocalMusicService";
 import { useStore } from "../store";
-import FastGlob from "fast-glob";
-import pLimit from "p-limit";
+import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
 import { loadNativeModule } from "../utils/native-loader";
 
 interface SongMetadata {
@@ -27,7 +28,7 @@ interface ToolsModule {
     filePath: string,
     metadata: SongMetadata | undefined | null,
     threadCount: number,
-    onProgress: (err: any, progressJson: string) => void
+    onProgress: (err: any, progressJson: string) => void,
   ): Promise<void>;
   cancelDownload(id: number): void;
   writeMusicMetadata(filePath: string, metadata: SongMetadata, coverPath?: string): Promise<void>;
@@ -83,32 +84,37 @@ const initFileIpc = (): void => {
       const localCachePath = join(store.get("cachePath"), "local-data");
       const coverDir = join(localCachePath, "covers");
 
-      // 使用批量流式传输，减少 IPC 通信次数
-      await localMusicService.refreshLibrary(
+      const processTracksCover = (tracks: MusicTrack[]) => {
+        return tracks.map((track) => {
+          let coverPath: string | undefined;
+          if (track.cover) {
+            const fullPath = join(coverDir, track.cover);
+            coverPath = `file://${fullPath.replace(/\\/g, "/")}`;
+          }
+          return { ...track, cover: coverPath };
+        });
+      };
+
+      const allTracks = await localMusicService.refreshLibrary(
         dirs,
-        // 发送进度
         (current, total) => {
           event.sender.send("music-sync-progress", { current, total });
         },
-        // 发送批量数据
-        (tracks) => {
-          const tracksWithFullCover = tracks.map((track) => {
-            let coverPath: string | undefined = undefined;
-            if (track.cover) {
-              const fullPath = join(coverDir, track.cover);
-              // 路径兼容
-              coverPath = `file://${fullPath.replace(/\\/g, "/")}`;
-            }
-            return {
-              ...track,
-              cover: coverPath,
-            };
-          });
-          event.sender.send("music-sync-tracks-batch", tracksWithFullCover);
-        },
+        () => {},
       );
-      // 发送完成信号
-      event.sender.send("music-sync-complete", { success: true });
+
+      const finalTracks = processTracksCover(allTracks);
+      const CHUNK_SIZE = 1000;
+
+      for (const chunk of chunkArray(finalTracks, CHUNK_SIZE)) {
+        event.sender.send("music-sync-tracks-batch", chunk);
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+
+      event.sender.send("music-sync-complete", {
+        success: true,
+      });
+
       return { success: true };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
@@ -152,7 +158,6 @@ const initFileIpc = (): void => {
         "aiff",
         "aif",
         "aifc",
-
       ];
       // 查找指定目录下的所有音乐文件
       const musicFiles = await FastGlob(`**/*.{${musicExtensions.join(",")}}`, globOpt(filePath));
@@ -244,19 +249,19 @@ const initFileIpc = (): void => {
       // 规范化路径
       const songPath = resolve(path);
       const coverPath = cover ? resolve(cover) : undefined;
-      
+
       const meta: SongMetadata = {
-          title: name || "未知曲目",
-          artist: artist || "未知艺术家",
-          album: album || "未知专辑",
-          lyric: lyric || "",
-          description: alia || "",
+        title: name || "未知曲目",
+        artist: artist || "未知艺术家",
+        album: album || "未知专辑",
+        lyric: lyric || "",
+        description: alia || "",
       };
 
       if (!tools) {
-          throw new Error("Native tools not loaded");
+        throw new Error("Native tools not loaded");
       }
-      
+
       await tools.writeMusicMetadata(songPath, meta, coverPath);
       return true;
     } catch (error) {
@@ -313,7 +318,6 @@ const initFileIpc = (): void => {
               }
             } catch {
               // 读取失败则尝试下一种格式
-              continue;
             }
           }
         }
@@ -572,71 +576,89 @@ const initFileIpc = (): void => {
         // Prepare metadata
         let metadata: SongMetadata | undefined | null = null;
         if (downloadMeta && songData) {
-            const getArtistNames = (artists: any): string[] => {
-                if (Array.isArray(artists)) {
-                  return artists
-                    .map((ar: any) => (typeof ar === "string" ? ar : ar?.name || ""))
-                    .filter((name) => name && name.trim().length > 0);
-                }
-                if (typeof artists === "string" && artists.trim().length > 0) {
-                  return [artists];
-                }
-                return [];
-            };
-            const artistNames = getArtistNames(songData.artists);
-            const artist = artistNames.join(", ") || "未知艺术家"; 
-            
+          const getArtistNames = (artists: any): string[] => {
+            if (Array.isArray(artists)) {
+              return artists
+                .map((ar: any) => (typeof ar === "string" ? ar : ar?.name || ""))
+                .filter((name) => name && name.trim().length > 0);
+            }
+            if (typeof artists === "string" && artists.trim().length > 0) {
+              return [artists];
+            }
+            return [];
+          };
+          const artistNames = getArtistNames(songData.artists);
+          const artist = artistNames.join(", ") || "未知艺术家";
 
+          const coverUrl =
+            downloadCover && (songData.coverSize?.l || songData.cover)
+              ? songData.coverSize?.l || songData.cover
+              : undefined;
 
-            const coverUrl = (downloadCover && (songData.coverSize?.l || songData.cover)) ? (songData.coverSize?.l || songData.cover) : undefined;
-            
-            metadata = {
-                title: songData.name || "未知曲目",
-                artist: artist,
-                album: (typeof songData.album === "string" ? songData.album : songData.album?.name) || "未知专辑",
-                coverUrl: coverUrl,
-                lyric: (downloadLyric && lyric) ? lyric : undefined,
-                description: songData.alia || "",
-            };
-            // console.log("[Download] Resolved cover URL:", coverUrl);
+          metadata = {
+            title: songData.name || "未知曲目",
+            artist: artist,
+            album:
+              (typeof songData.album === "string" ? songData.album : songData.album?.name) ||
+              "未知专辑",
+            coverUrl: coverUrl,
+            lyric: downloadLyric && lyric ? lyric : undefined,
+            description: songData.alia || "",
+          };
+          // console.log("[Download] Resolved cover URL:", coverUrl);
         }
 
         const onProgress = (...args: any[]) => {
-             // console.log("Received progress args:", args);
-             let progressJson: string | undefined;
-             
-             // Handle (err, value) or (value) signature
-             if (args.length > 1 && args[0] === null && typeof args[1] === 'string') {
-                 progressJson = args[1];
-             } else if (args.length > 0 && typeof args[0] === 'string') {
-                 progressJson = args[0];
-             }
+          // console.log("Received progress args:", args);
+          let progressJson: string | undefined;
 
-             try {
-                 if (!progressJson) return;
-                 const progress = JSON.parse(progressJson) as DownloadProgress;
-                 if (!progress) return;
-                 
-                 win.webContents.send("download-progress", {
-                     id: songData?.id,
-                     percent: progress.percent,
-                     transferredBytes: progress.transferredBytes,
-                     totalBytes: progress.totalBytes,
-                });
-            } catch (e) {
-                console.error("Failed to parse progress json", e, "Input:", progressJson, "Args:", args);
-            }
+          // Handle (err, value) or (value) signature
+          if (args.length > 1 && args[0] === null && typeof args[1] === "string") {
+            progressJson = args[1];
+          } else if (args.length > 0 && typeof args[0] === "string") {
+            progressJson = args[0];
+          }
+
+          try {
+            if (!progressJson) return;
+            const progress = JSON.parse(progressJson) as DownloadProgress;
+            if (!progress) return;
+
+            win.webContents.send("download-progress", {
+              id: songData?.id,
+              percent: progress.percent,
+              transferredBytes: progress.transferredBytes,
+              totalBytes: progress.totalBytes,
+            });
+          } catch (e) {
+            console.error(
+              "Failed to parse progress json",
+              e,
+              "Input:",
+              progressJson,
+              "Args:",
+              args,
+            );
+          }
         };
 
         if (!tools) {
-            throw new Error("Native tools not loaded");
+          throw new Error("Native tools not loaded");
         }
 
         const store = useStore();
         // Use threadCount from options if available, otherwise fall back to store
-        const threadCount = (options.threadCount as number) || (store.get("downloadThreadCount") as number) || 8;
+        const threadCount =
+          (options.threadCount as number) || (store.get("downloadThreadCount") as number) || 8;
 
-        await tools.downloadFile(songData?.id || 0, url, finalFilePath, metadata, threadCount, onProgress);
+        await tools.downloadFile(
+          songData?.id || 0,
+          url,
+          finalFilePath,
+          metadata,
+          threadCount,
+          onProgress,
+        );
 
         // 创建同名歌词文件
         if (lyric && saveMetaFile && downloadLyric) {
@@ -648,7 +670,7 @@ const initFileIpc = (): void => {
       } catch (error: any) {
         ipcLog.error("❌ Error downloading file:", error);
         if ((error.message && error.message.includes("cancelled")) || error.code === "Cancelled") {
-             return { status: "cancelled", message: "下载已取消" };
+          return { status: "cancelled", message: "下载已取消" };
         }
         return {
           status: "error",
@@ -661,8 +683,8 @@ const initFileIpc = (): void => {
   // 取消下载
   ipcMain.handle("cancel-download", async (_, songId: number) => {
     if (tools) {
-        tools.cancelDownload(songId);
-        return true;
+      tools.cancelDownload(songId);
+      return true;
     }
     return false;
   });
@@ -730,5 +752,11 @@ const initFileIpc = (): void => {
     },
   );
 };
+
+function* chunkArray<T>(array: T[], size: number): Generator<T[], void, unknown> {
+  for (let i = 0; i < array.length; i += size) {
+    yield array.slice(i, i + size);
+  }
+}
 
 export default initFileIpc;

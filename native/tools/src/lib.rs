@@ -6,6 +6,9 @@ mod macos;
 mod windows;
 mod download;
 
+mod scanner;
+
+pub use scanner::scan_music_library;
 #[cfg(target_os = "windows")]
 pub use windows::get_taskbar_created_message_id;
 
