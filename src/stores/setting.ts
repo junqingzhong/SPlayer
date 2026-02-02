@@ -483,7 +483,7 @@ export const useSettingStore = defineStore("setting", {
     closeAppMethod: "hide",
     showTaskbarProgress: false,
     taskbarLyricShowCover: true,
-    taskbarLyricMaxWidth: 300,
+    taskbarLyricMaxWidth: 30,
     taskbarLyricPosition: "automatic",
     taskbarLyricShowWhenPaused: true,
     taskbarLyricAnimationMode: "slide-blur",

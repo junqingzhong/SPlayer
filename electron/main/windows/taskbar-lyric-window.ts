@@ -82,12 +82,14 @@ class TaskbarLyricWindow {
       }
     }
 
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const maxWindowWidth = primaryDisplay.workAreaSize.width;
     this.win = createWindow({
       width: this.currentWidth,
       height: 48,
       minWidth: 100,
       minHeight: 30,
-      maxWidth: 1000,
+      maxWidth: maxWindowWidth,
       maxHeight: 100,
       type: "toolbar",
       frame: false,
@@ -188,14 +190,29 @@ class TaskbarLyricWindow {
     }
   }
 
+  private getMaxWidthPercent(screenWidth: number) {
+    const store = useStore();
+    let maxWidthSetting = store.get("taskbar.maxWidth", 30);
+    if (maxWidthSetting > 100) {
+      const converted = Math.round((maxWidthSetting / screenWidth) * 100);
+      maxWidthSetting = Math.min(Math.max(converted, 10), 100);
+      store.set("taskbar.maxWidth", maxWidthSetting);
+    }
+    if (maxWidthSetting < 10) return 10;
+    if (maxWidthSetting > 100) return 100;
+    return maxWidthSetting;
+  }
+
   updateLayout(animate: boolean = false) {
     if (!this.win || !this.service) return;
     this.useAnimation = animate;
 
     const primaryDisplay = screen.getPrimaryDisplay();
+    const maxWidthPercent = this.getMaxWidthPercent(primaryDisplay.workAreaSize.width);
     const scaleFactor = primaryDisplay.scaleFactor;
-    const store = useStore();
-    const maxWidthSetting = store.get("taskbar.maxWidth", 300);
+    const maxWidthSetting = Math.round(
+      (primaryDisplay.workAreaSize.width * maxWidthPercent) / 100,
+    );
     const requestWidth = Math.round(maxWidthSetting * scaleFactor);
 
     this.service.update(requestWidth);
@@ -213,8 +230,11 @@ class TaskbarLyricWindow {
       const primaryDisplay = screen.getPrimaryDisplay();
       const scaleFactor = primaryDisplay.scaleFactor;
       const GAP = 10 * scaleFactor;
+      const maxWidthPercent = this.getMaxWidthPercent(primaryDisplay.workAreaSize.width);
+      const maxWidthSetting = Math.round(
+        (primaryDisplay.workAreaSize.width * maxWidthPercent) / 100,
+      );
       const store = useStore();
-      const maxWidthSetting = store.get("taskbar.maxWidth", 300);
       const positionSetting = store.get("taskbar.position", "automatic");
       const MAX_WIDTH_PHYSICAL =
         Math.min(maxWidthSetting, this.contentWidth) * scaleFactor;

@@ -92,7 +92,7 @@ export const useStore = () => {
       },
       taskbar: {
         enabled: false,
-        maxWidth: 300,
+        maxWidth: 30,
       },
       proxy: "",
       amllDbServer: defaultAMLLDbServer,
