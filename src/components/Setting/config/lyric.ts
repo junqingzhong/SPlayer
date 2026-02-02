@@ -1,3 +1,4 @@
+import { useLyricManager } from "@/core/player/LyricManager";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { useSettingStore, useStatusStore } from "@/stores";
 import { LyricConfig } from "@/types/desktop-lyric";
@@ -13,6 +14,7 @@ export const useLyricSettings = (): SettingConfig => {
   const player = usePlayerController();
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
+  const lyricManager = useLyricManager();
 
   // 桌面歌词配置
   const desktopLyricConfig = reactive<LyricConfig>({ ...defaultDesktopLyricConfig });
@@ -234,20 +236,21 @@ export const useLyricSettings = (): SettingConfig => {
             }),
             children: [
               {
-                key: "preferQQMusicLyric",
-                label: "优先使用 QM 歌词",
+                key: "enableQQMusicLyric",
+                label: "启用 QM 歌词",
                 type: "switch",
-                description: "优先从 QM 获取逐字歌词，模糊搜索，可能不准确",
+                description: "启用从 QM 获取逐字歌词，模糊搜索，可能不准确",
                 show: isElectron,
                 value: computed({
-                  get: () => settingStore.preferQQMusicLyric,
-                  set: (v) => (settingStore.preferQQMusicLyric = v),
+                  get: () => settingStore.enableQQMusicLyric,
+                  set: (v) => (settingStore.enableQQMusicLyric = v),
                 }),
               },
               {
                 key: "localLyricQQMusicMatch",
                 label: "本地歌曲使用 QM 歌词",
                 type: "switch",
+                disabled: computed(() => !settingStore.enableQQMusicLyric),
                 description: "为本地歌曲从 QM 匹配逐字歌词，如已有 TTML 歌词则跳过",
                 show: isElectron,
                 value: computed({
@@ -319,6 +322,26 @@ export const useLyricSettings = (): SettingConfig => {
       {
         title: "歌词内容",
         items: [
+          {
+            key: "lyricPriority",
+            label: "歌词源优先级",
+            type: "select",
+            description: "设置歌词获取的优先顺序",
+            options: computed(() => {
+              const options = [{ label: "自动", value: "auto" }];
+              if (settingStore.enableQQMusicLyric) {
+                options.push({ label: "QM 优先", value: "qm" });
+              }
+              if (settingStore.enableOnlineTTMLLyric) {
+                options.push({ label: "TTML 优先", value: "ttml" });
+              }
+              return options;
+            }),
+            value: computed({
+              get: () => settingStore.lyricPriority,
+              set: (v) => lyricManager.switchLyricSource(v),
+            }),
+          },
           {
             key: "preferTraditionalChinese",
             label: "更喜欢繁体中文",

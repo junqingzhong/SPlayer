@@ -3,7 +3,7 @@ import { songLyric, songLyricTTML } from "@/api/song";
 import { keywords as defaultKeywords, regexes as defaultRegexes } from "@/assets/data/exclude";
 import { useCacheManager } from "@/core/resource/CacheManager";
 import { useMusicStore, useSettingStore, useStatusStore, useStreamingStore } from "@/stores";
-import { type SongLyric } from "@/types/lyric";
+import { type SongLyric, type LyricPriority } from "@/types/lyric";
 import { SongType } from "@/types/main";
 import { isElectron } from "@/utils/env";
 import {
@@ -258,6 +258,19 @@ class LyricManager {
   }
 
   /**
+   * 切换歌词源优先级
+   * @param source 优先级标识
+   */
+  public switchLyricSource(source: LyricPriority) {
+    const settingStore = useSettingStore();
+    const musicStore = useMusicStore();
+    settingStore.lyricPriority = source;
+    if (musicStore.playSong) {
+      this.handleLyric(musicStore.playSong);
+    }
+  }
+
+  /**
    * 处理在线歌词
    * @param id 歌曲 ID
    * @returns 歌词数据
@@ -279,7 +292,9 @@ class LyricManager {
 
     // 处理 QQ 音乐歌词
     const adoptQQMusic = async () => {
-      if (!settingStore.preferQQMusicLyric) return;
+      // 检查开关 (如果显式选了 QM 优先, 则忽略开关限制? 不, UI上限制了)
+      if (!settingStore.enableQQMusicLyric && settingStore.lyricPriority !== "qm") return;
+
       const song = musicStore.playSong;
       if (!song) return;
       const qqLyric = await this.fetchQQMusicLyric(song);
@@ -294,7 +309,7 @@ class LyricManager {
         result.lrcData = qqLyric.lrcData;
         if (!qqMusicAdopted) qqMusicAdopted = true;
       }
-      // 先返回一次，避免 TTML 请求过慢
+      // 如果采用了, 立即应用
       if (qqMusicAdopted) {
         let lyricData = this.handleLyricExclude(result);
         lyricData = await this.applyChineseVariant(lyricData);
@@ -304,7 +319,7 @@ class LyricManager {
 
     // 处理 TTML 歌词
     const adoptTTML = async () => {
-      if (!settingStore.enableOnlineTTMLLyric) return;
+      if (!settingStore.enableOnlineTTMLLyric && settingStore.lyricPriority !== "ttml") return;
       if (typeof id !== "number") return;
       let ttmlContent: string | null = await this.getRawLyricCache(id, "ttml");
       if (!ttmlContent) {
@@ -319,12 +334,20 @@ class LyricManager {
       const parsed = parseTTML(sorted);
       const lines = parsed?.lines || [];
       if (!lines.length) return;
-      result.yrcData = lines;
-      ttmlAdopted = true;
+
+      // 只有当没有 YRC 数据或优先级为 TTML 或 自动模式(TTML > QM) 时才覆盖
+      if (
+        !result.yrcData.length ||
+        settingStore.lyricPriority === "ttml" ||
+        settingStore.lyricPriority === "auto"
+      ) {
+        result.yrcData = lines;
+        ttmlAdopted = true;
+      }
     };
+
     // 处理 LRC 歌词
     const adoptLRC = async () => {
-      // 如果已经有 QQ 音乐歌词，跳过网易云
       if (qqMusicAdopted) return;
       if (typeof id !== "number") return;
       let data: any = null;
@@ -367,21 +390,37 @@ class LyricManager {
           yrcLines = this.alignLyrics(yrcLines, parseLrc(data.yromalrc.lyric), "romanLyric");
       }
       if (lrcLines.length) result.lrcData = lrcLines;
-      // 如果没有 TTML，则采用 网易云 YRC
+      // 如果没有 TTML 且没有 QM YRC，则采用 网易云 YRC
       if (!result.yrcData.length && yrcLines.length) {
+        // 再次确认优先级，如果是 TTML 优先但 TTML 没结果，这里可以用 YRC
         result.yrcData = yrcLines;
       }
-      // 先返回一次，避免 TTML 请求过慢
+      // 先返回一次
       let lyricData = this.handleLyricExclude(result);
       lyricData = await this.applyChineseVariant(lyricData);
       this.setFinalLyric(lyricData, req);
     };
-    // 优先获取 QQ 音乐歌词
-    if (settingStore.preferQQMusicLyric) {
+    // 执行优先策略
+    const priority = settingStore.lyricPriority;
+    if (priority === "qm") {
       await adoptQQMusic();
+      // 如果 QM 没结果，回退到 Default
+      if (!qqMusicAdopted) {
+        await Promise.all([adoptTTML(), adoptLRC()]);
+      }
+    } else if (priority === "ttml") {
+      await adoptTTML();
+      await adoptLRC();
+      if (!ttmlAdopted && !result.lrcData.length) {
+        await adoptQQMusic();
+      }
+    } else {
+      if (settingStore.enableQQMusicLyric) {
+        await adoptQQMusic();
+      }
+      await Promise.all([adoptTTML(), adoptLRC()]);
     }
-    await Promise.allSettled([adoptTTML(), adoptLRC()]);
-    // 优先使用 TTML
+    // 优先使用 TTML (状态标记)
     statusStore.usingTTMLLyric = ttmlAdopted;
     // 设置是否使用 QRC 歌词（来自 QQ 音乐，且未被 TTML 覆盖）
     statusStore.usingQRCLyric = qqMusicAdopted && !ttmlAdopted;

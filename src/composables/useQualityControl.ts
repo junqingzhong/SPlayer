@@ -31,7 +31,7 @@ export const useQualityControl = () => {
     const song = musicStore.playSong;
     if (song.path) return "本地";
     if (song.pc) return "云盘";
-    if (statusStore.playUblock) return "解锁";
+    if (statusStore.isUnlocked) return "解锁";
     if (!quality) return "未知";
     return qualityNameMap[quality] || quality;
   };
@@ -92,7 +92,7 @@ export const useQualityControl = () => {
    */
   const loadQualities = async (isPreload = false) => {
     // 本地歌曲或解锁歌曲不支持切换
-    if (musicStore.playSong.path || statusStore.playUblock || musicStore.playSong.type !== "song")
+    if (musicStore.playSong.path || statusStore.isUnlocked || musicStore.playSong.type !== "song")
       return;
     // 如果已经加载过，不重复加载
     if (statusStore.availableQualities.length > 0) return;
@@ -155,7 +155,7 @@ export const useQualityControl = () => {
     getQualityName,
     isOnlineSong: computed(() => {
       const song = musicStore.playSong;
-      return !song.path && !song.pc && song.type === "song" && !statusStore.playUblock;
+      return !song.path && !song.pc && song.type === "song" && !statusStore.isUnlocked;
     }),
   };
 };

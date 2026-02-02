@@ -128,7 +128,7 @@ export const sendTaskbarLyrics = (lyrics: SongLyric) => {
   const taskbarLyrics = (lyrics.yrcData.length > 0 ? lyrics.yrcData : lyrics.lrcData) ?? [];
   const payload: TaskbarLyricsPayload = {
     lines: toRaw(taskbarLyrics),
-    type: taskbarLyrics.length > 0 ? "word" : "line",
+    type: lyrics.yrcData.length > 0 ? "word" : "line",
   };
   window.electron.ipcRenderer.send("taskbar:update-lyrics", payload);
 };
