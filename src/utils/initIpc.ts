@@ -114,22 +114,6 @@ const initIpc = () => {
       });
     });
 
-    const settingStore = useSettingStore();
-    // 监听任务栏歌词位置变化
-    watch(
-      () => settingStore.taskbarLyricPosition,
-      (val) => {
-        window.electron.ipcRenderer.send("taskbar:set-position", val);
-      },
-    );
-    // 监听暂停时是否显示任务栏歌词
-    watch(
-      () => settingStore.taskbarLyricShowWhenPaused,
-      (val) => {
-        window.electron.ipcRenderer.send("taskbar:set-show-when-paused", val);
-      },
-    );
-
     // 请求歌词数据
     window.electron.ipcRenderer.on("request-desktop-lyric-data", () => {
       const musicStore = useMusicStore();

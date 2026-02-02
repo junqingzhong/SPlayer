@@ -48,6 +48,7 @@ class TaskbarLyricWindow {
   private useAnimation = false;
   private isNativeDisposed = false;
   private contentWidth = 300;
+  private maxWidthPercent = 30;
 
   private debouncedUpdateLayout = debounce(() => {
     this.updateLayout(true);
@@ -194,13 +195,13 @@ class TaskbarLyricWindow {
     const store = useStore();
     let maxWidthSetting = store.get("taskbar.maxWidth", 30);
     if (maxWidthSetting > 100) {
+      // Assume it's pixels, convert to percent
       const converted = Math.round((maxWidthSetting / screenWidth) * 100);
       maxWidthSetting = Math.min(Math.max(converted, 10), 100);
       store.set("taskbar.maxWidth", maxWidthSetting);
+      return maxWidthSetting;
     }
-    if (maxWidthSetting < 10) return 10;
-    if (maxWidthSetting > 100) return 100;
-    return maxWidthSetting;
+    return Math.min(Math.max(maxWidthSetting, 10), 100);
   }
 
   updateLayout(animate: boolean = false) {
@@ -208,10 +209,10 @@ class TaskbarLyricWindow {
     this.useAnimation = animate;
 
     const primaryDisplay = screen.getPrimaryDisplay();
-    const maxWidthPercent = this.getMaxWidthPercent(primaryDisplay.workAreaSize.width);
+    this.maxWidthPercent = this.getMaxWidthPercent(primaryDisplay.workAreaSize.width);
     const scaleFactor = primaryDisplay.scaleFactor;
     const maxWidthSetting = Math.round(
-      (primaryDisplay.workAreaSize.width * maxWidthPercent) / 100,
+      (primaryDisplay.workAreaSize.width * this.maxWidthPercent) / 100,
     );
     const requestWidth = Math.round(maxWidthSetting * scaleFactor);
 
@@ -230,9 +231,8 @@ class TaskbarLyricWindow {
       const primaryDisplay = screen.getPrimaryDisplay();
       const scaleFactor = primaryDisplay.scaleFactor;
       const GAP = 10 * scaleFactor;
-      const maxWidthPercent = this.getMaxWidthPercent(primaryDisplay.workAreaSize.width);
       const maxWidthSetting = Math.round(
-        (primaryDisplay.workAreaSize.width * maxWidthPercent) / 100,
+        (primaryDisplay.workAreaSize.width * this.maxWidthPercent) / 100,
       );
       const store = useStore();
       const positionSetting = store.get("taskbar.position", "automatic");

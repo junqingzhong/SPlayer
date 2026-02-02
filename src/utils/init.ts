@@ -99,6 +99,13 @@ const init = async () => {
     );
 
     watch(
+      () => settingStore.taskbarLyricShowWhenPaused,
+      (val) => {
+        window.electron.ipcRenderer.send("taskbar:set-show-when-paused", val);
+      },
+    );
+
+    watch(
       () => [
         settingStore.taskbarLyricAnimationMode,
         settingStore.taskbarLyricSingleLineMode,

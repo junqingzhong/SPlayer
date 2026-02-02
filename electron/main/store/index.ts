@@ -93,6 +93,9 @@ export const useStore = () => {
       taskbar: {
         enabled: false,
         maxWidth: 30,
+        showCover: true,
+        position: "automatic",
+        showWhenPaused: true,
       },
       proxy: "",
       amllDbServer: defaultAMLLDbServer,

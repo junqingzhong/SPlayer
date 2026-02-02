@@ -289,9 +289,8 @@ const calculateAndResizeWindow = () => {
     }
   }
 
-  const requiredWidth = 200 + maxTextWidth;
-
-  console.log(requiredWidth)
+  const BASE_WIDTH = 200; // Cover, controls, padding, etc.
+  const requiredWidth = BASE_WIDTH + maxTextWidth;
 
   if (requiredWidth > lastRequestedWidth.value) {
     lastRequestedWidth.value = requiredWidth;
