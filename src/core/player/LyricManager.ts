@@ -408,6 +408,9 @@ class LyricManager {
       if (!qqMusicAdopted) {
         await Promise.all([adoptTTML(), adoptLRC()]);
       }
+    } else if (priority === "official") {
+      // 仅使用官方源
+      await adoptLRC();
     } else if (priority === "ttml") {
       await adoptTTML();
       await adoptLRC();

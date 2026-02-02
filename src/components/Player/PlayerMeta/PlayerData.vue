@@ -179,7 +179,10 @@ const lyricMode = computed(() => {
 });
 
 const lyricSourceOptions = computed(() => {
-  const options = [{ label: "自动", value: "auto" }];
+  const options = [
+    { label: "自动", value: "auto" },
+    { label: "官方优先", value: "official" },
+  ];
   if (settingStore.enableQQMusicLyric) {
     options.push({ label: "QM 优先", value: "qm" });
   }

@@ -5,6 +5,7 @@ import { defaultAMLLDbServer } from "@/utils/meta";
 import { defineStore } from "pinia";
 import { CURRENT_SETTING_SCHEMA_VERSION, settingMigrations } from "./migrations/settingMigrations";
 import { ThemeColorType } from "@/types/color";
+import type { LyricPriority } from "@/types/lyric";
 
 export interface SettingState {
   /** Schema 版本号 */
@@ -210,7 +211,8 @@ export interface SettingState {
   /** 启用 QM 歌词 */
   enableQQMusicLyric: boolean;
   /** 歌词源优先级 */
-  lyricPriority: "auto" | "qm" | "ttml";
+  /** 歌词源优先级 */
+  lyricPriority: LyricPriority;
   /** 本地歌曲使用 QM 歌词匹配 */
   localLyricQQMusicMatch: boolean;
   /** AMLL DB 服务地址 */

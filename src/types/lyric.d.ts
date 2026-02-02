@@ -11,4 +11,4 @@ export interface SongLyric {
 /**
  * 歌词优先级
  */
-export type LyricPriority = "auto" | "qm" | "ttml";
+export type LyricPriority = "auto" | "qm" | "ttml" | "official";
