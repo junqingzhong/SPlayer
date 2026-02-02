@@ -70,14 +70,8 @@ const initIpc = () => {
         isPlaying: statusStore.playStatus,
       });
 
-      const lyricData = musicStore.songLyric;
-      if (lyricData.lrcData?.length || lyricData.yrcData?.length) {
-        const taskbarLyrics = lyricData.yrcData.length > 0 ? lyricData.yrcData : lyricData.lrcData;
-        playerIpc.sendTaskbarLyrics({
-          lines: toRaw(taskbarLyrics),
-          type: lyricData.yrcData.length > 0 ? "word" : "line",
-        });
-      }
+      // 发送歌词数据
+      playerIpc.sendTaskbarLyrics(musicStore.songLyric);
 
       playerIpc.sendTaskbarProgressData({
         currentTime: statusStore.currentTime * 1000,

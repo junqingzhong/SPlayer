@@ -27,10 +27,7 @@
           :round="false"
         />
       </n-card>
-      <n-card
-        class="set-item"
-        :class="{ 'input-mode': isInputMode }"
-      >
+      <n-card class="set-item" :class="{ 'input-mode': isInputMode }">
         <div class="label">
           <div style="display: flex; justify-content: space-between; align-items: center">
             <div class="info" style="display: flex; flex-direction: column">
@@ -60,8 +57,10 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="settingStore.globalFont.split(',').map(s => s.trim())"
-            :on-update-value="(value: Array<string>) => settingStore.globalFont = value.join(', ')"
+            :value="settingStore.globalFont.split(',').map((s) => s.trim())"
+            :on-update-value="
+              (value: Array<string>) => (settingStore.globalFont = value.join(', '))
+            "
             :options="getOptions('globalFont')"
             class="set"
             filterable
@@ -80,10 +79,7 @@
     </div>
     <div class="set-list" v-if="isElectron">
       <n-h3 prefix="bar">桌面歌词</n-h3>
-      <n-card
-        class="set-item"
-        :class="{ 'input-mode': isInputMode }"
-      >
+      <n-card class="set-item" :class="{ 'input-mode': isInputMode }">
         <div class="label">
           <div class="label-header">
             <div class="info" style="display: flex; flex-direction: column">
@@ -119,8 +115,10 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="desktopLyricConfig.fontFamily.split(',').map(s => s.trim())"
-            :on-update-value="(value: Array<string>) => desktopLyricConfig.fontFamily = value.join(', ')"
+            :value="desktopLyricConfig.fontFamily.split(',').map((s) => s.trim())"
+            :on-update-value="
+              (value: Array<string>) => (desktopLyricConfig.fontFamily = value.join(', '))
+            "
             :options="getOptions('desktop')"
             class="set"
             filterable
@@ -175,8 +173,10 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="settingStore[font.keySetting].split(',').map(s => s.trim())"
-            :on-update-value="(value: Array<string>) => settingStore[font.keySetting] = value.join(', ')"
+            :value="settingStore[font.keySetting].split(',').map((s) => s.trim())"
+            :on-update-value="
+              (value: Array<string>) => (settingStore[font.keySetting] = value.join(', '))
+            "
             :options="getOptions(font.keySetting)"
             class="set"
             filterable
@@ -200,7 +200,7 @@
 import { useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import type { SelectOption } from "naive-ui";
-import { lyricFontConfigs } from "@/utils/lyricFontConfig";
+import { lyricFontConfigs } from "@/utils/lyric/lyricFontConfig";
 import { LyricConfig } from "@/types/desktop-lyric";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
 import { cloneDeep, isEqual } from "lodash-es";

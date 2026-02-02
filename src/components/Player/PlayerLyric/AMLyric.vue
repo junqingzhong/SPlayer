@@ -57,7 +57,7 @@ import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { cloneDeep } from "lodash-es";
-import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
+import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
 
 defineProps({
   currentTime: {

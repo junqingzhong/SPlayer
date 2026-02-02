@@ -6,12 +6,17 @@ import { useMusicStore, useSettingStore, useStatusStore, useStreamingStore } fro
 import { type SongLyric } from "@/types/lyric";
 import { SongType } from "@/types/main";
 import { isElectron } from "@/utils/env";
-import { alignLyrics, isWordLevelFormat, parseQRCLyric, parseSmartLrc } from "@/utils/lyricParser";
-import { stripLyricMetadata } from "@/utils/lyricStripper";
+import {
+  alignLyrics,
+  isWordLevelFormat,
+  parseQRCLyric,
+  parseSmartLrc,
+} from "@/utils/lyric/lyricParser";
+import { stripLyricMetadata } from "@/utils/lyric/lyricStripper";
+import { applyBracketReplacement } from "@/utils/lyric/lyricFormat";
 import { getConverter } from "@/utils/opencc";
 import { type LyricLine, parseLrc, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
 import { cloneDeep, escapeRegExp, isEmpty } from "lodash-es";
-import * as playerIpc from "./PlayerIpc";
 
 class LyricManager {
   /**
@@ -28,61 +33,6 @@ class LyricManager {
   constructor() {}
 
   /**
-   * 获取歌词源偏好
-   * @param id 歌曲 ID
-   * @returns 偏好的歌词源标识 (QM/TTML/YRC/LRC)
-   */
-  private async getLyricPreference(id: number | string): Promise<string | null> {
-    const settingStore = useSettingStore();
-    if (!isElectron || !settingStore.cacheEnabled) return null;
-    try {
-      const cacheManager = useCacheManager();
-      const result = await cacheManager.get("lyrics", `${id}.pref`);
-      if (result.success && result.data) {
-        const decoder = new TextDecoder();
-        return decoder.decode(result.data);
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * 保存歌词源偏好
-   * @param id 歌曲 ID
-   * @param source 歌词源标识
-   */
-  private async saveLyricPreference(id: number | string, source: string) {
-    const settingStore = useSettingStore();
-    if (!isElectron || !settingStore.cacheEnabled) return;
-    try {
-      const cacheManager = useCacheManager();
-      await cacheManager.set("lyrics", `${id}.pref`, source);
-    } catch (error) {
-      console.error("写入歌词偏好失败:", error);
-    }
-  }
-
-  /**
-   * 切换歌词源
-   * @param source 歌词源标识 (LRC/YRC/TTML/QM)
-   */
-  public async switchLyricSource(source: string) {
-    const statusStore = useStatusStore();
-    const musicStore = useMusicStore();
-
-    if (statusStore.preferredLyricSource === source) return;
-
-    statusStore.preferredLyricSource = source;
-    // 保存并强制重新加载歌词
-    if (musicStore.playSong) {
-      await this.saveLyricPreference(musicStore.playSong.id, source);
-      await this.handleLyric(musicStore.playSong);
-    }
-  }
-
-  /**
    * 重置当前歌曲的歌词数据
    * 包括清空歌词数据、重置歌词索引、关闭 TTML 歌词等
    */
@@ -93,8 +43,6 @@ class LyricManager {
     musicStore.setSongLyric({}, true);
     statusStore.usingTTMLLyric = false;
     statusStore.usingQRCLyric = false;
-    statusStore.availableLyricSources = [];
-    statusStore.preferredLyricSource = null;
     // 重置歌词索引
     statusStore.lyricIndex = -1;
     statusStore.lyricLoading = false;
@@ -318,165 +266,126 @@ class LyricManager {
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
+    // 请求序列
     const req = this.activeLyricReq;
+    // 最终结果
+    const result: SongLyric = { lrcData: [], yrcData: [] };
+    // 是否采用了 TTML
+    let ttmlAdopted = false;
+    // 是否采用了 QQ 音乐歌词
+    let qqMusicAdopted = false;
+    // 过期判断
     const isStale = () => this.activeLyricReq !== req || musicStore.playSong?.id !== id;
 
-    let qqData: SongLyric | null = null;
-    let ttmlData: string | null = null;
-    let neteaseData: any = null;
-
-    // 1. 并行获取所有可能的歌词源
-    const qqMusicPromise =
-      settingStore.preferQQMusicLyric && musicStore.playSong
-        ? this.fetchQQMusicLyric(musicStore.playSong).catch(() => null)
-        : Promise.resolve(null);
-
-    const ttmlPromise =
-      settingStore.enableOnlineTTMLLyric && typeof id === "number"
-        ? (async () => {
-            try {
-              let data = await this.getRawLyricCache(id, "ttml");
-              if (!data) {
-                data = await songLyricTTML(id);
-                if (data && typeof data === "string") {
-                  this.saveRawLyricCache(id, "ttml", data);
-                }
-              }
-              return typeof data === "string" ? data : null;
-            } catch {
-              return null;
-            }
-          })()
-        : Promise.resolve(null);
-
-    const neteasePromise =
-      typeof id === "number"
-        ? (async () => {
-            try {
-              let data: any = null;
-              const cached = await this.getRawLyricCache(id, "lrc");
-              if (cached) {
-                try {
-                  data = JSON.parse(cached);
-                } catch {
-                  data = null;
-                }
-              }
-              if (!data) {
-                data = await songLyric(id);
-                if (data && data.code === 200) {
-                  this.saveRawLyricCache(id, "lrc", JSON.stringify(data));
-                }
-              }
-              return data;
-            } catch {
-              return null;
-            }
-          })()
-        : Promise.resolve(null);
-
-    const [qqRes, ttmlRes, neteaseRes] = await Promise.all([
-      qqMusicPromise,
-      ttmlPromise,
-      neteasePromise,
-    ]);
-
-    if (isStale()) return { lrcData: [], yrcData: [] };
-
-    qqData = qqRes;
-    ttmlData = ttmlRes;
-    neteaseData = neteaseRes;
-
-    // 2. 处理候选源
-    const candidates: Record<string, SongLyric> = {};
-    const sources: string[] = [];
-
-    // TTML
-    if (ttmlData && typeof ttmlData === "string") {
-      const sorted = this.cleanTTMLTranslations(ttmlData);
-      const parsed = parseTTML(sorted);
-      if (parsed?.lines?.length) {
-        candidates["TTML"] = { lrcData: [], yrcData: parsed.lines };
-        sources.push("TTML");
+    // 处理 QQ 音乐歌词
+    const adoptQQMusic = async () => {
+      if (!settingStore.preferQQMusicLyric) return;
+      const song = musicStore.playSong;
+      if (!song) return;
+      const qqLyric = await this.fetchQQMusicLyric(song);
+      if (isStale()) return;
+      if (!qqLyric) return;
+      // 设置结果
+      if (qqLyric.yrcData.length > 0) {
+        result.yrcData = qqLyric.yrcData;
+        qqMusicAdopted = true;
       }
-    }
+      if (qqLyric.lrcData.length > 0) {
+        result.lrcData = qqLyric.lrcData;
+        if (!qqMusicAdopted) qqMusicAdopted = true;
+      }
+      // 先返回一次，避免 TTML 请求过慢
+      if (qqMusicAdopted) {
+        let lyricData = this.handleLyricExclude(result);
+        lyricData = await this.applyChineseVariant(lyricData);
+        this.setFinalLyric(lyricData, req);
+      }
+    };
 
-    // QM (QQ Music)
-    if (qqData && (qqData.lrcData.length > 0 || qqData.yrcData.length > 0)) {
-      candidates["QM"] = qqData;
-      sources.push("QM");
-    }
-
-    // 网易云 (YRC/LRC)
-    if (neteaseData && neteaseData.code === 200) {
+    // 处理 TTML 歌词
+    const adoptTTML = async () => {
+      if (!settingStore.enableOnlineTTMLLyric) return;
+      if (typeof id !== "number") return;
+      let ttmlContent: string | null = await this.getRawLyricCache(id, "ttml");
+      if (!ttmlContent) {
+        ttmlContent = await songLyricTTML(id);
+        if (ttmlContent && typeof ttmlContent === "string") {
+          this.saveRawLyricCache(id, "ttml", ttmlContent);
+        }
+      }
+      if (isStale()) return;
+      if (!ttmlContent || typeof ttmlContent !== "string") return;
+      const sorted = this.cleanTTMLTranslations(ttmlContent);
+      const parsed = parseTTML(sorted);
+      const lines = parsed?.lines || [];
+      if (!lines.length) return;
+      result.yrcData = lines;
+      ttmlAdopted = true;
+    };
+    // 处理 LRC 歌词
+    const adoptLRC = async () => {
+      // 如果已经有 QQ 音乐歌词，跳过网易云
+      if (qqMusicAdopted) return;
+      if (typeof id !== "number") return;
+      let data: any = null;
+      const cached = await this.getRawLyricCache(id, "lrc");
+      if (cached) {
+        try {
+          data = JSON.parse(cached);
+        } catch {
+          data = null;
+        }
+      }
+      if (!data) {
+        data = await songLyric(id);
+        if (data && data.code === 200) {
+          this.saveRawLyricCache(id, "lrc", JSON.stringify(data));
+        }
+      }
+      if (isStale()) return;
+      if (!data || data.code !== 200) return;
       let lrcLines: LyricLine[] = [];
       let yrcLines: LyricLine[] = [];
-
       // 普通歌词
-      if (neteaseData?.lrc?.lyric) {
-        lrcLines = parseLrc(neteaseData.lrc.lyric) || [];
-        if (neteaseData?.tlyric?.lyric)
-          lrcLines = this.alignLyrics(
-            lrcLines,
-            parseLrc(neteaseData.tlyric.lyric),
-            "translatedLyric",
-          );
-        if (neteaseData?.romalrc?.lyric)
-          lrcLines = this.alignLyrics(lrcLines, parseLrc(neteaseData.romalrc.lyric), "romanLyric");
+      if (data?.lrc?.lyric) {
+        lrcLines = parseLrc(data.lrc.lyric) || [];
+        // 普通歌词翻译
+        if (data?.tlyric?.lyric)
+          lrcLines = this.alignLyrics(lrcLines, parseLrc(data.tlyric.lyric), "translatedLyric");
+        // 普通歌词音译
+        if (data?.romalrc?.lyric)
+          lrcLines = this.alignLyrics(lrcLines, parseLrc(data.romalrc.lyric), "romanLyric");
       }
-
       // 逐字歌词
-      if (neteaseData?.yrc?.lyric) {
-        yrcLines = parseYrc(neteaseData.yrc.lyric) || [];
-        if (neteaseData?.ytlrc?.lyric)
-          yrcLines = this.alignLyrics(
-            yrcLines,
-            parseLrc(neteaseData.ytlrc.lyric),
-            "translatedLyric",
-          );
-        if (neteaseData?.yromalrc?.lyric)
-          yrcLines = this.alignLyrics(yrcLines, parseLrc(neteaseData.yromalrc.lyric), "romanLyric");
+      if (data?.yrc?.lyric) {
+        yrcLines = parseYrc(data.yrc.lyric) || [];
+        // 逐字歌词翻译
+        if (data?.ytlrc?.lyric)
+          yrcLines = this.alignLyrics(yrcLines, parseLrc(data.ytlrc.lyric), "translatedLyric");
+        // 逐字歌词音译
+        if (data?.yromalrc?.lyric)
+          yrcLines = this.alignLyrics(yrcLines, parseLrc(data.yromalrc.lyric), "romanLyric");
       }
-
-      if (yrcLines.length > 0) {
-        // YRC 源通常也包含 LRC 数据，或者我们将 YRC 作为主要数据
-        candidates["YRC"] = { lrcData: lrcLines, yrcData: yrcLines };
-        sources.push("YRC");
-      } else if (lrcLines.length > 0) {
-        candidates["LRC"] = { lrcData: lrcLines, yrcData: [] };
-        sources.push("LRC");
+      if (lrcLines.length) result.lrcData = lrcLines;
+      // 如果没有 TTML，则采用 网易云 YRC
+      if (!result.yrcData.length && yrcLines.length) {
+        result.yrcData = yrcLines;
       }
+      // 先返回一次，避免 TTML 请求过慢
+      let lyricData = this.handleLyricExclude(result);
+      lyricData = await this.applyChineseVariant(lyricData);
+      this.setFinalLyric(lyricData, req);
+    };
+    // 优先获取 QQ 音乐歌词
+    if (settingStore.preferQQMusicLyric) {
+      await adoptQQMusic();
     }
-
-    // 更新可用源
-    statusStore.availableLyricSources = sources;
-
-    // 3. 选择源
-    let selected = statusStore.preferredLyricSource;
-
-    // 如果没有偏好或偏好不可用，使用默认优先级
-    if (!selected || !candidates[selected]) {
-      // 默认优先级: TTML > QM > YRC > LRC
-      if (candidates["TTML"]) selected = "TTML";
-      else if (candidates["QM"]) selected = "QM";
-      else if (candidates["YRC"]) selected = "YRC";
-      else if (candidates["LRC"]) selected = "LRC";
-    }
-
-    // 4. 应用结果
-    const finalData = (selected && candidates[selected]) || { lrcData: [], yrcData: [] };
-
-    statusStore.usingTTMLLyric = selected === "TTML";
-    statusStore.usingQRCLyric = selected === "QM";
-
-    // 排除过滤 & 简繁转换
-    let processedData = this.handleLyricExclude(finalData);
-    processedData = await this.applyChineseVariant(processedData);
-
-    // 设置最终歌词
-    this.setFinalLyric(processedData, req);
-
-    return processedData;
+    await Promise.allSettled([adoptTTML(), adoptLRC()]);
+    // 优先使用 TTML
+    statusStore.usingTTMLLyric = ttmlAdopted;
+    // 设置是否使用 QRC 歌词（来自 QQ 音乐，且未被 TTML 覆盖）
+    statusStore.usingQRCLyric = qqMusicAdopted && !ttmlAdopted;
+    return await this.applyChineseVariant(this.handleLyricExclude(result));
   }
 
   /**
@@ -489,115 +398,52 @@ class LyricManager {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
       const settingStore = useSettingStore();
-      const result = await window.electron.ipcRenderer.invoke("get-music-lyric", path);
-      const { lyric, format, external, embedded } = result as {
-        lyric?: string;
-        format?: "lrc" | "ttml" | "yrc";
-        external?: { lyric: string; format: "lrc" | "ttml" | "yrc" };
-        embedded?: { lyric: string; format: "lrc" };
-      };
-
-      const candidates: Record<string, SongLyric> = {};
-
-      const processLyric = (
-        rawLyric: string,
-        rawFormat: "lrc" | "ttml" | "yrc",
-      ): { type: string; data: SongLyric } | null => {
-        let type = "";
-        let data: SongLyric = { lrcData: [], yrcData: [] };
-
-        if (rawFormat === "yrc") {
-          let lines: LyricLine[] = [];
-          // 检测是否为 XML 格式 (QRC)
-          if (rawLyric.trim().startsWith("<") || rawLyric.includes("<QrcInfos>")) {
-            lines = this.parseQRCLyric(rawLyric);
-            type = "QM";
-          } else {
-            lines = parseYrc(rawLyric) || [];
-            type = "YRC";
-          }
-          data.yrcData = lines;
-        } else if (rawFormat === "ttml") {
-          type = "TTML";
-          const sorted = this.cleanTTMLTranslations(rawLyric);
-          const ttml = parseTTML(sorted);
-          data.yrcData = ttml?.lines || [];
+      const { lyric, format }: { lyric?: string; format?: "lrc" | "ttml" | "yrc" } =
+        await window.electron.ipcRenderer.invoke("get-music-lyric", path);
+      if (!lyric) return { lrcData: [], yrcData: [] };
+      // YRC 直接解析
+      if (format === "yrc") {
+        let lines: LyricLine[] = [];
+        // 检测是否为 XML 格式 (QRC)
+        if (lyric.trim().startsWith("<") || lyric.includes("<QrcInfos>")) {
+          lines = this.parseQRCLyric(lyric);
         } else {
-          // 解析本地歌词（智能识别格式）
-          const { format: lrcFormat, lines: parsedLines } = parseSmartLrc(rawLyric);
-          // 如果是逐字格式，直接作为 yrcData
-          if (isWordLevelFormat(lrcFormat)) {
-            type = "YRC";
-            data.yrcData = parsedLines;
-          } else {
-            // 普通格式
-            type = "LRC";
-            data = this.alignLocalLyrics({ lrcData: parsedLines, yrcData: [] });
-          }
+          lines = parseYrc(lyric) || [];
         }
-
-        if (data.lrcData.length > 0 || data.yrcData.length > 0) {
-          return { type, data };
-        }
-        return null;
-      };
-
-      // 1. 解析内嵌歌词
-      if (embedded) {
-        const res = processLyric(embedded.lyric, embedded.format);
-        if (res) {
-          candidates[res.type] = res.data;
-        }
+        statusStore.usingTTMLLyric = false;
+        return await this.applyChineseVariant({ lrcData: [], yrcData: lines });
       }
-
-      // 2. 解析外部文件 (如果有相同类型，覆盖内嵌歌词)
-      if (external) {
-        const res = processLyric(external.lyric, external.format);
-        if (res) {
-          candidates[res.type] = res.data;
-        }
-      } else if (lyric && !embedded) {
-        // 兼容旧逻辑（虽然现在应该都走 external/embedded 字段了）
-        const res = processLyric(lyric, format || "lrc");
-        if (res) candidates[res.type] = res.data;
+      // TTML 直接返回
+      if (format === "ttml") {
+        const sorted = this.cleanTTMLTranslations(lyric);
+        const ttml = parseTTML(sorted);
+        const lines = ttml?.lines || [];
+        statusStore.usingTTMLLyric = true;
+        return await this.applyChineseVariant({ lrcData: [], yrcData: lines });
       }
-
-      // 3. QQ 音乐匹配
+      // 解析本地歌词（智能识别格式）
+      const { format: lrcFormat, lines: parsedLines } = parseSmartLrc(lyric);
+      // 如果是逐字格式，直接作为 yrcData
+      if (isWordLevelFormat(lrcFormat)) {
+        statusStore.usingTTMLLyric = false;
+        return await this.applyChineseVariant({ lrcData: [], yrcData: parsedLines });
+      }
+      // 普通格式，继续原有逻辑
+      let aligned = this.alignLocalLyrics({ lrcData: parsedLines, yrcData: [] });
+      statusStore.usingTTMLLyric = false;
+      // 如果开启了本地歌曲 QQ 音乐匹配，尝试获取逐字歌词
       if (settingStore.localLyricQQMusicMatch && musicStore.playSong) {
         const qqLyric = await this.fetchQQMusicLyric(musicStore.playSong);
-        if (qqLyric && (qqLyric.lrcData.length > 0 || qqLyric.yrcData.length > 0)) {
-          // 如果本地是 LRC，且 QQ 提供了 YRC，我们可以混合使用（QQ YRC + 本地 LRC）
-          // 但为了简化切换逻辑，这里将 QQ 作为独立源 "QM"
-          candidates["QM"] = qqLyric;
+        if (qqLyric && qqLyric.yrcData.length > 0) {
+          // 使用 QQ 音乐的逐字歌词，但保留本地歌词作为 lrcData
+          aligned = {
+            lrcData: aligned.lrcData,
+            yrcData: qqLyric.yrcData,
+          };
+          statusStore.usingQRCLyric = true;
         }
       }
-
-      // 4. 构建可用源列表 (顺序决定 UI 显示顺序: TTML > QM > YRC > LRC)
-      const sources: string[] = [];
-      if (candidates["TTML"]) sources.push("TTML");
-      if (candidates["QM"]) sources.push("QM");
-      if (candidates["YRC"]) sources.push("YRC");
-      if (candidates["LRC"]) sources.push("LRC");
-
-      // 更新可用源
-      statusStore.availableLyricSources = sources;
-
-      // 5. 选择源
-      let selected = statusStore.preferredLyricSource;
-      if (!selected || !candidates[selected]) {
-        // 默认优先级
-        if (candidates["TTML"]) selected = "TTML";
-        else if (candidates["QM"]) selected = "QM";
-        else if (candidates["YRC"]) selected = "YRC";
-        else if (candidates["LRC"]) selected = "LRC";
-        else if (sources.length > 0) selected = sources[0];
-      }
-
-      // 6. 后处理
-      const finalData = (selected && candidates[selected]) || { lrcData: [], yrcData: [] };
-      statusStore.usingTTMLLyric = selected === "TTML";
-      statusStore.usingQRCLyric = selected === "QM";
-      return await this.applyChineseVariant(finalData);
+      return await this.applyChineseVariant(aligned);
     } catch {
       return { lrcData: [], yrcData: [] };
     }
@@ -837,192 +683,6 @@ class LyricManager {
   }
 
   /**
-   * 替换歌词括号内容
-   * @param lyricData 歌词数据
-   * @returns 替换后的歌词数据
-   */
-  private applyBracketReplacement(lyricData: SongLyric): SongLyric {
-    const settingStore = useSettingStore();
-    if (!settingStore.replaceLyricBrackets) {
-      return lyricData;
-    }
-
-    const newLyricData = cloneDeep(lyricData);
-
-    // --- Configuration Helper ---
-    // Helper to determine the replacement strategy based on settings
-    const getReplacementConfig = () => {
-      const preset = settingStore.bracketReplacementPreset || "dash";
-      const custom = settingStore.customBracketReplacement || "-";
-      let startStr = " - ";
-      let endStr = " ";
-      let isEnclosure = false;
-
-      if (preset === "angleBrackets") {
-        startStr = "〔";
-        endStr = "〕";
-        isEnclosure = true;
-      } else if (preset === "cornerBrackets") {
-        startStr = "「";
-        endStr = "」";
-        isEnclosure = true;
-      } else if (preset === "custom") {
-        const trimmed = custom.trim();
-        // Heuristic: if length is 2 and not just dashes, treat as pair (e.g. "()")
-        // This allows users to input "()" to mean replace ( with ( and ) with )
-        if (trimmed.length === 2 && trimmed[0] !== trimmed[1] && !trimmed.includes("-")) {
-          startStr = trimmed[0];
-          endStr = trimmed[1];
-          isEnclosure = true;
-        } else {
-          // Treat as separator
-          startStr = " " + trimmed + " ";
-          startStr = startStr.replace(/\s+/g, " "); // Normalize spaces
-          endStr = " ";
-          isEnclosure = false;
-        }
-      }
-      return { startStr, endStr, isEnclosure };
-    };
-
-    const { startStr, endStr, isEnclosure } = getReplacementConfig();
-
-    // --- Processing Helpers ---
-
-    // Process a string (used for translations and romaji)
-    const processString = (str: string): string => {
-      if (!str) return str;
-
-      // If the entire string is enclosed in brackets (e.g. "(Chorus)"), remove them if not in enclosure mode
-      if (!isEnclosure && /^\s*[(（][^()（）]*[)）]\s*$/.test(str)) {
-        return str
-          .replace(/^\s*[(（]/, "")
-          .replace(/[)）]\s*$/, "")
-          .trim();
-      }
-
-      let res = str.replace(/[(（]/g, startStr);
-      if (isEnclosure) {
-        res = res.replace(/[)）]/g, endStr);
-      } else {
-        // Separator mode:
-        // 1. Remove ) if it's at the end of the string (effectively just a closing marker)
-        // 2. Otherwise replace ) with endStr (usually space)
-        res = res.replace(/[)）](?=\s*$)/g, "").replace(/[)）]/g, endStr);
-
-        // Cleanup double dashes if the separator contains a dash
-        if (startStr.includes("-")) {
-          res = res.replace(/(?:\s*-\s*){2,}/g, " - ");
-        }
-      }
-      return res;
-    };
-
-    // Process a single lyric line (LRC/YRC)
-    const processLine = (line: LyricLine) => {
-      // 1. Check for "Full Bracket" line (e.g. "(Music)")
-      // If the whole line is in brackets and we are NOT in enclosure mode (e.g. dash mode),
-      // we likely want to strip the brackets entirely instead of replacing them with dashes.
-      const fullText = line.words.map((w) => w.word).join("");
-      const isFullBracket = /^\s*[(（][^()（）]*[)）]\s*$/.test(fullText);
-
-      if (isFullBracket && !isEnclosure) {
-        // Remove the first opening bracket found in the words
-        let foundStart = false;
-        for (const word of line.words) {
-          if (foundStart) break;
-          if (/[(（]/.test(word.word)) {
-            word.word = word.word.replace(/[(（]/, "");
-            foundStart = true;
-          }
-        }
-        // Remove the last closing bracket found in the words
-        let foundEnd = false;
-        for (let i = line.words.length - 1; i >= 0; i--) {
-          if (foundEnd) break;
-          const word = line.words[i];
-          if (/[)）]/.test(word.word)) {
-            // Find the last occurrence of ) or ）
-            const lastIndex = Math.max(word.word.lastIndexOf(")"), word.word.lastIndexOf("）"));
-            if (lastIndex !== -1) {
-              word.word = word.word.substring(0, lastIndex) + word.word.substring(lastIndex + 1);
-              foundEnd = true;
-            }
-          }
-        }
-      } else {
-        // Normal replacement logic
-        line.words.forEach((word, index) => {
-          // Replace opening brackets
-          word.word = word.word.replace(/[(（]/g, startStr);
-
-          if (isEnclosure) {
-            // Enclosure mode: simply replace closing brackets with endStr
-            word.word = word.word.replace(/[)）]/g, endStr);
-          } else {
-            // Separator mode: logic to handle closing brackets nicely
-            word.word = word.word.replace(/[)）]/g, (_, offset, string) => {
-              const isAtEnd = offset === string.length - 1;
-              // If ) is at the end of the word...
-              if (isAtEnd) {
-                // ...and it's the last word of the line, remove it (it's just closing the line)
-                if (index === line.words.length - 1) {
-                  return "";
-                } else {
-                  // ...otherwise it's a separator between this word and the next
-                  return endStr;
-                }
-              } else {
-                // If not at end of word, it's a separator
-                return endStr;
-              }
-            });
-          }
-        });
-
-        // Cleanup double dashes (only for separator mode with dash)
-        if (!isEnclosure && startStr.includes("-")) {
-          line.words.forEach((word, index) => {
-            // 1. Intra-word cleanup: " -  - " -> " - "
-            word.word = word.word.replace(/(?:\s*-\s*){2,}/g, " - ");
-
-            // 2. Inter-word cleanup: Prev word ends with dash, current starts with dash
-            if (index > 0) {
-              const prev = line.words[index - 1];
-              if (/-\s*$/.test(prev.word) && /^\s*-/.test(word.word)) {
-                // Remove trailing dash from previous word
-                prev.word = prev.word.replace(/-\s*$/, "");
-                // Ensure current word starts with proper separator
-                if (!/^\s*-\s+/.test(word.word)) {
-                  word.word = " - " + word.word.replace(/^\s*-\s*/, "");
-                }
-              }
-            }
-          });
-        }
-      }
-
-      // Process extra fields
-      if (line.translatedLyric) {
-        line.translatedLyric = processString(line.translatedLyric);
-      }
-      if (line.romanLyric) {
-        line.romanLyric = processString(line.romanLyric);
-      }
-    };
-
-    const processLines = (lines: LyricLine[] | undefined) => {
-      if (!lines) return;
-      lines.forEach(processLine);
-    };
-
-    processLines(newLyricData.lrcData);
-    processLines(newLyricData.yrcData);
-
-    return newLyricData;
-  }
-
-  /**
    * 比较歌词数据是否相同
    * @param oldData 旧歌词数据
    * @param newData 新歌词数据
@@ -1084,14 +744,11 @@ class LyricManager {
     const statusStore = useStatusStore();
     // 若非本次
     if (this.activeLyricReq !== req) return;
-
     // 应用括号替换
-    lyricData = this.applyBracketReplacement(lyricData);
-
+    lyricData = applyBracketReplacement(lyricData);
     // 规范化时间
     this.normalizeLyricLines(lyricData.yrcData);
     this.normalizeLyricLines(lyricData.lrcData);
-
     // 如果只有逐字歌词
     if (lyricData.lrcData.length === 0 && lyricData.yrcData.length > 0) {
       // 构成普通歌词
@@ -1123,13 +780,6 @@ class LyricManager {
     musicStore.setSongLyric(lyricData, true);
     // 结束加载状态
     statusStore.lyricLoading = false;
-
-    // 发送任务栏歌词
-    const taskbarLyrics = lyricData.yrcData.length > 0 ? lyricData.yrcData : lyricData.lrcData;
-    playerIpc.sendTaskbarLyrics({
-      lines: toRaw(taskbarLyrics),
-      type: lyricData.yrcData.length > 0 ? "word" : "line",
-    });
   }
 
   /**
@@ -1171,16 +821,9 @@ class LyricManager {
    */
   public async handleLyric(song: SongType) {
     const settingStore = useSettingStore();
-    const statusStore = useStatusStore();
-
     // 标记当前歌词请求（避免旧请求覆盖新请求）
     const req = ++this.lyricReqSeq;
     this.activeLyricReq = req;
-
-    // 加载歌词源偏好
-    const pref = await this.getLyricPreference(song.id);
-    statusStore.preferredLyricSource = pref;
-
     const isStreaming = song?.type === "streaming";
     try {
       let lyricData: SongLyric = { lrcData: [], yrcData: [] };

@@ -102,20 +102,16 @@ const initStoreIpc = (): void => {
         } catch {
           return { success: false, error: "invalid_json" };
         }
-
         // 基础结构验证
         if (!settings || typeof settings !== "object") {
           return { success: false, error: "invalid_format" };
         }
-
         // 恢复 Electron Store 配置
         if (settings.electron) {
           try {
-            // 可以在这里过滤掉一些不想恢复的配置，比如 window 位置
-            // const { window, ...rest } = settings.electron;
-            // store.store = { ...store.store, ...rest };
-            // 目前策略：完全覆盖，除了 window 位置如果超出屏幕可能需要处理（electron-store 通常处理得还行）
-            store.store = settings.electron;
+            // 过滤 window
+            const { window, ...rest } = settings.electron;
+            store.store = { ...store.store, ...rest };
           } catch (e) {
             console.error("Error restoring electron store:", e);
           }
@@ -123,7 +119,6 @@ const initStoreIpc = (): void => {
           // 兼容旧版纯 Electron Store 导出
           store.store = settings;
         }
-
         return { success: true, data: settings };
       }
       console.log("[IPC] Import cancelled");

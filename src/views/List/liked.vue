@@ -327,17 +327,10 @@ const playAllSongs = useDebounceFn(() => {
 
 // 加载提示
 const loadingMsgShow = (show: boolean = true) => {
-  if (show) {
-    loadingMsg.value?.destroy();
-    loadingMsg.value = window.$message.loading("该歌单歌曲数量过多，请稍等", {
-      duration: 0,
-      closable: true,
-    });
-  } else {
-    setLoading(false);
-    loadingMsg.value?.destroy();
-    loadingMsg.value = null;
-  }
+  if (!show) return;
+  setLoading(false);
+  loadingMsg.value?.destroy();
+  loadingMsg.value = null;
 };
 
 // 删除指定索引歌曲

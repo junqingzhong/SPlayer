@@ -354,6 +354,7 @@ const handleOnlinePlaylist = async (id: number, getList: boolean, refresh: boole
     // 保存缓存
     saveCache("playlist", id, detailData.value!, songs);
   } else {
+    if (!refresh) setListData([]);
     await getPlaylistAllSongs(id, count, refresh);
   }
   // 检查是否仍然是当前请求的歌单
