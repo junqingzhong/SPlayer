@@ -8,93 +8,8 @@ import { toRaw } from "vue";
 import { toLikeSong } from "./auth";
 import { isElectron } from "./env";
 import { getPlayerInfoObj } from "./format";
+import { createConsoleBuffer } from "./log";
 import { openSetting, openUpdateApp } from "./modal";
-
-type ConsoleWithBuffer = Console & { __splayerConsoleBuffer?: boolean };
-
-const consoleBuffer: string[] = [];
-const maxConsoleBufferSize = 500;
-
-const formatConsoleValue = (value: unknown) => {
-  if (value instanceof Error) return value.stack || value.message;
-  if (typeof value === "string") return value;
-  if (typeof value === "number") return String(value);
-  if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "bigint") return value.toString();
-  if (typeof value === "function") return value.name ? `[Function ${value.name}]` : "[Function]";
-  if (value === undefined) return "undefined";
-  if (value === null) return "null";
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-};
-
-const pushConsoleLog = (level: string, args: unknown[]) => {
-  const time = new Date().toISOString();
-  const message = args.map(formatConsoleValue).join(" ");
-  consoleBuffer.push(`[${time}] [${level}] ${message}`);
-  if (consoleBuffer.length > maxConsoleBufferSize) {
-    consoleBuffer.splice(0, consoleBuffer.length - maxConsoleBufferSize);
-  }
-};
-
-const formatErrorEventMessage = (event: ErrorEvent | PromiseRejectionEvent) => {
-  if (event instanceof ErrorEvent) {
-    if (event.error instanceof Error) return event.error.stack || event.error.message;
-    return event.message || "Unknown Error";
-  }
-  const reason = event.reason;
-  if (reason instanceof Error) return reason.stack || reason.message;
-  if (typeof reason === "string") return reason;
-  try {
-    return JSON.stringify(reason);
-  } catch {
-    return String(reason);
-  }
-};
-
-const initConsoleBuffer = () => {
-  if (!isElectron) return;
-  const consoleWithBuffer = console as ConsoleWithBuffer;
-  if (consoleWithBuffer.__splayerConsoleBuffer) return;
-  consoleWithBuffer.__splayerConsoleBuffer = true;
-
-  const originalLog = console.log.bind(console);
-  const originalInfo = console.info.bind(console);
-  const originalWarn = console.warn.bind(console);
-  const originalError = console.error.bind(console);
-  const originalDebug = console.debug.bind(console);
-
-  console.log = (...args) => {
-    pushConsoleLog("log", args);
-    originalLog(...args);
-  };
-  console.info = (...args) => {
-    pushConsoleLog("info", args);
-    originalInfo(...args);
-  };
-  console.warn = (...args) => {
-    pushConsoleLog("warn", args);
-    originalWarn(...args);
-  };
-  console.error = (...args) => {
-    pushConsoleLog("error", args);
-    originalError(...args);
-  };
-  console.debug = (...args) => {
-    pushConsoleLog("debug", args);
-    originalDebug(...args);
-  };
-
-  window.addEventListener("error", (event) => {
-    pushConsoleLog("error", [formatErrorEventMessage(event)]);
-  });
-  window.addEventListener("unhandledrejection", (event) => {
-    pushConsoleLog("error", [formatErrorEventMessage(event)]);
-  });
-};
 
 // 关闭更新状态
 const closeUpdateStatus = () => {
@@ -106,7 +21,19 @@ const closeUpdateStatus = () => {
 const initIpc = () => {
   try {
     if (!isElectron) return;
-    initConsoleBuffer();
+
+    const consoleBuffer = createConsoleBuffer({
+      bufferKey: "__splayerGlobalConsoleBuffer",
+    });
+    consoleBuffer.init();
+
+    window.addEventListener("error", (event) => {
+      consoleBuffer.push("error", [consoleBuffer.formatErrorEventMessage(event)]);
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      consoleBuffer.push("error", [consoleBuffer.formatErrorEventMessage(event)]);
+    });
+
     const player = usePlayerController();
     // 播放
     window.electron.ipcRenderer.on("play", () => player.play());
@@ -246,7 +173,7 @@ const initIpc = () => {
       );
     });
     window.electron.ipcRenderer.on("request-renderer-console-logs", () => {
-      window.electron.ipcRenderer.send("return-renderer-console-logs", consoleBuffer.slice());
+      window.electron.ipcRenderer.send("return-renderer-console-logs", consoleBuffer.getLogs());
     });
   } catch (error) {
     console.log(error);
