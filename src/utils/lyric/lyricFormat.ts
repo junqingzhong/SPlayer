@@ -13,8 +13,8 @@ const getReplacementConfig = () => {
   const custom = settingStore.customBracketReplacement || "-";
 
   let startStr = " - ";
-  let endStr = " ";
-  let isEnclosure = false;
+  const endStr = " ";
+  const isEnclosure = false;
 
   // 预设模式
   if (preset === "angleBrackets") {
@@ -52,7 +52,7 @@ export const applyBracketReplacement = (lyricData: SongLyric): SongLyric => {
   const { startStr, endStr, isEnclosure } = getReplacementConfig();
 
   // 正则：匹配全行括号 (如 "(Music)")
-  const fullBracketRegex = /^\s*[\(（][^()（）]*[\)）]\s*$/;
+  const fullBracketRegex = /^\s*[(（][^()（）]*[)）]\s*$/;
   // 正则：匹配左括号
   const leftBracketRegex = /[(（]/g;
   // 正则：匹配右括号
@@ -67,8 +67,8 @@ export const applyBracketReplacement = (lyricData: SongLyric): SongLyric => {
     // 如果是全行括号且非闭合模式 (如分隔符模式)，则直接去除括号
     if (!isEnclosure && fullBracketRegex.test(str)) {
       return str
-        .replace(/^\s*[\(（]/, "")
-        .replace(/[\)）]\s*$/, "")
+        .replace(/^\s*[(（]/, "")
+        .replace(/[)）]\s*$/, "")
         .trim();
     }
 

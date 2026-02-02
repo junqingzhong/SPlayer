@@ -120,8 +120,14 @@ export class LocalMusicService {
     }
   }
 
-  /** 从 Buffer 提取并保存封面 */
-  private async saveCoverFromBuffer(
+  /**
+   * 从 Buffer 提取并保存封面
+   * 先改为公共，暂时不使用了
+   * @param bufferData Buffer 数据
+   * @param fileId 文件 ID
+   * @returns 保存的封面文件名
+   */
+  public async saveCoverFromBuffer(
     bufferData: Buffer,
     fileId: string,
   ): Promise<string | undefined> {
@@ -314,7 +320,7 @@ export class LocalMusicService {
                 // 仅为了封面而解析
                 const metadata = await parseFile(filePath);
                 coverPath = await this.extractCover(metadata, id);
-              } catch (e) {
+              } catch {
                 // 忽略封面解析错误，使用 Rust 提供的基本信息
               }
 

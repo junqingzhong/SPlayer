@@ -110,7 +110,7 @@ const initStoreIpc = (): void => {
         if (settings.electron) {
           try {
             // 过滤 window
-            const { window, ...rest } = settings.electron;
+            const { ...rest } = settings.electron;
             store.store = { ...store.store, ...rest };
           } catch (e) {
             console.error("Error restoring electron store:", e);

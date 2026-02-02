@@ -274,7 +274,7 @@ export const usePlaySettings = (): SettingConfig => {
 
   // 动态计算音质选项
   const songLevelOptions = computed(() => {
-    let options = Object.values(songLevelData);
+    const options = Object.values(songLevelData);
 
     if (settingStore.disableAiAudio) {
       return options.filter((option) => {
