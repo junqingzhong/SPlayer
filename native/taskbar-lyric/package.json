@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "main": "taskbar-lyric.node",
   "napi": {
-    "binaryName": "taskbar-lyric"
+    "binaryName": "taskbar_lyric"
   },
   "scripts": {
     "build": "napi build --release --no-const-enum"

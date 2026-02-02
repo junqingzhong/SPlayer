@@ -54,11 +54,15 @@ class PlayerController {
 
     // 监听设置变化以更新 ReplayGain
     settingStore.$subscribe((mutation) => {
-      if (
-        mutation.events &&
-        (mutation.events as any).key &&
-        ["enableReplayGain", "replayGainMode"].includes((mutation.events as any).key)
-      ) {
+      const events = Array.isArray(mutation.events) ? mutation.events : [mutation.events];
+      const shouldUpdate = events.some((event) => {
+        // 安全检查 event 是否为包含 key 的对象
+        if (!event || typeof event !== "object" || !("key" in event)) return false;
+        const key = (event as { key: string }).key;
+        return ["enableReplayGain", "replayGainMode"].includes(key);
+      });
+
+      if (shouldUpdate) {
         this.applyReplayGain();
       }
     });

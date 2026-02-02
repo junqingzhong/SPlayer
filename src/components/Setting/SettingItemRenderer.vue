@@ -217,7 +217,7 @@ const forcedValue = computed(() => {
   if (!props.item.forceIf) return undefined;
   const val = props.item.forceIf.forcedValue;
   if (typeof val === "function") {
-    return (val as any)();
+    return (val as () => any)();
   }
   return unref(val);
 });

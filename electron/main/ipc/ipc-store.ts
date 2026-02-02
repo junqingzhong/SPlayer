@@ -13,30 +13,30 @@ const initStoreIpc = (): void => {
 
   // 获取配置项
   ipcMain.handle("store-get", (_event, key: keyof StoreType) => {
-    return store.get(key as any);
+    return store.get(key);
   });
 
   // 设置配置项
   ipcMain.handle("store-set", (_event, key: keyof StoreType, value: unknown) => {
-    store.set(key as any, value as any);
+    store.set(key, value as StoreType[typeof key]);
     return true;
   });
 
   // 判断配置项是否存在
   ipcMain.handle("store-has", (_event, key: keyof StoreType) => {
-    return store.has(key as any);
+    return store.has(key);
   });
 
   // 删除配置项
   ipcMain.handle("store-delete", (_event, key: keyof StoreType) => {
-    store.delete(key as any);
+    store.delete(key);
     return true;
   });
 
   // 重置配置（支持指定 keys 或全部重置）
   ipcMain.handle("store-reset", (_event, keys?: (keyof StoreType)[]) => {
     if (keys && keys.length > 0) {
-      store.reset(...(keys as any));
+      store.reset(...keys);
     } else {
       store.reset();
     }
@@ -44,7 +44,7 @@ const initStoreIpc = (): void => {
   });
 
   // 导出配置
-  ipcMain.handle("store-export", async (_event, rendererData: any) => {
+  ipcMain.handle("store-export", async (_event, rendererData: unknown) => {
     console.log("[IPC] store-export called");
     try {
       const now = new Date();

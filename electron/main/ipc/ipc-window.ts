@@ -153,7 +153,7 @@ const initWindowsIpc = (): void => {
     if (currentProgress < 0) {
       mainWin.setProgressBar(-1);
     } else {
-      mainWin.setProgressBar(currentProgress, { mode: currentMode as any });
+      mainWin.setProgressBar(currentProgress, { mode: currentMode });
     }
   };
 
