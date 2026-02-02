@@ -23,6 +23,9 @@ const initRendererLogIpc = (): void => {
     }
   });
 
+  /**
+   * 获取渲染进程控制台日志
+   */
   const getRendererConsoleLogs = async (): Promise<string[]> => {
     const mainWin = mainWindow.getWin();
     if (!mainWin || mainWin.isDestroyed() || mainWin.webContents.isDestroyed()) return [];

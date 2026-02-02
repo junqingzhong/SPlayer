@@ -167,6 +167,7 @@ const changeGlobalTheme = () => {
       },
       Tooltip: {
         color: colors.surface,
+        textColor: colors.primary,
       },
       Tabs: {
         colorSegment: colors.surface,

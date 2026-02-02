@@ -3,9 +3,8 @@
 </template>
 
 <script setup lang="ts">
-import { h, onMounted, onUnmounted } from "vue";
-import { isElectron } from "@/utils/env";
 import { createConsoleBuffer } from "@/utils/log";
+import { isElectron } from "@/utils/env";
 
 let dialogOpened = false;
 
@@ -21,7 +20,7 @@ const showErrorDialog = (errorMessage: string) => {
   dialogOpened = true;
   const safeMessage = sanitizeErrorMessage(errorMessage);
   window.$dialog.error({
-    title: "SPlayer出现错误",
+    title: "SPlayer 出现错误",
     content: () =>
       h(
         "div",

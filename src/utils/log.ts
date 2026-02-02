@@ -94,18 +94,38 @@ const log = () => {
   };
 };
 
+/**
+ * 控制台缓冲区配置项
+ */
 type ConsoleBufferOptions = {
+  /**
+   * 缓冲区最大长度
+   */
   maxSize?: number;
+  /**
+   * 缓冲区键名
+   */
   bufferKey?: string;
+  /**
+   * 错误处理函数
+   */
   onError?: (message: string, args: unknown[]) => void;
 };
 
+/**
+ * 创建一个控制台缓冲区
+ * @param options 配置项
+ */
 export const createConsoleBuffer = (options: ConsoleBufferOptions = {}) => {
   const buffer: string[] = [];
   const maxSize = options.maxSize ?? 500;
   const bufferKey = options.bufferKey ?? "__splayerConsoleBuffer";
   const onError = options.onError;
-
+  /**
+   * 格式化控制台值
+   * @param value 值
+   * @returns 格式化后的值
+   */
   const formatConsoleValue = (value: unknown) => {
     if (value instanceof Error) return value.stack || value.message;
     if (typeof value === "string") return value;
@@ -121,9 +141,17 @@ export const createConsoleBuffer = (options: ConsoleBufferOptions = {}) => {
       return String(value);
     }
   };
-
+  /**
+   * 格式化控制台参数
+   * @param args 参数
+   * @returns 格式化后的参数
+   */
   const formatArgs = (args: unknown[]) => args.map(formatConsoleValue).join(" ");
-
+  /**
+   * 将日志推入缓冲区
+   * @param level 日志级别
+   * @param args 日志参数
+   */
   const push = (level: string, args: unknown[]) => {
     const time = new Date().toISOString();
     const message = formatArgs(args);
@@ -132,7 +160,9 @@ export const createConsoleBuffer = (options: ConsoleBufferOptions = {}) => {
       buffer.splice(0, buffer.length - maxSize);
     }
   };
-
+  /**
+   * 初始化缓冲区
+   */
   const init = () => {
     const consoleWithKey = console as Console & Record<string, boolean | undefined>;
     if (consoleWithKey[bufferKey]) return;
@@ -144,30 +174,34 @@ export const createConsoleBuffer = (options: ConsoleBufferOptions = {}) => {
     const originalError = console.error.bind(console);
     const originalDebug = console.debug.bind(console);
 
-    console.log = (...args) => {
+    console.log = (...args: unknown[]) => {
       push("log", args);
       originalLog(...args);
     };
-    console.info = (...args) => {
+    console.info = (...args: unknown[]) => {
       push("info", args);
       originalInfo(...args);
     };
-    console.warn = (...args) => {
+    console.warn = (...args: unknown[]) => {
       push("warn", args);
       originalWarn(...args);
     };
-    console.error = (...args) => {
+    console.error = (...args: unknown[]) => {
       const message = formatArgs(args);
       push("error", args);
       onError?.(message, args);
       originalError(...args);
     };
-    console.debug = (...args) => {
+    console.debug = (...args: unknown[]) => {
       push("debug", args);
       originalDebug(...args);
     };
   };
-
+  /**
+   * 格式化错误事件消息
+   * @param event 错误事件
+   * @returns 格式化后的消息
+   */
   const formatErrorEventMessage = (event: ErrorEvent | PromiseRejectionEvent) => {
     if (event instanceof ErrorEvent) {
       if (event.error instanceof Error) return event.error.stack || event.error.message;
@@ -183,6 +217,10 @@ export const createConsoleBuffer = (options: ConsoleBufferOptions = {}) => {
     }
   };
 
+  /**
+   * 获取日志
+   * @returns 日志
+   */
   const getLogs = () => buffer.slice();
 
   return {
