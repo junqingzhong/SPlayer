@@ -8,6 +8,7 @@ import { toRaw } from "vue";
 import { toLikeSong } from "./auth";
 import { isElectron } from "./env";
 import { getPlayerInfoObj } from "./format";
+import { createConsoleBuffer } from "./log";
 import { openSetting, openUpdateApp } from "./modal";
 
 // 关闭更新状态
@@ -20,6 +21,19 @@ const closeUpdateStatus = () => {
 const initIpc = () => {
   try {
     if (!isElectron) return;
+
+    const consoleBuffer = createConsoleBuffer({
+      bufferKey: "__splayerGlobalConsoleBuffer",
+    });
+    consoleBuffer.init();
+
+    window.addEventListener("error", (event) => {
+      consoleBuffer.push("error", [consoleBuffer.formatErrorEventMessage(event)]);
+    });
+    window.addEventListener("unhandledrejection", (event) => {
+      consoleBuffer.push("error", [consoleBuffer.formatErrorEventMessage(event)]);
+    });
+
     const player = usePlayerController();
     // 播放
     window.electron.ipcRenderer.on("play", () => player.play());
@@ -151,6 +165,9 @@ const initIpc = () => {
           ...songLyric,
         }),
       );
+    });
+    window.electron.ipcRenderer.on("request-renderer-console-logs", () => {
+      window.electron.ipcRenderer.send("return-renderer-console-logs", consoleBuffer.getLogs());
     });
   } catch (error) {
     console.log(error);

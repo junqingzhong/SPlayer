@@ -1,8 +1,8 @@
 <template>
   <div
     :id="'setting-' + item.key"
-    class="setting-item-wrapper"
     :class="{ highlighted: highlighted }"
+    class="setting-item-wrapper"
   >
     <template v-if="item.noWrapper">
       <component
@@ -198,7 +198,11 @@ const baseModelValue = computed({
 // 强制显示条件判断
 const isForcedConditionMet = computed(() => {
   if (!props.item.forceIf) return false;
-  return toValue(props.item.forceIf.condition);
+  const condition = props.item.forceIf.condition;
+  if (typeof condition === "function") {
+    return condition();
+  }
+  return unref(condition);
 });
 
 // 最终使用的 modelValue

@@ -15,8 +15,10 @@
         <n-notification-provider>
           <n-message-provider :max="1" placement="bottom">
             <n-modal-provider>
-              <slot />
-              <NaiveProviderContent />
+              <GlobalErrorHandler>
+                <slot />
+                <NaiveProviderContent />
+              </GlobalErrorHandler>
             </n-modal-provider>
           </n-message-provider>
         </n-notification-provider>
@@ -165,6 +167,7 @@ const changeGlobalTheme = () => {
       },
       Tooltip: {
         color: colors.surface,
+        textColor: colors.primary,
       },
       Tabs: {
         colorSegment: colors.surface,
