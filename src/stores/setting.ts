@@ -44,6 +44,20 @@ export interface SettingState {
   closeAppMethod: "exit" | "hide";
   /** 显示任务栏进度 */
   showTaskbarProgress: boolean;
+  /** 任务栏歌词显示封面 */
+  taskbarLyricShowCover: boolean;
+  /** 任务栏歌词最大宽度 */
+  taskbarLyricMaxWidth: number;
+  /** 任务栏歌词位置 */
+  taskbarLyricPosition: "automatic" | "left" | "right";
+  /** 暂停时显示任务栏歌词 */
+  taskbarLyricShowWhenPaused: boolean;
+  /** 任务栏歌词动画模式 */
+  taskbarLyricAnimationMode: "slide-blur" | "left-sm";
+  /** 任务栏歌词单行模式 */
+  taskbarLyricSingleLineMode: boolean;
+  /** 任务栏歌词字重 */
+  taskbarLyricFontWeight: number;
   /** 是否使用在线服务 */
   useOnlineService: boolean;
   /** 启动时检查更新 */
@@ -468,6 +482,13 @@ export const useSettingStore = defineStore("setting", {
     showCloseAppTip: true,
     closeAppMethod: "hide",
     showTaskbarProgress: false,
+    taskbarLyricShowCover: true,
+    taskbarLyricMaxWidth: 300,
+    taskbarLyricPosition: "automatic",
+    taskbarLyricShowWhenPaused: true,
+    taskbarLyricAnimationMode: "slide-blur",
+    taskbarLyricSingleLineMode: false,
+    taskbarLyricFontWeight: 400,
     checkUpdateOnStart: true,
     preventSleep: false,
     useKeepAlive: true,

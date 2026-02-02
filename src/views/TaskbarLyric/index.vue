@@ -3,13 +3,14 @@
     class="taskbar-lyric"
     :class="{ dark: state.isDark, 'layout-reverse': !state.isCenter }"
     :style="{
-      opacity: state.opacity,
-      filter: state.opacity === 0 ? 'blur(10px)' : 'blur(0px)',
+      opacity: isVisible ? state.opacity : 0,
+      filter: state.opacity === 0 || !isVisible ? 'blur(10px)' : 'blur(0px)',
+      pointerEvents: isVisible ? 'auto' : 'none',
     }"
     @mouseenter="isHovering = true"
     @mouseleave="isHovering = false"
   >
-    <div class="cover-wrapper" v-if="state.cover">
+    <div class="cover-wrapper" v-if="state.cover && settingStore.taskbarLyricShowCover">
       <Transition name="cross-fade">
         <img :key="state.cover" :src="state.cover" class="cover" alt="cover" />
       </Transition>
@@ -32,7 +33,7 @@
     <div class="content" :style="contentStyle">
       <Transition name="content-switch">
         <div :key="viewKey" class="lyric-view-container">
-          <Transition :name="state.animationMode" mode="out-in">
+          <Transition :name="settingStore.taskbarLyricAnimationMode" mode="out-in">
             <TransitionGroup
               tag="div"
               class="lyric-list-wrapper"
@@ -81,6 +82,9 @@ import type {
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { type CSSProperties, computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import LyricScroll from "./LyricScroll.vue";
+import { useSettingStore } from "@/stores";
+
+const settingStore = useSettingStore();
 
 interface DisplayItem {
   key: string | number;
@@ -107,10 +111,16 @@ const state = reactive({
    * 只在 Win11 上可能会为 true，Win10 上总为 false
    */
   isCenter: false,
-  // "left-sm" 是主界面底部歌曲信息的动画
-  animationMode: "slide-blur" as "slide-blur" | "left-sm",
   lyricType: "line" as "line" | "word",
-  singleLineMode: false,
+  showWhenPaused: true,
+});
+
+const isVisible = computed(() => state.isPlaying || state.showWhenPaused);
+
+const lyricFontFamily = computed(() => {
+  const font =
+    settingStore.LyricFont === "follow" ? settingStore.globalFont : settingStore.LyricFont;
+  return font === "default" ? "inherit" : font;
 });
 
 const isHovering = ref(false);
@@ -209,7 +219,7 @@ const displayItems = computed<DisplayItem[]>(() => {
       isPrimary: false,
       itemType: "sub",
     });
-  } else if (!state.singleLineMode) {
+  } else if (!settingStore.taskbarLyricSingleLineMode) {
     const nextLine = state.lyrics[state.lyricIndex + 1];
     if (nextLine) {
       const nextText =
@@ -390,6 +400,30 @@ onMounted(() => {
     state.opacity = 1;
   });
 
+  ipc.on("taskbar:update-settings", (_event, settings: any) => {
+    if (settings.showCover !== undefined) {
+      settingStore.taskbarLyricShowCover = settings.showCover;
+    }
+    if (settings.animationMode !== undefined) {
+      settingStore.taskbarLyricAnimationMode = settings.animationMode;
+    }
+    if (settings.singleLineMode !== undefined) {
+      settingStore.taskbarLyricSingleLineMode = settings.singleLineMode;
+    }
+    if (settings.lyricFont !== undefined) {
+      settingStore.LyricFont = settings.lyricFont;
+    }
+    if (settings.globalFont !== undefined) {
+      settingStore.globalFont = settings.globalFont;
+    }
+    if (settings.fontWeight !== undefined) {
+      settingStore.taskbarLyricFontWeight = settings.fontWeight;
+    }
+    if (settings.showWhenPaused !== undefined) {
+      state.showWhenPaused = settings.showWhenPaused;
+    }
+  });
+
   ipc.send("taskbar:request-data");
 });
 
@@ -417,6 +451,8 @@ $radius: 4px;
   color: $base-color;
   border-radius: $radius;
   user-select: none;
+  font-family: v-bind(lyricFontFamily);
+  font-weight: v-bind('settingStore.taskbarLyricFontWeight');
 
   will-change: opacity, filter;
   transition:

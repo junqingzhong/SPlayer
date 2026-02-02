@@ -1,6 +1,6 @@
 import { usePlayerController } from "@/core/player/PlayerController";
 import * as playerIpc from "@/core/player/PlayerIpc";
-import { useDataStore, useMusicStore, useStatusStore } from "@/stores";
+import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import type { SettingType } from "@/types/main";
 import { handleProtocolUrl } from "@/utils/protocol";
 import { cloneDeep } from "lodash-es";
@@ -72,6 +72,7 @@ const initIpc = () => {
     window.electron.ipcRenderer.on("taskbar:request-data", () => {
       const musicStore = useMusicStore();
       const statusStore = useStatusStore();
+      const settingStore = useSettingStore();
       const { name, artist } = getPlayerInfoObj() || {};
       const cover = musicStore.playSong?.cover || "";
 
@@ -87,12 +88,48 @@ const initIpc = () => {
       // 发送歌词数据
       playerIpc.sendTaskbarLyrics(musicStore.songLyric);
 
+      // 发送设置
+      window.electron.ipcRenderer.send(
+        "taskbar:set-show-cover",
+        settingStore.taskbarLyricShowCover,
+      );
+      window.electron.ipcRenderer.send("taskbar:set-max-width", settingStore.taskbarLyricMaxWidth);
+      window.electron.ipcRenderer.send("taskbar:set-position", settingStore.taskbarLyricPosition);
+      window.electron.ipcRenderer.send(
+        "taskbar:set-show-when-paused",
+        settingStore.taskbarLyricShowWhenPaused,
+      );
+      window.electron.ipcRenderer.send("taskbar:broadcast-settings", {
+        animationMode: settingStore.taskbarLyricAnimationMode,
+        singleLineMode: settingStore.taskbarLyricSingleLineMode,
+        lyricFont: settingStore.LyricFont,
+        globalFont: settingStore.globalFont,
+        fontWeight: settingStore.taskbarLyricFontWeight,
+      });
+
       playerIpc.sendTaskbarProgressData({
         currentTime: statusStore.currentTime * 1000,
         duration: statusStore.duration * 1000,
         offset: statusStore.getSongOffset(musicStore.playSong?.id),
       });
     });
+
+    const settingStore = useSettingStore();
+    // 监听任务栏歌词位置变化
+    watch(
+      () => settingStore.taskbarLyricPosition,
+      (val) => {
+        window.electron.ipcRenderer.send("taskbar:set-position", val);
+      },
+    );
+    // 监听暂停时是否显示任务栏歌词
+    watch(
+      () => settingStore.taskbarLyricShowWhenPaused,
+      (val) => {
+        window.electron.ipcRenderer.send("taskbar:set-show-when-paused", val);
+      },
+    );
+
     // 请求歌词数据
     window.electron.ipcRenderer.on("request-desktop-lyric-data", () => {
       const musicStore = useMusicStore();
