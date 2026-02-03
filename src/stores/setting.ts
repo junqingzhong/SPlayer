@@ -455,6 +455,8 @@ export interface SettingState {
   disableAiAudio: boolean;
   /** Fuck DJ: 开启后自动跳过 DJ 歌曲 */
   disableDjMode: boolean;
+  /** 启用全局错误弹窗 */
+  enableGlobalErrorDialog: boolean;
 }
 
 export const useSettingStore = defineStore("setting", {
@@ -709,6 +711,7 @@ export const useSettingStore = defineStore("setting", {
     streamingEnabled: false,
     disableAiAudio: false,
     disableDjMode: false,
+    enableGlobalErrorDialog: true,
   }),
   getters: {
     /**

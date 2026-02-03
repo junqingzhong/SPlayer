@@ -83,6 +83,7 @@ import type {
 import { useSettingStore } from "@/stores";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { type CSSProperties } from "vue";
+import LyricScroll from "./LyricScroll.vue";
 
 const settingStore = useSettingStore();
 

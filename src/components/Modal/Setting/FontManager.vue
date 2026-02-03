@@ -107,31 +107,41 @@
         <n-flex align="center">
           <s-input
             v-if="settingStore.fontSettingStyle === 'custom'"
-            v-model:value="desktopLyricConfig.fontFamily"
+            :value="desktopLyricConfig.fontFamily"
             :update-value-on-input="false"
             placeholder="输入字体名称"
             class="set"
-            @change="saveDesktopLyricConfig"
+            @update:value="
+              (val) => {
+                desktopLyricConfig.fontFamily = val;
+                saveDesktopLyricConfig();
+              }
+            "
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
             :value="fontFamilyToArray(desktopLyricConfig.fontFamily)"
-            @update:value="
-              (value: string[]) => (desktopLyricConfig.fontFamily = fontArrayToFamily(value))
-            "
             :options="getOptions('desktop')"
             class="set"
             filterable
             multiple
             tag
+            @update:value="
+              (value: string[]) => (desktopLyricConfig.fontFamily = fontArrayToFamily(value))
+            "
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'single'"
-            v-model:value="desktopLyricConfig.fontFamily"
+            :value="desktopLyricConfig.fontFamily"
             :options="getOptions('desktop')"
             class="set"
             filterable
-            @update:value="saveDesktopLyricConfig"
+            @update:value="
+              (val) => {
+                desktopLyricConfig.fontFamily = val;
+                saveDesktopLyricConfig();
+              }
+            "
           />
         </n-flex>
       </n-card>
@@ -309,12 +319,12 @@ const getDesktopLyricConfig = async () => {
   if (!isElectron) return;
   const config = await window.electron.ipcRenderer.invoke("request-desktop-lyric-option");
   if (config) Object.assign(desktopLyricConfig, config);
-  // 监听更新
-  window.electron.ipcRenderer.on("update-desktop-lyric-option", (_, config) => {
-    if (config && !isEqual(desktopLyricConfig, config)) {
-      Object.assign(desktopLyricConfig, config);
-    }
-  });
+};
+
+const onLyricConfigUpdate = (_: any, config: LyricConfig) => {
+  if (config && !isEqual(desktopLyricConfig, config)) {
+    Object.assign(desktopLyricConfig, config);
+  }
 };
 
 // 保存桌面歌词配置
@@ -338,6 +348,13 @@ const saveDesktopLyricConfig = (val?: string) => {
 onMounted(() => {
   getAllSystemFonts();
   getDesktopLyricConfig();
+  window.electron.ipcRenderer.on("update-desktop-lyric-option", onLyricConfigUpdate);
+});
+
+onUnmounted(() => {
+  if (isElectron) {
+    window.electron.ipcRenderer.removeListener("update-desktop-lyric-option", onLyricConfigUpdate);
+  }
 });
 </script>
 
