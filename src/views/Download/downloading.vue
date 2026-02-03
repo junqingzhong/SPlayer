@@ -135,7 +135,7 @@ const handleRemoveDownload = (id: number) => {
       align-items: center;
       padding: 0 12px;
       height: 40px;
-      background-color: var(--background-hex);
+      // background-color: var(--background-hex);
       font-weight: normal;
 
       .n-text {
