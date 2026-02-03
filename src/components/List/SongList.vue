@@ -124,7 +124,11 @@
         </div>
       </Transition>
       <!-- 右键菜单 -->
-      <SongListMenu ref="songListMenuRef" @removeSong="removeSong" />
+      <SongListMenu
+        ref="songListMenuRef"
+        :hiddenCover="hiddenCover || settingStore.hiddenCovers.list"
+        @removeSong="removeSong"
+      />
       <MobileSongMenu ref="mobileSongMenuRef" @removeSong="removeSong" />
       <!-- 列表操作 -->
       <Teleport to="body">

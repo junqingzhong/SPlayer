@@ -84,6 +84,8 @@ export interface SettingState {
   swapTranRoma: boolean;
   /** 显示逐字音译 */
   showWordsRoma: boolean;
+  /** 歌词动画 */
+  lyricTransition: "slide" | "fade";
   /** 歌词位置 */
   lyricsPosition: "flex-start" | "center" | "flex-end";
   /** 歌词滚动位置偏移量 */
@@ -102,6 +104,8 @@ export interface SettingState {
   customBracketReplacement: string;
   /** 下载路径 */
   downloadPath: string;
+  /** 下载线程数 */
+  downloadThreadCount: number;
   /** 是否启用缓存 */
   cacheEnabled: boolean;
   /** 是否缓存歌曲（音频文件） */
@@ -269,6 +273,8 @@ export interface SettingState {
     artistDetail: boolean;
     /** 播客电台 */
     radio: boolean;
+    /** 专辑 */
+    album: boolean;
     /** 我的收藏 */
     like: boolean;
     /** 视频 */
@@ -552,6 +558,7 @@ export const useSettingStore = defineStore("setting", {
     showRoma: true,
     swapTranRoma: false,
     showWordsRoma: true,
+    lyricTransition: "slide",
     lyricsPosition: "flex-start",
     lyricsBlur: false,
     lyricsScrollOffset: 0.25,
@@ -586,6 +593,7 @@ export const useSettingStore = defineStore("setting", {
       personalFM: false,
       artistDetail: false,
       radio: false,
+      album: false,
       like: false,
       video: false,
       videoDetail: false,
@@ -593,6 +601,7 @@ export const useSettingStore = defineStore("setting", {
     hideAllCovers: false,
     hideMiniPlayerCover: false,
     downloadPath: "",
+    downloadThreadCount: 8,
     cacheEnabled: true,
     songCacheEnabled: true,
     fileNameFormat: "title-artist",

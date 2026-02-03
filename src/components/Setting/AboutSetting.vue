@@ -21,34 +21,62 @@
           >
             {{ statusStore.updateCheck ? "检查更新中" : "检查更新" }}
           </n-button>
-          <n-button
-            type="primary"
-            strong
-            secondary
-            @click="handleExportLog"
-          >
-            导出日志
-          </n-button>
+          <n-button type="primary" strong secondary @click="handleExportLog"> 导出日志 </n-button>
         </n-flex>
       </n-card>
       <n-collapse-transition :show="!!updateData">
         <n-card class="set-item update-data">
-          <n-flex class="version">
-            <n-text>最新版本</n-text>
-            <n-tag :bordered="false" size="small" type="primary">
-              {{ newVersion?.version || "v0.0.0" }}
-            </n-tag>
-            <n-tag v-if="newVersion?.prerelease" class="test" size="small" type="warning">
-              测试版
-            </n-tag>
-            <n-text :depth="3" class="time">{{ newVersion?.time }}</n-text>
-          </n-flex>
-          <div class="markdown-body" v-html="newVersion?.changelog" @click="jumpLink" />
+          <n-collapse arrow-placement="right">
+            <n-collapse-item name="version">
+              <template #header>
+                <n-flex class="version">
+                  <n-text>最新版本</n-text>
+                  <n-tag :bordered="false" size="small" type="primary">
+                    {{ newVersion?.version || "v0.0.0" }}
+                  </n-tag>
+                  <n-tag v-if="newVersion?.prerelease" class="test" size="small" type="warning">
+                    测试版
+                  </n-tag>
+                  <n-text :depth="3" class="time">{{ newVersion?.time }}</n-text>
+                </n-flex>
+              </template>
+              <div class="markdown-body" v-html="newVersion?.changelog" @click="jumpLink" />
+            </n-collapse-item>
+          </n-collapse>
         </n-card>
       </n-collapse-transition>
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> 特别鸣谢 </n-h3>
+      <n-flex vertical :size="12" style="margin-bottom: 12px">
+        <n-text :depth="3" style="margin-left: 4px; font-size: 12px" class="tip">
+          注：以下排名不分先后
+        </n-text>
+        <n-card
+          v-for="(item, index) in specialContributors"
+          :key="index"
+          class="special-contributor-item"
+          hoverable
+        >
+          <n-flex justify="space-between" align="center" :wrap="false">
+            <n-flex align="center" style="flex: 1; min-width: 0">
+              <n-avatar
+                round
+                :size="48"
+                :src="item.avatar"
+                fallback-src="/images/avatar.jpg?asset"
+              />
+              <n-flex vertical :gap="4" style="flex: 1; min-width: 0">
+                <n-text class="name" strong>{{ item.name }}</n-text>
+                <n-text class="tip" :depth="3">{{ item.description }}</n-text>
+              </n-flex>
+            </n-flex>
+            <n-button secondary strong @click="openLink(item.url)">
+              {{ item.buttonText }}
+            </n-button>
+          </n-flex>
+        </n-card>
+      </n-flex>
       <n-flex :size="12" class="link">
         <n-card
           v-for="(item, index) in contributors"
@@ -256,6 +284,39 @@ const contributors = [
   },
 ];
 
+// 贡献人员列表
+const specialContributors = [
+  {
+    name: "imsyy",
+    description: "每天在屎山和 PR 之间徘徊的作者",
+    avatar: "/images/avatar/imsyy.webp",
+    buttonText: "个人主页",
+    url: "https://imsyy.top",
+  },
+  {
+    name: "Kazukokawagawa 池鱼鱼！",
+    description:
+      "这里是什么？万能的池鱼！在开发过程中找出了一堆没人能想得到的诡异Bug，有非同寻常的Bug体质，可以用2天写完别人一个月commit",
+    avatar: "/images/avatar/chiyu.webp",
+    buttonText: "个人博客",
+    url: "https://chiyu.it/",
+  },
+  {
+    name: "MoYingJi",
+    description: "这个人一点都不神秘，虽然写了一点，但就像什么都没有写",
+    avatar: "/images/avatar/moyingji.webp",
+    buttonText: "GitHub",
+    url: "https://avatars.githubusercontent.com/u/64307394",
+  },
+  {
+    name: "apoint123",
+    description: "Rustacean",
+    avatar: "/images/avatar/apoint123.webp",
+    buttonText: "GitHub",
+    url: "https://github.com/apoint123",
+  },
+];
+
 // 社区数据
 const communityData = [
   {
@@ -379,6 +440,13 @@ onMounted(() => {
   }
   .n-icon {
     margin-right: 6px;
+  }
+}
+.special-contributor-item {
+  border-radius: 8px;
+  cursor: default;
+  :deep(.n-card__content) {
+    padding: 12px 16px;
   }
 }
 </style>

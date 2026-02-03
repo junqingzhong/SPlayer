@@ -9,7 +9,7 @@ import { qqMusicMatch } from "@/api/qqmusic";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 import { getConverter, type ConverterMode } from "@/utils/opencc";
-import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc } from "@/utils/lyric/lyricParser";
+import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc, alignLyrics } from "@/utils/lyric/lyricParser";
 import { generateASS } from "@/utils/assGenerator";
 import { parseTTML, parseYrc, type LyricLine } from "@applemusic-like-lyrics/lyric";
 
@@ -81,8 +81,8 @@ class DownloadManager {
       if (!id) return;
 
       const dataStore = useDataStore();
-      const transferred = (transferredBytes / 1024 / 1024).toFixed(2) + "MB";
-      const total = (totalBytes / 1024 / 1024).toFixed(2) + "MB";
+      const transferred = transferredBytes ? (transferredBytes / 1024 / 1024).toFixed(2) + "MB" : "0MB";
+      const total = totalBytes ? (totalBytes / 1024 / 1024).toFixed(2) + "MB" : "0MB";
 
       dataStore.updateDownloadProgress(id, Number((percent * 100).toFixed(1)), transferred, total);
     });
@@ -387,9 +387,10 @@ class DownloadManager {
         let lyric = "";
         let yrcLyric = "";
         let ttmlLyric = "";
+        let lyricResult: LyricResult | null = null;
 
         if (downloadLyric) {
-          const lyricResult = (await songLyric(song.id)) as LyricResult;
+          lyricResult = (await songLyric(song.id)) as LyricResult;
           lyric = await this.processLyric(lyricResult);
 
           // 获取逐字歌词内容用于另存
@@ -461,6 +462,7 @@ class DownloadManager {
           songData: cloneDeep(song),
           lyric,
           skipIfExist,
+          threadCount: settingStore.downloadThreadCount,
         };
 
         const result = await window.electron.ipcRenderer.invoke("download-file", url, config);
@@ -468,12 +470,56 @@ class DownloadManager {
         if (result.status !== "cancelled" && result.status !== "error" && downloadMakeYrc) {
           // 优先使用 TTML，其次 YRC
           let content = ttmlLyric || yrcLyric;
+          // 标记是否进行了合并操作，如果合并了，建议统一保存为 TTML
+          let merged = false;
+
           if (content) {
             try {
+              // 尝试解析现有歌词以合并翻译和音译
+              let lines: LyricLine[] = [];
+              if (ttmlLyric) {
+                const parsed = parseTTML(ttmlLyric);
+                if (parsed?.lines) lines = parsed.lines;
+              } else if (yrcLyric) {
+                if (yrcLyric.trim().startsWith("<") || yrcLyric.includes("<QrcInfos>")) {
+                  lines = parseQRCLyric(yrcLyric);
+                } else {
+                  lines = parseYrc(yrcLyric) || [];
+                }
+              }
+
+              if (lines.length > 0) {
+                 const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
+                 const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
+                 
+                 if (tlyric) {
+                     const transParsed = parseSmartLrc(tlyric);
+                     if (transParsed?.lines?.length) {
+                         lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
+                         merged = true;
+                     }
+                 }
+                 if (romalrc) {
+                     const romaParsed = parseSmartLrc(romalrc);
+                     if (romaParsed?.lines?.length) {
+                         lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
+                         merged = true;
+                     }
+                 }
+
+                 // 如果进行了合并，或者原本就是 YRC/TTML，我们重新生成标准 TTML
+                 // 这样可以确保翻译被正确嵌入
+                 if (merged || ttmlLyric || yrcLyric) {
+                     content = lyricLinesToTTML(lines);
+                 }
+              }
+
               // 繁体转换
               content = await this._convertToTraditionalIfNeeded(content);
 
-              const ext = ttmlLyric ? "ttml" : "yrc";
+              // 如果进行了合并或转换，统一保存为 ttml (因为我们生成的是 standard TTML)
+              // 除非原本就是 yrc 且没合并
+              const ext = (ttmlLyric || merged) ? "ttml" : "yrc";
               const fileName = `${safeFileName}.${ext}`;
               const encoding = settingStore.downloadLyricEncoding || "utf-8";
 
@@ -587,120 +633,126 @@ class DownloadManager {
     try {
       const rawLyric = lyricResult?.lrc?.lyric || "";
       const excludeRegex = /^\{"t":\d+,"c":\[\{"[^"]+":"[^"]*"}(?:,\{"[^"]+":"[^"]*"})*]}$/;
-      const lrc = rawLyric
-        .split("\n")
-        .filter((line: string) => !excludeRegex.test(line.trim()))
-        .join("\n");
+      
+      const lrcLines = rawLyric
+        .split(/\r?\n/)
+        .filter((line: string) => !excludeRegex.test(line.trim()));
 
-      if (!lrc) return "";
+      if (lrcLines.length === 0) return "";
 
       const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
       const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
 
-      if (!tlyric && !romalrc) return lrc;
+      // 如果不需要翻译/音译，直接返回处理过的 LRC
+      if (!tlyric && !romalrc) return lrcLines.join("\n");
 
       // 正则：匹配 [mm:ss.xx] 或 [mm:ss.xxx] 形式的时间标签
-      const timeTagRe = /\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
+      const timeTagRe = /\[(\d{2}):(\d{2})(?:\.(\d{1,}))?\]/g;
 
-      // 把时间字符串转成秒（用于模糊匹配）
+      // 辅助函数：解析时间字符串为秒
       const timeStrToSeconds = (timeStr: string) => {
-        const m = timeStr.match(/^(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/);
+        // 去除首尾括号
+        const pure = timeStr.replace(/^\[|\]$/g, "");
+        const m = pure.match(/^(\d{2}):(\d{2})(?:\.(\d{1,}))?$/);
         if (!m) return 0;
         const minutes = parseInt(m[1], 10);
         const seconds = parseInt(m[2], 10);
-        const frac = m[3] ? parseInt((m[3] + "00").slice(0, 3), 10) : 0;
-        return minutes * 60 + seconds + frac / 1000;
+        const fracStr = m[3] ? "0." + m[3] : "0";
+        return minutes * 60 + seconds + parseFloat(fracStr);
       };
 
+      // 辅助函数：解析 LRC 到 Map<时间标签, 文本>
       const parseToMap = (lyricStr: string) => {
         const map = new Map<string, string>();
         if (!lyricStr) return map;
         const lines = lyricStr.split(/\r?\n/);
         for (const raw of lines) {
-          let m: RegExpExecArray | null;
-          const timeTags: string[] = [];
           timeTagRe.lastIndex = 0;
+          let m: RegExpExecArray | null;
+          const tags: string[] = [];
+          
           while ((m = timeTagRe.exec(raw)) !== null) {
-            const frac = m[3] ?? "";
-            const tag = `[${m[1]}:${m[2]}${frac ? "." + frac : ""}]`;
-            timeTags.push(tag);
+            tags.push(m[0]);
           }
+          
+          if (tags.length === 0) continue;
+          
           const text = raw.replace(timeTagRe, "").trim();
-          for (const tag of timeTags) {
-            if (text) {
-              const prev = map.get(tag);
-              map.set(tag, prev ? prev + "\n" + text : text);
-            }
+          if (!text) continue;
+          
+          for (const tag of tags) {
+             const prev = map.get(tag);
+             map.set(tag, prev ? prev + "\n" + text : text);
           }
         }
         return map;
       };
 
-      const findMatch = (map: Map<string, string>, currentTag: string) => {
-        const exact = map.get(currentTag);
-        if (exact) return exact;
+      const findMatch = (map: Map<string, string>, targetTag: string) => {
+        // 1. 尝试精确匹配
+        if (map.has(targetTag)) return map.get(targetTag);
 
-        const tSec = timeStrToSeconds(currentTag.slice(1, -1));
-        let bestTag: string | null = null;
-        let bestDiff = Infinity;
-        for (const key of Array.from(map.keys())) {
-          const kSec = timeStrToSeconds(key.slice(1, -1));
-          const diff = Math.abs(kSec - tSec);
-          if (diff < bestDiff) {
-            bestDiff = diff;
-            bestTag = key;
-          }
+        // 2. 尝试模糊匹配 (0.5s 容差)
+        const targetSec = timeStrToSeconds(targetTag);
+        let bestMatch: string | null = null;
+        let minDiff = 0.5;
+
+        for (const [tag, text] of map.entries()) {
+           const sec = timeStrToSeconds(tag);
+           const diff = Math.abs(sec - targetSec);
+           if (diff <= minDiff) {
+             minDiff = diff;
+             bestMatch = text;
+           }
         }
-        if (bestTag && bestDiff < 0.5) {
-          return map.get(bestTag);
-        }
-        return null;
+        return bestMatch;
       };
 
       const tMap = parseToMap(tlyric || "");
       const rMap = parseToMap(romalrc || "");
-      const lines: string[] = [];
-      const lrcLinesRaw = lrc.split(/\r?\n/);
+      
+      const resultLines: string[] = [];
 
-      // 如果启用了另存逐字歌词，此时不替换内嵌歌词（processLyric 仅负责返回嵌入用的 LRC）
-      // YRC 的保存将在 processDownload 中独立处理
-
-      for (const raw of lrcLinesRaw) {
-        let m: RegExpExecArray | null;
-        const timeTags: string[] = [];
+      for (const raw of lrcLines) {
         timeTagRe.lastIndex = 0;
+        let m: RegExpExecArray | null;
+        const tags: string[] = [];
+        
         while ((m = timeTagRe.exec(raw)) !== null) {
-          const frac = m[3] ?? "";
-          const tag = `[${m[1]}:${m[2]}${frac ? "." + frac : ""}]`;
-          timeTags.push(tag);
+          tags.push(m[0]);
         }
 
-        if (timeTags.length === 0) continue;
+        if (tags.length === 0) continue;
         const text = raw.replace(timeTagRe, "").trim();
         if (!text) continue;
 
-        for (const timeTag of timeTags) {
-          lines.push(`${timeTag}${text}`);
-          const lyricMaps = [
-            { map: tMap, enabled: tlyric },
-            { map: rMap, enabled: romalrc },
-          ];
-
-          for (const { map, enabled } of lyricMaps) {
-            if (enabled) {
-              const matchedText = findMatch(map, timeTag);
-              if (matchedText) {
-                for (const lt of matchedText.split("\n")) {
-                  if (lt.trim()) lines.push(`${timeTag}${lt}`);
-                }
-              }
+        for (const tag of tags) {
+          // 1. 源歌词
+          resultLines.push(`${tag}${text}`);
+          
+          // 2. 翻译
+          if (tlyric) {
+            const transText = findMatch(tMap, tag);
+            if (transText) {
+               transText.split("\n").forEach(line => {
+                 if (line.trim()) resultLines.push(`${tag}${line.trim()}`);
+               });
+            }
+          }
+          
+          // 3. 音译
+          if (romalrc) {
+            const romaText = findMatch(rMap, tag);
+             if (romaText) {
+               romaText.split("\n").forEach(line => {
+                 if (line.trim()) resultLines.push(`${tag}${line.trim()}`);
+               });
             }
           }
         }
       }
-      const result = lines.join("\n");
 
-      // 繁体转换
+      const result = resultLines.join("\n");
       return await this._convertToTraditionalIfNeeded(result);
     } catch (e) {
       console.error("Lyric processing failed", e);

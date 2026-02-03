@@ -4,6 +4,9 @@ mod linux;
 mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
+mod download;
 
 #[cfg(target_os = "windows")]
 pub use windows::get_taskbar_created_message_id;
+
+pub use download::*;
