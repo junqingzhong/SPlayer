@@ -5,13 +5,14 @@ import type {
   TrayWatcher,
   UiaWatcher,
 } from "@native/taskbar-lyric";
-import { app, type BrowserWindow, nativeTheme, screen } from "electron";
+import { app, type BrowserWindow, ipcMain, nativeTheme, screen } from "electron";
 import { debounce } from "lodash-es";
 import { join } from "node:path";
 import { processLog } from "../logger";
 import { isDev, port } from "../utils/config";
 import { loadNativeModule } from "../utils/native-loader";
 import { createWindow } from "./index";
+import { useStore } from "../store";
 
 type taskbarLyricModule = typeof import("@native/taskbar-lyric");
 
@@ -46,6 +47,8 @@ class TaskbarLyricWindow {
   private service: TaskbarService | null = null;
   private useAnimation = false;
   private isNativeDisposed = false;
+  private contentWidth = 300;
+  private maxWidthPercent = 30;
 
   private debouncedUpdateLayout = debounce(() => {
     this.updateLayout(true);
@@ -80,12 +83,14 @@ class TaskbarLyricWindow {
       }
     }
 
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const maxWindowWidth = primaryDisplay.workAreaSize.width;
     this.win = createWindow({
       width: this.currentWidth,
       height: 48,
       minWidth: 100,
       minHeight: 30,
-      maxWidth: 1000,
+      maxWidth: maxWindowWidth,
       maxHeight: 100,
       type: "toolbar",
       frame: false,
@@ -117,6 +122,14 @@ class TaskbarLyricWindow {
     }
 
     sendTheme();
+
+    ipcMain.removeAllListeners("taskbar:set-width");
+    ipcMain.on("taskbar:set-width", (_, width: number) => {
+      if (this.contentWidth !== width) {
+        this.contentWidth = width;
+        this.debouncedUpdateLayout();
+      }
+    });
 
     this.win.once("ready-to-show", () => {
       if (this.win) {
@@ -178,13 +191,30 @@ class TaskbarLyricWindow {
     }
   }
 
+  private getMaxWidthPercent(screenWidth: number) {
+    const store = useStore();
+    let maxWidthSetting = store.get("taskbar.maxWidth", 30);
+    if (maxWidthSetting > 100) {
+      // Assume it's pixels, convert to percent
+      const converted = Math.round((maxWidthSetting / screenWidth) * 100);
+      maxWidthSetting = Math.min(Math.max(converted, 10), 100);
+      store.set("taskbar.maxWidth", maxWidthSetting);
+      return maxWidthSetting;
+    }
+    return Math.min(Math.max(maxWidthSetting, 10), 100);
+  }
+
   updateLayout(animate: boolean = false) {
     if (!this.win || !this.service) return;
     this.useAnimation = animate;
 
     const primaryDisplay = screen.getPrimaryDisplay();
+    this.maxWidthPercent = this.getMaxWidthPercent(primaryDisplay.workAreaSize.width);
     const scaleFactor = primaryDisplay.scaleFactor;
-    const requestWidth = Math.round(300 * scaleFactor);
+    const maxWidthSetting = Math.round(
+      (primaryDisplay.workAreaSize.width * this.maxWidthPercent) / 100,
+    );
+    const requestWidth = Math.round(maxWidthSetting * scaleFactor);
 
     this.service.update(requestWidth);
   }
@@ -201,7 +231,15 @@ class TaskbarLyricWindow {
       const primaryDisplay = screen.getPrimaryDisplay();
       const scaleFactor = primaryDisplay.scaleFactor;
       const GAP = 10 * scaleFactor;
-      const MAX_WIDTH_PHYSICAL = 300 * scaleFactor;
+      const maxWidthSetting = Math.round(
+        (primaryDisplay.workAreaSize.width * this.maxWidthPercent) / 100,
+      );
+      const store = useStore();
+      const positionSetting = store.get("taskbar.position", "automatic");
+      const autoShrink = store.get("taskbar.autoShrink", false);
+      const MAX_WIDTH_PHYSICAL = autoShrink
+        ? Math.min(maxWidthSetting, this.contentWidth) * scaleFactor
+        : maxWidthSetting * scaleFactor;
       const MIN_WIDTH_PHYSICAL = 50 * scaleFactor;
 
       let targetBounds: Electron.Rectangle = {
@@ -210,6 +248,9 @@ class TaskbarLyricWindow {
         width: 0,
         height: 0,
       };
+      // isCenter determines the alignment mode for the Vue component.
+      // true: Left Aligned (Cover Left)
+      // false: Right Aligned (Cover Right)
       let shouldCenter = false;
 
       if (layout.systemType === "win10" && layout.win10) {
@@ -218,8 +259,7 @@ class TaskbarLyricWindow {
         shouldCenter = false;
       } else if (layout.systemType === "win11" && layout.win11) {
         const { startButton, widgets, content, tray, isCentered } = layout.win11;
-        shouldCenter = isCentered;
-
+        
         let effectiveRightAnchor = tray.x;
         const contentRightEdge = content.x + content.width;
         if (widgets.width > 0 && widgets.x > contentRightEdge) {
@@ -242,17 +282,32 @@ class TaskbarLyricWindow {
           return Math.min(space, MAX_WIDTH_PHYSICAL);
         };
 
-        if (isCentered) {
+        if (positionSetting === "left" && isCentered) {
+          // 强制左侧 (仅在 Win11 居中模式下有效)
+          finalPhysicalWidth = clampWidth(leftSpaceNet);
+          finalPhysicalX = widgetsRightEdge + GAP;
+          shouldCenter = true; // Left Align
+        } else if (positionSetting === "right") {
+          // 强制右侧
+          finalPhysicalWidth = clampWidth(rightSpaceNet);
+          finalPhysicalX = effectiveRightAnchor - finalPhysicalWidth - GAP;
+          shouldCenter = false; // Right Align
+        } else if (isCentered) {
+          // 自动判断 (Win11 居中)
           if (leftSpaceNet >= MIN_WIDTH_PHYSICAL) {
             finalPhysicalWidth = clampWidth(leftSpaceNet);
             finalPhysicalX = widgetsRightEdge + GAP;
+            shouldCenter = true; // Left Align
           } else {
             finalPhysicalWidth = clampWidth(rightSpaceNet);
             finalPhysicalX = effectiveRightAnchor - finalPhysicalWidth - GAP;
+            shouldCenter = false; // Right Align
           }
         } else {
+          // Win11 左对齐 (仅右侧可用)
           finalPhysicalWidth = clampWidth(rightSpaceNet);
           finalPhysicalX = effectiveRightAnchor - finalPhysicalWidth - GAP;
+          shouldCenter = false; // Right Align
         }
 
         // processLog.info(finalPhysicalWidth, finalPhysicalX);

@@ -23,6 +23,10 @@ const props = defineProps<{
   progress?: number;
 }>();
 
+const emit = defineEmits<{
+  (e: "resize-width", width: number): void;
+}>();
+
 const wrapperRef = ref<HTMLElement | null>(null);
 const contentRef = ref<HTMLElement | null>(null);
 
@@ -62,7 +66,11 @@ const contentStyle = computed<CSSProperties>(() => {
 let resizeObserver: ResizeObserver | null = null;
 const updateMetrics = () => {
   if (wrapperRef.value) wrapperWidth.value = wrapperRef.value.clientWidth;
-  if (contentRef.value) contentWidth.value = contentRef.value.scrollWidth;
+  if (contentRef.value) {
+    const scrollWidth = contentRef.value.scrollWidth;
+    contentWidth.value = scrollWidth;
+    emit("resize-width", scrollWidth);
+  }
 };
 
 onMounted(() => {

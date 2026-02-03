@@ -29,6 +29,35 @@ const initTaskbarIpc = () => {
     }
   });
 
+  ipcMain.on("taskbar:set-max-width", (_event, width: number) => {
+    store.set("taskbar.maxWidth", width);
+    taskbarLyricWindow.updateLayout(true);
+  });
+
+  ipcMain.on("taskbar:set-show-cover", (_event, show: boolean) => {
+    store.set("taskbar.showCover", show);
+    taskbarLyricWindow.send("taskbar:update-settings", { showCover: show });
+  });
+
+  ipcMain.on("taskbar:set-position", (_event, position: "automatic" | "left" | "right") => {
+    store.set("taskbar.position", position);
+    taskbarLyricWindow.updateLayout(true);
+  });
+
+  ipcMain.on("taskbar:set-show-when-paused", (_event, show: boolean) => {
+    store.set("taskbar.showWhenPaused", show);
+    taskbarLyricWindow.send("taskbar:update-settings", { showWhenPaused: show });
+  });
+
+  ipcMain.on("taskbar:set-auto-shrink", (_event, shrink: boolean) => {
+    store.set("taskbar.autoShrink", shrink);
+    taskbarLyricWindow.updateLayout(true);
+  });
+
+  ipcMain.on("taskbar:broadcast-settings", (_event, settings: unknown) => {
+    taskbarLyricWindow.send("taskbar:update-settings", settings);
+  });
+
   ipcMain.on("taskbar:update-metadata", (_event, metadata: unknown) => {
     taskbarLyricWindow.send("taskbar:update-metadata", metadata);
   });

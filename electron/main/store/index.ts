@@ -43,6 +43,16 @@ export interface StoreType {
   taskbar: {
     /** 是否启用 */
     enabled: boolean;
+    /** 最大宽度 */
+    maxWidth?: number;
+    /** 显示封面 */
+    showCover?: boolean;
+    /** 位置 */
+    position?: "automatic" | "left" | "right";
+    /** 暂停时显示 */
+    showWhenPaused?: boolean;
+    /** 自动收缩 */
+    autoShrink?: boolean;
   };
   /** 代理 */
   proxy: string;
@@ -84,6 +94,11 @@ export const useStore = () => {
       },
       taskbar: {
         enabled: false,
+        maxWidth: 30,
+        showCover: true,
+        position: "automatic",
+        showWhenPaused: true,
+        autoShrink: false,
       },
       proxy: "",
       amllDbServer: defaultAMLLDbServer,

@@ -138,7 +138,7 @@ export const settingMigrations: Record<number, MigrationFunction> = {
 
     const currentMode = oldRpc.displayMode;
 
-    if (Object.prototype.hasOwnProperty.call(modeMap, currentMode)) {
+    if (Object.hasOwn(modeMap, currentMode)) {
       return {
         discordRpc: {
           enabled: oldRpc.enabled,
