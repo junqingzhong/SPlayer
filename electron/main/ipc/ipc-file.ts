@@ -569,13 +569,6 @@ const initFileIpc = (): void => {
           }
         }
 
-        // 尝试删除可能存在的临时文件
-        // Rust implementation creates file directly at path, or I should handle tmp file in Rust?
-        // JS implementation handled tmp file.
-        // My Rust implementation overwrites `file_path`.
-        // To be safe, I can just delete `finalFilePath` if it exists (if not skipIfExist).
-        // Rust's `File::create` truncates.
-
         // Prepare metadata
         let metadata: SongMetadata | undefined | null = null;
         if (downloadMeta && songData) {
