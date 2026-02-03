@@ -74,11 +74,11 @@ async fn download_file_inner(
     metadata: Option<SongMetadata>,
     on_progress: ThreadsafeFunction<String>,
 ) -> Result<()> {
-    println!("Start downloading: {} -> {}", url, file_path);
+    // println!("Start downloading: {} -> {}", url, file_path);
 
     // Check cancellation
     if token.is_cancelled() {
-        return Err(Error::from_reason("Download cancelled"));
+        return Err(Error::new(Status::Cancelled, "Download cancelled".to_string()));
     }
 
     let client = reqwest::Client::builder()
@@ -139,44 +139,44 @@ async fn download_file_inner(
         .await
         .map_err(|e| Error::from_reason(e.to_string()))?;
     drop(file); // Close file so we can reopen it for metadata
-    println!("Download complete: {}", file_path);
+    // println!("Download complete: {}", file_path);
 
     // Metadata
     if let Some(meta) = metadata {
-        println!("Processing metadata for: {}", meta.title);
+        // println!("Processing metadata for: {}", meta.title);
         // Download cover
         let cover_data = if let Some(cover_url) = &meta.cover_url {
             if !cover_url.is_empty() {
-                println!("Downloading cover: {}", cover_url);
+                // println!("Downloading cover: {}", cover_url);
                 match client.get(cover_url).send().await {
                     Ok(resp) => {
                         if resp.status().is_success() {
                             match resp.bytes().await {
                                 Ok(b) => {
-                                    println!("Cover downloaded, size: {}", b.len());
+                                    // println!("Cover downloaded, size: {}", b.len());
                                     Some(b)
                                 }
-                                Err(e) => {
-                                    println!("Failed to read cover bytes: {}", e);
+                                Err(_e) => {
+                                    // println!("Failed to read cover bytes: {}", e);
                                     None
                                 }
                             }
                         } else {
-                            println!("Cover download failed with status: {}", resp.status());
+                            // println!("Cover download failed with status: {}", resp.status());
                             None
                         }
                     }
-                    Err(e) => {
-                        println!("Failed to download cover: {}", e);
+                    Err(_e) => {
+                        // println!("Failed to download cover: {}", e);
                         None
                     }
                 }
             } else {
-                println!("Cover URL is empty string");
+                // println!("Cover URL is empty string");
                 None
             }
         } else {
-            println!("No cover URL provided in metadata");
+            // println!("No cover URL provided in metadata");
             None
         };
 
@@ -195,7 +195,7 @@ async fn download_file_inner(
 }
 
 fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Bytes>) -> Result<()> {
-    println!("Writing metadata to: {}", path);
+    // println!("Writing metadata to: {}", path);
     let path_obj = Path::new(path);
     let mut tagged_file = Probe::open(path_obj)
         .map_err(|e| Error::from_reason(format!("Failed to open file for tagging: {}", e)))?
@@ -210,7 +210,11 @@ fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Byte
             } else {
                 let tag_type = tagged_file.primary_tag_type();
                 tagged_file.insert_tag(Tag::new(tag_type));
-                tagged_file.primary_tag_mut().unwrap()
+                if let Some(tag) = tagged_file.primary_tag_mut() {
+                    tag
+                } else {
+                     return Err(Error::from_reason("Failed to create a new tag"));
+                }
             }
         }
     };
@@ -250,6 +254,6 @@ fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Byte
         .save_to_path(path_obj, WriteOptions::default())
         .map_err(|e| Error::from_reason(format!("Failed to save tags: {}", e)))?;
 
-    println!("Metadata written successfully");
+    // println!("Metadata written successfully");
     Ok(())
 }

@@ -609,7 +609,7 @@ const initFileIpc = (): void => {
                 lyric: (downloadLyric && lyric) ? lyric : undefined,
                 description: songData.alia || "",
             };
-            console.log("[Download] Resolved cover URL:", coverUrl);
+            // console.log("[Download] Resolved cover URL:", coverUrl);
         }
 
         const onProgress = (...args: any[]) => {
@@ -654,7 +654,7 @@ const initFileIpc = (): void => {
         return { status: "success" };
       } catch (error: any) {
         ipcLog.error("❌ Error downloading file:", error);
-        if (error.message && error.message.includes("cancelled")) {
+        if ((error.message && error.message.includes("cancelled")) || error.code === "Cancelled") {
              return { status: "cancelled", message: "下载已取消" };
         }
         return {
