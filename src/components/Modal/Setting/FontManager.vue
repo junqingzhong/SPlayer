@@ -57,9 +57,9 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="settingStore.globalFont.split(',').map((s) => s.trim())"
-            :on-update-value="
-              (value: Array<string>) => (settingStore.globalFont = value.join(', '))
+            :value="fontFamilyToArray(settingStore.globalFont)"
+            @update:value="
+              (value: string[]) => (settingStore.globalFont = fontArrayToFamily(value))
             "
             :options="getOptions('globalFont')"
             class="set"
@@ -120,18 +120,15 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="desktopLyricConfig.fontFamily.split(',').map((s) => s.trim())"
-            :on-update-value="
-              (value: Array<string>) => {
-                desktopLyricConfig.fontFamily = value.join(', ');
-                saveDesktopLyricConfig();
-              }
-            "
+            :value="fontFamilyToArray(desktopLyricConfig.fontFamily)"
             :options="getOptions('desktop')"
             class="set"
             filterable
             multiple
             tag
+            @update:value="
+              (value: string[]) => (desktopLyricConfig.fontFamily = fontArrayToFamily(value))
+            "
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'single'"
@@ -186,9 +183,9 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="settingStore[font.keySetting].split(',').map((s) => s.trim())"
-            :on-update-value="
-              (value: Array<string>) => (settingStore[font.keySetting] = value.join(', '))
+            :value="fontFamilyToArray(settingStore[font.keySetting])"
+            @update:value="
+              (value: string[]) => (settingStore[font.keySetting] = fontArrayToFamily(value))
             "
             :options="getOptions(font.keySetting)"
             class="set"
@@ -248,8 +245,8 @@ const getOptions = (key: string) => {
 const getAllSystemFonts = async () => {
   if (!isElectron) return;
   try {
-    const allFonts = await window.electron.ipcRenderer.invoke("get-all-fonts");
-    systemFonts.value = allFonts.map((v: string) => {
+    const allFonts: string[] = await window.electron.ipcRenderer.invoke("get-all-fonts");
+    const fontOptions = allFonts.map((v: string) => {
       const name = v.replace(/^['"]+|['"]+$/g, "");
       return {
         label: name,
@@ -259,9 +256,62 @@ const getAllSystemFonts = async () => {
         },
       };
     });
+    fontOptions.sort((ao, bo) => {
+      // 这里自定义排序是为了解决这样一个问题
+      // 默认情况下，长的字符串在最前，而 filterable 按原顺序展示
+      // 这会导致我输入 `Noto Sans` 时，一大堆的其他变体挡在其前面，而我真正想要的结果却在最后
+      const a = ao.value;
+      const b = bo.value;
+      if (a === b) return 0;
+      if (a.startsWith(b)) return 1;
+      if (b.startsWith(a)) return -1;
+      return a.localeCompare(b);
+    });
+    systemFonts.value = fontOptions;
   } catch (error) {
     console.error("Failed to get system fonts:", error);
   }
+};
+
+/**
+ * 字体字符串转数组
+ * @param fontFamily 字体字符串
+ * @returns 字体数组
+ */
+const fontFamilyToArray = (fontFamily: string): string[] => {
+  if (!fontFamily) return [];
+  const regex = /"([^"]*)"|'([^']*)'|([^,]+)/g;
+  const matches = fontFamily.match(regex);
+  if (!matches) return [];
+
+  return matches
+    .map((s) => {
+      // 移除首尾空格
+      s = s.trim();
+      // 移除引号
+      if (s.match(/^"|^'/)) {
+        s = s.substring(1, s.length - 1);
+      }
+      return s.trim();
+    })
+    .filter(Boolean);
+};
+
+/**
+ * 字体数组转字符串
+ * @param fontArray 字体数组
+ * @returns 字体字符串
+ */
+const fontArrayToFamily = (fontArray: string[]): string => {
+  return fontArray
+    .map((font) => {
+      font = font.trim();
+      if ((font.includes(",") || font.includes(" ")) && !/^["'].*["']$/.test(font)) {
+        return `"${font}"`;
+      }
+      return font;
+    })
+    .join(", ");
 };
 
 // 获取桌面歌词配置
@@ -278,9 +328,10 @@ const onLyricConfigUpdate = (_: any, config: LyricConfig) => {
 };
 
 // 保存桌面歌词配置
-const saveDesktopLyricConfig = () => {
+const saveDesktopLyricConfig = (val?: string) => {
   try {
     if (!isElectron) return;
+    if (val) desktopLyricConfig.fontFamily = val;
     window.electron.ipcRenderer.send(
       "update-desktop-lyric-option",
       cloneDeep(desktopLyricConfig),
