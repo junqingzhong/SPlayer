@@ -10,8 +10,10 @@ use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use once_cell::sync::Lazy;
 use std::path::Path;
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWriteExt, AsyncSeekExt, SeekFrom};
 use tokio_util::sync::CancellationToken;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 
 static DOWNLOAD_TASKS: Lazy<DashMap<u32, CancellationToken>> = Lazy::new(DashMap::new);
 
@@ -56,12 +58,13 @@ pub async fn download_file(
     url: String,
     file_path: String,
     metadata: Option<SongMetadata>,
-    on_progress: ThreadsafeFunction<String>, // Change to JSON String to support complex data
+    thread_count: u32,
+    on_progress: ThreadsafeFunction<String>,
 ) -> Result<()> {
     let token = CancellationToken::new();
     DOWNLOAD_TASKS.insert(id, token.clone());
 
-    let result = download_file_inner(token.clone(), url, file_path, metadata, on_progress).await;
+    let result = download_file_inner(token.clone(), url, file_path, metadata, thread_count, on_progress).await;
     
     DOWNLOAD_TASKS.remove(&id);
     result
@@ -72,11 +75,9 @@ async fn download_file_inner(
     url: String,
     file_path: String,
     metadata: Option<SongMetadata>,
+    thread_count: u32,
     on_progress: ThreadsafeFunction<String>,
 ) -> Result<()> {
-    // println!("Start downloading: {} -> {}", url, file_path);
-
-    // Check cancellation
     if token.is_cancelled() {
         return Err(Error::new(Status::Cancelled, "Download cancelled".to_string()));
     }
@@ -86,22 +87,87 @@ async fn download_file_inner(
         .build()
         .map_err(|e| Error::from_reason(e.to_string()))?;
 
+    // Head request to get size
+    let head_resp = client.head(&url)
+        .send()
+        .await
+        .map_err(|e| Error::from_reason(e.to_string()))?;
+    
+    let mut total_size = head_resp.content_length().unwrap_or(0);
+    
+    // If HEAD failed to get size, try GET with Range 0-0 to get Content-Range
+    if total_size == 0 {
+         println!("[Download] HEAD request returned 0 size, trying GET Range request...");
+         match client.get(&url).header("Range", "bytes=0-0").send().await {
+             Ok(resp) => {
+                 // If server ignores Range and returns 200, content_length is full size
+                 if resp.status().as_u16() == 200 {
+                     total_size = resp.content_length().unwrap_or(0);
+                 } 
+                 // If server supports Range and returns 206
+                 else if resp.status().as_u16() == 206 {
+                     if let Some(range_header) = resp.headers().get("content-range") {
+                         if let Ok(range_str) = range_header.to_str() {
+                             // Format: bytes 0-0/12345
+                             if let Some(slash_pos) = range_str.rfind('/') {
+                                 if let Ok(size) = range_str[slash_pos+1..].parse::<u64>() {
+                                     total_size = size;
+                                 }
+                             }
+                         }
+                     }
+                 }
+             },
+             Err(e) => println!("[Download] Failed to probe size via GET: {}", e),
+         }
+    }
+
+    println!("[Download] Request thread count: {}, Total size: {}", thread_count, total_size);
+
+    if total_size > 5 * 1024 * 1024 && thread_count > 1 {
+        println!("[Download] Using multi-threaded download ({} threads)", thread_count);
+        download_multi_stream(token.clone(), client.clone(), url.clone(), file_path.clone(), total_size, thread_count, on_progress).await?;
+    } else {
+        println!("[Download] Using single-threaded download");
+        download_single_stream(token.clone(), client.clone(), url.clone(), file_path.clone(), total_size, on_progress).await?;
+    }
+
+    if let Some(meta) = metadata {
+        process_metadata(client, file_path, meta).await?;
+    }
+
+    Ok(())
+}
+
+async fn download_single_stream(
+    token: CancellationToken,
+    client: reqwest::Client,
+    url: String,
+    file_path: String,
+    total_size: u64,
+    on_progress: ThreadsafeFunction<String>,
+) -> Result<()> {
     let response = client.get(&url)
         .send()
         .await
         .map_err(|e| Error::from_reason(e.to_string()))?;
 
-    let total_size = response.content_length().unwrap_or(0);
-    
-    // Create file
+    let content_length = response.content_length().unwrap_or(0);
+
     let mut file = tokio::fs::File::create(&file_path)
         .await
         .map_err(|e| Error::from_reason(e.to_string()))?;
-        
+
     let mut stream = response.bytes_stream();
     let mut downloaded: u64 = 0;
     let mut last_progress_time = std::time::Instant::now();
     let mut last_percent = 0.0;
+
+    let total_size = if total_size == 0 {
+        content_length
+    } else {
+        total_size
+    };
 
     while let Some(item) = tokio::select! {
         _ = token.cancelled() => None,
@@ -115,7 +181,6 @@ async fn download_file_inner(
             let percent = downloaded as f64 / total_size as f64;
             let now = std::time::Instant::now();
             
-            // Throttle: update if > 1% change or > 1 second passed, or complete
             if percent - last_percent >= 0.01 || now.duration_since(last_progress_time).as_millis() > 500 || percent >= 1.0 {
                  let json = format!(
                     "{{\"percent\": {:.4}, \"transferredBytes\": {}, \"totalBytes\": {}}}", 
@@ -129,73 +194,175 @@ async fn download_file_inner(
     }
 
     if token.is_cancelled() {
-        println!("Download cancelled: {}", file_path);
         drop(file);
         let _ = tokio::fs::remove_file(&file_path).await;
-        return Err(Error::from_reason("Download cancelled"));
+        return Err(Error::new(Status::Cancelled, "Download cancelled".to_string()));
     }
 
-    file.flush()
+    file.flush().await.map_err(|e| Error::from_reason(e.to_string()))?;
+    Ok(())
+}
+
+async fn download_multi_stream(
+    token: CancellationToken,
+    client: reqwest::Client,
+    url: String,
+    file_path: String,
+    total_size: u64,
+    thread_count: u32,
+    on_progress: ThreadsafeFunction<String>,
+) -> Result<()> {
+    let file = tokio::fs::File::create(&file_path)
         .await
         .map_err(|e| Error::from_reason(e.to_string()))?;
-    drop(file); // Close file so we can reopen it for metadata
-    // println!("Download complete: {}", file_path);
+    file.set_len(total_size).await.map_err(|e| Error::from_reason(e.to_string()))?;
+    drop(file);
 
-    // Metadata
-    if let Some(meta) = metadata {
-        // println!("Processing metadata for: {}", meta.title);
-        // Download cover
-        let cover_data = if let Some(cover_url) = &meta.cover_url {
-            if !cover_url.is_empty() {
-                // println!("Downloading cover: {}", cover_url);
-                match client.get(cover_url).send().await {
-                    Ok(resp) => {
-                        if resp.status().is_success() {
-                            match resp.bytes().await {
-                                Ok(b) => {
-                                    // println!("Cover downloaded, size: {}", b.len());
-                                    Some(b)
-                                }
-                                Err(_e) => {
-                                    // println!("Failed to read cover bytes: {}", e);
-                                    None
-                                }
-                            }
-                        } else {
-                            // println!("Cover download failed with status: {}", resp.status());
-                            None
-                        }
-                    }
-                    Err(_e) => {
-                        // println!("Failed to download cover: {}", e);
-                        None
-                    }
-                }
-            } else {
-                // println!("Cover URL is empty string");
-                None
+    let on_progress = Arc::new(on_progress);
+    
+    // Dynamic chunking: 1MB chunks
+    const CHUNK_SIZE: u64 = 1024 * 1024; 
+    let next_offset = Arc::new(AtomicU64::new(0));
+    let transferred = Arc::new(AtomicU64::new(0));
+    let mut handles = Vec::new();
+
+    let transferred_monitor = transferred.clone();
+    let token_monitor = token.clone();
+    let on_progress_monitor = on_progress.clone();
+    
+    let monitor_handle = tokio::spawn(async move {
+        let mut last_percent = 0.0;
+        let mut last_progress_time = std::time::Instant::now();
+        loop {
+            if token_monitor.is_cancelled() { break; }
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            
+            let current = transferred_monitor.load(Ordering::Relaxed);
+            let percent = current as f64 / total_size as f64;
+            let now = std::time::Instant::now();
+
+            if percent - last_percent >= 0.01 || now.duration_since(last_progress_time).as_millis() > 500 || percent >= 1.0 {
+                 let json = format!(
+                    "{{\"percent\": {:.4}, \"transferredBytes\": {}, \"totalBytes\": {}}}", 
+                    percent, current, total_size
+                 );
+                 on_progress_monitor.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+                 last_percent = percent;
+                 last_progress_time = now;
             }
-        } else {
-            // println!("No cover URL provided in metadata");
-            None
-        };
+            if current >= total_size { break; }
+        }
+    });
 
-        // Write tags using lofty
-        let path_clone = file_path.clone();
+    for _ in 0..thread_count {
+        let client = client.clone();
+        let url = url.clone();
+        let file_path = file_path.clone();
+        let transferred = transferred.clone();
+        let next_offset = next_offset.clone();
+        let token = token.clone();
 
-        tokio::task::spawn_blocking(move || {
-            write_metadata(&path_clone, meta, cover_data)
-                .map_err(|e| Error::from_reason(e.to_string()))
-        })
-        .await
-        .map_err(|e| Error::from_reason(e.to_string()))??;
+        handles.push(tokio::spawn(async move {
+            loop {
+                if token.is_cancelled() { return Ok(()); }
+
+                let start = next_offset.fetch_add(CHUNK_SIZE, Ordering::Relaxed);
+                if start >= total_size { break; }
+
+                let end = std::cmp::min(start + CHUNK_SIZE - 1, total_size - 1);
+                
+                let range_header = format!("bytes={}-{}", start, end);
+                let resp = client.get(&url)
+                    .header("Range", range_header)
+                    .send()
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+                if !resp.status().is_success() {
+                     return Err(format!("Request failed: {}", resp.status()));
+                }
+
+                let mut file = tokio::fs::OpenOptions::new()
+                    .write(true)
+                    .open(&file_path)
+                    .await
+                    .map_err(|e| e.to_string())?;
+                
+                file.seek(SeekFrom::Start(start)).await.map_err(|e| e.to_string())?;
+
+                let mut stream = resp.bytes_stream();
+                while let Some(item) = stream.next().await {
+                     if token.is_cancelled() { return Ok(()); }
+                     let chunk = item.map_err(|e| e.to_string())?;
+                     file.write_all(&chunk).await.map_err(|e| e.to_string())?;
+                     transferred.fetch_add(chunk.len() as u64, Ordering::Relaxed);
+                }
+            }
+            Ok::<(), String>(())
+        }));
     }
 
+    let results = futures_util::future::join_all(handles).await;
+    monitor_handle.abort();
+
+    // Check for errors or cancellation
+    let mut error = None;
+    for res in results {
+        match res {
+            Ok(Ok(_)) => {},
+            Ok(Err(e)) => error = Some(Error::from_reason(e)),
+            Err(e) => error = Some(Error::from_reason(e.to_string())),
+        }
+    }
+
+    if let Some(e) = error {
+        let _ = tokio::fs::remove_file(&file_path).await;
+        return Err(e);
+    }
+
+    if token.is_cancelled() {
+        let _ = tokio::fs::remove_file(&file_path).await;
+        return Err(Error::new(Status::Cancelled, "Download cancelled".to_string()));
+    }
+    
+    let json = format!(
+        "{{\"percent\": 1.0, \"transferredBytes\": {}, \"totalBytes\": {}}}", 
+        total_size, total_size
+    );
+    on_progress.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+    
+    Ok(())
+}
+
+async fn process_metadata(client: reqwest::Client, file_path: String, meta: SongMetadata) -> Result<()> {
+    let cover_data = if let Some(cover_url) = &meta.cover_url {
+        if !cover_url.is_empty() {
+            match client.get(cover_url).send().await {
+                Ok(resp) => {
+                    if resp.status().is_success() {
+                        match resp.bytes().await {
+                            Ok(b) => Some(b),
+                            Err(_e) => None
+                        }
+                    } else { None }
+                }
+                Err(_e) => None
+            }
+        } else { None }
+    } else { None };
+
+    let path_clone = file_path.clone();
+    tokio::task::spawn_blocking(move || {
+        write_metadata(&path_clone, meta, cover_data)
+            .map_err(|e| Error::from_reason(e.to_string()))
+    })
+    .await
+    .map_err(|e| Error::from_reason(e.to_string()))??;
+    
     Ok(())
 }
 
 fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Bytes>) -> Result<()> {
-    // println!("Writing metadata to: {}", path);
     let path_obj = Path::new(path);
     let mut tagged_file = Probe::open(path_obj)
         .map_err(|e| Error::from_reason(format!("Failed to open file for tagging: {}", e)))?
@@ -213,7 +380,7 @@ fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Byte
                 if let Some(tag) = tagged_file.primary_tag_mut() {
                     tag
                 } else {
-                     return Err(Error::from_reason("Failed to create a new tag"));
+                    return Err(Error::from_reason("Failed to create a new tag"));
                 }
             }
         }
@@ -232,7 +399,6 @@ fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Byte
     }
 
     if let Some(data) = cover_data {
-        println!("Embedding cover art...");
         let mime_type = if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
             MimeType::Jpeg
         } else if data.starts_with(&[0x89, 0x50, 0x4E, 0x47]) {
@@ -254,6 +420,5 @@ fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Byte
         .save_to_path(path_obj, WriteOptions::default())
         .map_err(|e| Error::from_reason(format!("Failed to save tags: {}", e)))?;
 
-    // println!("Metadata written successfully");
     Ok(())
 }

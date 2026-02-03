@@ -329,6 +329,19 @@ export const useLocalSettings = (): SettingConfig => {
             }),
           },
           {
+            key: "downloadThreadCount",
+            label: "下载线程数",
+            type: "slider",
+            description: "多线程下载可提高速度，默认为 8，建议设置在 4-16 之间",
+            min: 1,
+            max: 32,
+            step: 1,
+            value: computed({
+              get: () => settingStore.downloadThreadCount,
+              set: (v) => (settingStore.downloadThreadCount = v),
+            }),
+          },
+          {
             key: "downloadMeta",
             label: "下载歌曲元信息",
             type: "switch",

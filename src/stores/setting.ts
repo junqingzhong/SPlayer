@@ -102,6 +102,8 @@ export interface SettingState {
   customBracketReplacement: string;
   /** 下载路径 */
   downloadPath: string;
+  /** 下载线程数 */
+  downloadThreadCount: number;
   /** 是否启用缓存 */
   cacheEnabled: boolean;
   /** 是否缓存歌曲（音频文件） */
@@ -596,6 +598,7 @@ export const useSettingStore = defineStore("setting", {
     hideAllCovers: false,
     hideMiniPlayerCover: false,
     downloadPath: "",
+    downloadThreadCount: 8,
     cacheEnabled: true,
     songCacheEnabled: true,
     fileNameFormat: "title-artist",

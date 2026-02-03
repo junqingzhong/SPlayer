@@ -26,7 +26,8 @@ interface ToolsModule {
     url: string,
     filePath: string,
     metadata: SongMetadata | undefined | null,
-    onProgress: (progressJson: string) => void
+    threadCount: number,
+    onProgress: (err: any, progressJson: string) => void
   ): Promise<void>;
   cancelDownload(id: number): void;
   writeMusicMetadata(filePath: string, metadata: SongMetadata, coverPath?: string): void;
@@ -523,6 +524,7 @@ const initFileIpc = (): void => {
         lyric?: string;
         songData?: any;
         skipIfExist?: boolean;
+        threadCount?: number;
       } = {
         fileName: "未知文件名",
         fileType: "mp3",
@@ -643,7 +645,11 @@ const initFileIpc = (): void => {
             throw new Error("Native tools not loaded");
         }
 
-        await tools.downloadFile(songData?.id || 0, url, finalFilePath, metadata, onProgress);
+        const store = useStore();
+        // Use threadCount from options if available, otherwise fall back to store
+        const threadCount = (options.threadCount as number) || (store.get("downloadThreadCount") as number) || 8;
+
+        await tools.downloadFile(songData?.id || 0, url, finalFilePath, metadata, threadCount, onProgress);
 
         // 创建同名歌词文件
         if (lyric && saveMetaFile && downloadLyric) {

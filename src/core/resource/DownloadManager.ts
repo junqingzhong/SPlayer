@@ -9,7 +9,7 @@ import { qqMusicMatch } from "@/api/qqmusic";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 import { getConverter, type ConverterMode } from "@/utils/opencc";
-import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc } from "@/utils/lyric/lyricParser";
+import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc, alignLyrics } from "@/utils/lyric/lyricParser";
 import { generateASS } from "@/utils/assGenerator";
 import { parseTTML, parseYrc, type LyricLine } from "@applemusic-like-lyrics/lyric";
 
@@ -387,9 +387,10 @@ class DownloadManager {
         let lyric = "";
         let yrcLyric = "";
         let ttmlLyric = "";
+        let lyricResult: LyricResult | null = null;
 
         if (downloadLyric) {
-          const lyricResult = (await songLyric(song.id)) as LyricResult;
+          lyricResult = (await songLyric(song.id)) as LyricResult;
           lyric = await this.processLyric(lyricResult);
 
           // 获取逐字歌词内容用于另存
@@ -461,6 +462,7 @@ class DownloadManager {
           songData: cloneDeep(song),
           lyric,
           skipIfExist,
+          threadCount: settingStore.downloadThreadCount,
         };
 
         const result = await window.electron.ipcRenderer.invoke("download-file", url, config);
@@ -468,12 +470,56 @@ class DownloadManager {
         if (result.status !== "cancelled" && result.status !== "error" && downloadMakeYrc) {
           // 优先使用 TTML，其次 YRC
           let content = ttmlLyric || yrcLyric;
+          // 标记是否进行了合并操作，如果合并了，建议统一保存为 TTML
+          let merged = false;
+
           if (content) {
             try {
+              // 尝试解析现有歌词以合并翻译和音译
+              let lines: LyricLine[] = [];
+              if (ttmlLyric) {
+                const parsed = parseTTML(ttmlLyric);
+                if (parsed?.lines) lines = parsed.lines;
+              } else if (yrcLyric) {
+                if (yrcLyric.trim().startsWith("<") || yrcLyric.includes("<QrcInfos>")) {
+                  lines = parseQRCLyric(yrcLyric);
+                } else {
+                  lines = parseYrc(yrcLyric) || [];
+                }
+              }
+
+              if (lines.length > 0) {
+                 const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
+                 const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
+                 
+                 if (tlyric) {
+                     const transParsed = parseSmartLrc(tlyric);
+                     if (transParsed?.lines?.length) {
+                         lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
+                         merged = true;
+                     }
+                 }
+                 if (romalrc) {
+                     const romaParsed = parseSmartLrc(romalrc);
+                     if (romaParsed?.lines?.length) {
+                         lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
+                         merged = true;
+                     }
+                 }
+
+                 // 如果进行了合并，或者原本就是 YRC/TTML，我们重新生成标准 TTML
+                 // 这样可以确保翻译被正确嵌入
+                 if (merged || ttmlLyric || yrcLyric) {
+                     content = lyricLinesToTTML(lines);
+                 }
+              }
+
               // 繁体转换
               content = await this._convertToTraditionalIfNeeded(content);
 
-              const ext = ttmlLyric ? "ttml" : "yrc";
+              // 如果进行了合并或转换，统一保存为 ttml (因为我们生成的是 standard TTML)
+              // 除非原本就是 yrc 且没合并
+              const ext = (ttmlLyric || merged) ? "ttml" : "yrc";
               const fileName = `${safeFileName}.${ext}`;
               const encoding = settingStore.downloadLyricEncoding || "utf-8";
 

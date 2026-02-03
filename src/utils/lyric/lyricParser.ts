@@ -420,6 +420,10 @@ export const lyricLinesToTTML = (lines: LyricLine[]): string => {
 
     // 添加逐字歌词
     for (const word of line.words) {
+      // 过滤无效的空词（内容为空且时长为0）
+      if (!word.word || word.startTime === word.endTime) {
+        continue;
+      }
       const wordStart = formatTime(word.startTime);
       const wordEnd = formatTime(word.endTime);
       ttml += `        <span begin="${wordStart}" end="${wordEnd}">${escapeXml(word.word)}</span>\n`;
