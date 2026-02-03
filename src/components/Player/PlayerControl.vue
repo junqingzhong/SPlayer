@@ -9,7 +9,9 @@
           </div>
           <!-- 喜欢歌曲 -->
           <div
-            v-if="musicStore.playSong.type !== 'radio' && settingStore.fullscreenPlayerElements.like"
+            v-if="
+              musicStore.playSong.type !== 'radio' && settingStore.fullscreenPlayerElements.like
+            "
             class="menu-icon"
             @click="toLikeSong(musicStore.playSong, !dataStore.isLikeSong(musicStore.playSong.id))"
           >
@@ -28,14 +30,22 @@
           <!-- 下载 -->
           <div
             class="menu-icon"
-            v-if="!musicStore.playSong.path && statusStore.isDeveloperMode && settingStore.fullscreenPlayerElements.download"
+            v-if="
+              !musicStore.playSong.path &&
+              statusStore.isDeveloperMode &&
+              settingStore.fullscreenPlayerElements.download
+            "
             @click.stop="openDownloadSong(musicStore.playSong)"
           >
             <SvgIcon name="Download" />
           </div>
           <!-- 显示评论 -->
           <div
-            v-if="!musicStore.playSong.path && !statusStore.pureLyricMode && settingStore.fullscreenPlayerElements.comments"
+            v-if="
+              !musicStore.playSong.path &&
+              !statusStore.pureLyricMode &&
+              settingStore.fullscreenPlayerElements.comments
+            "
             class="menu-icon"
             @click.stop="statusStore.showPlayerComment = !statusStore.showPlayerComment"
           >

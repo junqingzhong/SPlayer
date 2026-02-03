@@ -79,8 +79,7 @@ import type {
   TaskbarStatePayload,
 } from "@/core/player/PlayerIpc";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
-import { type CSSProperties, computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import LyricScroll from "./LyricScroll.vue";
+import { type CSSProperties } from "vue";
 
 interface DisplayItem {
   key: string | number;
