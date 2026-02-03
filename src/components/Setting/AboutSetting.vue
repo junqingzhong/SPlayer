@@ -299,7 +299,7 @@ const specialContributors = [
   },
   {
     name: "Kazukokawagawa 池鱼鱼！",
-    description: "这里是什么？万能的池鱼！",
+    description: "这里是什么？万能的池鱼！在开发过程中找出了一堆没人能想得到的奇异Bug..拥有非同寻常的Bug体质 可以用2天写完别人一个月commit",
     avatar: "https://avatars.githubusercontent.com/u/109492503",
     buttonText: "个人博客",
     url: "https://chiyu.it/",
