@@ -55,6 +55,32 @@
     </div>
     <div class="set-list">
       <n-h3 prefix="bar"> 特别鸣谢 </n-h3>
+      <n-flex vertical :size="12" style="margin-bottom: 12px">
+        <n-card
+          v-for="(item, index) in specialContributors"
+          :key="index"
+          class="special-contributor-item"
+          hoverable
+        >
+          <n-flex justify="space-between" align="center">
+            <n-flex align="center">
+              <n-avatar
+                round
+                :size="48"
+                :src="item.avatar"
+                fallback-src="/images/avatar.jpg?asset"
+              />
+              <n-flex vertical :gap="4">
+                <n-text class="name" strong>{{ item.name }}</n-text>
+                <n-text class="tip" :depth="3">{{ item.description }}</n-text>
+              </n-flex>
+            </n-flex>
+            <n-button secondary strong @click="openLink(item.url)">
+              {{ item.buttonText }}
+            </n-button>
+          </n-flex>
+        </n-card>
+      </n-flex>
       <n-flex :size="12" class="link">
         <n-card
           v-for="(item, index) in contributors"
@@ -262,6 +288,38 @@ const contributors = [
   },
 ];
 
+// 贡献人员列表
+const specialContributors = [
+  {
+    name: "imsyy",
+    description: "每天在屎山和pr之间徘徊的无名作者",
+    avatar: "",
+    buttonText: "个人主页",
+    url: "https://imsyy.top",
+  },
+  {
+    name: "Kazukokawagawa 池鱼鱼！",
+    description: "这是一个核心贡献者",
+    avatar: "",
+    buttonText: "个人博客",
+    url: "https://chiyu.it/",
+  },
+  {
+    name: "MoYingJi",
+    description: "这个人一点都不神秘，虽然写了一点，但就像什么都没有写",
+    avatar: "",
+    buttonText: "GitHub",
+    url: "https://github.com/MoYingJi",
+  },
+  {
+    name: "apoint123",
+    description: "占位占位占位占位占位占位",
+    avatar: "",
+    buttonText: "GitHub",
+    url: "https://github.com/apoint123",
+  },
+];
+
 // 社区数据
 const communityData = [
   {
@@ -385,6 +443,13 @@ onMounted(() => {
   }
   .n-icon {
     margin-right: 6px;
+  }
+}
+.special-contributor-item {
+  border-radius: 8px;
+  cursor: default;
+  :deep(.n-card__content) {
+    padding: 12px 16px;
   }
 }
 </style>
