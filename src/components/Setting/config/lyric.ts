@@ -167,6 +167,20 @@ export const useLyricSettings = (): SettingConfig => {
             }),
           },
           {
+            key: "lyricTransition",
+            label: "歌词切换动画",
+            type: "select",
+            description: "底栏播放器歌词切换时的动画效果",
+            options: [
+              { label: "滑动", value: "slide" },
+              { label: "淡入淡出", value: "fade" },
+            ],
+            value: computed({
+              get: () => settingStore.lyricTransition,
+              set: (v) => (settingStore.lyricTransition = v),
+            }),
+          },
+          {
             key: "lyricsPosition",
             label: "歌词位置",
             type: "select",

@@ -81,7 +81,10 @@
             </n-dropdown>
           </div>
           <div class="lyric-container">
-            <Transition name="lyric-slide">
+            <Transition
+              :name="settingStore.lyricTransition === 'fade' ? 'fade' : 'lyric-slide'"
+              :mode="settingStore.lyricTransition === 'fade' ? 'out-in' : undefined"
+            >
               <!-- 歌词 -->
               <TextContainer
                 v-if="isShowLyrics && instantLyrics"

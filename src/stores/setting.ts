@@ -84,6 +84,8 @@ export interface SettingState {
   swapTranRoma: boolean;
   /** 显示逐字音译 */
   showWordsRoma: boolean;
+  /** 歌词动画 */
+  lyricTransition: "slide" | "fade";
   /** 歌词位置 */
   lyricsPosition: "flex-start" | "center" | "flex-end";
   /** 歌词滚动位置偏移量 */
@@ -556,6 +558,7 @@ export const useSettingStore = defineStore("setting", {
     showRoma: true,
     swapTranRoma: false,
     showWordsRoma: true,
+    lyricTransition: "slide",
     lyricsPosition: "flex-start",
     lyricsBlur: false,
     lyricsScrollOffset: 0.25,
