@@ -232,3 +232,31 @@ export const createConsoleBuffer = (options: ConsoleBufferOptions = {}) => {
 };
 
 export default log();
+
+export const webConsole = createConsoleBuffer({
+  maxSize: 500,
+  bufferKey: "__splayerWebConsoleBuffer",
+});
+
+export const errorPopupConsole = createConsoleBuffer({
+  maxSize: 50,
+  bufferKey: "__splayerErrorPopup",
+});
+
+export const downloadWebLog = (errorMessage: string = "User exported logs") => {
+  const time = new Date().toISOString();
+  const header = `------ Web Error Report ${time} ------\n`;
+  const errorSection = `导出原因：\n${errorMessage}\n\n`;
+  const logs = webConsole.getLogs();
+  const logsSection = logs.length
+    ? `------ 控制台日志 ------\n${logs.join("\n")}\n`
+    : "------ 控制台日志 ------\n无\n";
+  const content = header + errorSection + logsSection;
+  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `SPlayer_ErrorReport_${time.replace(/[:.]/g, "-")}.log`;
+  anchor.click();
+  URL.revokeObjectURL(url);
+};

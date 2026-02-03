@@ -301,7 +301,7 @@ export const useAppearanceSettings = (): SettingConfig => {
                 description:
                   "设置当前渲染缩放比例，默认 0.5。适当提高此值（如 1.0 或 1.5）可以减少分界线锯齿，让效果更好，但也会增加显卡压力",
                 min: 0.1,
-                max: 10,
+                max: 3,
                 show: () => settingStore.playerBackgroundType === "animation",
                 value: computed({
                   get: () => settingStore.playerBackgroundRenderScale,
