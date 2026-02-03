@@ -263,14 +263,45 @@ const getAllSystemFonts = async () => {
   }
 };
 
+/**
+ * 字体字符串转数组
+ * @param fontFamily 字体字符串
+ * @returns 字体数组
+ */
 const fontFamilyToArray = (fontFamily: string): string[] => {
-  return (fontFamily || "")
-    .split(",")
-    .map((s) => s.trim())
+  if (!fontFamily) return [];
+  const regex = /"([^"]*)"|'([^']*)'|([^,]+)/g;
+  const matches = fontFamily.match(regex);
+  if (!matches) return [];
+
+  return matches
+    .map((s) => {
+      // 移除首尾空格
+      s = s.trim();
+      // 移除引号
+      if (s.match(/^"|^'/)) {
+        s = s.substring(1, s.length - 1);
+      }
+      return s.trim();
+    })
     .filter(Boolean);
 };
+
+/**
+ * 字体数组转字符串
+ * @param fontArray 字体数组
+ * @returns 字体字符串
+ */
 const fontArrayToFamily = (fontArray: string[]): string => {
-  return fontArray.join(", ");
+  return fontArray
+    .map((font) => {
+      font = font.trim();
+      if ((font.includes(",") || font.includes(" ")) && !/^["'].*["']$/.test(font)) {
+        return `"${font}"`;
+      }
+      return font;
+    })
+    .join(", ");
 };
 
 // 获取桌面歌词配置
@@ -287,9 +318,10 @@ const getDesktopLyricConfig = async () => {
 };
 
 // 保存桌面歌词配置
-const saveDesktopLyricConfig = () => {
+const saveDesktopLyricConfig = (val?: string) => {
   try {
     if (!isElectron) return;
+    if (val) desktopLyricConfig.fontFamily = val;
     window.electron.ipcRenderer.send(
       "update-desktop-lyric-option",
       cloneDeep(desktopLyricConfig),
