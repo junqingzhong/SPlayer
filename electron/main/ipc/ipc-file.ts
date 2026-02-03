@@ -152,7 +152,7 @@ const initFileIpc = (): void => {
         "aiff",
         "aif",
         "aifc",
-        "aifc",
+
       ];
       // 查找指定目录下的所有音乐文件
       const musicFiles = await FastGlob(`**/*.{${musicExtensions.join(",")}}`, globOpt(filePath));
@@ -586,13 +586,7 @@ const initFileIpc = (): void => {
             const artistNames = getArtistNames(songData.artists);
             const artist = artistNames.join(", ") || "未知艺术家"; 
             
-            // Log for debugging cover issue
-            console.log("[Download] Preparing metadata for:", songData.name);
-            console.log("[Download] songData cover info:", {
-                cover: songData.cover,
-                coverSize: songData.coverSize,
-                downloadCover
-            });
+
 
             const coverUrl = (downloadCover && (songData.coverSize?.l || songData.cover)) ? (songData.coverSize?.l || songData.cover) : undefined;
             
