@@ -15,4 +15,4 @@ export interface SongMetadata {
   description?: string
 }
 
-export declare function writeMusicMetadata(filePath: string, metadata: SongMetadata, coverPath?: string | undefined | null): void
+export declare function writeMusicMetadata(filePath: string, metadata: SongMetadata, coverPath?: string | undefined | null): Promise<void>
