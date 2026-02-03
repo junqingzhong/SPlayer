@@ -99,6 +99,10 @@ const initIpc = () => {
         "taskbar:set-show-when-paused",
         settingStore.taskbarLyricShowWhenPaused,
       );
+      window.electron.ipcRenderer.send(
+        "taskbar:set-auto-shrink",
+        settingStore.taskbarLyricAutoShrink,
+      );
       window.electron.ipcRenderer.send("taskbar:broadcast-settings", {
         animationMode: settingStore.taskbarLyricAnimationMode,
         singleLineMode: settingStore.taskbarLyricSingleLineMode,

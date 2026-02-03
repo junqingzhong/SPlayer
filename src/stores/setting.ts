@@ -50,6 +50,8 @@ export interface SettingState {
   taskbarLyricMaxWidth: number;
   /** 任务栏歌词位置 */
   taskbarLyricPosition: "automatic" | "left" | "right";
+  /** 任务栏歌词自动收缩 */
+  taskbarLyricAutoShrink: boolean;
   /** 暂停时显示任务栏歌词 */
   taskbarLyricShowWhenPaused: boolean;
   /** 任务栏歌词动画模式 */
@@ -485,6 +487,7 @@ export const useSettingStore = defineStore("setting", {
     taskbarLyricShowCover: true,
     taskbarLyricMaxWidth: 30,
     taskbarLyricPosition: "automatic",
+    taskbarLyricAutoShrink: false,
     taskbarLyricShowWhenPaused: true,
     taskbarLyricAnimationMode: "slide-blur",
     taskbarLyricSingleLineMode: false,

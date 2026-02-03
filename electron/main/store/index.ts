@@ -51,6 +51,8 @@ export interface StoreType {
     position?: "automatic" | "left" | "right";
     /** 暂停时显示 */
     showWhenPaused?: boolean;
+    /** 自动收缩 */
+    autoShrink?: boolean;
   };
   /** 代理 */
   proxy: string;
@@ -96,6 +98,7 @@ export const useStore = () => {
         showCover: true,
         position: "automatic",
         showWhenPaused: true,
+        autoShrink: false,
       },
       proxy: "",
       amllDbServer: defaultAMLLDbServer,

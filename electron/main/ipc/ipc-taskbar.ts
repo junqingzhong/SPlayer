@@ -49,6 +49,11 @@ const initTaskbarIpc = () => {
     taskbarLyricWindow.send("taskbar:update-settings", { showWhenPaused: show });
   });
 
+  ipcMain.on("taskbar:set-auto-shrink", (_event, shrink: boolean) => {
+    store.set("taskbar.autoShrink", shrink);
+    taskbarLyricWindow.updateLayout(true);
+  });
+
   ipcMain.on("taskbar:broadcast-settings", (_event, settings: unknown) => {
     taskbarLyricWindow.send("taskbar:update-settings", settings);
   });

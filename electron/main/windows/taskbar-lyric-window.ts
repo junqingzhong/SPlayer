@@ -236,8 +236,10 @@ class TaskbarLyricWindow {
       );
       const store = useStore();
       const positionSetting = store.get("taskbar.position", "automatic");
-      const MAX_WIDTH_PHYSICAL =
-        Math.min(maxWidthSetting, this.contentWidth) * scaleFactor;
+      const autoShrink = store.get("taskbar.autoShrink", false);
+      const MAX_WIDTH_PHYSICAL = autoShrink
+        ? Math.min(maxWidthSetting, this.contentWidth) * scaleFactor
+        : maxWidthSetting * scaleFactor;
       const MIN_WIDTH_PHYSICAL = 50 * scaleFactor;
 
       let targetBounds: Electron.Rectangle = {

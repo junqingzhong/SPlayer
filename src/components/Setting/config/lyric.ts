@@ -784,6 +784,30 @@ export const useLyricSettings = (): SettingConfig => {
                 suffix: "%",
               },
               {
+                key: "taskbarLyricAutoShrink",
+                label: "自动收缩",
+                type: "switch",
+                description: "关闭后将固定占据设置的最大宽度",
+                value: computed({
+                  get: () => settingStore.taskbarLyricAutoShrink,
+                  set: (v) => {
+                    if (v) {
+                      window.$dialog.warning({
+                        title: "提示",
+                        content: "可能会导致右侧对齐的任务栏歌词异常抖动，是否开启？",
+                        positiveText: "开启",
+                        negativeText: "取消",
+                        onPositiveClick: () => {
+                          settingStore.taskbarLyricAutoShrink = true;
+                        },
+                      });
+                    } else {
+                      settingStore.taskbarLyricAutoShrink = false;
+                    }
+                  },
+                }),
+              },
+              {
                 key: "taskbarLyricPosition",
                 label: "显示位置",
                 type: "select",

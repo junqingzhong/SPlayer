@@ -106,6 +106,13 @@ const init = async () => {
     );
 
     watch(
+      () => settingStore.taskbarLyricAutoShrink,
+      (val) => {
+        window.electron.ipcRenderer.send("taskbar:set-auto-shrink", val);
+      },
+    );
+
+    watch(
       () => [
         settingStore.taskbarLyricAnimationMode,
         settingStore.taskbarLyricSingleLineMode,
