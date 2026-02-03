@@ -57,9 +57,9 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="settingStore.globalFont.split(',').map((s) => s.trim())"
-            :on-update-value="
-              (value: Array<string>) => (settingStore.globalFont = value.join(', '))
+            :value="fontFamilyToArray(settingStore.globalFont)"
+            @update:value="
+              (value: string[]) => (settingStore.globalFont = fontArrayToFamily(value))
             "
             :options="getOptions('globalFont')"
             class="set"
@@ -115,9 +115,9 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="desktopLyricConfig.fontFamily.split(',').map((s) => s.trim())"
-            :on-update-value="
-              (value: Array<string>) => (desktopLyricConfig.fontFamily = value.join(', '))
+            :value="fontFamilyToArray(desktopLyricConfig.fontFamily)"
+            @update:value="
+              (value: string[]) => (desktopLyricConfig.fontFamily = fontArrayToFamily(value))
             "
             :options="getOptions('desktop')"
             class="set"
@@ -173,9 +173,9 @@
           />
           <n-select
             v-else-if="settingStore.fontSettingStyle === 'multi'"
-            :value="settingStore[font.keySetting].split(',').map((s) => s.trim())"
-            :on-update-value="
-              (value: Array<string>) => (settingStore[font.keySetting] = value.join(', '))
+            :value="fontFamilyToArray(settingStore[font.keySetting])"
+            @update:value="
+              (value: string[]) => (settingStore[font.keySetting] = fontArrayToFamily(value))
             "
             :options="getOptions(font.keySetting)"
             class="set"
@@ -235,8 +235,8 @@ const getOptions = (key: string) => {
 const getAllSystemFonts = async () => {
   if (!isElectron) return;
   try {
-    const allFonts = await window.electron.ipcRenderer.invoke("get-all-fonts");
-    systemFonts.value = allFonts.map((v: string) => {
+    const allFonts: string[] = await window.electron.ipcRenderer.invoke("get-all-fonts");
+    const fontOptions = allFonts.map((v: string) => {
       const name = v.replace(/^['"]+|['"]+$/g, "");
       return {
         label: name,
@@ -246,9 +246,31 @@ const getAllSystemFonts = async () => {
         },
       };
     });
+    fontOptions.sort((ao, bo) => {
+      // 这里自定义排序是为了解决这样一个问题
+      // 默认情况下，长的字符串在最前，而 filterable 按原顺序展示
+      // 这会导致我输入 `Noto Sans` 时，一大堆的其他变体挡在其前面，而我真正想要的结果却在最后
+      const a = ao.value;
+      const b = bo.value;
+      if (a === b) return 0;
+      if (a.startsWith(b)) return 1;
+      if (b.startsWith(a)) return -1;
+      return a.localeCompare(b);
+    });
+    systemFonts.value = fontOptions;
   } catch (error) {
     console.error("Failed to get system fonts:", error);
   }
+};
+
+const fontFamilyToArray = (fontFamily: string): string[] => {
+  return (fontFamily || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+};
+const fontArrayToFamily = (fontArray: string[]): string => {
+  return fontArray.join(", ");
 };
 
 // 获取桌面歌词配置
