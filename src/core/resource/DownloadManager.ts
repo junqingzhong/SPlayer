@@ -81,8 +81,8 @@ class DownloadManager {
       if (!id) return;
 
       const dataStore = useDataStore();
-      const transferred = (transferredBytes / 1024 / 1024).toFixed(2) + "MB";
-      const total = (totalBytes / 1024 / 1024).toFixed(2) + "MB";
+      const transferred = transferredBytes ? (transferredBytes / 1024 / 1024).toFixed(2) + "MB" : "0MB";
+      const total = totalBytes ? (totalBytes / 1024 / 1024).toFixed(2) + "MB" : "0MB";
 
       dataStore.updateDownloadProgress(id, Number((percent * 100).toFixed(1)), transferred, total);
     });

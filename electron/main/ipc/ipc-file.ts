@@ -3,19 +3,42 @@ import { basename, dirname, extname, isAbsolute, join, relative, resolve } from 
 import { access, mkdir, readdir, readFile, stat, unlink, writeFile } from "fs/promises";
 import { parseFile } from "music-metadata";
 import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
-import { File, Picture, Id3v2Settings, TagTypes } from "node-taglib-sharp";
 import { ipcLog } from "../logger";
-import { createWriteStream } from "fs";
-import { pipeline } from "stream/promises";
 import { Options as GlobOptions } from "fast-glob/out/settings";
 import { LocalMusicService } from "../services/LocalMusicService";
 import { useStore } from "../store";
 import FastGlob from "fast-glob";
 import pLimit from "p-limit";
-import got from "got";
+import { loadNativeModule } from "../utils/native-loader";
 
-// 下载项 (存储 AbortController)
-const downloadItems = new Map<number, AbortController>();
+interface SongMetadata {
+  title: string;
+  artist: string;
+  album: string;
+  coverUrl?: string;
+  lyric?: string;
+  description?: string;
+}
+
+interface ToolsModule {
+  downloadFile(
+    id: number,
+    url: string,
+    filePath: string,
+    metadata: SongMetadata | undefined | null,
+    onProgress: (progressJson: string) => void
+  ): Promise<void>;
+  cancelDownload(id: number): void;
+  writeMusicMetadata(filePath: string, metadata: SongMetadata, coverPath?: string): void;
+}
+
+const tools = loadNativeModule("tools.node", "tools") as ToolsModule;
+
+interface DownloadProgress {
+  percent: number;
+  transferredBytes: number;
+  totalBytes: number;
+}
 
 /**
  * 文件相关 IPC
@@ -128,6 +151,7 @@ const initFileIpc = (): void => {
         "aiff",
         "aif",
         "aifc",
+        "aifc",
       ];
       // 查找指定目录下的所有音乐文件
       const musicFiles = await FastGlob(`**/*.{${musicExtensions.join(",")}}`, globOpt(filePath));
@@ -218,25 +242,21 @@ const initFileIpc = (): void => {
       const { name, artist, album, alia, lyric, cover } = metadata;
       // 规范化路径
       const songPath = resolve(path);
-      const coverPath = cover ? resolve(cover) : null;
-      // 读取歌曲文件
-      const songFile = File.createFromPath(songPath);
-      // 读取封面文件
-      const songCover = coverPath ? Picture.fromPath(coverPath) : null;
-      // 保存元数据
-      Id3v2Settings.forceDefaultVersion = true;
-      Id3v2Settings.defaultVersion = 3;
-      songFile.tag.title = name || "未知曲目";
-      songFile.tag.performers = [artist || "未知艺术家"];
-      songFile.tag.album = album || "未知专辑";
-      songFile.tag.albumArtists = [artist || "未知艺术家"];
-      songFile.tag.lyrics = lyric || "";
-      songFile.tag.description = alia || "";
-      songFile.tag.comment = alia || "";
-      if (songCover) songFile.tag.pictures = [songCover];
-      // 保存元信息
-      songFile.save();
-      songFile.dispose();
+      const coverPath = cover ? resolve(cover) : undefined;
+      
+      const meta: SongMetadata = {
+          title: name || "未知曲目",
+          artist: artist || "未知艺术家",
+          album: album || "未知专辑",
+          lyric: lyric || "",
+          description: alia || "",
+      };
+
+      if (!tools) {
+          throw new Error("Native tools not loaded");
+      }
+      
+      tools.writeMusicMetadata(songPath, meta, coverPath);
       return true;
     } catch (error) {
       ipcLog.error("❌ Error setting music metadata:", error);
@@ -535,11 +555,12 @@ const initFileIpc = (): void => {
           await mkdir(downloadPath, { recursive: true });
         }
 
+        const finalFilePath = join(downloadPath, `${fileName}.${fileType}`);
+
         // 检查文件是否存在
         if (skipIfExist) {
-          const filePath = join(downloadPath, `${fileName}.${fileType}`);
           try {
-            await access(filePath);
+            await access(finalFilePath);
             return { status: "skipped", message: "文件已存在" };
           } catch {
             // 文件不存在，继续下载
@@ -547,165 +568,95 @@ const initFileIpc = (): void => {
         }
 
         // 尝试删除可能存在的临时文件
-        const tempPath = join(downloadPath, `${fileName}.${fileType}.tmp`);
-        try {
-          await unlink(tempPath);
-        } catch {
-          // 忽略错误
+        // Rust implementation creates file directly at path, or I should handle tmp file in Rust?
+        // JS implementation handled tmp file.
+        // My Rust implementation overwrites `file_path`.
+        // To be safe, I can just delete `finalFilePath` if it exists (if not skipIfExist).
+        // Rust's `File::create` truncates.
+
+        // Prepare metadata
+        let metadata: SongMetadata | undefined | null = null;
+        if (downloadMeta && songData) {
+            const getArtistNames = (artists: any): string[] => {
+                if (Array.isArray(artists)) {
+                  return artists
+                    .map((ar: any) => (typeof ar === "string" ? ar : ar?.name || ""))
+                    .filter((name) => name && name.trim().length > 0);
+                }
+                if (typeof artists === "string" && artists.trim().length > 0) {
+                  return [artists];
+                }
+                return [];
+            };
+            const artistNames = getArtistNames(songData.artists);
+            const artist = artistNames.join(", ") || "未知艺术家"; 
+            
+            // Log for debugging cover issue
+            console.log("[Download] Preparing metadata for:", songData.name);
+            console.log("[Download] songData cover info:", {
+                cover: songData.cover,
+                coverSize: songData.coverSize,
+                downloadCover
+            });
+
+            const coverUrl = (downloadCover && (songData.coverSize?.l || songData.cover)) ? (songData.coverSize?.l || songData.cover) : undefined;
+            
+            metadata = {
+                title: songData.name || "未知曲目",
+                artist: artist,
+                album: (typeof songData.album === "string" ? songData.album : songData.album?.name) || "未知专辑",
+                coverUrl: coverUrl,
+                lyric: (downloadLyric && lyric) ? lyric : undefined,
+                description: songData.alia || "",
+            };
+            console.log("[Download] Resolved cover URL:", coverUrl);
         }
 
-        // 下载文件
-        const abortController = new AbortController();
-        if (songData?.id) {
-          downloadItems.set(songData.id, abortController);
-        }
+        const onProgress = (...args: any[]) => {
+             // console.log("Received progress args:", args);
+             let progressJson: string | undefined;
+             
+             // Handle (err, value) or (value) signature
+             if (args.length > 1 && args[0] === null && typeof args[1] === 'string') {
+                 progressJson = args[1];
+             } else if (args.length > 0 && typeof args[0] === 'string') {
+                 progressJson = args[0];
+             }
 
-        const finalFilePath = join(downloadPath, `${fileName}.${fileType}`);
-        const fileStream = createWriteStream(finalFilePath);
-
-        try {
-          const downloadStream = got.stream(url, {
-            signal: abortController.signal,
-            retry: { limit: 0 }, // 禁止自动重试，防止进度条跳变
-          });
-
-          let lastProgressTime = 0;
-          let lastPercent = 0;
-
-          downloadStream.on("downloadProgress", (progress) => {
-            const now = Date.now();
-            // 限制发送频率：每秒或进度变化超过 5%
-            if (now - lastProgressTime > 1000 || progress.percent - lastPercent >= 0.05) {
-              win.webContents.send("download-progress", {
-                id: songData?.id,
-                percent: progress.percent,
-                transferredBytes: progress.transferred,
-                totalBytes: progress.total,
-              });
-              lastProgressTime = now;
-              lastPercent = progress.percent;
+             try {
+                 if (!progressJson) return;
+                 const progress = JSON.parse(progressJson) as DownloadProgress;
+                 if (!progress) return;
+                 
+                 win.webContents.send("download-progress", {
+                     id: songData?.id,
+                     percent: progress.percent,
+                     transferredBytes: progress.transferredBytes,
+                     totalBytes: progress.totalBytes,
+                });
+            } catch (e) {
+                console.error("Failed to parse progress json", e, "Input:", progressJson, "Args:", args);
             }
-          });
-
-          await pipeline(downloadStream, fileStream);
-
-          // 发送 100% 进度
-          win.webContents.send("download-progress", {
-            id: songData?.id,
-            percent: 1,
-            transferredBytes: 0,
-            totalBytes: 0,
-          });
-        } catch (error: any) {
-          // 删除未完成的文件
-          try {
-            await unlink(finalFilePath);
-          } catch {
-            // 忽略错误
-          }
-
-          if (error.name === "AbortError" || error.code === "ABORT_ERR") {
-            return { status: "cancelled", message: "下载已取消" };
-          }
-          throw error;
-        } finally {
-          if (songData?.id) {
-            downloadItems.delete(songData.id);
-          }
-        }
-
-        if (!downloadMeta || !songData?.cover) return { status: "success" };
-
-        // 验证文件是否存在
-        try {
-          await access(finalFilePath);
-        } catch {
-          // 等待一小段时间再次检查（解决某些情况下文件系统延迟）
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          try {
-            await access(finalFilePath);
-          } catch {
-            throw new Error(`File not found at ${finalFilePath}`);
-          }
-        }
-
-        // 下载封面
-        const coverUrl = songData?.coverSize?.l || songData.cover;
-        let coverPath = "";
-        try {
-          const coverBuffer = await got(coverUrl).buffer();
-          coverPath = join(downloadPath, `${fileName}.jpg`);
-          await writeFile(coverPath, coverBuffer);
-        } catch (e) {
-          console.error("Cover download failed", e);
-        }
-
-        // 读取歌曲文件
-        let songFile = File.createFromPath(finalFilePath);
-        // 清除原有标签，防止脏数据（如模拟播放下载时的乱码歌词）
-        songFile.removeTags(TagTypes.AllTags);
-        songFile.save();
-        songFile.dispose();
-
-        // 重新读取文件以写入新标签
-        songFile = File.createFromPath(finalFilePath);
-        // 生成图片信息
-        let songCover: Picture | null = null;
-        if (coverPath) {
-          try {
-            songCover = Picture.fromPath(coverPath);
-          } catch {
-            // 忽略错误
-          }
-        }
-
-        // 保存修改后的元数据
-        Id3v2Settings.forceDefaultVersion = true;
-        Id3v2Settings.defaultVersion = 3;
-
-        songFile.tag.title = songData?.name || "未知曲目";
-        songFile.tag.album =
-          (typeof songData?.album === "string" ? songData.album : songData?.album?.name) ||
-          "未知专辑";
-        // 处理歌手信息（兼容字符串和数组格式）
-        const getArtistNames = (artists: any): string[] => {
-          if (Array.isArray(artists)) {
-            return artists
-              .map((ar: any) => (typeof ar === "string" ? ar : ar?.name || ""))
-              .filter((name) => name && name.trim().length > 0);
-          }
-          if (typeof artists === "string" && artists.trim().length > 0) {
-            return [artists];
-          }
-          return [];
         };
 
-        const artistNames = getArtistNames(songData?.artists);
-        const finalArtists = artistNames.length > 0 ? artistNames : ["未知艺术家"];
+        if (!tools) {
+            throw new Error("Native tools not loaded");
+        }
 
-        songFile.tag.performers = finalArtists;
-        songFile.tag.albumArtists = finalArtists;
-        if (lyric && downloadLyric) songFile.tag.lyrics = lyric;
-        if (songCover && downloadCover) songFile.tag.pictures = [songCover];
-        // 保存元信息
-        songFile.save();
-        songFile.dispose();
+        await tools.downloadFile(songData?.id || 0, url, finalFilePath, metadata, onProgress);
+
         // 创建同名歌词文件
         if (lyric && saveMetaFile && downloadLyric) {
           const lrcPath = join(downloadPath, `${fileName}.lrc`);
           await writeFile(lrcPath, lyric, "utf-8");
         }
-        // 是否删除封面
-        if (coverPath && (!saveMetaFile || !downloadCover)) {
-          try {
-            await unlink(coverPath);
-          } catch {
-            // 忽略错误
-          }
-        }
+
         return { status: "success" };
-      } catch (error) {
+      } catch (error: any) {
         ipcLog.error("❌ Error downloading file:", error);
+        if (error.message && error.message.includes("cancelled")) {
+             return { status: "cancelled", message: "下载已取消" };
+        }
         return {
           status: "error",
           message: error instanceof Error ? error.message : "Unknown error",
@@ -716,11 +667,9 @@ const initFileIpc = (): void => {
 
   // 取消下载
   ipcMain.handle("cancel-download", async (_, songId: number) => {
-    const controller = downloadItems.get(songId);
-    if (controller) {
-      controller.abort();
-      downloadItems.delete(songId);
-      return true;
+    if (tools) {
+        tools.cancelDownload(songId);
+        return true;
     }
     return false;
   });
