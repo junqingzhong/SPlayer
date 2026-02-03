@@ -5,7 +5,9 @@
 <script setup lang="ts">
 import { createConsoleBuffer } from "@/utils/log";
 import { isElectron } from "@/utils/env";
+import { useSettingStore } from "@/stores/setting";
 
+const settingStore = useSettingStore();
 let dialogOpened = false;
 
 const sanitizeErrorMessage = (message: string) => {
@@ -16,6 +18,7 @@ const sanitizeErrorMessage = (message: string) => {
 };
 
 const showErrorDialog = (errorMessage: string) => {
+  if (!settingStore.enableGlobalErrorDialog) return;
   if (dialogOpened) return;
   dialogOpened = true;
   const safeMessage = sanitizeErrorMessage(errorMessage);

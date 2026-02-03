@@ -269,6 +269,16 @@ export const useGeneralSettings = (): SettingConfig => {
               set: (v) => (settingStore.checkUpdateOnStart = v),
             }),
           },
+          {
+            key: "enableGlobalErrorDialog",
+            label: "启用全局错误弹窗",
+            type: "switch",
+            description: "关闭后，未捕获的错误将不再弹出错误提示窗口",
+            value: computed({
+              get: () => settingStore.enableGlobalErrorDialog,
+              set: (v) => (settingStore.enableGlobalErrorDialog = v),
+            }),
+          },
         ],
       },
       {
