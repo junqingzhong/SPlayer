@@ -30,7 +30,7 @@ interface ToolsModule {
     onProgress: (err: any, progressJson: string) => void
   ): Promise<void>;
   cancelDownload(id: number): void;
-  writeMusicMetadata(filePath: string, metadata: SongMetadata, coverPath?: string): void;
+  writeMusicMetadata(filePath: string, metadata: SongMetadata, coverPath?: string): Promise<void>;
 }
 
 const tools = loadNativeModule("tools.node", "tools") as ToolsModule;
@@ -257,7 +257,7 @@ const initFileIpc = (): void => {
           throw new Error("Native tools not loaded");
       }
       
-      tools.writeMusicMetadata(songPath, meta, coverPath);
+      await tools.writeMusicMetadata(songPath, meta, coverPath);
       return true;
     } catch (error) {
       ipcLog.error("❌ Error setting music metadata:", error);

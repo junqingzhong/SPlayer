@@ -36,20 +36,27 @@ pub fn cancel_download(id: u32) {
 }
 
 #[napi]
-pub fn write_music_metadata(
+pub async fn write_music_metadata(
     file_path: String,
     metadata: SongMetadata,
     cover_path: Option<String>,
 ) -> Result<()> {
     let cover_data = if let Some(path) = cover_path {
-        match std::fs::read(&path) {
+        match tokio::fs::read(&path).await {
             Ok(bytes) => Some(bytes::Bytes::from(bytes)),
             Err(_) => None,
         }
     } else {
         None
     };
-    write_metadata(&file_path, metadata, cover_data)
+
+    tokio::task::spawn_blocking(move || {
+        write_metadata(&file_path, metadata, cover_data)
+    })
+    .await
+    .map_err(|e| Error::from_reason(e.to_string()))??;
+
+    Ok(())
 }
 
 #[napi]
