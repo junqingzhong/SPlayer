@@ -62,15 +62,15 @@
           class="special-contributor-item"
           hoverable
         >
-          <n-flex justify="space-between" align="center">
-            <n-flex align="center">
+          <n-flex justify="space-between" align="center" :wrap="false">
+            <n-flex align="center" style="flex: 1; min-width: 0">
               <n-avatar
                 round
                 :size="48"
                 :src="item.avatar"
                 fallback-src="/images/avatar.jpg?asset"
               />
-              <n-flex vertical :gap="4">
+              <n-flex vertical :gap="4" style="flex: 1; min-width: 0">
                 <n-text class="name" strong>{{ item.name }}</n-text>
                 <n-text class="tip" :depth="3">{{ item.description }}</n-text>
               </n-flex>
@@ -293,14 +293,14 @@ const specialContributors = [
   {
     name: "imsyy",
     description: "每天在屎山和pr之间徘徊的无名作者",
-    avatar: "",
+    avatar: "https://avatars.githubusercontent.com/u/42232682",
     buttonText: "个人主页",
     url: "https://imsyy.top",
   },
   {
     name: "Kazukokawagawa 池鱼鱼！",
-    description: "这是一个核心贡献者",
-    avatar: "",
+    description: "这里是什么？万能的池鱼！",
+    avatar: "https://avatars.githubusercontent.com/u/109492503",
     buttonText: "个人博客",
     url: "https://chiyu.it/",
   },
@@ -309,12 +309,12 @@ const specialContributors = [
     description: "这个人一点都不神秘，虽然写了一点，但就像什么都没有写",
     avatar: "",
     buttonText: "GitHub",
-    url: "https://github.com/MoYingJi",
+    url: "https://avatars.githubusercontent.com/u/64307394",
   },
   {
     name: "apoint123",
-    description: "占位占位占位占位占位占位",
-    avatar: "",
+    description: "Rustacean",
+    avatar: "https://avatars.githubusercontent.com/u/108002475",
     buttonText: "GitHub",
     url: "https://github.com/apoint123",
   },
