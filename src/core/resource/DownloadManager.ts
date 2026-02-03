@@ -645,17 +645,18 @@ class DownloadManager {
 
       if (!tlyric && !romalrc) return lrc;
 
-      // 正则：匹配 [mm:ss.xx] 或 [mm:ss.xxx] 形式的时间标签
-      const timeTagRe = /\[(\d{2}):(\d{2})(?:\.(\d{1,3}))?\]/g;
+      // 正则：匹配 [mm:ss.xx] 或 [mm:ss.xxx] 形式的时间标签 (支持不定长小数位)
+      const timeTagRe = /\[(\d{2}):(\d{2})(?:\.(\d{1,}))?\]/g;
 
       // 把时间字符串转成秒（用于模糊匹配）
       const timeStrToSeconds = (timeStr: string) => {
-        const m = timeStr.match(/^(\d{2}):(\d{2})(?:\.(\d{1,3}))?$/);
+        const m = timeStr.match(/^(\d{2}):(\d{2})(?:\.(\d{1,}))?$/);
         if (!m) return 0;
         const minutes = parseInt(m[1], 10);
         const seconds = parseInt(m[2], 10);
-        const frac = m[3] ? parseInt((m[3] + "00").slice(0, 3), 10) : 0;
-        return minutes * 60 + seconds + frac / 1000;
+        const fracStr = m[3] ? "0." + m[3] : "0";
+        const frac = parseFloat(fracStr);
+        return minutes * 60 + seconds + frac;
       };
 
       const parseToMap = (lyricStr: string) => {
@@ -697,7 +698,7 @@ class DownloadManager {
             bestTag = key;
           }
         }
-        if (bestTag && bestDiff < 0.5) {
+        if (bestTag && bestDiff <= 0.5) {
           return map.get(bestTag);
         }
         return null;
