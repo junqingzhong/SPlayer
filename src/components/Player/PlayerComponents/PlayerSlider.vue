@@ -75,10 +75,15 @@ const getCurrentLyric = (value: number) => {
   if (!lyric?.length) return null;
   //  查找最近一句歌词
   let nearestLyric: LyricLine | null = null;
-  for (let i = lyric.length - 1; i >= 0; i--) {
-    if (value >= lyric[i].startTime) {
-      nearestLyric = lyric[i];
-      break;
+  let low = 0;
+  let high = lyric.length - 1;
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2);
+    if (lyric[mid].startTime <= value) {
+      nearestLyric = lyric[mid];
+      low = mid + 1;
+    } else {
+      high = mid - 1;
     }
   }
   return {
@@ -93,11 +98,17 @@ const setSeek = (value: number) => {
     const lyric = toRaw(musicStore.songLyric.lrcData);
     if (lyric?.length) {
       // 找到当前行（startTime <= value 的最后一行）
+      // 使用二分查找优化，效率更高
+      let low = 0;
+      let high = lyric.length - 1;
       let currentLineIdx = -1;
-      for (let i = lyric.length - 1; i >= 0; i--) {
-        if (lyric[i].startTime <= value) {
-          currentLineIdx = i;
-          break;
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        if (lyric[mid].startTime <= value) {
+          currentLineIdx = mid;
+          low = mid + 1;
+        } else {
+          high = mid - 1;
         }
       }
 
