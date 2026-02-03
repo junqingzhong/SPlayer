@@ -73,7 +73,7 @@
             <!-- 操作 -->
             <n-flex align="center" justify="center" class="actions">
               <n-button
-                v-if="item.status !== 'downloading'"
+                v-if="item.status === 'failed'"
                 type="primary"
                 secondary
                 strong
