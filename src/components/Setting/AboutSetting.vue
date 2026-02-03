@@ -33,17 +33,23 @@
       </n-card>
       <n-collapse-transition :show="!!updateData">
         <n-card class="set-item update-data">
-          <n-flex class="version">
-            <n-text>最新版本</n-text>
-            <n-tag :bordered="false" size="small" type="primary">
-              {{ newVersion?.version || "v0.0.0" }}
-            </n-tag>
-            <n-tag v-if="newVersion?.prerelease" class="test" size="small" type="warning">
-              测试版
-            </n-tag>
-            <n-text :depth="3" class="time">{{ newVersion?.time }}</n-text>
-          </n-flex>
-          <div class="markdown-body" v-html="newVersion?.changelog" @click="jumpLink" />
+          <n-collapse arrow-placement="right">
+            <n-collapse-item name="version">
+              <template #header>
+                <n-flex class="version">
+                  <n-text>最新版本</n-text>
+                  <n-tag :bordered="false" size="small" type="primary">
+                    {{ newVersion?.version || "v0.0.0" }}
+                  </n-tag>
+                  <n-tag v-if="newVersion?.prerelease" class="test" size="small" type="warning">
+                    测试版
+                  </n-tag>
+                  <n-text :depth="3" class="time">{{ newVersion?.time }}</n-text>
+                </n-flex>
+              </template>
+              <div class="markdown-body" v-html="newVersion?.changelog" @click="jumpLink" />
+            </n-collapse-item>
+          </n-collapse>
         </n-card>
       </n-collapse-transition>
     </div>
