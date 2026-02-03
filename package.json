@@ -13,7 +13,7 @@
   "license-file": "LICENSE",
   "engines": {
     "node": ">=20",
-    "npm": ">=10"
+    "pnpm": ">=9"
   },
   "type": "module",
   "scripts": {
@@ -21,17 +21,17 @@
     "lint": "npx eslint . --fix",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
     "build:native": "tsx scripts/build-native.ts",
     "start": "electron-vite preview",
-    "dev": "npm run build:native && tsx scripts/dev.ts",
-    "build": "rimraf dist && npm run build:native && npm run typecheck && electron-vite build",
+    "dev": "pnpm run build:native && tsx scripts/dev.ts",
+    "build": "rimraf dist && pnpm run build:native && pnpm run typecheck && electron-vite build",
     "postinstall": "electron-builder install-app-deps",
-    "build:web": "npm run build",
-    "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win --config electron-builder.config.ts",
-    "build:mac": "npm run build && electron-builder --mac --config electron-builder.config.ts",
-    "build:linux": "npm run build && electron-builder --linux --config electron-builder.config.ts",
+    "build:web": "pnpm run build",
+    "build:unpack": "pnpm run build && electron-builder --dir",
+    "build:win": "pnpm run build && electron-builder --win --config electron-builder.config.ts",
+    "build:mac": "pnpm run build && electron-builder --mac --config electron-builder.config.ts",
+    "build:linux": "pnpm run build && electron-builder --linux --config electron-builder.config.ts",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs"
