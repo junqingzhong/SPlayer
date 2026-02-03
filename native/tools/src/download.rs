@@ -17,6 +17,13 @@ use std::sync::Arc;
 
 static DOWNLOAD_TASKS: Lazy<DashMap<u32, CancellationToken>> = Lazy::new(DashMap::new);
 
+static CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
+    reqwest::Client::builder()
+        .user_agent("SPlayer/1.0")
+        .build()
+        .expect("Failed to create HTTP client")
+});
+
 #[napi(object)]
 #[derive(Debug)]
 pub struct SongMetadata {
@@ -89,10 +96,7 @@ async fn download_file_inner(
         return Err(Error::new(Status::Cancelled, "Download cancelled".to_string()));
     }
 
-    let client = reqwest::Client::builder()
-        .user_agent("SPlayer/1.0")
-        .build()
-        .map_err(|e| Error::from_reason(e.to_string()))?;
+    let client = CLIENT.clone();
 
     // Head request to get size
     let head_resp = client.head(&url)
@@ -176,37 +180,45 @@ async fn download_single_stream(
         total_size
     };
 
-    while let Some(item) = tokio::select! {
-        _ = token.cancelled() => None,
-        item = stream.next() => item,
-    } {
-        let chunk = item.map_err(|e| Error::from_reason(e.to_string()))?;
-        file.write_all(&chunk).await.map_err(|e| Error::from_reason(e.to_string()))?;
-        downloaded += chunk.len() as u64;
+    let process_result = async {
+        while let Some(item) = tokio::select! {
+            _ = token.cancelled() => None,
+            item = stream.next() => item,
+        } {
+            let chunk = item.map_err(|e| Error::from_reason(e.to_string()))?;
+            file.write_all(&chunk).await.map_err(|e| Error::from_reason(e.to_string()))?;
+            downloaded += chunk.len() as u64;
 
-        if total_size > 0 {
-            let percent = downloaded as f64 / total_size as f64;
-            let now = std::time::Instant::now();
-            
-            if percent - last_percent >= 0.01 || now.duration_since(last_progress_time).as_millis() > 500 || percent >= 1.0 {
-                 let json = format!(
-                    "{{\"percent\": {:.4}, \"transferredBytes\": {}, \"totalBytes\": {}}}", 
-                    percent, downloaded, total_size
-                 );
-                 on_progress.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
-                 last_progress_time = now;
-                 last_percent = percent;
+            if total_size > 0 {
+                let percent = downloaded as f64 / total_size as f64;
+                let now = std::time::Instant::now();
+                
+                if percent - last_percent >= 0.01 || now.duration_since(last_progress_time).as_millis() > 500 || percent >= 1.0 {
+                     let json = format!(
+                        "{{\"percent\": {:.4}, \"transferredBytes\": {}, \"totalBytes\": {}}}", 
+                        percent, downloaded, total_size
+                     );
+                     on_progress.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+                     last_progress_time = now;
+                     last_percent = percent;
+                }
             }
         }
-    }
 
-    if token.is_cancelled() {
+        if token.is_cancelled() {
+            return Err(Error::new(Status::Cancelled, "Download cancelled".to_string()));
+        }
+
+        file.flush().await.map_err(|e| Error::from_reason(e.to_string()))?;
+        Ok(())
+    }.await;
+
+    if let Err(e) = process_result {
         drop(file);
         let _ = tokio::fs::remove_file(&file_path).await;
-        return Err(Error::new(Status::Cancelled, "Download cancelled".to_string()));
+        return Err(e);
     }
 
-    file.flush().await.map_err(|e| Error::from_reason(e.to_string()))?;
     Ok(())
 }
 
