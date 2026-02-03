@@ -21,14 +21,7 @@
           >
             {{ statusStore.updateCheck ? "检查更新中" : "检查更新" }}
           </n-button>
-          <n-button
-            type="primary"
-            strong
-            secondary
-            @click="handleExportLog"
-          >
-            导出日志
-          </n-button>
+          <n-button type="primary" strong secondary @click="handleExportLog"> 导出日志 </n-button>
         </n-flex>
       </n-card>
       <n-collapse-transition :show="!!updateData">
@@ -56,6 +49,9 @@
     <div class="set-list">
       <n-h3 prefix="bar"> 特别鸣谢 </n-h3>
       <n-flex vertical :size="12" style="margin-bottom: 12px">
+        <n-text :depth="3" style="margin-left: 4px; font-size: 12px" class="tip">
+          注：以下排名不分先后
+        </n-text>
         <n-card
           v-for="(item, index) in specialContributors"
           :key="index"
@@ -292,29 +288,30 @@ const contributors = [
 const specialContributors = [
   {
     name: "imsyy",
-    description: "每天在屎山和pr之间徘徊的无名作者",
-    avatar: "https://avatars.githubusercontent.com/u/42232682",
+    description: "每天在屎山和 PR 之间徘徊的作者",
+    avatar: "/images/avatar/imsyy.webp",
     buttonText: "个人主页",
     url: "https://imsyy.top",
   },
   {
     name: "Kazukokawagawa 池鱼鱼！",
-    description: "这里是什么？万能的池鱼！在开发过程中找出了一堆没人能想得到的诡异Bug，有非同寻常的Bug体质 可以用2天写完别人一个月commit",
-    avatar: "https://avatars.githubusercontent.com/u/109492503",
+    description:
+      "这里是什么？万能的池鱼！在开发过程中找出了一堆没人能想得到的诡异Bug，有非同寻常的Bug体质，可以用2天写完别人一个月commit",
+    avatar: "/images/avatar/chiyu.webp",
     buttonText: "个人博客",
     url: "https://chiyu.it/",
   },
   {
     name: "MoYingJi",
     description: "这个人一点都不神秘，虽然写了一点，但就像什么都没有写",
-    avatar: "",
+    avatar: "/images/avatar/moyingji.webp",
     buttonText: "GitHub",
     url: "https://avatars.githubusercontent.com/u/64307394",
   },
   {
     name: "apoint123",
     description: "Rustacean",
-    avatar: "https://avatars.githubusercontent.com/u/108002475",
+    avatar: "/images/avatar/apoint123.webp",
     buttonText: "GitHub",
     url: "https://github.com/apoint123",
   },
