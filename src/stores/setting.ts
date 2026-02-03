@@ -269,6 +269,8 @@ export interface SettingState {
     artistDetail: boolean;
     /** 播客电台 */
     radio: boolean;
+    /** 专辑 */
+    album: boolean;
     /** 我的收藏 */
     like: boolean;
     /** 视频 */
@@ -586,6 +588,7 @@ export const useSettingStore = defineStore("setting", {
       personalFM: false,
       artistDetail: false,
       radio: false,
+      album: false,
       like: false,
       video: false,
       videoDetail: false,
