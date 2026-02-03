@@ -90,9 +90,43 @@ const getCurrentLyric = (value: number) => {
 // 调节进度
 const setSeek = (value: number) => {
   if (settingStore.progressAdjustLyric) {
-    const nearestLyric = getCurrentLyric(value);
-    player.setSeek(nearestLyric?.time ?? value);
-    return;
+    const lyric = toRaw(musicStore.songLyric.lrcData);
+    if (lyric?.length) {
+      // 找到当前行（startTime <= value 的最后一行）
+      let currentLineIdx = -1;
+      for (let i = lyric.length - 1; i >= 0; i--) {
+        if (lyric[i].startTime <= value) {
+          currentLineIdx = i;
+          break;
+        }
+      }
+
+      // 优先检查下一行（预备开始）
+      // 无论当前是否有行，只要下一行够近，就吸附到下一行
+      const nextLineIdx = currentLineIdx + 1;
+      if (nextLineIdx < lyric.length) {
+        const nextLine = lyric[nextLineIdx];
+        if (nextLine.startTime - value <= 2500) { // 2.5s 阈值
+          player.setSeek(nextLine.startTime);
+          return;
+        }
+      }
+
+      // 查当前行（重新开始）
+      // 解决纯音乐被拉回的问题：如果距离当前行开头太远（>10s），则视为 Instrumental 或 Gap，不吸附
+      if (currentLineIdx !== -1) {
+        const currentLine = lyric[currentLineIdx];
+        const offset = value - currentLine.startTime;
+        // 10s 内吸附回当前行开头
+        if (offset <= 10000) {
+          player.setSeek(currentLine.startTime);
+          return;
+        }
+      } else {
+        // 在第一行之前，且距离第一行超过 2.5s (否则会被上面的 nextLineIdx=0 捕获)
+        // 不需要额外逻辑，直接跳过
+      }
+    }
   }
   player.setSeek(value);
 };
