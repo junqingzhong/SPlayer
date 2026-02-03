@@ -5,7 +5,7 @@
     "@napi-rs/cli": "^3.5.1"
   },
   "napi": {
-    "binaryName": "external_media_integration",
+    "binaryName": "external-media-integration",
     "triples": {}
   },
   "scripts": {
