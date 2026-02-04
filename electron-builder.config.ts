@@ -37,7 +37,7 @@ const config: Configuration = {
     },
     {
       from: "native/tools",
-      to: "tools",
+      to: "native",
       filter: ["*.node"],
     },
   ],
