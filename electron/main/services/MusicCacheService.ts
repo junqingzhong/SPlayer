@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
 import { rename, stat, unlink } from "fs/promises";
 import { cacheLog } from "../logger";
+import { useStore } from "../store";
 import { loadNativeModule } from "../utils/native-loader";
 import { CacheService } from "./CacheService";
 
@@ -93,6 +94,10 @@ export class MusicCacheService {
       // 这里的 id 仅用于进度或取消，缓存下载暂时传入 0 或尝试转换
       const numericId = typeof id === "number" ? id : 0;
 
+      const store = useStore();
+      const enableHttps = store.get("enableDownloadHttps", true) as boolean;
+      const enableHttp2 = store.get("enableDownloadHttp2", true) as boolean;
+
       await tools.downloadFile(
         numericId,
         url,
@@ -101,6 +106,8 @@ export class MusicCacheService {
         4, // Thread count
         null, // Referer
         () => {}, // No progress callback needed for cache currently
+        enableHttps,
+        enableHttp2,
       );
 
       // 检查临时文件是否存在

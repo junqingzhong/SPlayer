@@ -138,6 +138,10 @@ export interface SettingState {
   downloadLyricToTraditional: boolean;
   /** 下载歌词文件编码 */
   downloadLyricEncoding: "utf-8" | "gbk" | "utf-16" | "iso-8859-1";
+  /** 启用HTTPS升级 */
+  enableDownloadHttps: boolean;
+  /** 启用HTTP2下载 */
+  enableDownloadHttp2: boolean;
   /** 默认下载音质（弹窗默认选项） */
   downloadSongLevel: SongLevelType;
   /** 代理协议 */
@@ -617,6 +621,8 @@ export const useSettingStore = defineStore("setting", {
     downloadSaveAsAss: false,
     downloadLyricToTraditional: false,
     downloadLyricEncoding: "utf-8",
+    enableDownloadHttps: true,
+    enableDownloadHttp2: true,
     saveMetaFile: false,
     downloadSongLevel: "h",
     proxyProtocol: "off",

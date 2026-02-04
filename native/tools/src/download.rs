@@ -89,15 +89,6 @@ impl ProgressTracker {
 
 static DOWNLOAD_TASKS: Lazy<DashMap<u32, CancellationToken>> = Lazy::new(DashMap::new);
 
-static CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
-    reqwest::Client::builder()
-        .user_agent("SPlayer/1.0")
-        .tcp_nodelay(true)
-        .http2_keep_alive_interval(std::time::Duration::from_secs(15))
-        .build()
-        .expect("Failed to create HTTP client")
-});
-
 #[napi(object)]
 #[derive(Debug)]
 pub struct SongMetadata {
@@ -155,6 +146,8 @@ pub async fn download_file(
     thread_count: u32,
     referer: Option<String>,
     on_progress: ThreadsafeFunction<DownloadProgress>,
+    enable_https: bool,
+    enable_http2: bool,
 ) -> Result<()> {
     let token = CancellationToken::new();
     DOWNLOAD_TASKS.insert(id, token.clone());
@@ -168,6 +161,8 @@ pub async fn download_file(
         thread_count,
         referer,
         on_progress,
+        enable_https,
+        enable_http2,
     )
     .await
 }
@@ -180,15 +175,58 @@ async fn download_file_inner(
     thread_count: u32,
     referer: Option<String>,
     on_progress: ThreadsafeFunction<DownloadProgress>,
+    enable_https: bool,
+    enable_http2: bool,
 ) -> Result<()> {
     if token.is_cancelled() {
         return Err(Error::new(Status::Cancelled, "下载已取消".to_string()));
     }
 
-    let client = CLIENT.clone();
+    let mut builder = reqwest::Client::builder()
+        .user_agent("SPlayer/1.0")
+        .tcp_nodelay(true)
+        .http2_keep_alive_interval(std::time::Duration::from_secs(15));
+
+    if !enable_http2 {
+        builder = builder.http1_only();
+    }
+
+    let client = builder
+        .build()
+        .map_err(|e| Error::from_reason(format!("创建 HTTP 客户端失败: {}", e)))?;
+
+    let mut final_url = url.clone();
+
+    // 尝试将 HTTP 升级到 HTTPS 以启用 HTTP/2
+    if enable_https && final_url.starts_with("http://") {
+        let https_url = final_url.replacen("http://", "https://", 1);
+        println!("[Download] 检测到 HTTP 链接，尝试升级到 HTTPS: {}", https_url);
+
+        let mut probe_req = client.head(&https_url);
+        if let Some(ref r) = referer {
+            probe_req = probe_req.header("Referer", r);
+        }
+
+        if let Ok(resp) = probe_req.send().await {
+            if resp.status().is_success() {
+                println!(
+                    "[Download] HTTPS 升级成功 (Protocol: {:?})",
+                    resp.version()
+                );
+                final_url = https_url;
+            } else {
+                println!(
+                    "[Download] HTTPS 探测返回状态码 {}，回退到 HTTP",
+                    resp.status()
+                );
+            }
+        } else {
+            println!("[Download] HTTPS 连接失败，回退到 HTTP");
+        }
+    }
 
     // 发送 HEAD 请求获取文件大小
-    let mut head_req = client.head(&url);
+    let mut head_req = client.head(&final_url);
     if let Some(ref r) = referer {
         head_req = head_req.header("Referer", r);
     }
@@ -205,7 +243,7 @@ async fn download_file_inner(
 
     // 如果 HEAD 失败或没给长度，尝试 Range 探测 (Range: bytes=0-0)
     if total_size == 0 {
-        let mut range_req = client.get(&url).header("Range", "bytes=0-0");
+        let mut range_req = client.get(&final_url).header("Range", "bytes=0-0");
         if let Some(ref r) = referer {
             range_req = range_req.header("Referer", r);
         }
@@ -225,8 +263,8 @@ async fn download_file_inner(
     }
 
     println!(
-        "[Download] 协议: {:?}, 请求线程数: {}, 总大小: {}",
-        version, thread_count, total_size
+        "[Download] 最终使用 URL: {}, 协议: {:?}, 请求线程数: {}, 总大小: {}",
+        final_url, version, thread_count, total_size
     );
     if version != reqwest::Version::HTTP_2 {
         println!(
@@ -240,7 +278,7 @@ async fn download_file_inner(
         download_multi_stream(
             token.clone(),
             client.clone(),
-            url.clone(),
+            final_url.clone(),
             file_path.clone(),
             total_size,
             thread_count,
@@ -253,7 +291,7 @@ async fn download_file_inner(
         download_single_stream(
             token.clone(),
             client.clone(),
-            url.clone(),
+            final_url.clone(),
             file_path.clone(),
             total_size,
             referer,

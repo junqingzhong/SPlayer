@@ -504,6 +504,8 @@ const initFileIpc = (): void => {
         skipIfExist?: boolean;
         threadCount?: number;
         referer?: string;
+        enableDownloadHttps?: boolean;
+        enableDownloadHttp2?: boolean;
       } = {
         fileName: "未知文件名",
         fileType: "mp3",
@@ -527,6 +529,8 @@ const initFileIpc = (): void => {
           songData,
           skipIfExist,
           referer,
+          enableDownloadHttps,
+          enableDownloadHttp2,
         } = options;
         // 规范化路径
         const downloadPath = resolve(path);
@@ -642,6 +646,15 @@ const initFileIpc = (): void => {
         const threadCount =
           (options.threadCount as number) || (store.get("downloadThreadCount") as number) || 8;
 
+        const enableHttps =
+          enableDownloadHttps !== undefined
+            ? enableDownloadHttps
+            : (store.get("enableDownloadHttps", true) as boolean);
+        const enableHttp2 =
+          enableDownloadHttp2 !== undefined
+            ? enableDownloadHttp2
+            : (store.get("enableDownloadHttp2", true) as boolean);
+
         await tools.downloadFile(
           songData?.id || 0,
           url,
@@ -650,6 +663,8 @@ const initFileIpc = (): void => {
           threadCount,
           referer,
           onProgress,
+          enableHttps,
+          enableHttp2,
         );
 
         // 创建同名歌词文件
