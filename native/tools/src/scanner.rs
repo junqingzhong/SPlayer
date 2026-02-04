@@ -304,7 +304,7 @@ fn process_single_track(
         cover: cover_path,
         mtime,
         size,
-        bitrate: f64::from(properties.audio_bitrate().unwrap_or(0)),
+        bitrate: f64::from(properties.audio_bitrate().unwrap_or(0) * 1000),
     })
 }
 
