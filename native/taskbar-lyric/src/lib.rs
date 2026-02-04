@@ -2,30 +2,76 @@ use std::{
     ffi::c_void,
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
-        mpsc::{self, Receiver, Sender},
+        atomic::{
+            AtomicBool,
+            Ordering,
+        },
+        mpsc::{
+            self,
+            Receiver,
+            Sender,
+        },
     },
-    thread::{self, JoinHandle},
+    thread::{
+        self,
+        JoinHandle,
+    },
 };
 
 use napi::{
     bindgen_prelude::Buffer,
-    threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode},
+    threadsafe_function::{
+        ThreadsafeFunction,
+        ThreadsafeFunctionCallMode,
+    },
 };
 use napi_derive::napi;
-use strategy::{LayoutParams, LegacyStrategy, TaskbarLayout, TaskbarStrategy, Win11Strategy};
-use tracing::{debug, error, info, warn};
-use utils::{get_hwnd_from_buffer, get_windows_build_number};
+use strategy::{
+    LayoutParams,
+    LegacyStrategy,
+    TaskbarLayout,
+    TaskbarStrategy,
+    Win11Strategy,
+};
+use tracing::{
+    debug,
+    error,
+    info,
+    warn,
+};
+use utils::{
+    get_hwnd_from_buffer,
+    get_windows_build_number,
+};
 use windows::{
     Win32::{
-        Foundation::{CloseHandle, HANDLE, HWND, WAIT_OBJECT_0},
+        Foundation::{
+            CloseHandle,
+            HANDLE,
+            HWND,
+            WAIT_OBJECT_0,
+        },
         System::{
-            Com::{COINIT_MULTITHREADED, CoInitializeEx, CoUninitialize},
-            Registry::{
-                HKEY, HKEY_CURRENT_USER, KEY_NOTIFY, REG_NOTIFY_CHANGE_LAST_SET, RegCloseKey,
-                RegNotifyChangeKeyValue, RegOpenKeyExW,
+            Com::{
+                COINIT_MULTITHREADED,
+                CoInitializeEx,
+                CoUninitialize,
             },
-            Threading::{CreateEventW, INFINITE, SetEvent, WaitForMultipleObjects},
+            Registry::{
+                HKEY,
+                HKEY_CURRENT_USER,
+                KEY_NOTIFY,
+                REG_NOTIFY_CHANGE_LAST_SET,
+                RegCloseKey,
+                RegNotifyChangeKeyValue,
+                RegOpenKeyExW,
+            },
+            Threading::{
+                CreateEventW,
+                INFINITE,
+                SetEvent,
+                WaitForMultipleObjects,
+            },
         },
     },
     core::w,

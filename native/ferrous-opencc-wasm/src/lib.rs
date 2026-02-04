@@ -1,4 +1,7 @@
-use ferrous_opencc::{OpenCC, config::BuiltinConfig};
+use ferrous_opencc::{
+    OpenCC,
+    config::BuiltinConfig,
+};
 use wasm_bindgen::prelude::*;
 
 /// 一个包装了 [`OpenCC`] 转换器的结构体

@@ -6,7 +6,10 @@
 
 use napi::{
     Result,
-    bindgen_prelude::{Function, Unknown},
+    bindgen_prelude::{
+        Function,
+        Unknown,
+    },
     threadsafe_function::UnknownReturnValue,
 };
 use napi_derive::napi;
@@ -17,8 +20,13 @@ mod model;
 mod sys_media;
 
 use model::{
-    DiscordConfigPayload, MetadataParam, MetadataPayload, PlayModePayload, PlayStatePayload,
-    SystemMediaEvent, TimelinePayload,
+    DiscordConfigPayload,
+    MetadataParam,
+    MetadataPayload,
+    PlayModePayload,
+    PlayStatePayload,
+    SystemMediaEvent,
+    TimelinePayload,
 };
 
 /// 初始化插件

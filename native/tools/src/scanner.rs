@@ -1,24 +1,43 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{
+        HashMap,
+        HashSet,
+    },
     fs,
-    path::{Path, PathBuf},
+    path::{
+        Path,
+        PathBuf,
+    },
     sync::Arc,
     thread,
     time::SystemTime,
 };
 
 use anyhow::Result;
-use crossbeam_channel::{bounded, Receiver};
+use crossbeam_channel::{
+    bounded,
+    Receiver,
+};
 use jwalk::WalkDir;
 use lofty::{
-    file::{AudioFile, TaggedFile, TaggedFileExt},
+    file::{
+        AudioFile,
+        TaggedFile,
+        TaggedFileExt,
+    },
     probe::Probe,
     tag::Accessor,
 };
-use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
+use napi::threadsafe_function::{
+    ThreadsafeFunction,
+    ThreadsafeFunctionCallMode,
+};
 use napi_derive::napi;
 use rayon::prelude::*;
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{
+    Connection,
+    OpenFlags,
+};
 
 #[napi(object)]
 #[derive(Debug, Clone)]

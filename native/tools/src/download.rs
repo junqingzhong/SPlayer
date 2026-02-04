@@ -10,10 +10,10 @@ use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use once_cell::sync::Lazy;
 use std::path::Path;
+use tokio::io::{AsyncWriteExt, AsyncSeekExt, SeekFrom};
+use tokio_util::sync::CancellationToken;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tokio::io::{AsyncSeekExt, AsyncWriteExt, SeekFrom};
-use tokio_util::sync::CancellationToken;
 
 #[napi(object)]
 #[derive(Clone, Copy)]
@@ -51,41 +51,36 @@ impl ProgressTracker {
     fn update(&self, delta: u64) {
         let current = self.transferred.fetch_add(delta, Ordering::Relaxed) + delta;
         let total = self.total_size;
-
-        if total == 0 {
-            return;
-        }
+        
+        if total == 0 { return; }
 
         if let Ok(mut state) = self.state.try_lock() {
             let now = std::time::Instant::now();
             let percent = current as f64 / total as f64;
 
-            if percent - state.last_percent >= 0.01
-                || now.duration_since(state.last_time).as_millis() > 500
-            {
+            if percent - state.last_percent >= 0.01 || now.duration_since(state.last_time).as_millis() > 500 {
                 let progress = DownloadProgress {
                     percent,
                     transferred_bytes: current as f64,
                     total_bytes: total as f64,
                 };
-                self.callback
-                    .call(Ok(progress), ThreadsafeFunctionCallMode::NonBlocking);
+                self.callback.call(Ok(progress), ThreadsafeFunctionCallMode::NonBlocking);
                 state.last_percent = percent;
                 state.last_time = now;
             }
         }
     }
-
+    
     fn finish(&self) {
         let progress = DownloadProgress {
             percent: 1.0,
             transferred_bytes: self.total_size as f64,
             total_bytes: self.total_size as f64,
         };
-        self.callback
-            .call(Ok(progress), ThreadsafeFunctionCallMode::NonBlocking);
+        self.callback.call(Ok(progress), ThreadsafeFunctionCallMode::NonBlocking);
     }
 }
+
 
 static DOWNLOAD_TASKS: Lazy<DashMap<u32, CancellationToken>> = Lazy::new(DashMap::new);
 
@@ -131,9 +126,11 @@ pub async fn write_music_metadata(
         None
     };
 
-    tokio::task::spawn_blocking(move || write_metadata(&file_path, metadata, cover_data))
-        .await
-        .map_err(|e| Error::from_reason(e.to_string()))??;
+    tokio::task::spawn_blocking(move || {
+        write_metadata(&file_path, metadata, cover_data)
+    })
+    .await
+    .map_err(|e| Error::from_reason(e.to_string()))??;
 
     Ok(())
 }
@@ -160,16 +157,7 @@ pub async fn download_file(
     DOWNLOAD_TASKS.insert(id, token.clone());
     let _guard = TaskGuard(id);
 
-    download_file_inner(
-        token.clone(),
-        url,
-        file_path,
-        metadata,
-        thread_count,
-        referer,
-        on_progress,
-    )
-    .await
+    download_file_inner(token.clone(), url, file_path, metadata, thread_count, referer, on_progress).await
 }
 
 async fn download_file_inner(
@@ -192,7 +180,7 @@ async fn download_file_inner(
     if let Some(ref r) = referer {
         head_req = head_req.header("Referer", r);
     }
-
+    
     let mut total_size = 0;
     let mut version = reqwest::Version::HTTP_11;
 
@@ -209,7 +197,7 @@ async fn download_file_inner(
         if let Some(ref r) = referer {
             range_req = range_req.header("Referer", r);
         }
-
+        
         if let Ok(range_resp) = range_req.send().await {
             if range_resp.status() == reqwest::StatusCode::PARTIAL_CONTENT {
                 if let Some(val) = range_resp.headers().get(reqwest::header::CONTENT_RANGE) {
@@ -223,43 +211,18 @@ async fn download_file_inner(
             }
         }
     }
-
-    println!(
-        "[Download] 协议: {:?}, 请求线程数: {}, 总大小: {}",
-        version, thread_count, total_size
-    );
+    
+    println!("[Download] 协议: {:?}, 请求线程数: {}, 总大小: {}", version, thread_count, total_size);
     if version != reqwest::Version::HTTP_2 {
-        println!(
-            "[Download] 注意: HTTP/2 协商失败或服务器不支持。降级为 {:?}。",
-            version
-        );
+         println!("[Download] 注意: HTTP/2 协商失败或服务器不支持。降级为 {:?}。", version);
     }
 
     if total_size > 5 * 1024 * 1024 && thread_count > 1 {
         println!("[Download] 使用多线程下载 ({} 线程)", thread_count);
-        download_multi_stream(
-            token.clone(),
-            client.clone(),
-            url.clone(),
-            file_path.clone(),
-            total_size,
-            thread_count,
-            referer,
-            on_progress,
-        )
-        .await?;
+        download_multi_stream(token.clone(), client.clone(), url.clone(), file_path.clone(), total_size, thread_count, referer, on_progress).await?;
     } else {
         println!("[Download] 使用单线程下载");
-        download_single_stream(
-            token.clone(),
-            client.clone(),
-            url.clone(),
-            file_path.clone(),
-            total_size,
-            referer,
-            on_progress,
-        )
-        .await?;
+        download_single_stream(token.clone(), client.clone(), url.clone(), file_path.clone(), total_size, referer, on_progress).await?;
     }
 
     if let Some(meta) = metadata {
@@ -294,11 +257,7 @@ async fn download_single_stream(
         .map_err(|e| Error::from_reason(format!("创建文件失败: {}", e)))?;
 
     let mut stream = response.bytes_stream();
-    let total_size = if total_size == 0 {
-        content_length
-    } else {
-        total_size
-    };
+    let total_size = if total_size == 0 { content_length } else { total_size };
     let tracker = Arc::new(ProgressTracker::new(total_size, on_progress));
 
     let process_result = async {
@@ -307,9 +266,7 @@ async fn download_single_stream(
             item = stream.next() => item,
         } {
             let chunk = item.map_err(|e| Error::from_reason(format!("读取数据失败: {}", e)))?;
-            file.write_all(&chunk)
-                .await
-                .map_err(|e| Error::from_reason(format!("写入数据失败: {}", e)))?;
+            file.write_all(&chunk).await.map_err(|e| Error::from_reason(format!("写入数据失败: {}", e)))?;
             tracker.update(chunk.len() as u64);
         }
 
@@ -317,12 +274,9 @@ async fn download_single_stream(
             return Err(Error::new(Status::Cancelled, "下载已取消".to_string()));
         }
 
-        file.flush()
-            .await
-            .map_err(|e| Error::from_reason(format!("刷新文件失败: {}", e)))?;
+        file.flush().await.map_err(|e| Error::from_reason(format!("刷新文件失败: {}", e)))?;
         Ok(())
-    }
-    .await;
+    }.await;
 
     if let Err(e) = process_result {
         drop(file);
@@ -347,13 +301,11 @@ async fn download_multi_stream(
     let mut file = tokio::fs::File::create(&file_path)
         .await
         .map_err(|e| Error::from_reason(format!("创建文件失败: {}", e)))?;
-    file.set_len(total_size)
-        .await
-        .map_err(|e| Error::from_reason(format!("设置文件大小失败: {}", e)))?;
+    file.set_len(total_size).await.map_err(|e| Error::from_reason(format!("设置文件大小失败: {}", e)))?;
 
     let tracker = Arc::new(ProgressTracker::new(total_size, on_progress));
     const CHUNK_SIZE: u64 = 4 * 1024 * 1024;
-
+    
     let mut ranges = Vec::new();
     let mut start = 0;
     while start < total_size {
@@ -367,40 +319,35 @@ async fn download_multi_stream(
         let url = url.clone();
         let referer = referer.clone();
         let token = token.clone();
-
-        async move { download_chunk_with_retry(client, url, referer, start, end, token).await }
+        
+        async move {
+            download_chunk_with_retry(client, url, referer, start, end, token).await
+        }
     });
-
+    
     let mut stream = download_futures.buffer_unordered(thread_count as usize);
-
+    
     let process_result = async {
         while let Some(result) = stream.next().await {
             let (offset, data) = result?;
             if token.is_cancelled() {
-                return Err(Error::new(Status::Cancelled, "下载已取消".to_string()));
+                 return Err(Error::new(Status::Cancelled, "下载已取消".to_string()));
             }
-
-            file.seek(SeekFrom::Start(offset))
-                .await
-                .map_err(|e| Error::from_reason(format!("移动文件指针失败: {}", e)))?;
-            file.write_all(&data)
-                .await
-                .map_err(|e| Error::from_reason(format!("写入数据失败: {}", e)))?;
+            
+            file.seek(SeekFrom::Start(offset)).await.map_err(|e| Error::from_reason(format!("移动文件指针失败: {}", e)))?;
+            file.write_all(&data).await.map_err(|e| Error::from_reason(format!("写入数据失败: {}", e)))?;
             tracker.update(data.len() as u64);
         }
-        file.flush()
-            .await
-            .map_err(|e| Error::from_reason(format!("刷新文件失败: {}", e)))?;
+        file.flush().await.map_err(|e| Error::from_reason(format!("刷新文件失败: {}", e)))?;
         Ok(())
-    }
-    .await;
+    }.await;
 
     if let Err(e) = process_result {
         drop(file);
         let _ = tokio::fs::remove_file(&file_path).await;
         return Err(Error::from_reason(format!("多线程下载失败: {}", e)));
     }
-
+    
     tracker.finish();
     Ok(())
 }
@@ -416,7 +363,7 @@ async fn download_chunk_with_retry(
     let mut attempts = 0;
     let max_retries = 3;
     let mut last_error = String::new();
-
+    
     while attempts < max_retries {
         if token.is_cancelled() {
             return Err(Error::new(Status::Cancelled, "下载已取消".to_string()));
@@ -436,59 +383,38 @@ async fn download_chunk_with_retry(
                     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                     continue;
                 }
-
+                
                 match resp.bytes().await {
                     Ok(bytes) => return Ok((start, bytes)),
-                    Err(e) => {
-                        last_error = format!("读取图片数据失败: {}", e);
-                    }
+                    Err(e) => { last_error = format!("读取图片数据失败: {}", e); }
                 }
-            }
-            Err(e) => {
-                last_error = e.to_string();
-            }
+            },
+            Err(e) => { last_error = e.to_string(); }
         }
-
+        
         attempts += 1;
         tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     }
-    Err(Error::from_reason(format!(
-        "下载分片 {}-{} 失败，已尝试 {} 次。最后一次错误：{}",
-        start, end, max_retries, last_error
-    )))
+    Err(Error::from_reason(format!("下载分片 {}-{} 失败，已尝试 {} 次。最后一次错误：{}", start, end, max_retries, last_error)))
 }
 
-async fn process_metadata(
-    client: reqwest::Client,
-    file_path: String,
-    meta: SongMetadata,
-) -> Result<()> {
+
+async fn process_metadata(client: reqwest::Client, file_path: String, meta: SongMetadata) -> Result<()> {
     let cover_data = if let Some(cover_url) = &meta.cover_url {
         if !cover_url.is_empty() {
-            match tokio::time::timeout(
-                std::time::Duration::from_secs(10),
-                client.get(cover_url).send(),
-            )
-            .await
-            {
+            match tokio::time::timeout(std::time::Duration::from_secs(10), client.get(cover_url).send()).await {
                 Ok(Ok(resp)) => {
                     if resp.status().is_success() {
                         match resp.bytes().await {
                             Ok(b) => Some(b),
-                            Err(_e) => None,
+                            Err(_e) => None
                         }
-                    } else {
-                        None
-                    }
-                }
+                    } else { None }
+                },
                 _ => None,
             }
-        } else {
-            None
-        }
-    } else {
-        None
-    };
+        } else { None }
+    } else { None };
 
     let path_clone = file_path.clone();
     tokio::task::spawn_blocking(move || {
@@ -497,7 +423,7 @@ async fn process_metadata(
     })
     .await
     .map_err(|e| Error::from_reason(format!("保存标签任务失败: {}", e)))??;
-
+    
     Ok(())
 }
 
@@ -505,22 +431,21 @@ fn get_or_create_tag(tagged_file: &mut lofty::file::TaggedFile) -> Result<&mut T
     if tagged_file.primary_tag_mut().is_some() {
         return Ok(tagged_file.primary_tag_mut().unwrap());
     }
-
+    
     if tagged_file.first_tag_mut().is_some() {
         return Ok(tagged_file.first_tag_mut().unwrap());
     }
 
     let tag_type = tagged_file.primary_tag_type();
     tagged_file.insert_tag(Tag::new(tag_type));
-
-    tagged_file
-        .primary_tag_mut()
+    
+    tagged_file.primary_tag_mut()
         .ok_or_else(|| Error::from_reason("创建新标签失败"))
 }
 
 fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Bytes>) -> Result<()> {
     let path_obj = Path::new(path);
-
+    
     let mut tagged_file = match Probe::open(path_obj) {
         Ok(probe) => match probe.read() {
             Ok(f) => f,

@@ -1,21 +1,47 @@
-use tracing::{debug, error};
+use tracing::{
+    debug,
+    error,
+};
 use windows::{
     Win32::{
-        Foundation::{HWND, RECT},
+        Foundation::{
+            HWND,
+            RECT,
+        },
         UI::WindowsAndMessaging::{
-            FindWindowExW, GWL_EXSTYLE, GWL_STYLE, GetWindowRect, SetParent, WINDOW_EX_STYLE,
-            WINDOW_STYLE, WS_CAPTION, WS_EX_LAYERED, WS_EX_TOOLWINDOW, WS_MAXIMIZEBOX,
-            WS_MINIMIZEBOX, WS_SYSMENU, WS_THICKFRAME,
+            FindWindowExW,
+            GWL_EXSTYLE,
+            GWL_STYLE,
+            GetWindowRect,
+            SetParent,
+            WINDOW_EX_STYLE,
+            WINDOW_STYLE,
+            WS_CAPTION,
+            WS_EX_LAYERED,
+            WS_EX_TOOLWINDOW,
+            WS_MAXIMIZEBOX,
+            WS_MINIMIZEBOX,
+            WS_SYSMENU,
+            WS_THICKFRAME,
         },
     },
     core::w,
 };
 
 use crate::{
-    LayoutParams, TaskbarStrategy,
-    strategy::{Rect, TaskbarLayout, Win11Layout},
+    LayoutParams,
+    TaskbarStrategy,
+    strategy::{
+        Rect,
+        TaskbarLayout,
+        Win11Layout,
+    },
     uia::TaskbarScanner,
-    utils::{check_registry_value, find_taskbar_hwnd, modify_window_long},
+    utils::{
+        check_registry_value,
+        find_taskbar_hwnd,
+        modify_window_long,
+    },
 };
 
 pub struct Win11Strategy {
