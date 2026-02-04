@@ -91,22 +91,18 @@ export class MusicCacheService {
       }
 
       // 使用 Rust 下载器
-      // 这里的 id 仅用于进度或取消，缓存下载暂时传入 0 或尝试转换
-      const numericId = typeof id === "number" ? id : 0;
 
       const store = useStore();
-      const enableHttps = store.get("enableDownloadHttps", true) as boolean;
       const enableHttp2 = store.get("enableDownloadHttp2", true) as boolean;
 
-      await tools.downloadFile(
-        numericId,
+      const task = new tools.DownloadTask();
+      await task.download(
         url,
         tempPath,
         null, // No metadata for cache
         4, // Thread count
         null, // Referer
         () => {}, // No progress callback needed for cache currently
-        enableHttps,
         enableHttp2,
       );
 

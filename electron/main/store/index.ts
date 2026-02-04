@@ -71,8 +71,6 @@ export interface StoreType {
   };
   /** 下载线程数 */
   downloadThreadCount?: number;
-  /** 启用HTTPS升级 */
-  enableDownloadHttps?: boolean;
   /** 启用HTTP2下载 */
   enableDownloadHttp2?: boolean;
 }
@@ -116,7 +114,6 @@ export const useStore = () => {
         port: 25885,
       },
       downloadThreadCount: 8,
-      enableDownloadHttps: true,
       enableDownloadHttp2: true,
     },
   });

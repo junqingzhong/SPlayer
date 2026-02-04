@@ -23,6 +23,9 @@ const initFileIpc = (): void => {
   /** 本地音乐服务 */
   const localMusicService = new LocalMusicService();
 
+  // Store active download tasks: ID -> DownloadTask instance
+  const activeDownloads = new Map<number, any>();
+
   /**
    * 获取全局搜索配置
    * @param cwd 当前工作目录
@@ -504,7 +507,6 @@ const initFileIpc = (): void => {
         skipIfExist?: boolean;
         threadCount?: number;
         referer?: string;
-        enableDownloadHttps?: boolean;
         enableDownloadHttp2?: boolean;
       } = {
         fileName: "未知文件名",
@@ -529,7 +531,6 @@ const initFileIpc = (): void => {
           songData,
           skipIfExist,
           referer,
-          enableDownloadHttps,
           enableDownloadHttp2,
         } = options;
         // 规范化路径
@@ -646,26 +647,35 @@ const initFileIpc = (): void => {
         const threadCount =
           (options.threadCount as number) || (store.get("downloadThreadCount") as number) || 8;
 
-        const enableHttps =
-          enableDownloadHttps !== undefined
-            ? enableDownloadHttps
-            : (store.get("enableDownloadHttps", true) as boolean);
         const enableHttp2 =
           enableDownloadHttp2 !== undefined
             ? enableDownloadHttp2
             : (store.get("enableDownloadHttp2", true) as boolean);
 
-        await tools.downloadFile(
-          songData?.id || 0,
-          url,
-          finalFilePath,
-          metadata,
-          threadCount,
-          referer,
-          onProgress,
-          enableHttps,
-          enableHttp2,
-        );
+        // Upgrade HTTP to HTTPS if HTTP2 is enabled (HTTP2 usually requires HTTPS)
+        let finalUrl = url;
+        if (enableHttp2 && finalUrl.startsWith("http://")) {
+          finalUrl = finalUrl.replace(/^http:\/\//, "https://");
+          ipcLog.info(`🔒 Upgraded download URL to HTTPS for HTTP/2 support: ${finalUrl}`);
+        }
+
+        const task = new tools.DownloadTask();
+        const downloadId = songData?.id || 0;
+        activeDownloads.set(downloadId, task);
+
+        try {
+          await task.download(
+            finalUrl,
+            finalFilePath,
+            metadata,
+            threadCount,
+            referer,
+            onProgress,
+            enableHttp2,
+          );
+        } finally {
+          activeDownloads.delete(downloadId);
+        }
 
         // 创建同名歌词文件
         if (lyric && saveMetaFile && downloadLyric) {
@@ -689,8 +699,9 @@ const initFileIpc = (): void => {
 
   // 取消下载
   ipcMain.handle("cancel-download", async (_, songId: number) => {
-    if (tools) {
-      tools.cancelDownload(songId);
+    const task = activeDownloads.get(songId);
+    if (task) {
+      task.cancel();
       return true;
     }
     return false;

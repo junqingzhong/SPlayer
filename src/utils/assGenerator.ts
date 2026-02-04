@@ -59,7 +59,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       const startTime = formatTime(line.startTime);
       const endTime = formatTime(line.endTime);
 
-      let dialogueParts: string[] = [escapeText(text)];
+      const dialogueParts: string[] = [escapeText(text)];
 
       // 处理翻译
       if (tlyric && line.translatedLyric) {

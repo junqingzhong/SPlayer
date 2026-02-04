@@ -318,21 +318,11 @@ export const useLocalSettings = (): SettingConfig => {
             },
           },
           {
-            key: "enableDownloadHttps",
-            label: "启用 HTTPS 升级",
-            type: "switch",
-            description: "将 HTTP 下载链接自动升级为 HTTPS，以支持 HTTP/2 等特性",
-            value: computed({
-              get: () => settingStore.enableDownloadHttps,
-              set: (v) => (settingStore.enableDownloadHttps = v),
-            }),
-          },
-          {
             key: "enableDownloadHttp2",
             label: "启用 HTTP/2 下载",
             type: "switch",
             tags: [{ text: "Beta", type: "warning" }],
-            description: "使用 HTTP/2 协议进行下载（需同时启用 HTTPS）",
+            description: "使用 HTTP/2 协议进行下载",
             value: computed({
               get: () => settingStore.enableDownloadHttp2,
               set: (v) => (settingStore.enableDownloadHttp2 = v),

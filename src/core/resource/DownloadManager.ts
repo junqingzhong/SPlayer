@@ -505,7 +505,6 @@ class DownloadManager {
           skipIfExist,
           threadCount: settingStore.downloadThreadCount,
           referer: song.customReferer,
-          enableDownloadHttps: settingStore.enableDownloadHttps,
           enableDownloadHttp2: settingStore.enableDownloadHttp2,
         };
 
