@@ -14,6 +14,17 @@ use tokio::io::{AsyncWriteExt, AsyncSeekExt, SeekFrom};
 use tokio_util::sync::CancellationToken;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use serde::Serialize;
+use serde_json::to_string;
+
+#[derive(Serialize)]
+struct DownloadProgress {
+    percent: f64,
+    #[serde(rename = "transferredBytes")]
+    transferred_bytes: u64,
+    #[serde(rename = "totalBytes")]
+    total_bytes: u64,
+}
 
 static DOWNLOAD_TASKS: Lazy<DashMap<u32, CancellationToken>> = Lazy::new(DashMap::new);
 
@@ -194,11 +205,14 @@ async fn download_single_stream(
                 let now = std::time::Instant::now();
                 
                 if percent - last_percent >= 0.01 || now.duration_since(last_progress_time).as_millis() > 500 || percent >= 1.0 {
-                     let json = format!(
-                        "{{\"percent\": {:.4}, \"transferredBytes\": {}, \"totalBytes\": {}}}", 
-                        percent, downloaded, total_size
-                     );
-                     on_progress.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+                     let progress = DownloadProgress {
+                         percent,
+                         transferred_bytes: downloaded,
+                         total_bytes: total_size,
+                     };
+                     if let Ok(json) = to_string(&progress) {
+                         on_progress.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+                     }
                      last_progress_time = now;
                      last_percent = percent;
                 }
@@ -261,11 +275,14 @@ async fn download_multi_stream(
             let now = std::time::Instant::now();
 
             if percent - last_percent >= 0.01 || now.duration_since(last_progress_time).as_millis() > 500 || percent >= 1.0 {
-                 let json = format!(
-                    "{{\"percent\": {:.4}, \"transferredBytes\": {}, \"totalBytes\": {}}}", 
-                    percent, current, total_size
-                 );
-                 on_progress_monitor.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+                 let progress = DownloadProgress {
+                     percent,
+                     transferred_bytes: current,
+                     total_bytes: total_size,
+                 };
+                 if let Ok(json) = to_string(&progress) {
+                     on_progress_monitor.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+                 }
                  last_percent = percent;
                  last_progress_time = now;
             }
@@ -344,11 +361,14 @@ async fn download_multi_stream(
         return Err(Error::new(Status::Cancelled, "Download cancelled".to_string()));
     }
     
-    let json = format!(
-        "{{\"percent\": 1.0, \"transferredBytes\": {}, \"totalBytes\": {}}}", 
-        total_size, total_size
-    );
-    on_progress.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+    let progress = DownloadProgress {
+        percent: 1.0,
+        transferred_bytes: total_size,
+        total_bytes: total_size,
+    };
+    if let Ok(json) = to_string(&progress) {
+        on_progress.call(Ok(json), ThreadsafeFunctionCallMode::NonBlocking);
+    }
     
     Ok(())
 }
