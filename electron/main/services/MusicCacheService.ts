@@ -99,6 +99,7 @@ export class MusicCacheService {
         tempPath,
         null, // No metadata for cache
         4, // Thread count
+        null, // Referer
         () => {}, // No progress callback needed for cache currently
       );
 
