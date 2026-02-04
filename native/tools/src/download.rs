@@ -10,8 +10,8 @@ use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi_derive::napi;
 use once_cell::sync::Lazy;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt, SeekFrom};
 use tokio_util::sync::CancellationToken;
 

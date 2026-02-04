@@ -12,10 +12,7 @@ pub use download::*;
 use napi_derive::napi;
 pub use scanner::scan_music_library;
 #[cfg(target_os = "windows")]
-use windows::{
-    core::w,
-    Win32::UI::WindowsAndMessaging::RegisterWindowMessageW,
-};
+use windows::{core::w, Win32::UI::WindowsAndMessaging::RegisterWindowMessageW};
 
 #[napi]
 pub fn get_taskbar_created_message_id() -> u32 {
