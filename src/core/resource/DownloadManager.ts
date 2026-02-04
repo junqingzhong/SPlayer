@@ -149,6 +149,33 @@ class DownloadManager {
   }
 
   /**
+   * 添加自定义下载任务
+   * @param url 下载链接
+   * @param fileName 文件名
+   */
+  public async addCustomDownload(url: string, fileName: string, referer?: string) {
+    // 构造一个伪造的 SongType
+    const id = -Math.floor(Date.now() + Math.random() * 1000); // 负数ID避免冲突
+    const song: SongType = {
+      id,
+      name: fileName,
+      artists: [{ id: 0, name: "自定义下载" }],
+      album: { id: 0, name: "" },
+      duration: 0,
+      cover: "",
+      free: 0,
+      mv: null,
+      isCustom: true,
+      customUrl: url,
+      customReferer: referer,
+      type: "song",
+    };
+
+    // 默认使用 Standard 音质（实际上不影响自定义下载）
+    this.addDownload(song, "l");
+  }
+
+  /**
    * 处理下载队列
    */
   private processQueue() {
@@ -251,13 +278,20 @@ class DownloadManager {
       let url = "";
       let type = "mp3";
 
+      if (song.isCustom && song.customUrl) {
+        url = song.customUrl;
+        // 自定义下载：不推断类型，直接使用文件名
+        // 将 type 置为空，以便文件名保持原样传递给 IPC
+        type = "";
+      }
+
       const usePlayback = mode ? mode === "playback" : settingStore.usePlaybackForDownload;
 
       // 获取下载链接
       const levelName = songLevelData[quality].level;
 
       // 尝试获取播放链接
-      if (usePlayback) {
+      if (!song.isCustom && usePlayback) {
         try {
           const result = await songUrl(song.id, levelName as Parameters<typeof songUrl>[1]);
           if (result.code === 200 && result?.data?.[0]?.url) {
@@ -275,7 +309,7 @@ class DownloadManager {
       const isRestricted = song.free === 1 || song.free === 4 || song.free === 8;
       const canUseUnlock = !isRestricted || isVipUser;
 
-      if (!url && settingStore.useUnlockForDownload && canUseUnlock) {
+      if (!song.isCustom && !url && settingStore.useUnlockForDownload && canUseUnlock) {
         try {
           const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
           const artist = (Array.isArray(song.artists) ? song.artists[0]?.name : song.artists) || "";
@@ -324,7 +358,7 @@ class DownloadManager {
       }
 
       // 尝试获取标准下载链接
-      if (!url) {
+      if (!song.isCustom && !url) {
         const result = await songDownloadUrl(song.id, quality);
         if (result.code !== 200 || !result?.data?.url) {
           return {
@@ -355,20 +389,27 @@ class DownloadManager {
       const { fileNameFormat, folderStrategy } = settingStore;
 
       let displayName = baseTitle;
-      if (fileNameFormat === "artist-title") {
-        displayName = `${safeArtist} - ${baseTitle}`;
-      } else if (fileNameFormat === "title-artist") {
-        displayName = `${baseTitle} - ${safeArtist}`;
+      let targetPath = finalPath;
+
+      if (song.isCustom) {
+        // 自定义下载：文件名就是歌名，不做任何处理
+        displayName = song.name;
+        // 自定义下载不使用文件夹分类策略，直接下载到根目录
+      } else {
+        if (fileNameFormat === "artist-title") {
+          displayName = `${safeArtist} - ${baseTitle}`;
+        } else if (fileNameFormat === "title-artist") {
+          displayName = `${baseTitle} - ${safeArtist}`;
+        }
+
+        if (folderStrategy === "artist") {
+          targetPath = `${finalPath}\\${safeArtist}`;
+        } else if (folderStrategy === "artist-album") {
+          targetPath = `${finalPath}\\${safeArtist}\\${safeAlbum}`;
+        }
       }
 
       const safeFileName = displayName.replace(/[/:*?"<>|]/g, "&");
-
-      let targetPath = finalPath;
-      if (folderStrategy === "artist") {
-        targetPath = `${finalPath}\\${safeArtist}`;
-      } else if (folderStrategy === "artist-album") {
-        targetPath = `${finalPath}\\${safeArtist}\\${safeAlbum}`;
-      }
 
       // 校验下载路径
       if (finalPath === "" && isElectron) {
@@ -389,7 +430,7 @@ class DownloadManager {
         let ttmlLyric = "";
         let lyricResult: LyricResult | null = null;
 
-        if (downloadLyric) {
+        if (!song.isCustom && downloadLyric) {
           lyricResult = (await songLyric(song.id)) as LyricResult;
           lyric = await this.processLyric(lyricResult);
 
@@ -453,16 +494,17 @@ class DownloadManager {
 
         const config = {
           fileName: safeFileName,
-          fileType: type.toLowerCase(),
+          fileType: song.isCustom ? "" : type.toLowerCase(),
           path: targetPath,
-          downloadMeta,
-          downloadCover,
-          downloadLyric,
-          saveMetaFile,
+          downloadMeta: song.isCustom ? false : downloadMeta,
+          downloadCover: song.isCustom ? false : downloadCover,
+          downloadLyric: song.isCustom ? false : downloadLyric,
+          saveMetaFile: song.isCustom ? false : saveMetaFile,
           songData: cloneDeep(song),
           lyric,
           skipIfExist,
           threadCount: settingStore.downloadThreadCount,
+          referer: song.customReferer,
         };
 
         const result = await window.electron.ipcRenderer.invoke("download-file", url, config);

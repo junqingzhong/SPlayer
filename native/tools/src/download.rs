@@ -86,12 +86,13 @@ pub async fn download_file(
     file_path: String,
     metadata: Option<SongMetadata>,
     thread_count: u32,
+    referer: Option<String>,
     on_progress: ThreadsafeFunction<String>,
 ) -> Result<()> {
     let token = CancellationToken::new();
     DOWNLOAD_TASKS.insert(id, token.clone());
 
-    let result = download_file_inner(token.clone(), url, file_path, metadata, thread_count, on_progress).await;
+    let result = download_file_inner(token.clone(), url, file_path, metadata, thread_count, referer, on_progress).await;
     
     DOWNLOAD_TASKS.remove(&id);
     result
@@ -103,6 +104,7 @@ async fn download_file_inner(
     file_path: String,
     metadata: Option<SongMetadata>,
     thread_count: u32,
+    referer: Option<String>,
     on_progress: ThreadsafeFunction<String>,
 ) -> Result<()> {
     if token.is_cancelled() {
@@ -112,7 +114,11 @@ async fn download_file_inner(
     let client = CLIENT.clone();
 
     // Head request to get size
-    let head_resp = client.head(&url)
+    let mut head_req = client.head(&url);
+    if let Some(ref r) = referer {
+        head_req = head_req.header("Referer", r);
+    }
+    let head_resp = head_req
         .send()
         .await
         .map_err(|e| Error::from_reason(e.to_string()))?;
@@ -123,7 +129,11 @@ async fn download_file_inner(
     // If HEAD failed to get size, try GET with Range 0-0 to get Content-Range
     if total_size == 0 {
          println!("[Download] HEAD request returned 0 size, trying GET Range request...");
-         match client.get(&url).header("Range", "bytes=0-0").send().await {
+         let mut get_req = client.get(&url).header("Range", "bytes=0-0");
+         if let Some(ref r) = referer {
+             get_req = get_req.header("Referer", r);
+         }
+         match get_req.send().await {
              Ok(resp) => {
                  // If server ignores Range and returns 200, content_length is full size
                  if resp.status().as_u16() == 200 {
@@ -154,10 +164,10 @@ async fn download_file_inner(
 
     if total_size > 5 * 1024 * 1024 && thread_count > 1 {
         println!("[Download] Using multi-threaded download ({} threads)", thread_count);
-        download_multi_stream(token.clone(), client.clone(), url.clone(), file_path.clone(), total_size, thread_count, on_progress).await?;
+        download_multi_stream(token.clone(), client.clone(), url.clone(), file_path.clone(), total_size, thread_count, referer, on_progress).await?;
     } else {
         println!("[Download] Using single-threaded download");
-        download_single_stream(token.clone(), client.clone(), url.clone(), file_path.clone(), total_size, on_progress).await?;
+        download_single_stream(token.clone(), client.clone(), url.clone(), file_path.clone(), total_size, referer, on_progress).await?;
     }
 
     if let Some(meta) = metadata {
@@ -173,9 +183,14 @@ async fn download_single_stream(
     url: String,
     file_path: String,
     total_size: u64,
+    referer: Option<String>,
     on_progress: ThreadsafeFunction<String>,
 ) -> Result<()> {
-    let response = client.get(&url)
+    let mut req = client.get(&url);
+    if let Some(ref r) = referer {
+        req = req.header("Referer", r);
+    }
+    let response = req
         .send()
         .await
         .map_err(|e| Error::from_reason(e.to_string()))?;
@@ -249,6 +264,7 @@ async fn download_multi_stream(
     file_path: String,
     total_size: u64,
     thread_count: u32,
+    referer: Option<String>,
     on_progress: ThreadsafeFunction<String>,
 ) -> Result<()> {
     let file = tokio::fs::File::create(&file_path)
@@ -303,6 +319,7 @@ async fn download_multi_stream(
         let transferred = transferred.clone();
         let next_offset = next_offset.clone();
         let token = token.clone();
+        let referer = referer.clone();
 
         handles.push(tokio::spawn(async move {
             let mut worker_file = tokio::fs::OpenOptions::new()
@@ -320,8 +337,11 @@ async fn download_multi_stream(
                 let end = std::cmp::min(start + CHUNK_SIZE - 1, total_size - 1);
                 
                 let range_header = format!("bytes={}-{}", start, end);
-                let resp = client.get(&url)
-                    .header("Range", range_header)
+                let mut req = client.get(&url).header("Range", range_header);
+                if let Some(ref r) = referer {
+                    req = req.header("Referer", r);
+                }
+                let resp = req
                     .send()
                     .await
                     .map_err(|e| e.to_string())?;

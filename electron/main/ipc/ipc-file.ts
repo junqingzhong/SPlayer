@@ -28,6 +28,7 @@ interface ToolsModule {
     filePath: string,
     metadata: SongMetadata | undefined | null,
     threadCount: number,
+    referer: string | undefined | null,
     onProgress: (err: any, progressJson: string) => void,
   ): Promise<void>;
   cancelDownload(id: number): void;
@@ -529,6 +530,7 @@ const initFileIpc = (): void => {
         songData?: any;
         skipIfExist?: boolean;
         threadCount?: number;
+        referer?: string;
       } = {
         fileName: "未知文件名",
         fileType: "mp3",
@@ -551,6 +553,7 @@ const initFileIpc = (): void => {
           saveMetaFile,
           songData,
           skipIfExist,
+          referer,
         } = options;
         // 规范化路径
         const downloadPath = resolve(path);
@@ -561,7 +564,9 @@ const initFileIpc = (): void => {
           await mkdir(downloadPath, { recursive: true });
         }
 
-        const finalFilePath = join(downloadPath, `${fileName}.${fileType}`);
+        const finalFilePath = fileType 
+          ? join(downloadPath, `${fileName}.${fileType}`)
+          : join(downloadPath, fileName);
 
         // 检查文件是否存在
         if (skipIfExist) {
@@ -657,6 +662,7 @@ const initFileIpc = (): void => {
           finalFilePath,
           metadata,
           threadCount,
+          referer,
           onProgress,
         );
 
