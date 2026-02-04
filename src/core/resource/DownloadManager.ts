@@ -616,10 +616,34 @@ class DownloadManager {
             }
 
             if (lines.length > 0) {
-              let assContent = generateASS(lines, {
-                title: song.name,
-                artist: rawArtist,
-              });
+              // 尝试合并翻译和音译，确保 ASS 包含这些信息
+              const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
+              const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
+
+              if (tlyric) {
+                const transParsed = parseSmartLrc(tlyric);
+                if (transParsed?.lines?.length) {
+                  lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
+                }
+              }
+              if (romalrc) {
+                const romaParsed = parseSmartLrc(romalrc);
+                if (romaParsed?.lines?.length) {
+                  lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
+                }
+              }
+
+              let assContent = generateASS(
+                lines,
+                {
+                  title: song.name,
+                  artist: rawArtist,
+                },
+                {
+                  tlyric: settingStore.downloadLyricTranslation,
+                  romalrc: settingStore.downloadLyricRomaji,
+                },
+              );
 
               // 繁体转换
               assContent = await this._convertToTraditionalIfNeeded(assContent);
