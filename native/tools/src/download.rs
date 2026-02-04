@@ -31,6 +31,8 @@ static DOWNLOAD_TASKS: Lazy<DashMap<u32, CancellationToken>> = Lazy::new(DashMap
 static CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
     reqwest::Client::builder()
         .user_agent("SPlayer/1.0")
+        .tcp_nodelay(true)
+        .http2_keep_alive_interval(std::time::Duration::from_secs(15))
         .build()
         .expect("Failed to create HTTP client")
 });
@@ -115,6 +117,7 @@ async fn download_file_inner(
         .await
         .map_err(|e| Error::from_reason(e.to_string()))?;
     
+    let version = head_resp.version();
     let mut total_size = head_resp.content_length().unwrap_or(0);
     
     // If HEAD failed to get size, try GET with Range 0-0 to get Content-Range
@@ -144,7 +147,10 @@ async fn download_file_inner(
          }
     }
 
-    println!("[Download] Request thread count: {}, Total size: {}", thread_count, total_size);
+    println!("[Download] Protocol: {:?}, Request thread count: {}, Total size: {}", version, thread_count, total_size);
+    if version != reqwest::Version::HTTP_2 {
+         println!("[Download] Notice: HTTP/2 negotiation failed or server does not support it. Fallback to {:?}.", version);
+    }
 
     if total_size > 5 * 1024 * 1024 && thread_count > 1 {
         println!("[Download] Using multi-threaded download ({} threads)", thread_count);
