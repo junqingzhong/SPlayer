@@ -253,8 +253,8 @@ async fn download_multi_stream(
 
     let on_progress = Arc::new(on_progress);
     
-    // Dynamic chunking: 1MB chunks
-    const CHUNK_SIZE: u64 = 1024 * 1024; 
+    // Dynamic chunking: 4MB chunks
+    const CHUNK_SIZE: u64 = 4 * 1024 * 1024; 
     let next_offset = Arc::new(AtomicU64::new(0));
     let transferred = Arc::new(AtomicU64::new(0));
     let mut handles = Vec::new();
@@ -271,7 +271,7 @@ async fn download_multi_stream(
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             
             let current = transferred_monitor.load(Ordering::Relaxed);
-            let percent = current as f64 / total_size as f64;
+            let percent = if total_size > 0 { current as f64 / total_size as f64 } else { 0.0 };
             let now = std::time::Instant::now();
 
             if percent - last_percent >= 0.01 || now.duration_since(last_progress_time).as_millis() > 500 || percent >= 1.0 {
@@ -299,6 +299,12 @@ async fn download_multi_stream(
         let token = token.clone();
 
         handles.push(tokio::spawn(async move {
+            let mut worker_file = tokio::fs::OpenOptions::new()
+                .write(true)
+                .open(&file_path)
+                .await
+                .map_err(|e| e.to_string())?;
+
             loop {
                 if token.is_cancelled() { return Ok(()); }
 
@@ -318,22 +324,17 @@ async fn download_multi_stream(
                      return Err(format!("Request failed: {}", resp.status()));
                 }
 
-                let mut file = tokio::fs::OpenOptions::new()
-                    .write(true)
-                    .open(&file_path)
-                    .await
-                    .map_err(|e| e.to_string())?;
-                
-                file.seek(SeekFrom::Start(start)).await.map_err(|e| e.to_string())?;
+                worker_file.seek(SeekFrom::Start(start)).await.map_err(|e| e.to_string())?;
 
                 let mut stream = resp.bytes_stream();
                 while let Some(item) = stream.next().await {
                      if token.is_cancelled() { return Ok(()); }
                      let chunk = item.map_err(|e| e.to_string())?;
-                     file.write_all(&chunk).await.map_err(|e| e.to_string())?;
+                     worker_file.write_all(&chunk).await.map_err(|e| e.to_string())?;
                      transferred.fetch_add(chunk.len() as u64, Ordering::Relaxed);
                 }
             }
+            worker_file.flush().await.map_err(|e| e.to_string())?;
             Ok::<(), String>(())
         }));
     }
