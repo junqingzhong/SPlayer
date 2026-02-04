@@ -11,6 +11,7 @@ use napi_derive::napi;
 use once_cell::sync::Lazy;
 use std::path::Path;
 use tokio::io::{AsyncWriteExt, AsyncSeekExt, SeekFrom};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -79,6 +80,14 @@ pub async fn write_music_metadata(
     Ok(())
 }
 
+struct TaskGuard(u32);
+
+impl Drop for TaskGuard {
+    fn drop(&mut self) {
+        DOWNLOAD_TASKS.remove(&self.0);
+    }
+}
+
 #[napi]
 pub async fn download_file(
     id: u32,
@@ -91,11 +100,9 @@ pub async fn download_file(
 ) -> Result<()> {
     let token = CancellationToken::new();
     DOWNLOAD_TASKS.insert(id, token.clone());
+    let _guard = TaskGuard(id);
 
-    let result = download_file_inner(token.clone(), url, file_path, metadata, thread_count, referer, on_progress).await;
-    
-    DOWNLOAD_TASKS.remove(&id);
-    result
+    download_file_inner(token.clone(), url, file_path, metadata, thread_count, referer, on_progress).await
 }
 
 async fn download_file_inner(
@@ -113,7 +120,7 @@ async fn download_file_inner(
 
     let client = CLIENT.clone();
 
-    // Head request to get size
+    // 发送 HEAD 请求获取文件大小
     let mut head_req = client.head(&url);
     if let Some(ref r) = referer {
         head_req = head_req.header("Referer", r);
@@ -126,7 +133,7 @@ async fn download_file_inner(
     let version = head_resp.version();
     let mut total_size = head_resp.content_length().unwrap_or(0);
     
-    // If HEAD failed to get size, try GET with Range 0-0 to get Content-Range
+    // 如果 HEAD 请求失败，尝试发送带有 Range 0-0 的 GET 请求获取 Content-Range
     if total_size == 0 {
          println!("[Download] HEAD request returned 0 size, trying GET Range request...");
          let mut get_req = client.get(&url).header("Range", "bytes=0-0");
@@ -135,15 +142,15 @@ async fn download_file_inner(
          }
          match get_req.send().await {
              Ok(resp) => {
-                 // If server ignores Range and returns 200, content_length is full size
+                 // 如果服务器忽略 Range 并返回 200，content_length 即为完整大小
                  if resp.status().as_u16() == 200 {
                      total_size = resp.content_length().unwrap_or(0);
                  } 
-                 // If server supports Range and returns 206
+                 // 如果服务器支持 Range 并返回 206
                  else if resp.status().as_u16() == 206 {
                      if let Some(range_header) = resp.headers().get("content-range") {
                          if let Ok(range_str) = range_header.to_str() {
-                             // Format: bytes 0-0/12345
+                             // 格式: bytes 0-0/12345
                              if let Some(slash_pos) = range_str.rfind('/') {
                                  if let Ok(size) = range_str[slash_pos+1..].parse::<u64>() {
                                      total_size = size;
@@ -275,7 +282,7 @@ async fn download_multi_stream(
 
     let on_progress = Arc::new(on_progress);
     
-    // Dynamic chunking: 4MB chunks
+    // 动态分块: 4MB 分块
     const CHUNK_SIZE: u64 = 4 * 1024 * 1024; 
     let next_offset = Arc::new(AtomicU64::new(0));
     let transferred = Arc::new(AtomicU64::new(0));
@@ -312,22 +319,38 @@ async fn download_multi_stream(
         }
     });
 
+    // 写入线程通道
+    let (tx, mut rx) = mpsc::channel::<(u64, Vec<u8>)>(32);
+    let writer_transferred = transferred.clone();
+    let writer_file_path = file_path.clone();
+
+    // 写入任务
+    let writer_handle = tokio::spawn(async move {
+        let mut file = tokio::fs::OpenOptions::new()
+            .write(true)
+            .open(&writer_file_path)
+            .await
+            .map_err(|e| e.to_string())?;
+        
+        while let Some((offset, data)) = rx.recv().await {
+            let len = data.len() as u64;
+            file.seek(SeekFrom::Start(offset)).await.map_err(|e| e.to_string())?;
+            file.write_all(&data).await.map_err(|e| e.to_string())?;
+            writer_transferred.fetch_add(len, Ordering::Relaxed);
+        }
+        file.flush().await.map_err(|e| e.to_string())?;
+        Ok::<(), String>(())
+    });
+
     for _ in 0..thread_count {
         let client = client.clone();
         let url = url.clone();
-        let file_path = file_path.clone();
-        let transferred = transferred.clone();
         let next_offset = next_offset.clone();
         let token = token.clone();
         let referer = referer.clone();
+        let tx = tx.clone();
 
         handles.push(tokio::spawn(async move {
-            let mut worker_file = tokio::fs::OpenOptions::new()
-                .write(true)
-                .open(&file_path)
-                .await
-                .map_err(|e| e.to_string())?;
-
             loop {
                 if token.is_cancelled() { return Ok(()); }
 
@@ -336,39 +359,77 @@ async fn download_multi_stream(
 
                 let end = std::cmp::min(start + CHUNK_SIZE - 1, total_size - 1);
                 
-                let range_header = format!("bytes={}-{}", start, end);
-                let mut req = client.get(&url).header("Range", range_header);
-                if let Some(ref r) = referer {
-                    req = req.header("Referer", r);
+                // 重试逻辑
+                let mut attempts = 0;
+                let max_retries = 3;
+                let mut success = false;
+
+                while attempts < max_retries {
+                    if token.is_cancelled() { return Ok(()); }
+                    
+                    let range_header = format!("bytes={}-{}", start, end);
+                    let mut req = client.get(&url).header("Range", &range_header);
+                    if let Some(ref r) = &referer {
+                        req = req.header("Referer", r);
+                    }
+
+                    match req.send().await {
+                        Ok(resp) => {
+                            if !resp.status().is_success() {
+                                attempts += 1;
+                                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                                continue;
+                            }
+
+                            let mut stream = resp.bytes_stream();
+                            let mut chunk_offset = start;
+                            let mut stream_failed = false;
+
+                            while let Some(item) = stream.next().await {
+                                if token.is_cancelled() { return Ok(()); }
+                                match item {
+                                    Ok(chunk) => {
+                                        let len = chunk.len() as u64;
+                                        if tx.send((chunk_offset, chunk.to_vec())).await.is_err() {
+                                            return Err("Writer channel closed".to_string());
+                                        }
+                                        chunk_offset += len;
+                                    },
+                                    Err(_) => {
+                                        stream_failed = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if !stream_failed {
+                                success = true;
+                                break; 
+                            }
+                        },
+                        Err(_) => {
+                            // 请求失败
+                        }
+                    }
+
+                    attempts += 1;
+                    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
                 }
-                let resp = req
-                    .send()
-                    .await
-                    .map_err(|e| e.to_string())?;
 
-                if !resp.status().is_success() {
-                     return Err(format!("Request failed: {}", resp.status()));
-                }
-
-                worker_file.seek(SeekFrom::Start(start)).await.map_err(|e| e.to_string())?;
-
-                let mut stream = resp.bytes_stream();
-                while let Some(item) = stream.next().await {
-                     if token.is_cancelled() { return Ok(()); }
-                     let chunk = item.map_err(|e| e.to_string())?;
-                     worker_file.write_all(&chunk).await.map_err(|e| e.to_string())?;
-                     transferred.fetch_add(chunk.len() as u64, Ordering::Relaxed);
+                if !success {
+                    return Err(format!("Failed to download chunk {}-{} after {} attempts", start, end, max_retries));
                 }
             }
-            worker_file.flush().await.map_err(|e| e.to_string())?;
             Ok::<(), String>(())
         }));
     }
 
-    let results = futures_util::future::join_all(handles).await;
-    monitor_handle.abort();
+    // 丢弃主线程的发送端，以便在所有工作线程完成后关闭接收端
+    drop(tx);
 
-    // Check for errors or cancellation
+    let results = futures_util::future::join_all(handles).await;
+    
+    // 检查工作线程错误
     let mut error = None;
     for res in results {
         match res {
@@ -377,6 +438,16 @@ async fn download_multi_stream(
             Err(e) => error = Some(Error::from_reason(e.to_string())),
         }
     }
+
+    // 等待写入完成
+    let writer_res = writer_handle.await;
+    match writer_res {
+        Ok(Ok(_)) => {},
+        Ok(Err(e)) => if error.is_none() { error = Some(Error::from_reason(e)); },
+        Err(e) => if error.is_none() { error = Some(Error::from_reason(e.to_string())); },
+    }
+
+    monitor_handle.abort();
 
     if let Some(e) = error {
         let _ = tokio::fs::remove_file(&file_path).await;
@@ -403,16 +474,16 @@ async fn download_multi_stream(
 async fn process_metadata(client: reqwest::Client, file_path: String, meta: SongMetadata) -> Result<()> {
     let cover_data = if let Some(cover_url) = &meta.cover_url {
         if !cover_url.is_empty() {
-            match client.get(cover_url).send().await {
-                Ok(resp) => {
+            match tokio::time::timeout(std::time::Duration::from_secs(10), client.get(cover_url).send()).await {
+                Ok(Ok(resp)) => {
                     if resp.status().is_success() {
                         match resp.bytes().await {
                             Ok(b) => Some(b),
                             Err(_e) => None
                         }
                     } else { None }
-                }
-                Err(_e) => None
+                },
+                _ => None,
             }
         } else { None }
     } else { None };
@@ -430,10 +501,27 @@ async fn process_metadata(client: reqwest::Client, file_path: String, meta: Song
 
 fn write_metadata(path: &str, meta: SongMetadata, cover_data: Option<bytes::Bytes>) -> Result<()> {
     let path_obj = Path::new(path);
-    let mut tagged_file = Probe::open(path_obj)
-        .map_err(|e| Error::from_reason(format!("Failed to open file for tagging: {}", e)))?
-        .read()
-        .map_err(|e| Error::from_reason(format!("Failed to read tags: {}", e)))?;
+    
+    let mut tagged_file = None;
+    let mut last_err = String::new();
+    
+    for i in 0..3 {
+        match Probe::open(path_obj) {
+            Ok(probe) => match probe.read() {
+                Ok(f) => {
+                    tagged_file = Some(f);
+                    break;
+                },
+                Err(e) => last_err = e.to_string(),
+            },
+            Err(e) => last_err = e.to_string(),
+        }
+        if i < 2 {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+    }
+
+    let mut tagged_file = tagged_file.ok_or_else(|| Error::from_reason(format!("Failed to open file for tagging after retries: {}", last_err)))?;
 
     let tag = match tagged_file.primary_tag_mut() {
         Some(primary_tag) => primary_tag,
