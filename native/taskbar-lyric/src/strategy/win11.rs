@@ -43,13 +43,12 @@ impl TaskbarStrategy for Win11Strategy {
             return false;
         };
 
-        unsafe {
-            let h_bridge = FindWindowExW(Some(hwnd), None, BRIDGE_CLASS, None).unwrap_or_default();
+        let h_bridge =
+            unsafe { FindWindowExW(Some(hwnd), None, BRIDGE_CLASS, None) }.unwrap_or_default();
 
-            if h_bridge.0.is_null() {
-                error!("初始化失败，找不到 XAML 桥");
-                return false;
-            }
+        if h_bridge.0.is_null() {
+            error!("初始化失败，找不到 XAML 桥");
+            return false;
         }
 
         self.h_taskbar = hwnd;
