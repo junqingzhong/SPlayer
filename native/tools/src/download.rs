@@ -407,8 +407,9 @@ async fn download_multi_stream(
                                 break; 
                             }
                         },
-                        Err(_) => {
+                        Err(e) => {
                             // 请求失败
+                            println!("[Download] Chunk request failed on attempt {}: {}", attempts + 1, e);
                         }
                     }
 
