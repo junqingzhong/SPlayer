@@ -174,7 +174,7 @@ class TaskbarLyricWindow {
     }
 
     this.win.on("closed", () => {
-      this.disposeNativeResources();
+      this.destroy();
       this.win = null;
     });
 
@@ -259,7 +259,7 @@ class TaskbarLyricWindow {
         shouldCenter = false;
       } else if (layout.systemType === "win11" && layout.win11) {
         const { startButton, widgets, content, tray, isCentered } = layout.win11;
-        
+
         let effectiveRightAnchor = tray.x;
         const contentRightEdge = content.x + content.width;
         if (widgets.width > 0 && widgets.x > contentRightEdge) {
@@ -409,7 +409,7 @@ class TaskbarLyricWindow {
     }, interval);
   }
 
-  private disposeNativeResources() {
+  public destroy() {
     if (this.isNativeDisposed) return;
     this.debouncedUpdateLayout.cancel();
     this.debouncedRegistryUpdate.cancel();
@@ -457,7 +457,7 @@ class TaskbarLyricWindow {
   }
 
   close(animate: boolean = true) {
-    this.disposeNativeResources();
+    this.destroy();
     if (this.animationTimer) {
       clearInterval(this.animationTimer);
       this.animationTimer = null;
