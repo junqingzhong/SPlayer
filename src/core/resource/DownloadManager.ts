@@ -520,8 +520,9 @@ class DownloadManager {
               // 尝试解析现有歌词以合并翻译和音译
               let lines: LyricLine[] = [];
               if (ttmlLyric) {
-                const parsed = parseTTML(ttmlLyric);
-                if (parsed?.lines) lines = parsed.lines;
+                // const parsed = parseTTML(ttmlLyric);
+                // if (parsed?.lines) lines = parsed.lines;
+                console.log("[Download] Skip processing for TTML to preserve original content.");
               } else if (yrcLyric) {
                 if (yrcLyric.trim().startsWith("<") || yrcLyric.includes("<QrcInfos>")) {
                   lines = parseQRCLyric(yrcLyric);
