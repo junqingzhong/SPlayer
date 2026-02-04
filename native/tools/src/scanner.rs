@@ -294,6 +294,8 @@ fn process_single_track(
     let id = get_file_id(&path_str);
     let cover_path = process_cover(&tagged_file, &id, cover_dir_path);
 
+    let bitrate_kbps = properties.audio_bitrate().unwrap_or(0);
+
     Some(MusicTrack {
         id,
         path: path_str,
@@ -304,7 +306,7 @@ fn process_single_track(
         cover: cover_path,
         mtime,
         size,
-        bitrate: f64::from(properties.audio_bitrate().unwrap_or(0)),
+        bitrate: f64::from(bitrate_kbps) * 1000.0,
     })
 }
 
