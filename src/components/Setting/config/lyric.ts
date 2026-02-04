@@ -638,6 +638,19 @@ export const useLyricSettings = (): SettingConfig => {
             }),
           },
           {
+            key: "desktopLyricAnimation",
+            label: "歌词切换动画",
+            type: "switch",
+            description: "开启后歌词切换时会有动画过渡效果",
+            value: computed({
+              get: () => desktopLyricConfig.animation,
+              set: (v) => {
+                desktopLyricConfig.animation = v;
+                saveDesktopLyricConfig();
+              },
+            }),
+          },
+          {
             key: "desktopLyricFontWeight",
             label: "文字字重",
             type: "input-number",
