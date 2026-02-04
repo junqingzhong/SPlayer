@@ -16,12 +16,6 @@ import { loadNativeModule } from "../utils/native-loader";
 type toolModule = typeof import("@native/tools");
 const tools: toolModule = loadNativeModule("tools.node", "tools");
 
-interface DownloadProgress {
-  percent: number;
-  transferredBytes: number;
-  totalBytes: number;
-}
-
 /**
  * 文件相关 IPC
  */
@@ -593,33 +587,46 @@ const initFileIpc = (): void => {
         }
 
         const onProgress = (...args: any[]) => {
-          // console.log("Received progress args:", args);
-          let progressJson: string | undefined;
+          let progressData: any;
 
           // Handle (err, value) or (value) signature
-          if (args.length > 1 && args[0] === null && typeof args[1] === "string") {
-            progressJson = args[1];
-          } else if (args.length > 0 && typeof args[0] === "string") {
-            progressJson = args[0];
+          if (args.length > 1 && args[0] === null) {
+            progressData = args[1];
+          } else if (args.length > 0) {
+            progressData = args[0];
           }
 
           try {
-            if (!progressJson) return;
-            const progress = JSON.parse(progressJson) as DownloadProgress;
-            if (!progress) return;
+            if (!progressData) return;
+
+            // Handle both object (new) and JSON string (legacy/fallback)
+            if (typeof progressData === "string") {
+               try {
+                 progressData = JSON.parse(progressData);
+               } catch (e) {
+                 console.error("Failed to parse progress json", e);
+                 return;
+               }
+            }
+
+            if (!progressData || typeof progressData !== 'object') return;
+
+            // Map snake_case (Rust) to camelCase (JS)
+            // Rust struct: { percent, transferred_bytes, total_bytes }
+            const percent = progressData.percent;
+            const transferredBytes = progressData.transferredBytes ?? progressData.transferred_bytes ?? 0;
+            const totalBytes = progressData.totalBytes ?? progressData.total_bytes ?? 0;
 
             win.webContents.send("download-progress", {
               id: songData?.id,
-              percent: progress.percent,
-              transferredBytes: progress.transferredBytes,
-              totalBytes: progress.totalBytes,
+              percent: percent,
+              transferredBytes: transferredBytes,
+              totalBytes: totalBytes,
             });
           } catch (e) {
             console.error(
-              "Failed to parse progress json",
+              "Error processing progress callback",
               e,
-              "Input:",
-              progressJson,
               "Args:",
               args,
             );
