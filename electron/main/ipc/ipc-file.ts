@@ -532,7 +532,6 @@ const initFileIpc = (): void => {
           saveMetaFile,
           songData,
           skipIfExist,
-          referer,
         } = options;
         // 规范化路径
         const downloadPath = resolve(path);
@@ -641,7 +640,6 @@ const initFileIpc = (): void => {
           finalFilePath,
           metadata,
           threadCount,
-          referer,
           onProgress,
         );
 
