@@ -26,8 +26,6 @@
 </template>
 
 <script setup lang="ts">
-import { webConsole, errorPopupConsole } from "@/utils/log";
-import { isElectron } from "@/utils/env";
 import {
   zhCN,
   dateZhCN,
@@ -318,29 +316,9 @@ watchDebounced(
   { debounce: 500, maxWait: 1000 },
 );
 
-const handleConsoleError = (event: ErrorEvent | PromiseRejectionEvent) => {
-  const message = isElectron
-    ? errorPopupConsole.formatErrorEventMessage(event)
-    : webConsole.formatErrorEventMessage(event);
-  console.error(message);
-};
-
 onMounted(() => {
   changeGlobalTheme();
   // 自定义代码注入
   useCustomCode();
-
-  if (isElectron) {
-    errorPopupConsole.init();
-  } else {
-    webConsole.init();
-  }
-  window.addEventListener("error", handleConsoleError);
-  window.addEventListener("unhandledrejection", handleConsoleError);
-});
-
-onUnmounted(() => {
-  window.removeEventListener("error", handleConsoleError);
-  window.removeEventListener("unhandledrejection", handleConsoleError);
 });
 </script>

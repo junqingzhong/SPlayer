@@ -90,32 +90,40 @@
                 v-if="isShowLyrics && instantLyrics"
                 :key="instantLyrics"
                 :text="instantLyrics"
-                :speed="0.2"
+                :speed="0.5"
                 :delay="500"
                 class="lyric"
               />
               <!-- 歌手 -->
               <div v-else class="artists">
-                <n-text v-if="musicStore.playSong.type === 'radio'" class="ar-item">
-                  播客电台
-                </n-text>
-                <template v-else-if="Array.isArray(musicStore.playSong.artists)">
-                  <n-text
-                    v-for="(item, index) in musicStore.playSong.artists"
-                    :key="index"
-                    class="ar-item"
-                    @click="openJumpArtist(musicStore.playSong.artists, item.id)"
-                  >
-                    {{ settingStore.hideBracketedContent ? removeBrackets(item.name) : item.name }}
+                <TextContainer :speed="0.5" class="artists-container">
+                  <n-text v-if="musicStore.playSong.type === 'radio'" class="ar-item">
+                    播客电台
                   </n-text>
-                </template>
-                <n-text v-else class="ar-item" @click="openJumpArtist(musicStore.playSong.artists)">
-                  {{
-                    settingStore.hideBracketedContent
-                      ? removeBrackets(musicStore.playSong.artists)
-                      : musicStore.playSong.artists || "未知艺术家"
-                  }}
-                </n-text>
+                  <template v-else-if="Array.isArray(musicStore.playSong.artists)">
+                    <n-text
+                      v-for="(item, index) in musicStore.playSong.artists"
+                      :key="index"
+                      class="ar-item"
+                      @click="openJumpArtist(musicStore.playSong.artists, item.id)"
+                    >
+                      {{
+                        settingStore.hideBracketedContent ? removeBrackets(item.name) : item.name
+                      }}
+                    </n-text>
+                  </template>
+                  <n-text
+                    v-else
+                    class="ar-item"
+                    @click="openJumpArtist(musicStore.playSong.artists)"
+                  >
+                    {{
+                      settingStore.hideBracketedContent
+                        ? removeBrackets(musicStore.playSong.artists)
+                        : musicStore.playSong.artists || "未知艺术家"
+                    }}
+                  </n-text>
+                </TextContainer>
               </div>
             </Transition>
           </div>
@@ -548,31 +556,32 @@ const instantLyrics = computed(() => {
         }
       }
       .artists {
-        display: -webkit-box;
-        line-clamp: 1;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 1;
+        width: 100%;
         overflow: hidden;
-        word-break: break-all;
-        .ar-item {
-          display: inline-flex;
-          transition: color 0.3s;
-          cursor: pointer;
-          &::after {
-            content: "/";
-            margin: 0 6px;
-            opacity: 0.6;
-            transition: none;
-          }
-          &:last-child {
+
+        .artists-container {
+          .ar-item {
+            display: inline-flex;
+            transition: color 0.3s;
+            cursor: pointer;
+            white-space: nowrap;
+
             &::after {
-              display: none;
+              content: "/";
+              margin: 0 6px;
+              opacity: 0.6;
+              transition: none;
             }
-          }
-          &:hover {
-            color: var(--primary-hex);
-            &::after {
-              color: var(--n-close-icon-color);
+            &:last-child {
+              &::after {
+                display: none;
+              }
+            }
+            &:hover {
+              color: var(--primary-hex);
+              &::after {
+                color: var(--n-close-icon-color);
+              }
             }
           }
         }

@@ -1,19 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import { electronAPI } from "@electron-toolkit/preload";
 
-type LogLevel = "info" | "warn" | "error" | "debug";
-
-const sendRendererLog = (level: LogLevel, message: string, args: unknown[]) => {
-  ipcRenderer.send("renderer-log", level, message, args);
-};
-
-const createRendererLogger = () => ({
-  info: (message: string, ...args: unknown[]) => sendRendererLog("info", message, args),
-  warn: (message: string, ...args: unknown[]) => sendRendererLog("warn", message, args),
-  error: (message: string, ...args: unknown[]) => sendRendererLog("error", message, args),
-  debug: (message: string, ...args: unknown[]) => sendRendererLog("debug", message, args),
-});
-
 // Use `contextBridge` APIs to expose Electron APIs to
 // renderer only if context isolation is enabled, otherwise
 // just add to the DOM global.
@@ -32,9 +19,18 @@ if (process.contextIsolated) {
         import: () => ipcRenderer.invoke("store-import"),
       },
       // Renderer logging API
-      log: createRendererLogger(),
+      log: {
+        info: (message: string, ...args: unknown[]) =>
+          ipcRenderer.send("renderer-log", "info", message, args),
+        warn: (message: string, ...args: unknown[]) =>
+          ipcRenderer.send("renderer-log", "warn", message, args),
+        error: (message: string, ...args: unknown[]) =>
+          ipcRenderer.send("renderer-log", "error", message, args),
+        debug: (message: string, ...args: unknown[]) =>
+          ipcRenderer.send("renderer-log", "debug", message, args),
+      },
     });
   } catch (error) {
-    sendRendererLog("error", "Preload expose error", [error]);
+    console.error(error);
   }
 }
