@@ -318,6 +318,17 @@ export const useLocalSettings = (): SettingConfig => {
             },
           },
           {
+            key: "enableDownloadHttp2",
+            label: "启用 HTTP/2 下载",
+            type: "switch",
+            tags: [{ text: "Beta", type: "warning" }],
+            description: "使用 HTTP/2 协议进行下载",
+            value: computed({
+              get: () => settingStore.enableDownloadHttp2,
+              set: (v) => (settingStore.enableDownloadHttp2 = v),
+            }),
+          },
+          {
             key: "downloadSongLevel",
             label: "默认下载音质",
             type: "select",

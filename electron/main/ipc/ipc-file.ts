@@ -16,18 +16,15 @@ import { loadNativeModule } from "../utils/native-loader";
 type toolModule = typeof import("@native/tools");
 const tools: toolModule = loadNativeModule("tools.node", "tools");
 
-interface DownloadProgress {
-  percent: number;
-  transferredBytes: number;
-  totalBytes: number;
-}
-
 /**
  * 文件相关 IPC
  */
 const initFileIpc = (): void => {
   /** 本地音乐服务 */
   const localMusicService = new LocalMusicService();
+
+  // Store active download tasks: ID -> DownloadTask instance
+  const activeDownloads = new Map<number, any>();
 
   /**
    * 获取全局搜索配置
@@ -510,6 +507,7 @@ const initFileIpc = (): void => {
         skipIfExist?: boolean;
         threadCount?: number;
         referer?: string;
+        enableDownloadHttp2?: boolean;
       } = {
         fileName: "未知文件名",
         fileType: "mp3",
@@ -533,6 +531,7 @@ const initFileIpc = (): void => {
           songData,
           skipIfExist,
           referer,
+          enableDownloadHttp2,
         } = options;
         // 规范化路径
         const downloadPath = resolve(path);
@@ -593,33 +592,46 @@ const initFileIpc = (): void => {
         }
 
         const onProgress = (...args: any[]) => {
-          // console.log("Received progress args:", args);
-          let progressJson: string | undefined;
+          let progressData: any;
 
           // Handle (err, value) or (value) signature
-          if (args.length > 1 && args[0] === null && typeof args[1] === "string") {
-            progressJson = args[1];
-          } else if (args.length > 0 && typeof args[0] === "string") {
-            progressJson = args[0];
+          if (args.length > 1 && args[0] === null) {
+            progressData = args[1];
+          } else if (args.length > 0) {
+            progressData = args[0];
           }
 
           try {
-            if (!progressJson) return;
-            const progress = JSON.parse(progressJson) as DownloadProgress;
-            if (!progress) return;
+            if (!progressData) return;
+
+            // Handle both object (new) and JSON string (legacy/fallback)
+            if (typeof progressData === "string") {
+               try {
+                 progressData = JSON.parse(progressData);
+               } catch (e) {
+                 console.error("Failed to parse progress json", e);
+                 return;
+               }
+            }
+
+            if (!progressData || typeof progressData !== 'object') return;
+
+            // Map snake_case (Rust) to camelCase (JS)
+            // Rust struct: { percent, transferred_bytes, total_bytes }
+            const percent = progressData.percent;
+            const transferredBytes = progressData.transferredBytes ?? progressData.transferred_bytes ?? 0;
+            const totalBytes = progressData.totalBytes ?? progressData.total_bytes ?? 0;
 
             win.webContents.send("download-progress", {
               id: songData?.id,
-              percent: progress.percent,
-              transferredBytes: progress.transferredBytes,
-              totalBytes: progress.totalBytes,
+              percent: percent,
+              transferredBytes: transferredBytes,
+              totalBytes: totalBytes,
             });
           } catch (e) {
             console.error(
-              "Failed to parse progress json",
+              "Error processing progress callback",
               e,
-              "Input:",
-              progressJson,
               "Args:",
               args,
             );
@@ -635,15 +647,35 @@ const initFileIpc = (): void => {
         const threadCount =
           (options.threadCount as number) || (store.get("downloadThreadCount") as number) || 8;
 
-        await tools.downloadFile(
-          songData?.id || 0,
-          url,
-          finalFilePath,
-          metadata,
-          threadCount,
-          referer,
-          onProgress,
-        );
+        const enableHttp2 =
+          enableDownloadHttp2 !== undefined
+            ? enableDownloadHttp2
+            : (store.get("enableDownloadHttp2", true) as boolean);
+
+        // Upgrade HTTP to HTTPS if HTTP2 is enabled (HTTP2 usually requires HTTPS)
+        let finalUrl = url;
+        if (enableHttp2 && finalUrl.startsWith("http://")) {
+          finalUrl = finalUrl.replace(/^http:\/\//, "https://");
+          ipcLog.info(`🔒 Upgraded download URL to HTTPS for HTTP/2 support: ${finalUrl}`);
+        }
+
+        const task = new tools.DownloadTask();
+        const downloadId = songData?.id || 0;
+        activeDownloads.set(downloadId, task);
+
+        try {
+          await task.download(
+            finalUrl,
+            finalFilePath,
+            metadata,
+            threadCount,
+            referer,
+            onProgress,
+            enableHttp2,
+          );
+        } finally {
+          activeDownloads.delete(downloadId);
+        }
 
         // 创建同名歌词文件
         if (lyric && saveMetaFile && downloadLyric) {
@@ -667,8 +699,9 @@ const initFileIpc = (): void => {
 
   // 取消下载
   ipcMain.handle("cancel-download", async (_, songId: number) => {
-    if (tools) {
-      tools.cancelDownload(songId);
+    const task = activeDownloads.get(songId);
+    if (task) {
+      task.cancel();
       return true;
     }
     return false;

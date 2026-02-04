@@ -14,7 +14,6 @@ tokio = { version = "1", features = [
   "sync",
   "macros",
 ] }
-reqwest = { version = "0.12", features = ["stream", "rustls-tls"] }
 futures-util = "0.3"
 bytes = "1"
 dashmap = "6"
@@ -35,6 +34,7 @@ md5 = "0.8.0"
 rusqlite = { version = "0.38.0", features = ["bundled"] }
 image = "0.25.9"
 crossbeam-channel = "0.5.15"
+reqwest = { version = "0.13.1", features = ["stream", "rustls-native-certs"] }
 
 [build-dependencies]
 napi-build = "2"

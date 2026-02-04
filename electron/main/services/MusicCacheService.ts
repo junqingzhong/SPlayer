@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
 import { rename, stat, unlink } from "fs/promises";
 import { cacheLog } from "../logger";
+import { useStore } from "../store";
 import { loadNativeModule } from "../utils/native-loader";
 import { CacheService } from "./CacheService";
 
@@ -90,17 +91,19 @@ export class MusicCacheService {
       }
 
       // 使用 Rust 下载器
-      // 这里的 id 仅用于进度或取消，缓存下载暂时传入 0 或尝试转换
-      const numericId = typeof id === "number" ? id : 0;
 
-      await tools.downloadFile(
-        numericId,
+      const store = useStore();
+      const enableHttp2 = store.get("enableDownloadHttp2", true) as boolean;
+
+      const task = new tools.DownloadTask();
+      await task.download(
         url,
         tempPath,
         null, // No metadata for cache
         4, // Thread count
         null, // Referer
         () => {}, // No progress callback needed for cache currently
+        enableHttp2,
       );
 
       // 检查临时文件是否存在

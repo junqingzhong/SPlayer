@@ -505,6 +505,7 @@ class DownloadManager {
           skipIfExist,
           threadCount: settingStore.downloadThreadCount,
           referer: song.customReferer,
+          enableDownloadHttp2: settingStore.enableDownloadHttp2,
         };
 
         const result = await window.electron.ipcRenderer.invoke("download-file", url, config);
