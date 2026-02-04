@@ -562,7 +562,6 @@ class PlayerController {
       mediaSessionManager.updateState(duration, currentTime);
       // 更新桌面歌词
       playerIpc.sendLyric({
-        lyricIndex: statusStore.lyricIndex,
         currentTime,
         songId: musicStore.playSong?.id,
         songOffset: statusStore.getSongOffset(musicStore.playSong?.id),

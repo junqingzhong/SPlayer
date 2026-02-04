@@ -1,3 +1,4 @@
+import type { SongMetadata } from "@native/tools";
 import { app, BrowserWindow, dialog, ipcMain, shell } from "electron";
 import FastGlob from "fast-glob";
 import type { Options as GlobOptions } from "fast-glob/out/settings";
@@ -12,30 +13,8 @@ import { useStore } from "../store";
 import { getFileID, getFileMD5, metaDataLyricsArrayToLrc } from "../utils/helper";
 import { loadNativeModule } from "../utils/native-loader";
 
-interface SongMetadata {
-  title: string;
-  artist: string;
-  album: string;
-  coverUrl?: string;
-  lyric?: string;
-  description?: string;
-}
-
-interface ToolsModule {
-  downloadFile(
-    id: number,
-    url: string,
-    filePath: string,
-    metadata: SongMetadata | undefined | null,
-    threadCount: number,
-    referer: string | undefined | null,
-    onProgress: (err: any, progressJson: string) => void,
-  ): Promise<void>;
-  cancelDownload(id: number): void;
-  writeMusicMetadata(filePath: string, metadata: SongMetadata, coverPath?: string): Promise<void>;
-}
-
-const tools = loadNativeModule("tools.node", "tools") as ToolsModule;
+type toolModule = typeof import("@native/tools");
+const tools: toolModule = loadNativeModule("tools.node", "tools");
 
 interface DownloadProgress {
   percent: number;
