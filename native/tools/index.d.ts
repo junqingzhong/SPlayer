@@ -2,7 +2,7 @@
 /* eslint-disable */
 export declare function cancelDownload(id: number): void
 
-export declare function downloadFile(id: number, url: string, filePath: string, metadata: SongMetadata | undefined | null, threadCount: number, onProgress: ((err: Error | null, arg: string) => any)): Promise<void>
+export declare function downloadFile(id: number, url: string, filePath: string, metadata: SongMetadata | undefined | null, threadCount: number, referer: string | undefined | null, onProgress: ((err: Error | null, arg: string) => any)): Promise<void>
 
 export declare function getTaskbarCreatedMessageId(): number
 
