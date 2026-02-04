@@ -17,8 +17,6 @@ use napi_derive::napi;
 mod discord;
 mod logger;
 mod model;
-/// 扫描器模块
-pub mod scanner;
 mod sys_media;
 
 use model::{
