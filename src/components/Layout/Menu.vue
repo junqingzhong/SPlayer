@@ -62,7 +62,12 @@ const { isDesktop } = useMobile();
 // 菜单数据
 const menuRef = ref<MenuInst | null>(null);
 const menuActiveKey = ref<string | number>((router.currentRoute.value.name as string) || "home");
-const playlistMode = ref<"online" | "local">("online");
+const playlistMode = computed({
+  get: () => settingStore.sidebarPlaylistMode,
+  set: (val) => {
+    settingStore.sidebarPlaylistMode = val;
+  },
+});
 
 // 刷新私人漫游
 const handleRefreshFM = async (e: Event) => {
