@@ -157,7 +157,9 @@ export const useSongMenu = () => {
     const isLocal = !!song?.path;
     const isLoginNormal = isLogin() === 1;
     const isCurrent = statusStore.playIndex === index;
-    const isUserPlaylist = !!playListId && userPlaylistsData.some((pl) => pl.id === playListId);
+    const isLocalPlaylist = playListId?.toString().length === 16;
+    const isUserPlaylist =
+      (!!playListId && userPlaylistsData.some((pl) => pl.id === playListId)) || isLocalPlaylist;
     const isDownloading = dataStore.downloadingSongs.some((item) => item.song.id === song.id);
 
     return [
@@ -294,7 +296,7 @@ export const useSongMenu = () => {
         show:
           settingStore.contextMenuOptions.deleteFromPlaylist &&
           isUserPlaylist &&
-          isLoginNormal &&
+          (isLocalPlaylist || isLoginNormal) &&
           !isCloud,
         props: {
           onClick: () => deleteSongs(playListId!, [song.id], () => emit("removeSong", [song.id])),
