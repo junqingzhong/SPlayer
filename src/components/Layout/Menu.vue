@@ -423,7 +423,7 @@ const menuUpdate = (key: string, item: MenuOption) => {
   } else if (typeof key === "string" && key.startsWith("local-")) {
     // 检查是否为本地歌单（16位数字ID）
     const localId = key.replace("local-", "");
-    const isLocalPlaylist = /^\d{16}$/.test(localId);
+    const isLocalPlaylist = localStore.isLocalPlaylist(localId);
     if (isLocalPlaylist) {
       router.push({
         name: "playlist",
@@ -491,7 +491,7 @@ const checkMenuItem = () => {
         (playlist) => playlist?.id === playlistId,
       );
       // 是否为本地歌单
-      const isLocalPlaylist = playlistId.toString().length === 16;
+      const isLocalPlaylist = localStore.isLocalPlaylist(playlistId);
       if (!playlistId) menuActiveKey.value = "home";
       if (isUserPlaylist) {
         menuActiveKey.value = Number(playlistId);
