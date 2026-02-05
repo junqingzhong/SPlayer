@@ -551,10 +551,11 @@ class DownloadManager {
                      }
                  }
 
-                 // 如果进行了合并，或者原本就是 YRC/TTML，我们重新生成标准 TTML
-                 // 这样可以确保翻译被正确嵌入
-                 if (merged || ttmlLyric || yrcLyric) {
+                 // 如果进行了合并，或者原本就是 YRC (需要转换)，我们重新生成标准 TTML
+                 // 注意：如果是 TTML 且未合并，不要重新生成，以免丢失原始内容
+                 if ((merged || yrcLyric) && lines.length > 0) {
                      content = lyricLinesToTTML(lines);
+                     console.log("[Download] Generated new TTML content from lines.");
                  }
               }
 
@@ -562,8 +563,8 @@ class DownloadManager {
               content = await this._convertToTraditionalIfNeeded(content);
 
               // 如果进行了合并或转换，统一保存为 ttml (因为我们生成的是 standard TTML)
-              // 除非原本就是 yrc 且没合并
-              const ext = (ttmlLyric || merged) ? "ttml" : "yrc";
+              // 只要解析出了 lines (说明是 YRC 转换或进行了合并)，或者是原生 TTML，都保存为 ttml
+              const ext = (ttmlLyric || lines.length > 0) ? "ttml" : "yrc";
               const fileName = `${safeFileName}.${ext}`;
               const encoding = settingStore.downloadLyricEncoding || "utf-8";
 
@@ -572,7 +573,7 @@ class DownloadManager {
                 content = content.replace(/encoding=["']utf-8["']/i, `encoding="${encoding}"`);
               }
 
-              console.log(`[Download] Saving extra lyric file: ${fileName}`);
+              console.log(`[Download] Saving extra lyric file: ${fileName}, content len: ${content.length}`);
               // 调用保存文件内容接口
               const saveRes = await window.electron.ipcRenderer.invoke("save-file-content", {
                 path: targetPath,
