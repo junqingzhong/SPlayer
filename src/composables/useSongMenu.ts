@@ -271,20 +271,6 @@ export const useSongMenu = () => {
             },
             icon: renderIcon("EditNote", { size: 20 }),
           },
-          {
-            key: "delete-playlist",
-            label: "从歌单中删除",
-            show:
-              settingStore.contextMenuOptions.deleteFromPlaylist &&
-              isUserPlaylist &&
-              isLoginNormal &&
-              !isCloud,
-            props: {
-              onClick: () =>
-                deleteSongs(playListId!, [song.id], () => emit("removeSong", [song.id])),
-            },
-            icon: renderIcon("Delete"),
-          },
         ],
       },
       {
