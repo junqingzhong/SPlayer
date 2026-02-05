@@ -157,7 +157,9 @@ export const useSongMenu = () => {
     const isLocal = !!song?.path;
     const isLoginNormal = isLogin() === 1;
     const isCurrent = statusStore.playIndex === index;
-    const isUserPlaylist = !!playListId && userPlaylistsData.some((pl) => pl.id === playListId);
+    const isLocalPlaylist = playListId?.toString().length === 16;
+    const isUserPlaylist =
+      (!!playListId && userPlaylistsData.some((pl) => pl.id === playListId)) || isLocalPlaylist;
     const isDownloading = dataStore.downloadingSongs.some((item) => item.song.id === song.id);
 
     return [
