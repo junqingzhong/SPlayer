@@ -518,11 +518,21 @@ export const updateDailySongsData = async (refresh = false) => {
  * @param pid 歌单id
  * @param ids 要删除的歌曲id
  */
-export const deleteSongs = async (pid: number, ids: number[], callback?: () => void) => {
+export const deleteSongs = async (
+  pid: number,
+  ids: number[],
+  options: { callback?: () => void; songName?: string } = {},
+) => {
+  const { callback, songName } = options;
   try {
     window.$dialog.warning({
       title: "删除歌曲",
-      content: ids?.length > 1 ? "确定删除这些选中的歌曲吗？" : "确定删除这个歌曲吗？",
+      content:
+        ids?.length > 1
+          ? "确定删除这些选中的歌曲吗？"
+          : songName
+            ? `确定删除歌曲 ${songName} 吗？`
+            : "确定删除这个歌曲吗？",
       positiveText: "删除",
       negativeText: "取消",
       onPositiveClick: async () => {

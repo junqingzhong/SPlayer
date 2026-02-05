@@ -1,6 +1,6 @@
 import { DropdownOption } from "naive-ui";
 import { SongType } from "@/types/main";
-import { useStatusStore, useDataStore, useMusicStore, useSettingStore } from "@/stores";
+import { useStatusStore, useDataStore, useMusicStore, useSettingStore, useLocalStore } from "@/stores";
 import { useDownloadManager } from "@/core/resource/DownloadManager";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { renderIcon, copyData } from "@/utils/helper";
@@ -25,6 +25,7 @@ export const useSongMenu = () => {
   const settingStore = useSettingStore();
   const player = usePlayerController();
   const downloadManager = useDownloadManager();
+  const localStore = useLocalStore();
 
   // 删除本地歌曲
   const deleteLocalSong = (song: SongType, emit: (event: "removeSong", args: any[]) => void) => {
@@ -157,7 +158,7 @@ export const useSongMenu = () => {
     const isLocal = !!song?.path;
     const isLoginNormal = isLogin() === 1;
     const isCurrent = statusStore.playIndex === index;
-    const isLocalPlaylist = playListId?.toString().length === 16;
+    const isLocalPlaylist = localStore.isLocalPlaylist(playListId);
     const isUserPlaylist =
       (!!playListId && userPlaylistsData.some((pl) => pl.id === playListId)) || isLocalPlaylist;
     const isDownloading = dataStore.downloadingSongs.some((item) => item.song.id === song.id);
@@ -304,6 +305,23 @@ export const useSongMenu = () => {
           onClick: () => importSongToCloud(song),
         },
         icon: renderIcon("Cloud"),
+      },
+      {
+        key: "delete-playlist",
+        label: "从歌单中删除",
+        show:
+          settingStore.contextMenuOptions.deleteFromPlaylist &&
+          isUserPlaylist &&
+          (isLocalPlaylist || isLoginNormal) &&
+          !isCloud,
+        props: {
+          onClick: () =>
+            deleteSongs(playListId!, [song.id], {
+              callback: () => emit("removeSong", [song.id]),
+              songName: song.name,
+            }),
+        },
+        icon: renderIcon("Delete"),
       },
       {
         key: "delete-cloud",
