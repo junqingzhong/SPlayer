@@ -255,10 +255,7 @@ export const useSongMenu = () => {
           {
             key: "line-2",
             type: "divider",
-            show:
-              isLocal &&
-              settingStore.contextMenuOptions.musicTagEditor &&
-              settingStore.contextMenuOptions.copyName,
+            show: settingStore.contextMenuOptions.musicTagEditor && isLocal,
           },
           {
             key: "meta-edit",
