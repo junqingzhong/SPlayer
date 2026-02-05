@@ -404,6 +404,8 @@ export interface SettingState {
     wiki: boolean;
     search: boolean;
     download: boolean;
+    copyName: boolean;
+    musicTagEditor: boolean;
   };
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
@@ -683,6 +685,8 @@ export const useSettingStore = defineStore("setting", {
       wiki: true,
       search: true,
       download: true,
+      copyName: true,
+      musicTagEditor: true,
     },
     enableSearchKeyword: true,
     clearSearchOnBlur: false,

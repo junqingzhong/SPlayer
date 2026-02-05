@@ -227,6 +227,7 @@ export const useSongMenu = () => {
           {
             key: "code-name",
             label: `复制${type === "song" ? "歌曲" : type === "streaming" ? "流媒体" : "节目"}名称`,
+            show: settingStore.contextMenuOptions.copyName,
             props: {
               onClick: () => copyData(song.name),
             },
@@ -254,18 +255,35 @@ export const useSongMenu = () => {
           {
             key: "line-2",
             type: "divider",
-            show: isLocal,
+            show:
+              isLocal &&
+              settingStore.contextMenuOptions.musicTagEditor &&
+              settingStore.contextMenuOptions.copyName,
           },
           {
             key: "meta-edit",
             label: "音乐标签编辑",
-            show: isLocal,
+            show: settingStore.contextMenuOptions.musicTagEditor && isLocal,
             props: {
               onClick: () => {
                 if (song.path) openSongInfoEditor(song);
               },
             },
             icon: renderIcon("EditNote", { size: 20 }),
+          },
+          {
+            key: "delete-playlist",
+            label: "从歌单中删除",
+            show:
+              settingStore.contextMenuOptions.deleteFromPlaylist &&
+              isUserPlaylist &&
+              isLoginNormal &&
+              !isCloud,
+            props: {
+              onClick: () =>
+                deleteSongs(playListId!, [song.id], () => emit("removeSong", [song.id])),
+            },
+            icon: renderIcon("Delete"),
           },
         ],
       },
@@ -287,19 +305,6 @@ export const useSongMenu = () => {
           onClick: () => importSongToCloud(song),
         },
         icon: renderIcon("Cloud"),
-      },
-      {
-        key: "delete-playlist",
-        label: "从歌单中删除",
-        show:
-          settingStore.contextMenuOptions.deleteFromPlaylist &&
-          isUserPlaylist &&
-          isLoginNormal &&
-          !isCloud,
-        props: {
-          onClick: () => deleteSongs(playListId!, [song.id], () => emit("removeSong", [song.id])),
-        },
-        icon: renderIcon("Delete"),
       },
       {
         key: "delete-cloud",
