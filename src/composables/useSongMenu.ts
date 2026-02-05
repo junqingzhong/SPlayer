@@ -230,6 +230,7 @@ export const useSongMenu = () => {
           {
             key: "code-name",
             label: `复制${type === "song" ? "歌曲" : type === "streaming" ? "流媒体" : "节目"}名称`,
+            show: settingStore.contextMenuOptions.copyName,
             props: {
               onClick: () => copyData(song.name),
             },
@@ -257,12 +258,12 @@ export const useSongMenu = () => {
           {
             key: "line-2",
             type: "divider",
-            show: isLocal,
+            show: settingStore.contextMenuOptions.musicTagEditor && isLocal,
           },
           {
             key: "meta-edit",
             label: "音乐标签编辑",
-            show: isLocal,
+            show: settingStore.contextMenuOptions.musicTagEditor && isLocal,
             props: {
               onClick: () => {
                 if (song.path) openSongInfoEditor(song);
