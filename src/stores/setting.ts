@@ -367,8 +367,6 @@ export interface SettingState {
     /** 隐藏心动模式 */
     hideHeartbeatMode: boolean;
   };
-  /** 侧边栏歌单模式 */
-  sidebarPlaylistMode: "online" | "local";
   /** 歌单界面元素显示配置 */
   // Controls the visibility of elements on the playlist detail page
   playlistPageElements: {
@@ -654,7 +652,6 @@ export const useSettingStore = defineStore("setting", {
       hideLikedPlaylists: false,
       hideHeartbeatMode: false,
     },
-    sidebarPlaylistMode: "online",
     playlistPageElements: {
       tags: true,
       creator: true,
