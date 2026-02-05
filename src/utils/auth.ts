@@ -13,7 +13,7 @@ import {
 } from "@/api/user";
 import { likeSong } from "@/api/song";
 import { formatCoverList, formatArtistsList, formatSongsList } from "@/utils/format";
-import { useDataStore, useMusicStore } from "@/stores";
+import { useDataStore, useMusicStore, useLocalStore } from "@/stores";
 import { logout, refreshLogin } from "@/api/login";
 import { debounce, isFunction, type DebouncedFunc } from "lodash-es";
 import { isBeforeSixAM } from "./time";
@@ -526,6 +526,22 @@ export const deleteSongs = async (pid: number, ids: number[], callback?: () => v
       positiveText: "删除",
       negativeText: "取消",
       onPositiveClick: async () => {
+        // 本地歌单
+        if (pid.toString().length === 16) {
+          const localStore = useLocalStore();
+          const success = await localStore.removeSongsFromLocalPlaylist(
+            pid,
+            ids.map((id) => id.toString()),
+          );
+          if (success) {
+            if (isFunction(callback)) callback();
+            window.$message.success("删除成功");
+          } else {
+            window.$message.error("删除失败");
+          }
+          return;
+        }
+        // 在线歌单
         const result = await playlistTracks(pid, ids, "del");
         if (result.status === 200) {
           if (result.body?.code !== 200) {
