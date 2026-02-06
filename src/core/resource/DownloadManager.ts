@@ -3,19 +3,10 @@ import { useDataStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
-import { songDownloadUrl, songLyric, songLyricTTML, songUrl, unlockSongUrl } from "@/api/song";
-import { qqMusicMatch } from "@/api/qqmusic";
+import { songDownloadUrl, songLyric, songUrl, unlockSongUrl } from "@/api/song";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
-import { getConverter } from "@/utils/opencc";
-import {
-  lyricLinesToTTML,
-  parseQRCLyric,
-  parseSmartLrc,
-  alignLyrics,
-} from "@/utils/lyric/lyricParser";
-import { generateASS } from "@/utils/assGenerator";
-import { parseTTML, parseYrc, type LyricLine } from "@applemusic-like-lyrics/lyric";
+import { LyricProcessor, type LyricProcessorOptions, type LyricResult } from "./LyricProcessor";
 
 // 类型与接口定义
 
@@ -49,186 +40,6 @@ interface DownloadStrategy {
 
   // 收尾阶段：处理 ASS 生成，歌词文件写入
   postProcess(downloadedFilePath: string): Promise<void>;
-}
-
-interface LyricResult {
-  lrc?: { lyric: string };
-  tlyric?: { lyric: string };
-  romalrc?: { lyric: string };
-  yrc?: { lyric: string };
-  ttml?: { lyric: string };
-}
-
-// 歌词处理辅助类
-
-class LyricHelper {
-  private static settingStore = useSettingStore();
-
-  static async processBasic(lyricResult: LyricResult | null): Promise<string> {
-    if (!lyricResult) return "";
-    const lrc = lyricResult.lrc?.lyric || "";
-    return await this.convertToTraditionalIfNeeded(lrc);
-  }
-
-  static async fetchVerbatim(
-    song: SongType,
-    initialLyricResult: LyricResult | null,
-  ): Promise<{ ttml: string; yrc: string }> {
-    let ttmlLyric = "";
-    let yrcLyric = "";
-
-    try {
-      const ttmlRes = await songLyricTTML(song.id);
-      if (typeof ttmlRes === "string") ttmlLyric = ttmlRes;
-
-      if (!ttmlLyric) {
-        yrcLyric = initialLyricResult?.yrc?.lyric || "";
-
-        // 尝试 QQ 音乐匹配兜底
-        if (!yrcLyric) {
-          try {
-            const artistsStr = Array.isArray(song.artists)
-              ? song.artists.map((a) => a.name).join("/")
-              : String(song.artists || "");
-            const keyword = `${song.name}-${artistsStr}`;
-            const qmResult = await qqMusicMatch(keyword);
-
-            if (qmResult?.code === 200 && qmResult?.qrc) {
-              const parsedLines = parseQRCLyric(qmResult.qrc, qmResult.trans, qmResult.roma);
-              if (parsedLines.length > 0) {
-                ttmlLyric = lyricLinesToTTML(parsedLines);
-              } else {
-                yrcLyric = qmResult.qrc;
-              }
-            }
-          } catch (e) {
-            console.error("[Download] QM Fallback failed", e);
-          }
-        }
-      }
-    } catch (e) {
-      console.error("[Download] Error fetching verbatim lyrics:", e);
-    }
-    return { ttml: ttmlLyric, yrc: yrcLyric };
-  }
-
-  static async convertToTraditionalIfNeeded(content: string): Promise<string> {
-    if (!content) return "";
-    const { downloadLyricToTraditional } = this.settingStore;
-    if (downloadLyricToTraditional) {
-      try {
-        const converter = await getConverter("s2t");
-        return converter(content);
-      } catch (e) {
-        console.error("繁简转换失败", e);
-      }
-    }
-    return content;
-  }
-
-  static async saveVerbatimFile(
-    ttml: string,
-    yrc: string,
-    lyricResult: LyricResult | null,
-    fileName: string,
-    path: string,
-  ) {
-    const settingStore = useSettingStore();
-    let content = ttml || yrc;
-    let merged = false;
-    let lines: LyricLine[] = [];
-
-    if (content) {
-      if (yrc && !ttml) {
-        // 优先使用 TTML，若无则解析 YRC
-        if (yrc.trim().startsWith("<") || yrc.includes("<QrcInfos>")) {
-          lines = parseQRCLyric(yrc);
-        } else {
-          lines = parseYrc(yrc) || [];
-        }
-      }
-
-      if (lines.length > 0) {
-        const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
-        const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
-
-        if (tlyric) {
-          const transParsed = parseSmartLrc(tlyric);
-          if (transParsed?.lines?.length) {
-            lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
-            merged = true;
-          }
-        }
-        if (romalrc) {
-          const romaParsed = parseSmartLrc(romalrc);
-          if (romaParsed?.lines?.length) {
-            lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
-            merged = true;
-          }
-        }
-
-        if ((merged || yrc) && lines.length > 0) {
-          content = lyricLinesToTTML(lines);
-        }
-      }
-
-      content = await this.convertToTraditionalIfNeeded(content);
-      const ext = ttml || lines.length > 0 ? "ttml" : "yrc";
-      const encoding = settingStore.downloadLyricEncoding || "utf-8";
-
-      if (ext === "ttml" && encoding !== "utf-8") {
-        content = content.replace('encoding="utf-8"', `encoding="${encoding}"`);
-        content = content.replace('encoding="UTF-8"', `encoding="${encoding}"`);
-      }
-
-      await window.electron.ipcRenderer.invoke("save-file", {
-        path: `${path}\\${fileName}.${ext}`,
-        content,
-        encoding,
-      });
-    }
-  }
-
-  static async saveAssFile(
-    ttml: string,
-    yrc: string,
-    lyricResult: LyricResult | null,
-    fileName: string,
-    path: string,
-    title: string,
-    artist: string,
-  ) {
-    const settingStore = useSettingStore();
-    let lines: LyricLine[] = [];
-
-    if (ttml) {
-      const parsed = parseTTML(ttml);
-      if (parsed?.lines) lines = parsed.lines;
-    } else if (yrc) {
-      if (yrc.trim().startsWith("<")) lines = parseQRCLyric(yrc);
-      else lines = parseYrc(yrc) || [];
-    } else if (lyricResult?.lrc?.lyric) {
-      const parsed = parseSmartLrc(lyricResult.lrc.lyric);
-      if (parsed?.lines) lines = parsed.lines;
-    }
-
-    if (lines.length > 0) {
-      const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
-      if (tlyric) {
-        const transParsed = parseSmartLrc(tlyric);
-        if (transParsed?.lines?.length)
-          lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
-      }
-
-      const assContent = generateASS(lines, { title, artist });
-
-      await window.electron.ipcRenderer.invoke("save-file", {
-        path: `${path}\\${fileName}.ass`,
-        content: assContent,
-        encoding: settingStore.downloadLyricEncoding || "utf-8",
-      });
-    }
-  }
 }
 
 // 下载策略实现
@@ -270,13 +81,20 @@ class SongDownloadStrategy implements DownloadStrategy {
     if (this.shouldDownloadLyrics()) {
       this.lyricResult = (await songLyric(this.song.id)) as LyricResult;
 
+      const options: LyricProcessorOptions = {
+        downloadLyricToTraditional: this.settingStore.downloadLyricToTraditional,
+        downloadLyricTranslation: this.settingStore.downloadLyricTranslation,
+        downloadLyricRomaji: this.settingStore.downloadLyricRomaji,
+        downloadLyricEncoding: this.settingStore.downloadLyricEncoding,
+      };
+
       // 处理基础歌词
-      this.basicLyric = await LyricHelper.processBasic(this.lyricResult);
+      this.basicLyric = await LyricProcessor.processBasic(this.lyricResult, options);
 
       // 处理逐字歌词 (后续使用)
       const { downloadMakeYrc, downloadSaveAsAss } = this.settingStore;
       if (downloadMakeYrc || downloadSaveAsAss) {
-        const verbatim = await LyricHelper.fetchVerbatim(this.song, this.lyricResult);
+        const verbatim = await LyricProcessor.fetchVerbatim(this.song, this.lyricResult);
         this.ttmlLyric = verbatim.ttml;
         this.yrcLyric = verbatim.yrc;
       }
@@ -312,13 +130,21 @@ class SongDownloadStrategy implements DownloadStrategy {
     const targetPath = this.getDownloadPath();
     const { downloadMakeYrc, downloadSaveAsAss } = this.settingStore;
 
+    const options: LyricProcessorOptions = {
+      downloadLyricToTraditional: this.settingStore.downloadLyricToTraditional,
+      downloadLyricTranslation: this.settingStore.downloadLyricTranslation,
+      downloadLyricRomaji: this.settingStore.downloadLyricRomaji,
+      downloadLyricEncoding: this.settingStore.downloadLyricEncoding,
+    };
+
     if (downloadMakeYrc) {
-      await LyricHelper.saveVerbatimFile(
+      await LyricProcessor.saveVerbatimFile(
         this.ttmlLyric,
         this.yrcLyric,
         this.lyricResult,
         fileName,
         targetPath,
+        options
       );
     }
 
@@ -326,7 +152,7 @@ class SongDownloadStrategy implements DownloadStrategy {
       const artist = Array.isArray(this.song.artists)
         ? this.song.artists[0]?.name
         : String(this.song.artists || "");
-      await LyricHelper.saveAssFile(
+      await LyricProcessor.saveAssFile(
         this.ttmlLyric,
         this.yrcLyric,
         this.lyricResult,
@@ -334,6 +160,7 @@ class SongDownloadStrategy implements DownloadStrategy {
         targetPath,
         this.song.name,
         artist,
+        options
       );
     }
   }
@@ -506,6 +333,14 @@ class DownloadManager {
     if (!isElectron) return;
 
     const dataStore = useDataStore();
+
+    // 迁移旧数据：为旧的自定义下载任务添加 type 字段
+    dataStore.downloadingSongs.forEach((item) => {
+      if ("url" in item.song && !(item.song as any).type) {
+        (item.song as any).type = "custom";
+      }
+    });
+
     // 清理卡住的任务状态
     dataStore.downloadingSongs.forEach((item) => {
       if (item.status === "downloading") {
@@ -520,12 +355,8 @@ class DownloadManager {
         const isQueued = this.queue.some((s) => s.id === item.song.id);
         const isActive = this.activeDownloads.has(item.song.id);
         if (!isQueued && !isActive) {
-          // 区分任务类型
-          if (
-            "url" in item.song &&
-            typeof item.song.url === "string" &&
-            typeof item.song.id === "string"
-          ) {
+          // 区分任务类型，使用 discriminated union
+          if ((item.song as CustomDownloadType).type === "custom") {
             // 自定义下载
             this.queue.push(new CustomDownloadStrategy(item.song as CustomDownloadType));
           } else {
@@ -586,6 +417,7 @@ class DownloadManager {
     const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
     const customItem: CustomDownloadType = {
+      type: "custom", // 明确标识为自定义下载
       id,
       name: fileName,
       url,
@@ -607,11 +439,7 @@ class DownloadManager {
     if (task) {
       dataStore.updateDownloadStatus(id, "waiting");
       // 重新加入队列
-      if (
-        "url" in task.song &&
-        typeof task.song.url === "string" &&
-        typeof task.song.id === "string"
-      ) {
+      if ((task.song as CustomDownloadType).type === "custom") {
         this.queue.push(new CustomDownloadStrategy(task.song as CustomDownloadType));
       } else {
         this.queue.push(new SongDownloadStrategy(task.song as SongType, task.quality));

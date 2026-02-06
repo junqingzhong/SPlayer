@@ -135,6 +135,7 @@ export interface ReplayGainType {
 }
 
 export type CustomDownloadType = {
+  type: "custom";
   id: string;
   name: string;
   url: string;
