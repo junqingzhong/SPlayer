@@ -170,6 +170,23 @@ export const useDataStore = defineStore("data", {
             }
           }),
         );
+
+        // 迁移旧数据：确保所有下载任务都有 type 字段
+        if (this.downloadingSongs) {
+          this.downloadingSongs.forEach((item) => {
+            const rawSong = item.song as unknown as Record<string, any>;
+            if (!rawSong.type) {
+              // 尝试通过 ID 类型推断
+              if (typeof rawSong.id === "string" && rawSong.url) {
+                rawSong.type = "custom";
+              } else {
+                // 默认为 song 类型 (假设旧数据都是歌曲)
+                rawSong.type = "song";
+              }
+            }
+          });
+        }
+
         // 获取 user-data
         const userDataKeys = await userDB.keys();
         await Promise.all(

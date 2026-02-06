@@ -96,7 +96,7 @@ class SongDownloadStrategy implements DownloadStrategy {
       const { downloadMakeYrc, downloadSaveAsAss } = this.settingStore;
       if (downloadMakeYrc || downloadSaveAsAss) {
         let ttmlLyric = "";
-        let yrcLyric = this.lyricResult?.yrc?.lyric || "";
+        const yrcLyric = this.lyricResult?.yrc?.lyric || "";
         let qmResultData;
 
         try {
@@ -371,20 +371,6 @@ class DownloadManager {
     if (!isElectron) return;
 
     const dataStore = useDataStore();
-
-    // 迁移旧数据：确保所有下载任务都有 type 字段
-    dataStore.downloadingSongs.forEach((item) => {
-      const rawSong = item.song as unknown as Record<string, any>;
-      if (!rawSong.type) {
-        // 尝试通过 ID 类型推断
-        if (typeof rawSong.id === "string" && rawSong.url) {
-          rawSong.type = "custom";
-        } else {
-          // 默认为 song 类型 (假设旧数据都是歌曲)
-          rawSong.type = "song";
-        }
-      }
-    });
 
     // 清理卡住的任务状态
     dataStore.downloadingSongs.forEach((item) => {
