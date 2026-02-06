@@ -1,5 +1,3 @@
-import { songLyricTTML } from "@/api/song";
-import { qqMusicMatch } from "@/api/qqmusic";
 import { getConverter } from "@/utils/opencc";
 import {
   lyricLinesToTTML,
@@ -9,7 +7,6 @@ import {
 } from "@/utils/lyric/lyricParser";
 import { generateASS } from "@/utils/assGenerator";
 import { parseTTML, parseYrc, type LyricLine } from "@applemusic-like-lyrics/lyric";
-import type { SongType } from "@/types/main";
 
 // 定义歌词处理需要的配置接口，避免直接依赖 Store
 export interface LyricProcessorOptions {
@@ -25,6 +22,7 @@ export interface LyricResult {
   romalrc?: { lyric: string };
   yrc?: { lyric: string };
   ttml?: { lyric: string };
+  qrc?: string; // 添加 qrc 支持
 }
 
 // 纯函数式的歌词处理工具
@@ -42,48 +40,30 @@ export const LyricProcessor = {
   },
 
   /**
-   * 获取逐字歌词 (TTML/YRC)
+   * 解析逐字歌词 (TTML/YRC)
+   * 纯逻辑：只负责解析和生成内容，不负责获取数据
    */
-  async fetchVerbatim(
-    song: SongType,
-    initialLyricResult: LyricResult | null
-  ): Promise<{ ttml: string; yrc: string }> {
-    let ttmlLyric = "";
-    let yrcLyric = "";
+  parseVerbatim(
+    ttmlLyric: string,
+    yrcLyric: string,
+    qmResult?: { qrc: string; trans: string; roma: string }
+  ): { ttml: string; yrc: string } {
+    let finalTtml = ttmlLyric;
+    let finalYrc = yrcLyric;
 
-    try {
-      const ttmlRes = await songLyricTTML(song.id);
-      if (typeof ttmlRes === "string") ttmlLyric = ttmlRes;
-
-      if (!ttmlLyric) {
-        yrcLyric = initialLyricResult?.yrc?.lyric || "";
-
-        // 尝试 QQ 音乐匹配兜底
-        if (!yrcLyric) {
-          try {
-            const artistsStr = Array.isArray(song.artists)
-              ? song.artists.map((a) => a.name).join("/")
-              : String(song.artists || "");
-            const keyword = `${song.name}-${artistsStr}`;
-            const qmResult = await qqMusicMatch(keyword);
-
-            if (qmResult?.code === 200 && qmResult?.qrc) {
-              const parsedLines = parseQRCLyric(qmResult.qrc, qmResult.trans, qmResult.roma);
-              if (parsedLines.length > 0) {
-                ttmlLyric = lyricLinesToTTML(parsedLines);
-              } else {
-                yrcLyric = qmResult.qrc;
-              }
-            }
-          } catch (e) {
-            console.error("[Download] QM Fallback failed", e);
-          }
+    if (!finalTtml && !finalYrc && qmResult?.qrc) {
+      try {
+        const parsedLines = parseQRCLyric(qmResult.qrc, qmResult.trans, qmResult.roma);
+        if (parsedLines.length > 0) {
+          finalTtml = lyricLinesToTTML(parsedLines);
+        } else {
+          finalYrc = qmResult.qrc;
         }
+      } catch (e) {
+        console.error("[LyricProcessor] Parse QRC failed", e);
       }
-    } catch (e) {
-      console.error("[Download] Error fetching verbatim lyrics:", e);
     }
-    return { ttml: ttmlLyric, yrc: yrcLyric };
+    return { ttml: finalTtml, yrc: finalYrc };
   },
 
   /**
@@ -103,16 +83,14 @@ export const LyricProcessor = {
   },
 
   /**
-   * 保存逐字歌词文件
+   * 生成逐字歌词文件内容
    */
-  async saveVerbatimFile(
+  async generateVerbatimContent(
     ttml: string,
     yrc: string,
     lyricResult: LyricResult | null,
-    fileName: string,
-    path: string,
     options: LyricProcessorOptions = {}
-  ) {
+  ): Promise<{ content: string; ext: string; encoding: string } | null> {
     let content = ttml || yrc;
     let merged = false;
     let lines: LyricLine[] = [];
@@ -160,31 +138,22 @@ export const LyricProcessor = {
         content = content.replace('encoding="UTF-8"', `encoding="${encoding}"`);
       }
 
-      // 注意：这里仍然依赖 window.electron，因为它是环境能力，不是状态依赖
-      // 如果要进一步解耦，可以将 saveFile 方法注入进来
-      if (window.electron?.ipcRenderer) {
-        await window.electron.ipcRenderer.invoke("save-file", {
-          path: `${path}\\${fileName}.${ext}`,
-          content,
-          encoding,
-        });
-      }
+      return { content, ext, encoding };
     }
+    return null;
   },
 
   /**
-   * 保存 ASS 字幕文件
+   * 生成 ASS 字幕文件内容
    */
-  async saveAssFile(
+  async generateAssContent(
     ttml: string,
     yrc: string,
     lyricResult: LyricResult | null,
-    fileName: string,
-    path: string,
     title: string,
     artist: string,
     options: LyricProcessorOptions = {}
-  ) {
+  ): Promise<{ content: string; encoding: string } | null> {
     let lines: LyricLine[] = [];
 
     if (ttml) {
@@ -209,13 +178,8 @@ export const LyricProcessor = {
       const assContent = generateASS(lines, { title, artist });
       const encoding = options.downloadLyricEncoding || "utf-8";
 
-      if (window.electron?.ipcRenderer) {
-        await window.electron.ipcRenderer.invoke("save-file", {
-          path: `${path}\\${fileName}.ass`,
-          content: assContent,
-          encoding,
-        });
-      }
+      return { content: assContent, encoding };
     }
+    return null;
   },
 };

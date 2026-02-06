@@ -3,7 +3,8 @@ import { useDataStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
-import { songDownloadUrl, songLyric, songUrl, unlockSongUrl } from "@/api/song";
+import { songDownloadUrl, songLyric, songUrl, unlockSongUrl, songLyricTTML } from "@/api/song";
+import { qqMusicMatch } from "@/api/qqmusic";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 import { LyricProcessor, type LyricProcessorOptions, type LyricResult } from "./LyricProcessor";
@@ -94,7 +95,33 @@ class SongDownloadStrategy implements DownloadStrategy {
       // 处理逐字歌词 (后续使用)
       const { downloadMakeYrc, downloadSaveAsAss } = this.settingStore;
       if (downloadMakeYrc || downloadSaveAsAss) {
-        const verbatim = await LyricProcessor.fetchVerbatim(this.song, this.lyricResult);
+        let ttmlLyric = "";
+        let yrcLyric = this.lyricResult?.yrc?.lyric || "";
+        let qmResultData;
+
+        try {
+          const ttmlRes = await songLyricTTML(this.song.id);
+          if (typeof ttmlRes === "string") ttmlLyric = ttmlRes;
+        } catch (e) {
+          console.error("Failed to fetch TTML", e);
+        }
+
+        if (!ttmlLyric && !yrcLyric) {
+          try {
+            const artistsStr = Array.isArray(this.song.artists)
+              ? this.song.artists.map((a) => a.name).join("/")
+              : String(this.song.artists || "");
+            const keyword = `${this.song.name}-${artistsStr}`;
+            const qmResult = await qqMusicMatch(keyword);
+            if (qmResult?.code === 200 && qmResult?.qrc) {
+              qmResultData = qmResult;
+            }
+          } catch (e) {
+            console.error("QM Fallback failed", e);
+          }
+        }
+
+        const verbatim = LyricProcessor.parseVerbatim(ttmlLyric, yrcLyric, qmResultData);
         this.ttmlLyric = verbatim.ttml;
         this.yrcLyric = verbatim.yrc;
       }
@@ -138,30 +165,41 @@ class SongDownloadStrategy implements DownloadStrategy {
     };
 
     if (downloadMakeYrc) {
-      await LyricProcessor.saveVerbatimFile(
+      const result = await LyricProcessor.generateVerbatimContent(
         this.ttmlLyric,
         this.yrcLyric,
         this.lyricResult,
-        fileName,
-        targetPath,
         options
       );
+      if (result && window.electron?.ipcRenderer) {
+        await window.electron.ipcRenderer.invoke("save-file", {
+          path: `${targetPath}\\${fileName}.${result.ext}`,
+          content: result.content,
+          encoding: result.encoding,
+        });
+      }
     }
 
     if (downloadSaveAsAss) {
       const artist = Array.isArray(this.song.artists)
         ? this.song.artists[0]?.name
         : String(this.song.artists || "");
-      await LyricProcessor.saveAssFile(
+      const result = await LyricProcessor.generateAssContent(
         this.ttmlLyric,
         this.yrcLyric,
         this.lyricResult,
-        fileName,
-        targetPath,
         this.song.name,
         artist,
         options
       );
+
+      if (result && window.electron?.ipcRenderer) {
+        await window.electron.ipcRenderer.invoke("save-file", {
+          path: `${targetPath}\\${fileName}.ass`,
+          content: result.content,
+          encoding: result.encoding,
+        });
+      }
     }
   }
 
@@ -334,10 +372,17 @@ class DownloadManager {
 
     const dataStore = useDataStore();
 
-    // 迁移旧数据：为旧的自定义下载任务添加 type 字段
+    // 迁移旧数据：确保所有下载任务都有 type 字段
     dataStore.downloadingSongs.forEach((item) => {
-      if ("url" in item.song && !(item.song as any).type) {
-        (item.song as any).type = "custom";
+      const rawSong = item.song as unknown as Record<string, any>;
+      if (!rawSong.type) {
+        // 尝试通过 ID 类型推断
+        if (typeof rawSong.id === "string" && rawSong.url) {
+          rawSong.type = "custom";
+        } else {
+          // 默认为 song 类型 (假设旧数据都是歌曲)
+          rawSong.type = "song";
+        }
       }
     });
 
@@ -356,7 +401,7 @@ class DownloadManager {
         const isActive = this.activeDownloads.has(item.song.id);
         if (!isQueued && !isActive) {
           // 区分任务类型，使用 discriminated union
-          if ((item.song as CustomDownloadType).type === "custom") {
+          if (item.song.type === "custom") {
             // 自定义下载
             this.queue.push(new CustomDownloadStrategy(item.song as CustomDownloadType));
           } else {
