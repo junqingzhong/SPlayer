@@ -538,7 +538,7 @@ class DownloadManager {
           config,
         );
 
-        if (downloadResult.success || downloadResult.status === "skipped") {
+        if (downloadResult.status === "success" || downloadResult.status === "skipped") {
           await strategy.postProcess(downloadResult.path || config.path); // IPC 返回结果通常包含路径
           dataStore.removeDownloadingSong(strategy.id);
           window.$message.success(`${strategy.name} 下载完成`);
@@ -556,7 +556,9 @@ class DownloadManager {
         dataStore.removeDownloadingSong(strategy.id);
       }
     } catch (error: any) {
-      console.error(`Error processing task ${strategy.name}:`, error);
+      console.error(`Error processing task ${strategy.name} (ID: ${strategy.id}):`, error);
+      if (error?.message) console.error("Error message:", error.message);
+      
       dataStore.markDownloadFailed(strategy.id);
       window.$message.error(error.message || "下载出错");
     } finally {

@@ -36,7 +36,75 @@ export const LyricProcessor = {
   ): Promise<string> {
     if (!lyricResult) return "";
     const lrc = lyricResult.lrc?.lyric || "";
+    
+    // 检查是否需要合并翻译或罗马音
+    const tlyric = options.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
+    const romalrc = options.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
+
+    if (tlyric || romalrc) {
+      try {
+        const parsedLrc = parseSmartLrc(lrc);
+        if (parsedLrc?.lines?.length) {
+          let lines = parsedLrc.lines;
+          
+          if (tlyric) {
+            const transParsed = parseSmartLrc(tlyric);
+            if (transParsed?.lines?.length) {
+              lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
+            }
+          }
+          
+          if (romalrc) {
+            const romaParsed = parseSmartLrc(romalrc);
+            if (romaParsed?.lines?.length) {
+              lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
+            }
+          }
+
+          // 将合并后的 LyricLine[] 转换回 LRC 字符串
+          return this.convertLyricLinesToLrc(lines, options.downloadLyricToTraditional);
+        }
+      } catch (e) {
+        console.error("[LyricProcessor] Failed to merge lyrics, falling back to basic lrc", e);
+      }
+    }
+
     return await this.convertToTraditionalIfNeeded(lrc, options.downloadLyricToTraditional);
+  },
+
+  /**
+   * 将 LyricLine 数组转换为 LRC 格式字符串
+   * 支持包含翻译和罗马音（双行显示）
+   */
+  async convertLyricLinesToLrc(lines: LyricLine[], toTraditional: boolean = false): Promise<string> {
+    const formatTime = (ms: number): string => {
+      const totalSeconds = ms / 1000;
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      // 保留3位小数，格式 [mm:ss.xxx]
+      return `[${minutes.toString().padStart(2, "0")}:${seconds.toFixed(3).padStart(6, "0")}]`;
+    };
+
+    let result = "";
+    for (const line of lines) {
+      const timeTag = formatTime(line.startTime);
+      let text = line.words.map((w) => w.word).join("");
+      
+      // 繁简转换
+      text = await this.convertToTraditionalIfNeeded(text, toTraditional);
+      
+      result += `${timeTag}${text}\n`;
+
+      if (line.translatedLyric) {
+        const trans = await this.convertToTraditionalIfNeeded(line.translatedLyric, toTraditional);
+        result += `${timeTag}${trans}\n`;
+      }
+      
+      if (line.romanLyric) {
+        result += `${timeTag}${line.romanLyric}\n`;
+      }
+    }
+    return result.trim();
   },
 
   /**
