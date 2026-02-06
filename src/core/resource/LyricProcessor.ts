@@ -175,6 +175,14 @@ export const LyricProcessor = {
           lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
       }
 
+      const romalrc = options.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
+      if (romalrc) {
+        const romaParsed = parseSmartLrc(romalrc);
+        if (romaParsed?.lines?.length) {
+          lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
+        }
+      }
+
       const assContent = generateASS(lines, { title, artist });
       const encoding = options.downloadLyricEncoding || "utf-8";
 

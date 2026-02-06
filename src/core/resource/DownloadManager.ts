@@ -195,7 +195,7 @@ class SongDownloadStrategy implements DownloadStrategy {
 
       if (result && window.electron?.ipcRenderer) {
         await window.electron.ipcRenderer.invoke("save-file", {
-          path: `${targetPath}\\${fileName}.ass`,
+          path: `${targetPath}/${fileName}.ass`,
           content: result.content,
           encoding: result.encoding,
         });
@@ -233,7 +233,9 @@ class SongDownloadStrategy implements DownloadStrategy {
           .filter((s) => s.enabled)
           .map((s) => s.key);
         const artist =
-          (Array.isArray(this.song.artists) ? this.song.artists[0]?.name : this.song.artists) || "";
+          (Array.isArray(this.song.artists)
+            ? this.song.artists.map((a) => a.name).join("/")
+            : this.song.artists) || "";
         const keyWord = `${this.song.name}-${artist}`;
 
         if (servers.length > 0) {
@@ -300,8 +302,8 @@ class SongDownloadStrategy implements DownloadStrategy {
     const safeAlbum = (infoObj.album || "未知专辑").replace(/[/:*?"<>|]/g, "&");
     const { folderStrategy } = this.settingStore;
 
-    if (folderStrategy === "artist") return `${finalPath}\\${safeArtist}`;
-    else if (folderStrategy === "artist-album") return `${finalPath}\\${safeArtist}\\${safeAlbum}`;
+    if (folderStrategy === "artist") return `${finalPath}/${safeArtist}`;
+    else if (folderStrategy === "artist-album") return `${finalPath}/${safeArtist}/${safeAlbum}`;
     return finalPath;
   }
 

@@ -176,11 +176,17 @@ export const useDataStore = defineStore("data", {
           this.downloadingSongs.forEach((item) => {
             const rawSong = item.song as unknown as Record<string, any>;
             if (!rawSong.type) {
-              // 尝试通过 ID 类型推断
-              if (typeof rawSong.id === "string" && rawSong.url) {
+              if (rawSong.isCustom) {
                 rawSong.type = "custom";
+                // 迁移旧字段
+                if (rawSong.customUrl) {
+                  rawSong.url = rawSong.customUrl;
+                }
+                // 确保 ID 为字符串 (如果原本是数字)
+                if (typeof rawSong.id === "number") {
+                  rawSong.id = `custom-legacy-${rawSong.id}`;
+                }
               } else {
-                // 默认为 song 类型 (假设旧数据都是歌曲)
                 rawSong.type = "song";
               }
             }

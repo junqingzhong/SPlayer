@@ -49,6 +49,8 @@ const initFileIpc = (): void => {
   ipcMain.handle("save-file", async (_, args: { path: string; content: string; encoding?: BufferEncoding }) => {
     try {
       const { path, content, encoding } = args;
+      const dir = dirname(path);
+      await mkdir(dir, { recursive: true });
       await writeFile(path, content, { encoding: encoding || "utf-8" });
       return { success: true };
     } catch (err) {
