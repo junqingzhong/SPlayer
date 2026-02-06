@@ -9,7 +9,12 @@ import { qqMusicMatch } from "@/api/qqmusic";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 import { getConverter, type ConverterMode } from "@/utils/opencc";
-import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc, alignLyrics } from "@/utils/lyric/lyricParser";
+import {
+  lyricLinesToTTML,
+  parseQRCLyric,
+  parseSmartLrc,
+  alignLyrics,
+} from "@/utils/lyric/lyricParser";
 import { generateASS } from "@/utils/assGenerator";
 import { parseTTML, parseYrc, type LyricLine } from "@applemusic-like-lyrics/lyric";
 
@@ -81,7 +86,9 @@ class DownloadManager {
       if (!id) return;
 
       const dataStore = useDataStore();
-      const transferred = transferredBytes ? (transferredBytes / 1024 / 1024).toFixed(2) + "MB" : "0MB";
+      const transferred = transferredBytes
+        ? (transferredBytes / 1024 / 1024).toFixed(2) + "MB"
+        : "0MB";
       const total = totalBytes ? (totalBytes / 1024 / 1024).toFixed(2) + "MB" : "0MB";
 
       dataStore.updateDownloadProgress(id, Number((percent * 100).toFixed(1)), transferred, total);
@@ -533,30 +540,34 @@ class DownloadManager {
               }
 
               if (lines.length > 0) {
-                 const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
-                 const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
-                 
-                 if (tlyric) {
-                     const transParsed = parseSmartLrc(tlyric);
-                     if (transParsed?.lines?.length) {
-                         lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
-                         merged = true;
-                     }
-                 }
-                 if (romalrc) {
-                     const romaParsed = parseSmartLrc(romalrc);
-                     if (romaParsed?.lines?.length) {
-                         lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
-                         merged = true;
-                     }
-                 }
+                const tlyric = settingStore.downloadLyricTranslation
+                  ? lyricResult?.tlyric?.lyric
+                  : null;
+                const romalrc = settingStore.downloadLyricRomaji
+                  ? lyricResult?.romalrc?.lyric
+                  : null;
 
-                 // 如果进行了合并，或者原本就是 YRC (需要转换)，我们重新生成标准 TTML
-                 // 注意：如果是 TTML 且未合并，不要重新生成，以免丢失原始内容
-                 if ((merged || yrcLyric) && lines.length > 0) {
-                     content = lyricLinesToTTML(lines);
-                     console.log("[Download] Generated new TTML content from lines.");
-                 }
+                if (tlyric) {
+                  const transParsed = parseSmartLrc(tlyric);
+                  if (transParsed?.lines?.length) {
+                    lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
+                    merged = true;
+                  }
+                }
+                if (romalrc) {
+                  const romaParsed = parseSmartLrc(romalrc);
+                  if (romaParsed?.lines?.length) {
+                    lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
+                    merged = true;
+                  }
+                }
+
+                // 如果进行了合并，或者原本就是 YRC (需要转换)，我们重新生成标准 TTML
+                // 注意：如果是 TTML 且未合并，不要重新生成，以免丢失原始内容
+                if ((merged || yrcLyric) && lines.length > 0) {
+                  content = lyricLinesToTTML(lines);
+                  console.log("[Download] Generated new TTML content from lines.");
+                }
               }
 
               // 繁体转换
@@ -564,7 +575,7 @@ class DownloadManager {
 
               // 如果进行了合并或转换，统一保存为 ttml (因为我们生成的是 standard TTML)
               // 只要解析出了 lines (说明是 YRC 转换或进行了合并)，或者是原生 TTML，都保存为 ttml
-              const ext = (ttmlLyric || lines.length > 0) ? "ttml" : "yrc";
+              const ext = ttmlLyric || lines.length > 0 ? "ttml" : "yrc";
               const fileName = `${safeFileName}.${ext}`;
               const encoding = settingStore.downloadLyricEncoding || "utf-8";
 
@@ -573,7 +584,9 @@ class DownloadManager {
                 content = content.replace(/encoding=["']utf-8["']/i, `encoding="${encoding}"`);
               }
 
-              console.log(`[Download] Saving extra lyric file: ${fileName}, content len: ${content.length}`);
+              console.log(
+                `[Download] Saving extra lyric file: ${fileName}, content len: ${content.length}`,
+              );
               // 调用保存文件内容接口
               const saveRes = await window.electron.ipcRenderer.invoke("save-file-content", {
                 path: targetPath,
@@ -619,7 +632,9 @@ class DownloadManager {
 
             if (lines.length > 0) {
               // 尝试合并翻译和音译，确保 ASS 包含这些信息
-              const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
+              const tlyric = settingStore.downloadLyricTranslation
+                ? lyricResult?.tlyric?.lyric
+                : null;
               const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
 
               if (tlyric) {
@@ -702,7 +717,7 @@ class DownloadManager {
     try {
       const rawLyric = lyricResult?.lrc?.lyric || "";
       const excludeRegex = /^\{"t":\d+,"c":\[\{"[^"]+":"[^"]*"}(?:,\{"[^"]+":"[^"]*"})*]}$/;
-      
+
       const lrcLines = rawLyric
         .split(/\r?\n/)
         .filter((line: string) => !excludeRegex.test(line.trim()));
@@ -739,19 +754,19 @@ class DownloadManager {
           timeTagRe.lastIndex = 0;
           let m: RegExpExecArray | null;
           const tags: string[] = [];
-          
+
           while ((m = timeTagRe.exec(raw)) !== null) {
             tags.push(m[0]);
           }
-          
+
           if (tags.length === 0) continue;
-          
+
           const text = raw.replace(timeTagRe, "").trim();
           if (!text) continue;
-          
+
           for (const tag of tags) {
-             const prev = map.get(tag);
-             map.set(tag, prev ? prev + "\n" + text : text);
+            const prev = map.get(tag);
+            map.set(tag, prev ? prev + "\n" + text : text);
           }
         }
         return map;
@@ -767,26 +782,26 @@ class DownloadManager {
         let minDiff = 0.5;
 
         for (const [tag, text] of map.entries()) {
-           const sec = timeStrToSeconds(tag);
-           const diff = Math.abs(sec - targetSec);
-           if (diff <= minDiff) {
-             minDiff = diff;
-             bestMatch = text;
-           }
+          const sec = timeStrToSeconds(tag);
+          const diff = Math.abs(sec - targetSec);
+          if (diff <= minDiff) {
+            minDiff = diff;
+            bestMatch = text;
+          }
         }
         return bestMatch;
       };
 
       const tMap = parseToMap(tlyric || "");
       const rMap = parseToMap(romalrc || "");
-      
+
       const resultLines: string[] = [];
 
       for (const raw of lrcLines) {
         timeTagRe.lastIndex = 0;
         let m: RegExpExecArray | null;
         const tags: string[] = [];
-        
+
         while ((m = timeTagRe.exec(raw)) !== null) {
           tags.push(m[0]);
         }
@@ -798,24 +813,24 @@ class DownloadManager {
         for (const tag of tags) {
           // 1. 源歌词
           resultLines.push(`${tag}${text}`);
-          
+
           // 2. 翻译
           if (tlyric) {
             const transText = findMatch(tMap, tag);
             if (transText) {
-               transText.split("\n").forEach(line => {
-                 if (line.trim()) resultLines.push(`${tag}${line.trim()}`);
-               });
+              transText.split("\n").forEach((line) => {
+                if (line.trim()) resultLines.push(`${tag}${line.trim()}`);
+              });
             }
           }
-          
+
           // 3. 音译
           if (romalrc) {
             const romaText = findMatch(rMap, tag);
-             if (romaText) {
-               romaText.split("\n").forEach(line => {
-                 if (line.trim()) resultLines.push(`${tag}${line.trim()}`);
-               });
+            if (romaText) {
+              romaText.split("\n").forEach((line) => {
+                if (line.trim()) resultLines.push(`${tag}${line.trim()}`);
+              });
             }
           }
         }
