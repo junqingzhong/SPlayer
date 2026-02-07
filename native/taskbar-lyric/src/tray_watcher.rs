@@ -123,6 +123,12 @@ impl NativeTrayWatcher {
     }
 }
 
+impl Drop for NativeTrayWatcher {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
 #[napi]
 pub struct TrayWatcher {
     inner: Option<NativeTrayWatcher>,

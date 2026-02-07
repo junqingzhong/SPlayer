@@ -255,10 +255,9 @@ impl RegistryWatcher {
     }
 
     #[napi]
-    #[allow(clippy::missing_errors_doc)]
-    pub fn stop(&mut self) -> napi::Result<()> {
+    pub fn stop(&mut self) {
         if !self.is_running.load(Ordering::SeqCst) {
-            return Ok(());
+            return;
         }
 
         unsafe {
@@ -267,7 +266,6 @@ impl RegistryWatcher {
 
         self.is_running.store(false, Ordering::SeqCst);
         info!("注册表监听已停止");
-        Ok(())
     }
 
     unsafe fn watch_loop(stop_event_wrapper: &Arc<EventHandle>, callback: &ThreadsafeFunction<()>) {
@@ -336,5 +334,11 @@ impl RegistryWatcher {
             let _ = CloseHandle(reg_event);
             let _ = RegCloseKey(h_key);
         }
+    }
+}
+
+impl Drop for RegistryWatcher {
+    fn drop(&mut self) {
+        self.stop();
     }
 }
