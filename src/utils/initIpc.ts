@@ -144,6 +144,8 @@ const initIpc = () => {
         lyricFont: settingStore.LyricFont,
         globalFont: settingStore.globalFont,
         fontWeight: settingStore.taskbarLyricFontWeight,
+        showTran: settingStore.showTran,
+        showRoma: settingStore.showRoma,
       });
 
       playerIpc.sendTaskbarProgressData({

@@ -219,9 +219,9 @@ const displayItems = computed<DisplayItem[]>(() => {
       .trim() || "";
 
   let subText = "";
-  if (currentLine.translatedLyric) {
+  if (settingStore.showTran && currentLine.translatedLyric) {
     subText = currentLine.translatedLyric;
-  } else if (currentLine.romanLyric) {
+  } else if (settingStore.showRoma && currentLine.romanLyric) {
     subText = currentLine.romanLyric;
   }
 
@@ -491,6 +491,12 @@ onMounted(() => {
     }
     if (settings.showWhenPaused !== undefined) {
       state.showWhenPaused = settings.showWhenPaused;
+    }
+    if (settings.showTran !== undefined) {
+      settingStore.showTran = settings.showTran;
+    }
+    if (settings.showRoma !== undefined) {
+      settingStore.showRoma = settings.showRoma;
     }
   });
 
