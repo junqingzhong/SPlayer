@@ -30,7 +30,7 @@ const initIpc = () => {
     // 计算并发送任务栏主题色
     const sendTaskbarTheme = () => {
       let colorPayload: { dark: string; light: string } | null = null;
-      if (settingStore.themeGlobalColor) {
+      if (settingStore.themeGlobalColor && settingStore.taskbarLyricUseThemeColor) {
         let colorData;
         if (settingStore.themeFollowCover && statusStore.songCoverTheme) {
           colorData = statusStore.songCoverTheme;
@@ -61,6 +61,7 @@ const initIpc = () => {
         () => settingStore.themeColorType,
         () => settingStore.themeCustomColor,
         () => settingStore.themeVariant,
+        () => settingStore.taskbarLyricUseThemeColor,
         () => statusStore.songCoverTheme,
       ],
       () => {
