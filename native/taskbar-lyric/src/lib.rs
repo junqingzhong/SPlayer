@@ -287,7 +287,6 @@ impl RegistryWatcher {
             .is_err()
             {
                 error!("打开注册表键失败");
-                let _ = CloseHandle(stop_event);
                 return;
             }
 
@@ -296,7 +295,6 @@ impl RegistryWatcher {
                 Err(e) => {
                     error!("创建注册表事件失败: {e}");
                     let _ = RegCloseKey(h_key);
-                    let _ = CloseHandle(stop_event);
                     return;
                 }
             };
