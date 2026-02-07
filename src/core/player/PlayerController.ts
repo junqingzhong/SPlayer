@@ -1,5 +1,4 @@
 import { AudioErrorCode } from "@/core/audio-player/BaseAudioPlayer";
-import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import type { SongType } from "@/types/main";
 import type { RepeatModeType, ShuffleModeType } from "@/types/shared";
@@ -401,19 +400,19 @@ class PlayerController {
       const musicStore = useMusicStore();
       if (musicStore.playSong.type === "streaming") return;
       const statusStore = useStatusStore();
-      const blobURLManager = useBlobURLManager();
-
-      // Blob URL 清理
-      const oldCover = musicStore.playSong.cover;
-      if (oldCover && oldCover.startsWith("blob:")) {
-        blobURLManager.revokeBlobURL(musicStore.playSong.path || "");
-      }
 
       // 获取封面数据
       const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", path);
       if (coverData) {
-        const blobURL = blobURLManager.createBlobURL(coverData.data, coverData.format, path);
-        if (blobURL) musicStore.playSong.cover = blobURL;
+        // 使用 Data URL 替代 Blob URL，解决跨窗口/进程引用失效导致封面闪烁消失的问题
+        const blob = new Blob([coverData.data], { type: coverData.format });
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        musicStore.playSong.cover = dataUrl;
       } else {
         musicStore.playSong.cover = "/images/song.jpg?asset";
       }
