@@ -1,3 +1,4 @@
+import { cloneDeep } from "lodash-es";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { parseLrc } from "../parseLrc";
 
@@ -21,8 +22,6 @@ const META_TAG_REGEX = /^\[[a-z]+:/i;
 const TIME_TAG_REGEX = /\[(\d{2}):(\d{2})\.(\d{1,})\]/g;
 const ENHANCED_TIME_TAG_REGEX = /<(\d{2}):(\d{2})\.(\d{1,})>/;
 // 移除全局带状态的正则，改为在函数内使用 matchAll 或重新构建
-// const WORD_BY_WORD_REGEX = ... 
-// const ENHANCED_WORD_REGEX = ...
 const LINE_TIME_REGEX = /^\[(\d{2}):(\d{2})\.(\d{1,})\]/;
 
 // QRC 解析相关正则 - 提前编译
@@ -30,20 +29,18 @@ const QRC_LINE_PATTERN = /^\[(\d+),(\d+)\](.*)$/;
 const QRC_WORD_PATTERN = /([^(]*)\((\d+),(\d+)\)/g;
 
 const DEFAULT_WORD_DURATION = 1000;
+const ALIGN_TOLERANCE_MS = 300;
 
 /**
  * 解析时间戳为毫秒
- * 使用纯数学运算替代字符串操作
+ * 使用字符串补齐处理，避免浮点数计算误差
  */
 const parseTimeToMs = (min: string, sec: string, ms: string): number => {
   const minutes = parseInt(min, 10);
   const seconds = parseInt(sec, 10);
-  const msVal = parseInt(ms, 10);
-  // 根据位数决定毫秒精度
-  // 1位: *100 (1 -> 100ms)
-  // 2位: *10 (10 -> 100ms)
-  // 3位: *1 (100 -> 100ms)
-  const milliseconds = msVal * Math.pow(10, 3 - ms.length);
+  // 补齐到 3 位 (例如 "5" -> "500", "05" -> "050", "1234" -> "123")
+  const msNormalized = ms.padEnd(3, "0").slice(0, 3);
+  const milliseconds = parseInt(msNormalized, 10);
   return minutes * 60 * 1000 + seconds * 1000 + milliseconds;
 };
 
@@ -264,29 +261,29 @@ export const isWordLevelFormat = (format: LrcFormat): boolean =>
 /**
  * 歌词内容对齐
  * 使用双指针算法实现 O(N) 复杂度
- * WARNING: MODIFIES INPUT ARRAY IN PLACE (副作用：直接修改 lyrics 数组)
- * @param lyrics 歌词数据 (会被修改)
+ * @param lyrics 歌词数据 (Readonly)
  * @param otherLyrics 其他歌词数据
  * @param key 对齐类型
- * @returns 对齐后的歌词数据 (引用自 lyrics)
+ * @returns 对齐后的歌词数据 (新副本)
  */
 export const alignLyrics = (
-  lyrics: LyricLine[],
-  otherLyrics: LyricLine[],
+  lyrics: Readonly<LyricLine[]>,
+  otherLyrics: Readonly<LyricLine[]>,
   key: "translatedLyric" | "romanLyric",
 ): LyricLine[] => {
-  if (!lyrics.length || !otherLyrics.length) return lyrics;
+  if (!lyrics.length || !otherLyrics.length) return cloneDeep(lyrics) as LyricLine[];
 
+  const result = cloneDeep(lyrics) as LyricLine[];
+  
   let i = 0;
   let j = 0;
-  const tolerance = 300; // 300ms 容差
 
-  while (i < lyrics.length && j < otherLyrics.length) {
-    const line = lyrics[i];
+  while (i < result.length && j < otherLyrics.length) {
+    const line = result[i];
     const other = otherLyrics[j];
     const diff = line.startTime - other.startTime;
 
-    if (Math.abs(diff) <= tolerance) {
+    if (Math.abs(diff) <= ALIGN_TOLERANCE_MS) {
       // 匹配成功
       line[key] = other.words.map((word) => word.word).join("");
       i++;
@@ -299,7 +296,7 @@ export const alignLyrics = (
       j++;
     }
   }
-  return lyrics;
+  return result;
 };
 
 /**
@@ -313,17 +310,12 @@ const parseQRCContent = (
   words: Array<{ word: string; startTime: number; endTime: number }>;
 }> => {
   // 提取 XML 属性 LyricContent
-  // 使用字符串查找替代正则，避免 XML 解析问题
-  const startTag = 'LyricContent="';
-  const startIndex = rawContent.indexOf(startTag);
+  // 使用正则提取，兼容空格
+  const lyricContentMatch = /LyricContent\s*=\s*"([^"]*)"/.exec(rawContent);
   let content = rawContent;
   
-  if (startIndex !== -1) {
-      const contentStart = startIndex + startTag.length;
-      const contentEnd = rawContent.indexOf('"', contentStart);
-      if (contentEnd !== -1) {
-          content = rawContent.slice(contentStart, contentEnd);
-      }
+  if (lyricContentMatch && lyricContentMatch[1]) {
+      content = lyricContentMatch[1];
   }
 
   const result: Array<{
@@ -444,6 +436,59 @@ export const parseQRCLyric = (qrcContent: string, trans?: string, roma?: string)
   return result;
 };
 
+// XML Builder Helper Class
+class XmlNode {
+  name: string;
+  attributes: Record<string, string>;
+  children: (XmlNode | string)[];
+
+  constructor(name: string, attributes: Record<string, string> = {}) {
+    this.name = name;
+    this.attributes = attributes;
+    this.children = [];
+  }
+
+  addChild(child: XmlNode | string) {
+    this.children.push(child);
+    return this;
+  }
+
+  private escape(str: string): string {
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&apos;");
+  }
+
+  toString(indent = 0): string {
+    const spaces = " ".repeat(indent);
+    const attrs = Object.entries(this.attributes)
+      .map(([key, val]) => `${key}="${this.escape(String(val))}"`)
+      .join(" ");
+    
+    const attrStr = attrs ? " " + attrs : "";
+
+    if (this.children.length === 0) {
+      return `${spaces}<${this.name}${attrStr} />`;
+    }
+
+    const isAllText = this.children.every((c) => typeof c === "string");
+    
+    if (isAllText) {
+        const textContent = this.children.map(c => this.escape(c as string)).join("");
+        return `${spaces}<${this.name}${attrStr}>${textContent}</${this.name}>`;
+    }
+
+    const childrenStr = this.children
+      .map((c) => (typeof c === "string" ? this.escape(c) : c.toString(indent + 2)))
+      .join("\n");
+
+    return `${spaces}<${this.name}${attrStr}>\n${childrenStr}\n${spaces}</${this.name}>`;
+  }
+}
+
 /**
  * 将 LyricLine 数组转换为 TTML 格式
  * @param lines LyricLine 数组
@@ -458,59 +503,49 @@ export const lyricLinesToTTML = (lines: LyricLine[]): string => {
     return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toFixed(3).padStart(6, "0")}`;
   };
 
-  const escapeXml = (text: string): string => {
-    return text
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&apos;");
-  };
+  const root = new XmlNode("tt", {
+      "xmlns": "http://www.w3.org/ns/ttml",
+      "xmlns:ttm": "http://www.w3.org/ns/ttml#metadata",
+      "xmlns:amll": "http://www.example.com/ns/amll"
+  });
 
-  let ttml = `<?xml version="1.0" encoding="utf-8"?>
-<tt xmlns="http://www.w3.org/ns/ttml" xmlns:ttm="http://www.w3.org/ns/ttml#metadata" xmlns:amll="http://www.example.com/ns/amll">
-  <head>
-    <metadata>
-      <ttm:title>Lyrics</ttm:title>
-    </metadata>
-  </head>
-  <body>
-    <div>
-`;
+  const head = new XmlNode("head");
+  const metadata = new XmlNode("metadata");
+  metadata.addChild(new XmlNode("ttm:title").addChild("Lyrics"));
+  head.addChild(metadata);
+  root.addChild(head);
+
+  const body = new XmlNode("body");
+  const div = new XmlNode("div");
 
   for (const line of lines) {
     const lineStart = formatTime(line.startTime);
     const lineEnd = formatTime(line.endTime);
+    
+    const p = new XmlNode("p", { begin: lineStart, end: lineEnd });
 
-    ttml += `      <p begin="${lineStart}" end="${lineEnd}">\n`;
-
-    // 添加逐字歌词
     for (const word of line.words) {
-      // 过滤无效的空词（内容为空且时长为0）
-      if (!word.word || word.startTime === word.endTime) {
-        continue;
-      }
-      const wordStart = formatTime(word.startTime);
-      const wordEnd = formatTime(word.endTime);
-      ttml += `        <span begin="${wordStart}" end="${wordEnd}">${escapeXml(word.word)}</span>\n`;
+       // 过滤无效的空词（内容为空且时长为0）
+       if (!word.word || word.startTime === word.endTime) continue;
+       
+       const wordStart = formatTime(word.startTime);
+       const wordEnd = formatTime(word.endTime);
+       p.addChild(new XmlNode("span", { begin: wordStart, end: wordEnd }).addChild(word.word));
     }
 
-    // 添加翻译
     if (line.translatedLyric) {
-      ttml += `        <span ttm:role="x-translation">${escapeXml(line.translatedLyric)}</span>\n`;
+        p.addChild(new XmlNode("span", { "ttm:role": "x-translation" }).addChild(line.translatedLyric));
     }
 
-    // 添加音译
     if (line.romanLyric) {
-      ttml += `        <span ttm:role="x-roman">${escapeXml(line.romanLyric)}</span>\n`;
+        p.addChild(new XmlNode("span", { "ttm:role": "x-roman" }).addChild(line.romanLyric));
     }
-
-    ttml += `      </p>\n`;
+    
+    div.addChild(p);
   }
 
-  ttml += `    </div>
-  </body>
-</tt>`;
+  body.addChild(div);
+  root.addChild(body);
 
-  return ttml;
+  return `<?xml version="1.0" encoding="utf-8"?>\n` + root.toString();
 };
