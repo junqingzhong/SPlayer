@@ -466,6 +466,19 @@ class DownloadManager {
     this.processQueue();
   }
 
+  public removeDownload(id: number | string) {
+    const dataStore = useDataStore();
+    // 如果正在下载，尝试取消（目前仅移除任务）
+    if (this.activeDownloads.has(id)) {
+      // TODO: 实现取消正在进行的下载任务
+      // 暂时只能从 UI 移除
+    }
+    // 从队列中移除
+    this.queue = this.queue.filter((task) => task.id !== id);
+    // 从 store 移除
+    dataStore.removeDownloadingSong(id);
+  }
+
   public retryDownload(id: number | string) {
     const dataStore = useDataStore();
     const task = dataStore.downloadingSongs.find((s) => s.song.id === id);
