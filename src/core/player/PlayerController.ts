@@ -410,6 +410,7 @@ class PlayerController {
         const dataUrl = await new Promise<string>((resolve, reject) => {
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = reject;
+          reader.onabort = reject;
           reader.readAsDataURL(blob);
         });
         musicStore.playSong.cover = dataUrl;
