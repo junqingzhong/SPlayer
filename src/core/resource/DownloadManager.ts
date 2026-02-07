@@ -1,34 +1,365 @@
-import type { SongType, SongLevelType } from "@/types/main";
+import type { SongType, SongLevelType, CustomDownloadType } from "@/types/main";
 import { useDataStore, useSettingStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { saveAs } from "file-saver";
 import { cloneDeep } from "lodash-es";
-import { songDownloadUrl, songLyric, songLyricTTML, songUrl, unlockSongUrl } from "@/api/song";
+import { songDownloadUrl, songLyric, songUrl, unlockSongUrl, songLyricTTML } from "@/api/song";
 import { qqMusicMatch } from "@/api/qqmusic";
-
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
-import { getConverter, type ConverterMode } from "@/utils/opencc";
-import { lyricLinesToTTML, parseQRCLyric, parseSmartLrc, alignLyrics } from "@/utils/lyric/lyricParser";
-import { generateASS } from "@/utils/assGenerator";
-import { parseTTML, parseYrc, type LyricLine } from "@applemusic-like-lyrics/lyric";
+import { LyricProcessor, type LyricProcessorOptions, type LyricResult } from "./LyricProcessor";
 
-interface DownloadTask {
-  song: SongType;
-  quality: SongLevelType;
+// 类型与接口定义
+
+interface DownloadConfig {
+  fileName: string;
+  fileType: string;
+  path: string;
+  downloadMeta: boolean;
+  downloadCover: boolean;
+  downloadLyric: boolean;
+  saveMetaFile: boolean;
+  songData: SongType | CustomDownloadType;
+  lyric: string;
+  skipIfExist: boolean;
+  threadCount: number;
+  referer?: string;
+  enableDownloadHttp2: boolean;
 }
 
-interface LyricResult {
-  lrc?: { lyric: string };
-  tlyric?: { lyric: string };
-  romalrc?: { lyric: string };
-  yrc?: { lyric: string };
-  ttml?: { lyric: string };
+interface DownloadStrategy {
+  readonly id: number | string;
+  readonly name: string;
+  readonly song: SongType | CustomDownloadType;
+  readonly downloadUrl: string;
+
+  // 准备阶段：获取链接，获取歌词，处理元数据
+  prepare(): Promise<void>;
+
+  // 执行阶段：返回给 Electron 下载器需要的配置对象
+  getDownloadConfig(): DownloadConfig;
+
+  // 收尾阶段：处理 ASS 生成，歌词文件写入
+  postProcess(downloadedFilePath: string): Promise<void>;
 }
+
+// 下载策略实现
+
+class SongDownloadStrategy implements DownloadStrategy {
+  private settingStore = useSettingStore();
+  private dataStore = useDataStore();
+
+  // prepare 阶段准备的状态
+  private _downloadUrl = "";
+  private fileType = "mp3";
+  private lyricResult: LyricResult | null = null;
+  private basicLyric = "";
+  private ttmlLyric = "";
+  private yrcLyric = "";
+
+  constructor(
+    public readonly song: SongType,
+    private quality: SongLevelType,
+  ) {}
+
+  get id() {
+    return this.song.id;
+  }
+  get name() {
+    return this.song.name;
+  }
+  get downloadUrl() {
+    return this._downloadUrl;
+  }
+
+  async prepare(): Promise<void> {
+    // 解析下载链接
+    const { url, type } = await this.resolveUrl();
+    this._downloadUrl = url;
+    this.fileType = type;
+
+    // 获取歌词
+    if (this.shouldDownloadLyrics()) {
+      this.lyricResult = (await songLyric(this.song.id)) as LyricResult;
+
+      const options: LyricProcessorOptions = {
+        downloadLyricToTraditional: this.settingStore.downloadLyricToTraditional,
+        downloadLyricTranslation: this.settingStore.downloadLyricTranslation,
+        downloadLyricRomaji: this.settingStore.downloadLyricRomaji,
+        downloadLyricEncoding: this.settingStore.downloadLyricEncoding,
+      };
+
+      // 处理基础歌词
+      this.basicLyric = await LyricProcessor.processBasic(this.lyricResult, options);
+
+      // 处理逐字歌词 (后续使用)
+      const { downloadMakeYrc, downloadSaveAsAss } = this.settingStore;
+      if (downloadMakeYrc || downloadSaveAsAss) {
+        let ttmlLyric = "";
+        const yrcLyric = this.lyricResult?.yrc?.lyric || "";
+        let qmResultData;
+
+        try {
+          const ttmlRes = await songLyricTTML(this.song.id);
+          if (typeof ttmlRes === "string") ttmlLyric = ttmlRes;
+        } catch (e) {
+          console.error("Failed to fetch TTML", e);
+        }
+
+        if (!ttmlLyric && !yrcLyric) {
+          try {
+            const artistsStr = Array.isArray(this.song.artists)
+              ? this.song.artists.map((a) => a.name).join("/")
+              : String(this.song.artists || "");
+            const keyword = `${this.song.name}-${artistsStr}`;
+            const qmResult = await qqMusicMatch(keyword);
+            if (qmResult?.code === 200 && qmResult?.qrc) {
+              qmResultData = qmResult;
+            }
+          } catch (e) {
+            console.error("QM Fallback failed", e);
+          }
+        }
+
+        const verbatim = LyricProcessor.parseVerbatim(ttmlLyric, yrcLyric, qmResultData);
+        this.ttmlLyric = verbatim.ttml;
+        this.yrcLyric = verbatim.yrc;
+      }
+    }
+  }
+
+  getDownloadConfig(): DownloadConfig {
+    const fileName = this.getFileName();
+    const targetPath = this.getDownloadPath();
+    const { downloadMeta, downloadCover, saveMetaFile, downloadThreadCount, enableDownloadHttp2 } =
+      this.settingStore;
+
+    return {
+      fileName,
+      fileType: this.fileType,
+      path: targetPath,
+      downloadMeta: downloadMeta,
+      downloadCover: downloadCover && downloadMeta,
+      downloadLyric: this.shouldDownloadLyrics(),
+      saveMetaFile: downloadMeta && saveMetaFile,
+      songData: cloneDeep(this.song),
+      lyric: this.basicLyric,
+      skipIfExist: true,
+      threadCount: downloadThreadCount,
+      enableDownloadHttp2: enableDownloadHttp2,
+    };
+  }
+
+  async postProcess(downloadedFilePath: string): Promise<void> {
+    console.log(`Post-processing file: ${downloadedFilePath}`);
+    // 使用存储的文件名和路径
+    const fileName = this.getFileName();
+    const targetPath = this.getDownloadPath();
+    const { downloadMakeYrc, downloadSaveAsAss } = this.settingStore;
+
+    const options: LyricProcessorOptions = {
+      downloadLyricToTraditional: this.settingStore.downloadLyricToTraditional,
+      downloadLyricTranslation: this.settingStore.downloadLyricTranslation,
+      downloadLyricRomaji: this.settingStore.downloadLyricRomaji,
+      downloadLyricEncoding: this.settingStore.downloadLyricEncoding,
+    };
+
+    if (downloadMakeYrc) {
+      const result = await LyricProcessor.generateVerbatimContent(
+        this.ttmlLyric,
+        this.yrcLyric,
+        this.lyricResult,
+        options
+      );
+      if (result && window.electron?.ipcRenderer) {
+        await window.electron.ipcRenderer.invoke("save-file", {
+          path: `${targetPath}\\${fileName}.${result.ext}`,
+          content: result.content,
+          encoding: result.encoding,
+        });
+      }
+    }
+
+    if (downloadSaveAsAss) {
+      const artist = Array.isArray(this.song.artists)
+        ? this.song.artists[0]?.name
+        : String(this.song.artists || "");
+      const result = await LyricProcessor.generateAssContent(
+        this.ttmlLyric,
+        this.yrcLyric,
+        this.lyricResult,
+        this.song.name,
+        artist,
+        options
+      );
+
+      if (result && window.electron?.ipcRenderer) {
+        await window.electron.ipcRenderer.invoke("save-file", {
+          path: `${targetPath}/${fileName}.ass`,
+          content: result.content,
+          encoding: result.encoding,
+        });
+      }
+    }
+  }
+
+  private async resolveUrl(): Promise<{ url: string; type: string }> {
+    const usePlayback = this.settingStore.usePlaybackForDownload;
+    const levelName = songLevelData[this.quality].level;
+
+    // 尝试使用播放链接
+    if (usePlayback) {
+      try {
+        const result = await songUrl(this.song.id, levelName as Parameters<typeof songUrl>[1]);
+        if (result.code === 200 && result?.data?.[0]?.url) {
+          return {
+            url: result.data[0].url,
+            type: (result.data[0].type || result.data[0].encodeType || "mp3").toLowerCase(),
+          };
+        }
+      } catch (e) {
+        console.error("Error fetching playback url for download:", e);
+      }
+    }
+
+    // 尝试使用解锁链接
+    const isVipUser = this.dataStore.userData?.vipType > 0;
+    const isRestricted = this.song.free === 1 || this.song.free === 4 || this.song.free === 8;
+    const canUseUnlock = !isRestricted || isVipUser;
+
+    if (this.settingStore.useUnlockForDownload && canUseUnlock) {
+      try {
+        const servers = this.settingStore.songUnlockServer
+          .filter((s) => s.enabled)
+          .map((s) => s.key);
+        const artist =
+          (Array.isArray(this.song.artists)
+            ? this.song.artists.map((a) => a.name).join("/")
+            : this.song.artists) || "";
+        const keyWord = `${this.song.name}-${artist}`;
+
+        if (servers.length > 0) {
+          const results = await Promise.allSettled(
+            servers.map((server) =>
+              unlockSongUrl(this.song.id, keyWord, server).then((result) => ({
+                server,
+                result,
+                success: result.code === 200 && !!result.url,
+              })),
+            ),
+          );
+
+          for (const r of results) {
+            if (r.status === "fulfilled" && r.value.success) {
+              const unlockUrl = r.value?.result?.url;
+              if (unlockUrl) {
+                const extensionMatch = unlockUrl.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+                return {
+                  url: unlockUrl,
+                  type: extensionMatch ? extensionMatch[1].toLowerCase() : "mp3",
+                };
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching unlock url for download:", e);
+      }
+    }
+
+    // 标准下载流程
+    const result = await songDownloadUrl(this.song.id, this.quality);
+    if (result.code !== 200 || !result?.data?.url) {
+      throw new Error(result.message || "获取下载链接失败");
+    }
+    return {
+      url: result.data.url,
+      type: result.data.type?.toLowerCase() || "mp3",
+    };
+  }
+
+  private getFileName(): string {
+    const infoObj = getPlayerInfoObj(this.song) || {
+      name: this.song.name || "未知歌曲",
+      artist: "未知歌手",
+    };
+    const baseTitle = infoObj.name || "未知歌曲";
+    const rawArtist = infoObj.artist || "未知歌手";
+    const safeArtist = rawArtist.replace(/[/:*?"<>|]/g, "&");
+    const { fileNameFormat } = this.settingStore;
+
+    let displayName = baseTitle;
+    if (fileNameFormat === "artist-title") displayName = `${safeArtist} - ${baseTitle}`;
+    else if (fileNameFormat === "title-artist") displayName = `${baseTitle} - ${safeArtist}`;
+
+    return displayName.replace(/[/:*?"<>|]/g, "&");
+  }
+
+  private getDownloadPath(): string {
+    const finalPath = this.settingStore.downloadPath;
+    const infoObj = getPlayerInfoObj(this.song) || { artist: "未知歌手", album: "未知专辑" };
+    const safeArtist = (infoObj.artist || "未知歌手").replace(/[/:*?"<>|]/g, "&");
+    const safeAlbum = (infoObj.album || "未知专辑").replace(/[/:*?"<>|]/g, "&");
+    const { folderStrategy } = this.settingStore;
+
+    if (folderStrategy === "artist") return `${finalPath}/${safeArtist}`;
+    else if (folderStrategy === "artist-album") return `${finalPath}/${safeArtist}/${safeAlbum}`;
+    return finalPath;
+  }
+
+  private shouldDownloadLyrics(): boolean {
+    return this.settingStore.downloadLyric && this.settingStore.downloadMeta;
+  }
+}
+
+class CustomDownloadStrategy implements DownloadStrategy {
+  private settingStore = useSettingStore();
+
+  constructor(public readonly song: CustomDownloadType) {}
+
+  get id() {
+    return this.song.id;
+  }
+  get name() {
+    return this.song.name;
+  }
+  get downloadUrl() {
+    return this.song.url;
+  }
+
+  async prepare(): Promise<void> {
+    if (!this.song.url) throw new Error("无效的自定义下载链接");
+  }
+
+  getDownloadConfig(): DownloadConfig {
+    const fileName = this.song.name.replace(/[/:*?"<>|]/g, "&");
+    return {
+      fileName,
+      fileType: "", // 后续自动检测
+      path: this.settingStore.downloadPath,
+      downloadMeta: false,
+      downloadCover: false,
+      downloadLyric: false,
+      saveMetaFile: false,
+      songData: cloneDeep(this.song),
+      lyric: "",
+      skipIfExist: true,
+      threadCount: this.settingStore.downloadThreadCount,
+      referer: this.song.referer,
+      enableDownloadHttp2: this.settingStore.enableDownloadHttp2,
+    };
+  }
+
+  async postProcess(): Promise<void> {
+    // 自定义下载无需处理歌词或ASS
+  }
+}
+
+// 下载管理器核心类
 
 class DownloadManager {
-  private queue: DownloadTask[] = [];
-  private activeDownloads: Set<number> = new Set();
+  private queue: DownloadStrategy[] = [];
+  private activeDownloads: Set<number | string> = new Set();
   private maxConcurrent: number = 1;
   private initialized: boolean = false;
 
@@ -36,17 +367,14 @@ class DownloadManager {
     this.setupIpcListeners();
   }
 
-  /**
-   * 初始化：恢复未完成的下载任务
-   */
   public init() {
     if (this.initialized) return;
     this.initialized = true;
-
     if (!isElectron) return;
+
     const dataStore = useDataStore();
 
-    // 1. 重置下载中状态为等待中 (应用重启后的恢复)
+    // 清理卡住的任务状态
     dataStore.downloadingSongs.forEach((item) => {
       if (item.status === "downloading") {
         dataStore.updateDownloadStatus(item.song.id, "waiting");
@@ -54,857 +382,192 @@ class DownloadManager {
       }
     });
 
-    // 2. 将等待中的任务加入队列
+    // 重新加入等待中的任务
     dataStore.downloadingSongs.forEach((item) => {
       if (item.status === "waiting") {
-        const isQueued = this.queue.some((t) => t.song.id === item.song.id);
+        const isQueued = this.queue.some((s) => s.id === item.song.id);
         const isActive = this.activeDownloads.has(item.song.id);
-
         if (!isQueued && !isActive) {
-          this.queue.push({ song: item.song, quality: item.quality });
+          // 区分任务类型，使用 discriminated union
+          if (item.song.type === "custom") {
+            // 自定义下载
+            this.queue.push(new CustomDownloadStrategy(item.song as CustomDownloadType));
+          } else {
+            // 常规歌曲下载
+            this.queue.push(new SongDownloadStrategy(item.song as SongType, item.quality));
+          }
         }
       }
     });
 
-    // 3. 开始处理
     this.processQueue();
   }
 
-  /**
-   * 设置全局 IPC 监听器
-   */
   private setupIpcListeners() {
     if (typeof window === "undefined" || !window.electron?.ipcRenderer) return;
-
     window.electron.ipcRenderer.on("download-progress", (_event, progress) => {
       const { id, percent, transferredBytes, totalBytes } = progress;
       if (!id) return;
-
       const dataStore = useDataStore();
-      const transferred = transferredBytes ? (transferredBytes / 1024 / 1024).toFixed(2) + "MB" : "0MB";
+      const transferred = transferredBytes
+        ? (transferredBytes / 1024 / 1024).toFixed(2) + "MB"
+        : "0MB";
       const total = totalBytes ? (totalBytes / 1024 / 1024).toFixed(2) + "MB" : "0MB";
-
       dataStore.updateDownloadProgress(id, Number((percent * 100).toFixed(1)), transferred, total);
     });
   }
 
-  /**
-   * 获取已下载歌曲列表
-   * @returns 已下载歌曲列表
-   */
   public async getDownloadedSongs(): Promise<SongType[]> {
     const settingStore = useSettingStore();
     if (!isElectron) return [];
     const downloadPath = settingStore.downloadPath;
     if (!downloadPath) return [];
     try {
-      const songs = await window.electron.ipcRenderer.invoke("get-music-files", downloadPath);
-      return songs;
+      return await window.electron.ipcRenderer.invoke("get-music-files", downloadPath);
     } catch (error) {
       console.error("Failed to get downloaded songs:", error);
       return [];
     }
   }
 
-  /**
-   * 添加下载任务
-   * @param song 歌曲信息
-   * @param quality 音质
-   */
   public async addDownload(song: SongType, quality: SongLevelType) {
     this.init();
     const dataStore = useDataStore();
 
-    const isQueued = this.queue.some((t) => t.song.id === song.id);
-    const isActive = this.activeDownloads.has(song.id);
+    if (this.checkExisting(song.id)) return;
 
-    // 检查是否已存在
-    const existing = dataStore.downloadingSongs.find((item) => item.song.id === song.id);
+    dataStore.addDownloadingSong(song, quality);
+    const strategy = new SongDownloadStrategy(song, quality);
+    this.queue.push(strategy);
+    this.processQueue();
+  }
+
+  public async addCustomDownload(url: string, fileName: string, referer?: string) {
+    this.init();
+    const dataStore = useDataStore();
+
+    // 生成唯一字符串ID
+    const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const customItem: CustomDownloadType = {
+      type: "custom", // 明确标识为自定义下载
+      id,
+      name: fileName,
+      url,
+      referer,
+      artists: [{ id: 0, name: "自定义下载" }],
+      album: { id: 0, name: "" },
+      cover: "",
+    };
+
+    dataStore.addDownloadingSong(customItem, "l"); // 自定义下载不区分音质
+    const strategy = new CustomDownloadStrategy(customItem);
+    this.queue.push(strategy);
+    this.processQueue();
+  }
+
+  public retryDownload(id: number | string) {
+    const dataStore = useDataStore();
+    const task = dataStore.downloadingSongs.find((s) => s.song.id === id);
+    if (task) {
+      dataStore.updateDownloadStatus(id, "waiting");
+      // 重新加入队列
+      if ((task.song as CustomDownloadType).type === "custom") {
+        this.queue.push(new CustomDownloadStrategy(task.song as CustomDownloadType));
+      } else {
+        this.queue.push(new SongDownloadStrategy(task.song as SongType, task.quality));
+      }
+      this.processQueue();
+    }
+  }
+
+  public retryAllDownloads() {
+    this.init();
+    const dataStore = useDataStore();
+    const failedSongs = dataStore.downloadingSongs
+      .filter((item) => item.status === "failed")
+      .map((item) => item.song.id);
+    failedSongs.forEach((id) => this.retryDownload(id));
+  }
+
+  private checkExisting(id: number | string): boolean {
+    const dataStore = useDataStore();
+    const existing = dataStore.downloadingSongs.find((item) => item.song.id === id);
 
     if (existing) {
-      // 如果是失败状态，重试
       if (existing.status === "failed") {
-        this.retryDownload(song.id);
-        return;
+        this.retryDownload(id);
+        return true;
       }
-      // 如果已经在队列或下载中，忽略
+      const isQueued = this.queue.some((s) => s.id === id);
+      const isActive = this.activeDownloads.has(id);
       if (
         isQueued ||
         isActive ||
         existing.status === "waiting" ||
         existing.status === "downloading"
       ) {
-        return;
+        return true;
       }
     }
-
-    // 添加到正在下载列表 (UI显示)
-    dataStore.addDownloadingSong(song, quality);
-
-    // 添加到下载队列
-    this.queue.push({ song, quality });
-
-    // 开始处理队列
-    this.processQueue();
+    return false;
   }
 
-  /**
-   * 添加自定义下载任务
-   * @param url 下载链接
-   * @param fileName 文件名
-   */
-  public async addCustomDownload(url: string, fileName: string, referer?: string) {
-    // 构造一个伪造的 SongType
-    const id = -Math.floor(Date.now() + Math.random() * 1000); // 负数ID避免冲突
-    const song: SongType = {
-      id,
-      name: fileName,
-      artists: [{ id: 0, name: "自定义下载" }],
-      album: { id: 0, name: "" },
-      duration: 0,
-      cover: "",
-      free: 0,
-      mv: null,
-      isCustom: true,
-      customUrl: url,
-      customReferer: referer,
-      type: "song",
-    };
-
-    // 默认使用 Standard 音质（实际上不影响自定义下载）
-    this.addDownload(song, "l");
-  }
-
-  /**
-   * 处理下载队列
-   */
   private processQueue() {
-    // 当活动任务数小于最大并发数，且队列不为空时，继续启动任务
     while (this.activeDownloads.size < this.maxConcurrent && this.queue.length > 0) {
-      const task = this.queue.shift();
-      if (task) {
-        this.startTask(task);
-      }
+      const strategy = this.queue.shift();
+      if (strategy) this.startTask(strategy);
     }
   }
 
-  /**
-   * 启动单个任务
-   */
-  private async startTask(task: DownloadTask) {
-    this.activeDownloads.add(task.song.id);
-
-    try {
-      await this.executeDownload(task.song, task.quality);
-    } catch (error) {
-      console.error(`Error processing task for song ${task.song.id}:`, error);
-    } finally {
-      // 任务结束（无论成功失败取消），移除活动状态
-      this.activeDownloads.delete(task.song.id);
-      // 触发下一个任务
-      this.processQueue();
-    }
-  }
-
-  /**
-   * 执行单个下载任务
-   * @param song 歌曲信息
-   * @param quality 音质
-   */
-  private async executeDownload(song: SongType, quality: SongLevelType) {
+  private async startTask(strategy: DownloadStrategy) {
+    this.activeDownloads.add(strategy.id);
     const dataStore = useDataStore();
-    const settingStore = useSettingStore();
-
-    // 更新状态为下载中
-    dataStore.updateDownloadStatus(song.id, "downloading");
+    dataStore.updateDownloadStatus(strategy.id, "downloading");
 
     try {
-      const result = await this.processDownload({
-        song,
-        quality,
-        downloadPath: settingStore.downloadPath,
-        skipIfExist: true,
-      });
-
-      if (result.success) {
-        // 下载成功，移除正在下载状态
-        dataStore.removeDownloadingSong(song.id);
-        window.$message.success(`${song.name} 下载完成`);
-      } else {
-        // 如果是取消，则不进行任何操作
-        if (result.status === "cancelled") return;
-
-        // 检查任务是否已被用户移除，如果移除则不再报错
-        const currentTask = dataStore.downloadingSongs.find((s) => s.song.id === song.id);
-        if (!currentTask) return;
-
-        // 下载失败，保留在列表中并标记失败
-        dataStore.markDownloadFailed(song.id);
-        window.$message.error(result.message || "下载失败");
-      }
-    } catch (error) {
-      console.error("Download failed:", error);
-      // 下载出错，保留在列表中并标记失败
-      dataStore.markDownloadFailed(song.id);
-      window.$message.error("下载出错");
-    }
-  }
-
-  /**
-   * 处理下载逻辑
-   * @param params 下载参数
-   * @param params.song 歌曲信息
-   * @param params.quality 音质
-   * @param params.downloadPath 下载路径
-   * @param params.skipIfExist 是否跳过已存在
-   * @param params.mode 下载模式
-   */
-  private async processDownload({
-    song,
-    quality,
-    downloadPath,
-    skipIfExist,
-    mode,
-  }: {
-    song: SongType;
-    quality: SongLevelType;
-    downloadPath?: string;
-    skipIfExist?: boolean;
-    mode?: "standard" | "playback";
-  }): Promise<{ success: boolean; skipped?: boolean; message?: string; status?: string }> {
-    try {
-      const dataStore = useDataStore();
-      const settingStore = useSettingStore();
-      let url = "";
-      let type = "mp3";
-
-      if (song.isCustom && song.customUrl) {
-        url = song.customUrl;
-        // 自定义下载：不推断类型，直接使用文件名
-        // 将 type 置为空，以便文件名保持原样传递给 IPC
-        type = "";
-      }
-
-      const usePlayback = mode ? mode === "playback" : settingStore.usePlaybackForDownload;
-
-      // 获取下载链接
-      const levelName = songLevelData[quality].level;
-
-      // 尝试获取播放链接
-      if (!song.isCustom && usePlayback) {
-        try {
-          const result = await songUrl(song.id, levelName as Parameters<typeof songUrl>[1]);
-          if (result.code === 200 && result?.data?.[0]?.url) {
-            url = result.data[0].url;
-            type = (result.data[0].type || result.data[0].encodeType || "mp3").toLowerCase();
-          }
-        } catch (e) {
-          console.error("Error fetching playback url for download:", e);
-        }
-      }
-
-      // 尝试使用解锁接口获取下载链接
-      // 检查 VIP 权限
-      const isVipUser = dataStore.userData?.vipType > 0;
-      const isRestricted = song.free === 1 || song.free === 4 || song.free === 8;
-      const canUseUnlock = !isRestricted || isVipUser;
-
-      if (!song.isCustom && !url && settingStore.useUnlockForDownload && canUseUnlock) {
-        try {
-          const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
-          const artist = (Array.isArray(song.artists) ? song.artists[0]?.name : song.artists) || "";
-          const keyWord = `${song.name}-${artist}`;
-
-          if (servers.length > 0) {
-            // 并发请求所有启用的解锁服务
-            const results = await Promise.allSettled(
-              servers.map((server) =>
-                unlockSongUrl(song.id, keyWord, server).then((result) => ({
-                  server,
-                  result,
-                  success: result.code === 200 && !!result.url,
-                })),
-              ),
-            );
-
-            // 查找第一个成功的结果
-            for (const r of results) {
-              if (r.status === "fulfilled" && r.value.success) {
-                const unlockUrl = r.value?.result?.url;
-                if (unlockUrl) {
-                  url = unlockUrl;
-                  // 尝试推断类型
-                  const extensionMatch = url.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
-                  const extension = extensionMatch ? extensionMatch[1].toLowerCase() : null;
-                  switch (extension) {
-                    case "flac":
-                    case "ogg":
-                    case "wav":
-                    case "m4a":
-                      type = extension;
-                      break;
-                    default:
-                      type = "mp3";
-                  }
-                  console.log(`🔓 [${song.id}] Unlock download URL found:`, url);
-                  break;
-                }
-              }
-            }
-          }
-        } catch (e) {
-          console.error("Error fetching unlock url for download:", e);
-        }
-      }
-
-      // 尝试获取标准下载链接
-      if (!song.isCustom && !url) {
-        const result = await songDownloadUrl(song.id, quality);
-        if (result.code !== 200 || !result?.data?.url) {
-          return {
-            success: false,
-            message: result.message || "获取下载链接失败",
-          };
-        }
-        url = result.data.url;
-        type = result.data.type?.toLowerCase() || "mp3";
-      }
-
-      const infoObj = getPlayerInfoObj(song) || {
-        name: song.name || "未知歌曲",
-        artist: "未知歌手",
-        album: "未知专辑",
-      };
-
-      const baseTitle = infoObj.name || "未知歌曲";
-      const rawArtist = infoObj.artist || "未知歌手";
-      const rawAlbum = infoObj.album || "未知专辑";
-
-      const safeArtist = rawArtist.replace(/[/:*?"<>|]/g, "&");
-      const safeAlbum = rawAlbum.replace(/[/:*?"<>|]/g, "&");
-
-      const finalPath = downloadPath || settingStore.downloadPath;
-
-      // 音乐命名格式与文件夹分类
-      const { fileNameFormat, folderStrategy } = settingStore;
-
-      let displayName = baseTitle;
-      let targetPath = finalPath;
-
-      if (song.isCustom) {
-        // 自定义下载：文件名就是歌名，不做任何处理
-        displayName = song.name;
-        // 自定义下载不使用文件夹分类策略，直接下载到根目录
-      } else {
-        if (fileNameFormat === "artist-title") {
-          displayName = `${safeArtist} - ${baseTitle}`;
-        } else if (fileNameFormat === "title-artist") {
-          displayName = `${baseTitle} - ${safeArtist}`;
-        }
-
-        if (folderStrategy === "artist") {
-          targetPath = `${finalPath}\\${safeArtist}`;
-        } else if (folderStrategy === "artist-album") {
-          targetPath = `${finalPath}\\${safeArtist}\\${safeAlbum}`;
-        }
-      }
-
-      const safeFileName = displayName.replace(/[/:*?"<>|]/g, "&");
-
-      // 校验下载路径
-      if (finalPath === "" && isElectron) {
-        return { success: false, message: "请配置下载目录" };
-      }
+      await strategy.prepare();
+      const config = strategy.getDownloadConfig();
 
       if (isElectron) {
-        const {
-          downloadMeta,
-          downloadCover,
-          downloadLyric,
-          saveMetaFile,
-          downloadMakeYrc,
-          downloadSaveAsAss,
-        } = settingStore;
-        let lyric = "";
-        let yrcLyric = "";
-        let ttmlLyric = "";
-        let lyricResult: LyricResult | null = null;
+        if (!strategy.downloadUrl) throw new Error("Download URL missing");
 
-        if (!song.isCustom && downloadLyric) {
-          lyricResult = (await songLyric(song.id)) as LyricResult;
-          lyric = await this.processLyric(lyricResult);
+        const downloadResult = await window.electron.ipcRenderer.invoke(
+          "download-file",
+          strategy.downloadUrl,
+          config,
+        );
 
-          // 获取逐字歌词内容用于另存
-          if (downloadMakeYrc || downloadSaveAsAss) {
-            console.log(`[Download] Fetching verbatim lyrics for ${song.name} (${song.id})...`);
-            try {
-              const ttmlRes = await songLyricTTML(song.id);
-              if (typeof ttmlRes === "string") {
-                ttmlLyric = ttmlRes;
-              }
-              console.log(`[Download] TTML fetched: ${!!ttmlLyric}, len: ${ttmlLyric?.length}`);
-
-              // 如果没有 TTML，检查 YRC
-              if (!ttmlLyric) {
-                yrcLyric = lyricResult?.yrc?.lyric || "";
-                console.log(
-                  `[Download] YRC fetched from lrcResult: ${!!yrcLyric}, len: ${yrcLyric?.length}`,
-                );
-
-                // Fallback: 如果官方没有 YRC，尝试从 QM 获取
-                if (!yrcLyric) {
-                  try {
-                    const artistsStr = Array.isArray(song.artists)
-                      ? song.artists.map((a) => a.name).join("/")
-                      : String(song.artists || "");
-                    const keyword = `${song.name}-${artistsStr}`;
-                    console.log(`[Download] Trying QM fallback with keyword: ${keyword}`);
-                    const qmResult = await qqMusicMatch(keyword);
-                    if (qmResult?.code === 200 && qmResult?.qrc) {
-                      // 解析 QRC 歌词（包含翻译和音译对齐）
-                      const parsedLines = parseQRCLyric(
-                        qmResult.qrc,
-                        qmResult.trans,
-                        qmResult.roma,
-                      );
-                      if (parsedLines.length > 0) {
-                        // 转换为 TTML 格式
-                        ttmlLyric = lyricLinesToTTML(parsedLines);
-                        console.log(
-                          `[Download] QM QRC parsed and converted to TTML, lines: ${parsedLines.length}`,
-                        );
-                      } else {
-                        // 如果解析失败，保留原始 QRC
-                        yrcLyric = qmResult.qrc;
-                        console.log(
-                          `[Download] QM QRC fetched as fallback (raw), len: ${yrcLyric?.length}`,
-                        );
-                      }
-                    }
-                  } catch (e) {
-                    console.error("[Download] Error fetching QM lyrics as fallback:", e);
-                  }
-                }
-              }
-            } catch (e) {
-              console.error("[Download] Error fetching verbatim lyrics:", e);
-            }
-          }
-        }
-
-        const config = {
-          fileName: safeFileName,
-          fileType: song.isCustom ? "" : type.toLowerCase(),
-          path: targetPath,
-          downloadMeta: song.isCustom ? false : downloadMeta,
-          downloadCover: song.isCustom ? false : downloadCover,
-          downloadLyric: song.isCustom ? false : downloadLyric,
-          saveMetaFile: song.isCustom ? false : saveMetaFile,
-          songData: cloneDeep(song),
-          lyric,
-          skipIfExist,
-          threadCount: settingStore.downloadThreadCount,
-          referer: song.customReferer,
-          enableDownloadHttp2: settingStore.enableDownloadHttp2,
-        };
-
-        const result = await window.electron.ipcRenderer.invoke("download-file", url, config);
-
-        if (result.status !== "cancelled" && result.status !== "error" && downloadMakeYrc) {
-          // 优先使用 TTML，其次 YRC
-          let content = ttmlLyric || yrcLyric;
-          // 标记是否进行了合并操作，如果合并了，建议统一保存为 TTML
-          let merged = false;
-
-          if (content) {
-            try {
-              // 尝试解析现有歌词以合并翻译和音译
-              let lines: LyricLine[] = [];
-              if (ttmlLyric) {
-                // const parsed = parseTTML(ttmlLyric);
-                // if (parsed?.lines) lines = parsed.lines;
-                console.log("[Download] Skip processing for TTML to preserve original content.");
-              } else if (yrcLyric) {
-                if (yrcLyric.trim().startsWith("<") || yrcLyric.includes("<QrcInfos>")) {
-                  lines = parseQRCLyric(yrcLyric);
-                } else {
-                  lines = parseYrc(yrcLyric) || [];
-                }
-              }
-
-              if (lines.length > 0) {
-                 const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
-                 const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
-                 
-                 if (tlyric) {
-                     const transParsed = parseSmartLrc(tlyric);
-                     if (transParsed?.lines?.length) {
-                         lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
-                         merged = true;
-                     }
-                 }
-                 if (romalrc) {
-                     const romaParsed = parseSmartLrc(romalrc);
-                     if (romaParsed?.lines?.length) {
-                         lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
-                         merged = true;
-                     }
-                 }
-
-                 // 如果进行了合并，或者原本就是 YRC (需要转换)，我们重新生成标准 TTML
-                 // 注意：如果是 TTML 且未合并，不要重新生成，以免丢失原始内容
-                 if ((merged || yrcLyric) && lines.length > 0) {
-                     content = lyricLinesToTTML(lines);
-                     console.log("[Download] Generated new TTML content from lines.");
-                 }
-              }
-
-              // 繁体转换
-              content = await this._convertToTraditionalIfNeeded(content);
-
-              // 如果进行了合并或转换，统一保存为 ttml (因为我们生成的是 standard TTML)
-              // 只要解析出了 lines (说明是 YRC 转换或进行了合并)，或者是原生 TTML，都保存为 ttml
-              const ext = (ttmlLyric || lines.length > 0) ? "ttml" : "yrc";
-              const fileName = `${safeFileName}.${ext}`;
-              const encoding = settingStore.downloadLyricEncoding || "utf-8";
-
-              // 如果是 TTML 且转换为非 UTF-8 编码，需要修改 XML 头部的 encoding 声明
-              if (ext === "ttml" && encoding !== "utf-8") {
-                content = content.replace(/encoding=["']utf-8["']/i, `encoding="${encoding}"`);
-              }
-
-              console.log(`[Download] Saving extra lyric file: ${fileName}, content len: ${content.length}`);
-              // 调用保存文件内容接口
-              const saveRes = await window.electron.ipcRenderer.invoke("save-file-content", {
-                path: targetPath,
-                fileName,
-                content,
-                encoding,
-              });
-              if (saveRes.success) {
-                console.log(`[Download] Saved verbatim lyric file successfully: ${fileName}`);
-              } else {
-                console.error(`[Download] Failed to save verbatim lyric file: ${saveRes.message}`);
-              }
-            } catch (e) {
-              console.error("[Download] Failed to save verbatim lyric file exception", e);
-            }
+        if (downloadResult.status === "success" || downloadResult.status === "skipped") {
+          await strategy.postProcess(downloadResult.path || config.path); // IPC 返回结果通常包含路径
+          dataStore.removeDownloadingSong(strategy.id);
+          window.$message.success(`${strategy.name} 下载完成`);
+        } else {
+          if (downloadResult.status === "cancelled") {
+            // 已取消，无需处理
           } else {
-            console.log("[Download] No verbatim lyrics found to save.");
+            throw new Error(downloadResult.message || "下载失败");
           }
-        }
-
-        if (result.status !== "cancelled" && result.status !== "error" && downloadSaveAsAss) {
-          try {
-            let lines: LyricLine[] = [];
-            // Try TTML
-            if (ttmlLyric) {
-              const parsed = parseTTML(ttmlLyric);
-              if (parsed?.lines) lines = parsed.lines;
-            }
-            // Try YRC (QRC)
-            else if (yrcLyric) {
-              // yrcLyric might be QRC XML
-              if (yrcLyric.trim().startsWith("<") || yrcLyric.includes("<QrcInfos>")) {
-                lines = parseQRCLyric(yrcLyric);
-              } else {
-                lines = parseYrc(yrcLyric) || [];
-              }
-            }
-            // Fallback to LRC (embedded lyric)
-            else if (lyric) {
-              const parsed = parseSmartLrc(lyric);
-              if (parsed?.lines) lines = parsed.lines;
-            }
-
-            if (lines.length > 0) {
-              // 尝试合并翻译和音译，确保 ASS 包含这些信息
-              const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
-              const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
-
-              if (tlyric) {
-                const transParsed = parseSmartLrc(tlyric);
-                if (transParsed?.lines?.length) {
-                  lines = alignLyrics(lines, transParsed.lines, "translatedLyric");
-                }
-              }
-              if (romalrc) {
-                const romaParsed = parseSmartLrc(romalrc);
-                if (romaParsed?.lines?.length) {
-                  lines = alignLyrics(lines, romaParsed.lines, "romanLyric");
-                }
-              }
-
-              let assContent = generateASS(
-                lines,
-                {
-                  title: song.name,
-                  artist: rawArtist,
-                },
-                {
-                  tlyric: settingStore.downloadLyricTranslation,
-                  romalrc: settingStore.downloadLyricRomaji,
-                },
-              );
-
-              // 繁体转换
-              assContent = await this._convertToTraditionalIfNeeded(assContent);
-
-              const fileName = `${safeFileName}.ass`;
-              const encoding = settingStore.downloadLyricEncoding || "utf-8";
-
-              console.log(`[Download] Saving ASS file: ${fileName}`);
-              const saveRes = await window.electron.ipcRenderer.invoke("save-file-content", {
-                path: targetPath,
-                fileName,
-                content: assContent,
-                encoding,
-              });
-
-              if (saveRes.success) {
-                console.log(`[Download] Saved ASS file successfully: ${fileName}`);
-              } else {
-                console.error(`[Download] Failed to save ASS file: ${saveRes.message}`);
-              }
-            }
-          } catch (e) {
-            console.error("[Download] Failed to save ASS file exception", e);
-          }
-        }
-
-        if (result.status === "skipped") {
-          return { success: true, skipped: true, message: result.message };
-        }
-        if (result.status === "cancelled") {
-          return { success: false, status: "cancelled", message: "已取消" };
-        }
-        if (result.status === "error") {
-          return { success: false, message: result.message || "下载失败" };
         }
       } else {
-        saveAs(url, `${safeFileName}.${type}`);
+        // 浏览器端兜底处理
+        if (!strategy.downloadUrl) throw new Error("Download URL missing");
+        saveAs(strategy.downloadUrl, config.fileName + "." + config.fileType);
+        dataStore.removeDownloadingSong(strategy.id);
       }
-
-      return { success: true };
-    } catch (error) {
-      console.error(`Error downloading song ${song.name}:`, error);
-      return { success: false, message: "下载过程出错" };
-    }
-  }
-
-  /**
-   * 歌词处理辅助函数
-   * @param lyricResult 歌词结果
-   * @returns 处理后的歌词字符串
-   */
-  private async processLyric(lyricResult: LyricResult): Promise<string> {
-    const settingStore = useSettingStore();
-    try {
-      const rawLyric = lyricResult?.lrc?.lyric || "";
-      const excludeRegex = /^\{"t":\d+,"c":\[\{"[^"]+":"[^"]*"}(?:,\{"[^"]+":"[^"]*"})*]}$/;
+    } catch (error: any) {
+      console.error(`Error processing task ${strategy.name} (ID: ${strategy.id}):`, error);
+      if (error?.message) console.error("Error message:", error.message);
       
-      const lrcLines = rawLyric
-        .split(/\r?\n/)
-        .filter((line: string) => !excludeRegex.test(line.trim()));
-
-      if (lrcLines.length === 0) return "";
-
-      const tlyric = settingStore.downloadLyricTranslation ? lyricResult?.tlyric?.lyric : null;
-      const romalrc = settingStore.downloadLyricRomaji ? lyricResult?.romalrc?.lyric : null;
-
-      // 如果不需要翻译/音译，直接返回处理过的 LRC
-      if (!tlyric && !romalrc) return lrcLines.join("\n");
-
-      // 正则：匹配 [mm:ss.xx] 或 [mm:ss.xxx] 形式的时间标签
-      const timeTagRe = /\[(\d{2}):(\d{2})(?:\.(\d{1,}))?\]/g;
-
-      // 辅助函数：解析时间字符串为秒
-      const timeStrToSeconds = (timeStr: string) => {
-        // 去除首尾括号
-        const pure = timeStr.replace(/^\[|\]$/g, "");
-        const m = pure.match(/^(\d{2}):(\d{2})(?:\.(\d{1,}))?$/);
-        if (!m) return 0;
-        const minutes = parseInt(m[1], 10);
-        const seconds = parseInt(m[2], 10);
-        const fracStr = m[3] ? "0." + m[3] : "0";
-        return minutes * 60 + seconds + parseFloat(fracStr);
-      };
-
-      // 辅助函数：解析 LRC 到 Map<时间标签, 文本>
-      const parseToMap = (lyricStr: string) => {
-        const map = new Map<string, string>();
-        if (!lyricStr) return map;
-        const lines = lyricStr.split(/\r?\n/);
-        for (const raw of lines) {
-          timeTagRe.lastIndex = 0;
-          let m: RegExpExecArray | null;
-          const tags: string[] = [];
-          
-          while ((m = timeTagRe.exec(raw)) !== null) {
-            tags.push(m[0]);
-          }
-          
-          if (tags.length === 0) continue;
-          
-          const text = raw.replace(timeTagRe, "").trim();
-          if (!text) continue;
-          
-          for (const tag of tags) {
-             const prev = map.get(tag);
-             map.set(tag, prev ? prev + "\n" + text : text);
-          }
-        }
-        return map;
-      };
-
-      const findMatch = (map: Map<string, string>, targetTag: string) => {
-        // 1. 尝试精确匹配
-        if (map.has(targetTag)) return map.get(targetTag);
-
-        // 2. 尝试模糊匹配 (0.5s 容差)
-        const targetSec = timeStrToSeconds(targetTag);
-        let bestMatch: string | null = null;
-        let minDiff = 0.5;
-
-        for (const [tag, text] of map.entries()) {
-           const sec = timeStrToSeconds(tag);
-           const diff = Math.abs(sec - targetSec);
-           if (diff <= minDiff) {
-             minDiff = diff;
-             bestMatch = text;
-           }
-        }
-        return bestMatch;
-      };
-
-      const tMap = parseToMap(tlyric || "");
-      const rMap = parseToMap(romalrc || "");
-      
-      const resultLines: string[] = [];
-
-      for (const raw of lrcLines) {
-        timeTagRe.lastIndex = 0;
-        let m: RegExpExecArray | null;
-        const tags: string[] = [];
-        
-        while ((m = timeTagRe.exec(raw)) !== null) {
-          tags.push(m[0]);
-        }
-
-        if (tags.length === 0) continue;
-        const text = raw.replace(timeTagRe, "").trim();
-        if (!text) continue;
-
-        for (const tag of tags) {
-          // 1. 源歌词
-          resultLines.push(`${tag}${text}`);
-          
-          // 2. 翻译
-          if (tlyric) {
-            const transText = findMatch(tMap, tag);
-            if (transText) {
-               transText.split("\n").forEach(line => {
-                 if (line.trim()) resultLines.push(`${tag}${line.trim()}`);
-               });
-            }
-          }
-          
-          // 3. 音译
-          if (romalrc) {
-            const romaText = findMatch(rMap, tag);
-             if (romaText) {
-               romaText.split("\n").forEach(line => {
-                 if (line.trim()) resultLines.push(`${tag}${line.trim()}`);
-               });
-            }
-          }
-        }
-      }
-
-      const result = resultLines.join("\n");
-      return await this._convertToTraditionalIfNeeded(result);
-    } catch (e) {
-      console.error("Lyric processing failed", e);
-      return "";
-    }
-  }
-
-  /**
-   * 移除下载任务
-   * @param songId 歌曲ID
-   */
-  public removeDownload(songId: number) {
-    this.init();
-    const dataStore = useDataStore();
-
-    // 从队列中移除
-    this.queue = this.queue.filter((task) => task.song.id !== songId);
-
-    // 如果正在下载，尝试取消
-    if (this.activeDownloads.has(songId) && isElectron) {
-      window.electron.ipcRenderer.invoke("cancel-download", songId);
-    }
-    dataStore.removeDownloadingSong(songId);
-  }
-
-  /**
-   * 重试下载任务
-   * @param songId 歌曲ID
-   */
-  public retryDownload(songId: number) {
-    this.init();
-    const dataStore = useDataStore();
-    const task = dataStore.downloadingSongs.find((item) => item.song.id === songId);
-    if (!task) return;
-
-    // 重置任务状态与进度
-    dataStore.updateDownloadStatus(songId, "waiting");
-    dataStore.updateDownloadProgress(songId, 0, "0MB", "0MB");
-
-    const isQueued = this.queue.some((t) => t.song.id === songId);
-    const isActive = this.activeDownloads.has(songId);
-
-    // 重新加入队列 (避免重复)
-    if (!isQueued && !isActive) {
-      this.queue.push({ song: task.song, quality: task.quality });
+      dataStore.markDownloadFailed(strategy.id);
+      window.$message.error(error.message || "下载出错");
+    } finally {
+      this.activeDownloads.delete(strategy.id);
       this.processQueue();
     }
-  }
-
-  /**
-   * 重试所有下载任务（失败的）
-   */
-  public retryAllDownloads() {
-    this.init();
-    const dataStore = useDataStore();
-    // 找到所有失败的任务
-    const failedSongs = dataStore.downloadingSongs
-      .filter((item) => item.status === "failed")
-      .map((item) => item.song.id);
-
-    failedSongs.forEach((id) => {
-      this.retryDownload(id);
-    });
-  }
-  /**
-   * 繁体转换辅助方法
-   * @param text 需要转换的文本
-   * @returns 转换后的文本
-   */
-  private async _convertToTraditionalIfNeeded(text: string): Promise<string> {
-    const settingStore = useSettingStore();
-    if (settingStore.downloadLyricToTraditional && text) {
-      const variant = (settingStore.traditionalChineseVariant || "s2t") as ConverterMode;
-      const converter = await getConverter(variant);
-      return converter(text);
-    }
-    return text;
   }
 }
 
-let instance: DownloadManager | null = null;
-
-export const useDownloadManager = (): DownloadManager => {
-  if (!instance) instance = new DownloadManager();
-  return instance;
-};
+export const downloadManager = new DownloadManager();
+export const useDownloadManager = () => downloadManager;
+export default downloadManager;

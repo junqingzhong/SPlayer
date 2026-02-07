@@ -98,12 +98,6 @@ export type SongType = {
   pc?: boolean;
   /** 大小 */
   size?: number;
-  /** 是否为自定义下载 */
-  isCustom?: boolean;
-  /** 自定义下载链接 */
-  customUrl?: string;
-  /** 自定义Referer */
-  customReferer?: string;
   /** 音质 */
   quality?: QualityType;
   /** 创建时间 */
@@ -139,6 +133,17 @@ export interface ReplayGainType {
   albumGain?: number;
   albumPeak?: number;
 }
+
+export type CustomDownloadType = {
+  type: "custom";
+  id: string;
+  name: string;
+  url: string;
+  referer?: string;
+  artists: Array<{ id: number; name: string }>;
+  album: { id: number; name: string };
+  cover: string;
+};
 
 // Cover
 export type CoverType = {

@@ -8,6 +8,7 @@ import type {
   LoginType,
   SongLevelType,
   AccountType,
+  CustomDownloadType,
 } from "@/types/main";
 import { playlistCatlist } from "@/api/playlist";
 import { cloneDeep, isEmpty } from "lodash-es";
@@ -39,7 +40,7 @@ interface ListState {
   /** 正在下载的歌曲列表 */
   downloadingSongs: Array<{
     /** 歌曲信息 */
-    song: SongType;
+    song: SongType | CustomDownloadType;
     /** 音质 */
     quality: SongLevelType;
     /** 状态：下载中 / 等待中 / 失败 */
@@ -169,6 +170,29 @@ export const useDataStore = defineStore("data", {
             }
           }),
         );
+
+        // 迁移旧数据：确保所有下载任务都有 type 字段
+        if (this.downloadingSongs) {
+          this.downloadingSongs.forEach((item) => {
+            const rawSong = item.song as unknown as Record<string, any>;
+            if (!rawSong.type) {
+              if (rawSong.isCustom) {
+                rawSong.type = "custom";
+                // 迁移旧字段
+                if (rawSong.customUrl) {
+                  rawSong.url = rawSong.customUrl;
+                }
+                // 确保 ID 为字符串 (如果原本是数字)
+                if (typeof rawSong.id === "number") {
+                  rawSong.id = `custom-legacy-${rawSong.id}`;
+                }
+              } else {
+                rawSong.type = "song";
+              }
+            }
+          });
+        }
+
         // 获取 user-data
         const userDataKeys = await userDB.keys();
         await Promise.all(
@@ -419,7 +443,7 @@ export const useDataStore = defineStore("data", {
      * @param song 歌曲
      * @param quality 音质
      */
-    addDownloadingSong(song: SongType, quality: SongLevelType) {
+    addDownloadingSong(song: SongType | CustomDownloadType, quality: SongLevelType) {
       // 检查是否已存在
       const exists = this.downloadingSongs.find((item) => item.song.id === song.id);
       if (exists) return;
@@ -439,7 +463,7 @@ export const useDataStore = defineStore("data", {
      * @param songId 歌曲ID
      * @param status 下载状态
      */
-    updateDownloadStatus(songId: number, status: "downloading" | "waiting" | "failed") {
+    updateDownloadStatus(songId: number | string, status: "downloading" | "waiting" | "failed") {
       const index = this.downloadingSongs.findIndex((item) => item.song.id === songId);
       if (index !== -1) {
         this.downloadingSongs[index].status = status;
@@ -449,7 +473,7 @@ export const useDataStore = defineStore("data", {
     },
     // 更新下载进度
     updateDownloadProgress(
-      songId: number,
+      songId: number | string,
       progress: number,
       transferred: string,
       totalSize: string,
@@ -463,7 +487,7 @@ export const useDataStore = defineStore("data", {
       }
     },
     // 移除正在下载的歌曲（下载失败时）
-    removeDownloadingSong(songId: number) {
+    removeDownloadingSong(songId: number | string) {
       const index = this.downloadingSongs.findIndex((item) => item.song.id === songId);
       if (index !== -1) {
         this.downloadingSongs.splice(index, 1);
@@ -471,7 +495,7 @@ export const useDataStore = defineStore("data", {
       }
     },
     // 标记下载失败（保留在列表中）
-    markDownloadFailed(songId: number) {
+    markDownloadFailed(songId: number | string) {
       const index = this.downloadingSongs.findIndex((item) => item.song.id === songId);
       if (index !== -1) {
         this.downloadingSongs[index].status = "failed";
@@ -483,7 +507,7 @@ export const useDataStore = defineStore("data", {
       }
     },
     // 重置下载任务状态（用于重试）
-    resetDownloadingSong(songId: number) {
+    resetDownloadingSong(songId: number | string) {
       const index = this.downloadingSongs.findIndex((item) => item.song.id === songId);
       if (index !== -1) {
         this.downloadingSongs[index].status = "waiting";
