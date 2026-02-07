@@ -5,7 +5,7 @@ use std::{
         atomic::{AtomicBool, Ordering},
         mpsc::{self, Receiver, Sender},
     },
-    thread::{self, JoinHandle},
+    thread::{self},
 };
 
 use napi::{
@@ -62,7 +62,6 @@ enum TaskbarCommand {
 #[napi]
 pub struct TaskbarService {
     sender: Sender<TaskbarCommand>,
-    thread_handle: Option<JoinHandle<()>>,
 }
 
 #[napi]
@@ -71,14 +70,11 @@ impl TaskbarService {
     pub fn new(callback: ThreadsafeFunction<TaskbarLayout>) -> napi::Result<Self> {
         let (tx, rx) = mpsc::channel();
 
-        let handle = thread::spawn(move || {
+        thread::spawn(move || {
             worker_loop(rx, callback);
         });
 
-        Ok(Self {
-            sender: tx,
-            thread_handle: Some(handle),
-        })
+        Ok(Self { sender: tx })
     }
 
     #[napi]
@@ -102,9 +98,6 @@ impl TaskbarService {
     #[napi]
     pub fn stop(&mut self) {
         let _ = self.sender.send(TaskbarCommand::Stop);
-        if let Some(handle) = self.thread_handle.take() {
-            let _ = handle.join();
-        }
     }
 }
 
@@ -215,7 +208,6 @@ fn create_strategy() -> Option<Box<dyn TaskbarStrategy>> {
 #[napi]
 pub struct RegistryWatcher {
     stop_event: usize,
-    thread_handle: Option<JoinHandle<()>>,
     is_running: Arc<AtomicBool>,
 }
 
@@ -236,13 +228,12 @@ impl RegistryWatcher {
         let is_running = Arc::new(AtomicBool::new(true));
         let stop_event_raw = stop_event.0 as usize;
 
-        let handle = thread::spawn(move || unsafe {
+        thread::spawn(move || unsafe {
             Self::watch_loop(stop_event_raw, &callback);
         });
 
         Ok(Self {
             stop_event: stop_event_raw,
-            thread_handle: Some(handle),
             is_running,
         })
     }
@@ -257,14 +248,6 @@ impl RegistryWatcher {
         let event = HANDLE(self.stop_event as *mut _);
         unsafe {
             let _ = SetEvent(event);
-        }
-
-        if let Some(handle) = self.thread_handle.take() {
-            let _ = handle.join();
-        }
-
-        unsafe {
-            let _ = CloseHandle(event);
         }
 
         self.is_running.store(false, Ordering::SeqCst);
@@ -289,6 +272,7 @@ impl RegistryWatcher {
             .is_err()
             {
                 error!("打开注册表键失败");
+                let _ = CloseHandle(stop_event);
                 return;
             }
 
@@ -297,6 +281,7 @@ impl RegistryWatcher {
                 Err(e) => {
                     error!("创建注册表事件失败: {e}");
                     let _ = RegCloseKey(h_key);
+                    let _ = CloseHandle(stop_event);
                     return;
                 }
             };
@@ -336,6 +321,7 @@ impl RegistryWatcher {
             }
 
             let _ = CloseHandle(reg_event);
+            let _ = CloseHandle(stop_event);
             let _ = RegCloseKey(h_key);
         }
     }
