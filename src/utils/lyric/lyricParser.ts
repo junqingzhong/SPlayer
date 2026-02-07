@@ -329,7 +329,7 @@ const parseQRCContent = (
     if (!line) continue;
 
     // 跳过元数据标签 [ti:xxx] [ar:xxx] 等
-    if (/^\\[[a-z]+:/i.test(line)) continue;
+    if (META_TAG_REGEX.test(line)) continue;
 
     const lineMatch = QRC_LINE_PATTERN.exec(line);
     if (!lineMatch) continue;

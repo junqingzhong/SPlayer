@@ -471,12 +471,15 @@ class DownloadManager {
     // 如果正在下载，尝试取消（目前仅移除任务）
     if (this.activeDownloads.has(id)) {
       // TODO: 实现取消正在进行的下载任务
-      // 暂时只能从 UI 移除
+      // 暂时先从活动集合中移除，以释放下载槽位
+      this.activeDownloads.delete(id);
     }
     // 从队列中移除
     this.queue = this.queue.filter((task) => task.id !== id);
     // 从 store 移除
     dataStore.removeDownloadingSong(id);
+    // 尝试处理下一个任务
+    this.processQueue();
   }
 
   public retryDownload(id: number | string) {
