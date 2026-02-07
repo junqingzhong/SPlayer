@@ -205,9 +205,24 @@ fn create_strategy() -> Option<Box<dyn TaskbarStrategy>> {
     None
 }
 
+/// 用于关闭句柄的 RAII 包装器
+struct EventHandle(HANDLE);
+
+impl Drop for EventHandle {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = CloseHandle(self.0);
+        }
+    }
+}
+
+// Safety: 跨线程访问句柄是安全的
+unsafe impl Send for EventHandle {}
+unsafe impl Sync for EventHandle {}
+
 #[napi]
 pub struct RegistryWatcher {
-    stop_event: usize,
+    stop_event: Arc<EventHandle>,
     is_running: Arc<AtomicBool>,
 }
 
@@ -222,18 +237,19 @@ impl RegistryWatcher {
     /// 创建停止事件失败时抛出错误
     #[napi(constructor)]
     pub fn new(callback: ThreadsafeFunction<()>) -> napi::Result<Self> {
-        let stop_event = unsafe { CreateEventW(None, true, false, None) }
+        let raw_event = unsafe { CreateEventW(None, true, false, None) }
             .map_err(|e| napi::Error::from_reason(format!("创建停止事件失败: {e}")))?;
 
+        let stop_event = Arc::new(EventHandle(raw_event));
         let is_running = Arc::new(AtomicBool::new(true));
-        let stop_event_raw = stop_event.0 as usize;
+        let thread_event = stop_event.clone();
 
         thread::spawn(move || unsafe {
-            Self::watch_loop(stop_event_raw, &callback);
+            Self::watch_loop(&thread_event, &callback);
         });
 
         Ok(Self {
-            stop_event: stop_event_raw,
+            stop_event,
             is_running,
         })
     }
@@ -245,9 +261,8 @@ impl RegistryWatcher {
             return Ok(());
         }
 
-        let event = HANDLE(self.stop_event as *mut _);
         unsafe {
-            let _ = SetEvent(event);
+            let _ = SetEvent(self.stop_event.0);
         }
 
         self.is_running.store(false, Ordering::SeqCst);
@@ -255,8 +270,8 @@ impl RegistryWatcher {
         Ok(())
     }
 
-    unsafe fn watch_loop(stop_event_val: usize, callback: &ThreadsafeFunction<()>) {
-        let stop_event = HANDLE(stop_event_val as *mut _);
+    unsafe fn watch_loop(stop_event_wrapper: &Arc<EventHandle>, callback: &ThreadsafeFunction<()>) {
+        let stop_event = stop_event_wrapper.0;
 
         let mut h_key = HKEY::default();
         let sub_key = w!("Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced");
@@ -321,7 +336,6 @@ impl RegistryWatcher {
             }
 
             let _ = CloseHandle(reg_event);
-            let _ = CloseHandle(stop_event);
             let _ = RegCloseKey(h_key);
         }
     }
