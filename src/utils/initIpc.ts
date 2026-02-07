@@ -4,11 +4,14 @@ import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/
 import type { SettingType } from "@/types/main";
 import { handleProtocolUrl } from "@/utils/protocol";
 import { cloneDeep } from "lodash-es";
-import { toRaw } from "vue";
+import { toRaw, watch } from "vue";
 import { toLikeSong } from "./auth";
 import { isElectron } from "./env";
 import { getPlayerInfoObj } from "./format";
 import { openSetting, openUpdateApp } from "./modal";
+import themeColor from "@/assets/data/themeColor.json";
+import { getThemeFromColor } from "@/utils/color";
+import { rgbToHex } from "@imsyy/color-utils";
 
 // 关闭更新状态
 const closeUpdateStatus = () => {
@@ -21,6 +24,51 @@ const initIpc = () => {
   try {
     if (!isElectron) return;
     const player = usePlayerController();
+    const settingStore = useSettingStore();
+    const statusStore = useStatusStore();
+
+    // 计算并发送任务栏主题色
+    const sendTaskbarTheme = () => {
+      let colorPayload: { dark: string; light: string } | null = null;
+      if (settingStore.themeGlobalColor) {
+        let colorData;
+        if (settingStore.themeFollowCover && statusStore.songCoverTheme) {
+          colorData = statusStore.songCoverTheme;
+        } else {
+          const color =
+            settingStore.themeColorType === "custom"
+              ? settingStore.themeCustomColor
+              : themeColor[settingStore.themeColorType as keyof typeof themeColor]?.color ||
+                "#fe7971";
+          colorData = getThemeFromColor(color, settingStore.themeVariant);
+        }
+        // 分别获取亮暗模式的主色
+        const darkPrimary = colorData.dark.primary;
+        const lightPrimary = colorData.light.primary;
+        colorPayload = {
+          dark: rgbToHex(darkPrimary.r, darkPrimary.g, darkPrimary.b),
+          light: rgbToHex(lightPrimary.r, lightPrimary.g, lightPrimary.b),
+        };
+      }
+      playerIpc.sendTaskbarThemeColor(colorPayload);
+    };
+
+    // 监听主题变化
+    watch(
+      [
+        () => settingStore.themeGlobalColor,
+        () => settingStore.themeFollowCover,
+        () => settingStore.themeColorType,
+        () => settingStore.themeCustomColor,
+        () => settingStore.themeVariant,
+        () => statusStore.songCoverTheme,
+      ],
+      () => {
+        sendTaskbarTheme();
+      },
+      { deep: true },
+    );
+
     // 播放
     window.electron.ipcRenderer.on("play", () => player.play());
     // 暂停
@@ -102,6 +150,9 @@ const initIpc = () => {
         duration: statusStore.duration * 1000,
         offset: statusStore.getSongOffset(musicStore.playSong?.id),
       });
+
+      // 发送初始主题色
+      sendTaskbarTheme();
     });
 
     // 请求歌词数据

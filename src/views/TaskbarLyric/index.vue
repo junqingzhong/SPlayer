@@ -2,11 +2,7 @@
   <div
     class="taskbar-lyric"
     :class="{ dark: state.isDark, 'layout-reverse': !state.isCenter }"
-    :style="{
-      opacity: isVisible ? state.opacity : 0,
-      filter: state.opacity === 0 || !isVisible ? 'blur(10px)' : 'blur(0px)',
-      pointerEvents: isVisible ? 'auto' : 'none',
-    }"
+    :style="rootStyle"
     @mouseenter="isHovering = true"
     @mouseleave="isHovering = false"
   >
@@ -114,9 +110,34 @@ const state = reactive({
   isCenter: false,
   lyricType: "line" as "line" | "word",
   showWhenPaused: true,
+  themeColor: null as { light: string; dark: string } | null,
 });
 
 const isVisible = computed(() => state.isPlaying || state.showWhenPaused);
+
+const rootStyle = computed<CSSProperties>(() => {
+  const style: CSSProperties = {
+    opacity: isVisible.value ? state.opacity : 0,
+    filter: state.opacity === 0 || !isVisible.value ? "blur(10px)" : "blur(0px)",
+    pointerEvents: isVisible.value ? "auto" : "none",
+  };
+
+  if (state.themeColor) {
+    // If state.isDark (Taskbar is light), use light primary color?
+    // Wait, state.isDark means "Taskbar is Dark" or "Should use Dark Colors"?
+    // In main window, isDark means "Dark Mode is ON" (Background is Dark).
+    // In taskbar window, ipc sends "isDark" based on nativeTheme.shouldUseDarkColors.
+    // If nativeTheme.shouldUseDarkColors is true -> Taskbar is Dark -> Text should be Light.
+    // If nativeTheme.shouldUseDarkColors is false -> Taskbar is Light -> Text should be Dark.
+    // Material Design:
+    // dark.primary is Light Red (for Dark Background).
+    // light.primary is Dark Red (for Light Background).
+    // So if state.isDark (Dark Background), use dark.primary.
+    style.color = state.isDark ? state.themeColor.dark : state.themeColor.light;
+  }
+
+  return style;
+});
 
 const lyricFontFamily = computed(() => {
   const font =
@@ -432,6 +453,10 @@ onMounted(() => {
 
   ipc.on("taskbar:update-theme", (_, { isDark }: { isDark: boolean }) => {
     state.isDark = isDark;
+  });
+
+  ipc.on("taskbar:update-theme-color", (_, color: { light: string; dark: string } | null) => {
+    state.themeColor = color;
   });
 
   ipc.on("taskbar:update-layout", (_, { isCenter }: { isCenter: boolean }) => {

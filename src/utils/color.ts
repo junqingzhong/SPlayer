@@ -67,7 +67,7 @@ const getThemeSchema = (theme: Theme, variant: keyof Theme["palettes"] = "second
  * @param color 颜色 Hex
  * @param variant 变体名称
  */
-const getThemeFromColor = (color: string, variant: keyof Theme["palettes"] = "secondary") => {
+export const getThemeFromColor = (color: string, variant: keyof Theme["palettes"] = "secondary") => {
   const argb = argbFromHex(color);
   const theme = themeFromSourceColor(argb);
   return getThemeSchema(theme, variant);
