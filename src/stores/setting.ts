@@ -64,6 +64,8 @@ export interface SettingState {
   useOnlineService: boolean;
   /** 启动时检查更新 */
   checkUpdateOnStart: boolean;
+  /** 更新通道 */
+  updateChannel: "stable" | "nightly";
   /** 隐藏 VIP 标签 */
   hideVipTag: boolean;
   /** 歌词字体大小 */
@@ -505,6 +507,7 @@ export const useSettingStore = defineStore("setting", {
     taskbarLyricSingleLineMode: false,
     taskbarLyricFontWeight: 400,
     checkUpdateOnStart: true,
+    updateChannel: "stable",
     preventSleep: false,
     useKeepAlive: true,
     songLevel: "exhigh",
