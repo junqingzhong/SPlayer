@@ -1,5 +1,6 @@
 import { cloneDeep } from "lodash-es";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
+import { extractLyricContent } from "./qrc-parser";
 import { parseLrc } from "../parseLrc";
 
 /**
@@ -309,14 +310,8 @@ const parseQRCContent = (
   endTime: number;
   words: Array<{ word: string; startTime: number; endTime: number }>;
 }> => {
-  // 提取 XML 属性 LyricContent
-  // 使用正则提取，兼容空格
-  const lyricContentMatch = /LyricContent\s*=\s*"([^"]*)"/.exec(rawContent);
-  let content = rawContent;
-  
-  if (lyricContentMatch && lyricContentMatch[1]) {
-      content = lyricContentMatch[1];
-  }
+  // 使用策略模式提取 LyricContent (自动适配 Browser/Node 环境)
+  const content = extractLyricContent(rawContent) || rawContent;
 
   const result: Array<{
     startTime: number;
