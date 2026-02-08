@@ -400,24 +400,6 @@ class PlayerController {
       const musicStore = useMusicStore();
       if (musicStore.playSong.type === "streaming") return;
       const statusStore = useStatusStore();
-
-      // 获取封面数据
-      const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", path);
-      if (coverData) {
-        // 使用 Data URL 替代 Blob URL，解决跨窗口/进程引用失效导致封面闪烁消失的问题
-        const blob = new Blob([coverData.data], { type: coverData.format });
-        const reader = new FileReader();
-        const dataUrl = await new Promise<string>((resolve, reject) => {
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.onabort = reject;
-          reader.readAsDataURL(blob);
-        });
-        musicStore.playSong.cover = dataUrl;
-      } else {
-        musicStore.playSong.cover = "/images/song.jpg?asset";
-      }
-
       // 获取元数据
       const infoData = await window.electron.ipcRenderer.invoke("get-music-metadata", path);
       statusStore.songQuality = handleSongQuality(infoData.format?.bitrate ?? 0, "local");
@@ -425,7 +407,7 @@ class PlayerController {
       getCoverColor(musicStore.playSong.cover);
       // 更新媒体会话
       mediaSessionManager.updateMetadata();
-      // 更新任务栏歌词（本地文件封面是 Data URL，直接使用）
+      // 更新任务栏歌词
       const { name, artist } = getPlayerInfoObj() || {};
       playerIpc.sendTaskbarMetadata({
         title: name || "",
