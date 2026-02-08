@@ -11,7 +11,7 @@ const domParser: QRCParserFn = (xmlStr) => {
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlStr, "text/xml");
-    
+
     // 检查解析错误
     const parseError = doc.querySelector("parsererror");
     if (parseError) {
@@ -35,7 +35,5 @@ const regexParser: QRCParserFn = (xmlStr) => {
 };
 
 // 避免每次调用时的运行时检查
-export const extractLyricContent: QRCParserFn = 
-  (typeof DOMParser !== "undefined") 
-    ? domParser 
-    : regexParser;
+export const extractLyricContent: QRCParserFn =
+  typeof DOMParser !== "undefined" ? domParser : regexParser;
