@@ -23,7 +23,7 @@
             </div>
             <!-- 标题 (封面 + 信息) -->
             <div class="title">
-              <s-image :src="getCover(item.song)" class="cover" />
+              <s-image :src="item.song.coverSize?.s || item.song.cover" class="cover" />
               <div class="info">
                 <div class="name">
                   <n-text class="name-text" ellipsis>{{ item.song.name }}</n-text>
@@ -100,7 +100,6 @@
 <script setup lang="ts">
 import { useDataStore } from "@/stores";
 import { useDownloadManager } from "@/core/resource/DownloadManager";
-import type { SongType, CustomDownloadType } from "@/types/main";
 
 const dataStore = useDataStore();
 const downloadManager = useDownloadManager();
@@ -116,14 +115,7 @@ const sortedDownloadingSongs = computed(() => {
   });
 });
 
-const getCover = (song: SongType | CustomDownloadType) => {
-  if ("coverSize" in song && song.coverSize?.s) {
-    return song.coverSize.s;
-  }
-  return song.cover;
-};
-
-const handleRemoveDownload = (id: number | string) => {
+const handleRemoveDownload = (id: number) => {
   downloadManager.removeDownload(id);
   window.$message.success("已删除下载任务");
 };
