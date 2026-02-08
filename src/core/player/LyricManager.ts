@@ -105,21 +105,6 @@ class LyricManager {
   }
 
   /**
-   * 歌词内容对齐
-   * @param lyrics 歌词数据
-   * @param otherLyrics 其他歌词数据
-   * @param key 对齐类型
-   * @returns 对齐后的歌词数据
-   */
-  private alignLyrics(
-    lyrics: LyricLine[],
-    otherLyrics: LyricLine[],
-    key: "translatedLyric" | "romanLyric",
-  ): LyricLine[] {
-    return alignLyrics(lyrics, otherLyrics, key);
-  }
-
-  /**
    * 对齐本地歌词
    * @param lyricData 本地歌词数据
    * @returns 对齐后的本地歌词数据
@@ -222,7 +207,7 @@ class LyricManager {
     const result: SongLyric = { lrcData: [], yrcData: [] };
     // 解析 QRC 逐字歌词
     if (data.qrc) {
-      const qrcLines = this.parseQRCLyric(data.qrc, data.trans, data.roma);
+      const qrcLines = parseQRCLyric(data.qrc, data.trans, data.roma);
       if (qrcLines.length > 0) {
         result.yrcData = qrcLines;
       }
@@ -239,14 +224,14 @@ class LyricManager {
             const text = line.words.map((w) => w.word).join("");
             return !text.includes("//") && !text.includes("作品的著作权");
           });
-          lrcLines = this.alignLyrics(lrcLines, transLines, "translatedLyric");
+          lrcLines = alignLyrics(lrcLines, transLines, "translatedLyric");
         }
       }
       // 处理罗马音
       if (data.roma) {
         const romaLines = parseLrc(data.roma);
         if (romaLines?.length) {
-          lrcLines = this.alignLyrics(lrcLines, romaLines, "romanLyric");
+          lrcLines = alignLyrics(lrcLines, romaLines, "romanLyric");
         }
       }
       if (lrcLines.length > 0) {
@@ -258,17 +243,6 @@ class LyricManager {
       return null;
     }
     return result;
-  }
-
-  /**
-   * 解析 QQ 音乐 QRC 格式歌词
-   * @param qrcContent QRC 原始内容
-   * @param trans 翻译歌词
-   * @param roma 罗马音歌词（QRC 格式）
-   * @returns LyricLine 数组
-   */
-  private parseQRCLyric(qrcContent: string, trans?: string, roma?: string): LyricLine[] {
-    return parseQRCLyric(qrcContent, trans, roma);
   }
 
   /**
@@ -285,11 +259,11 @@ class LyricManager {
   }
 
   /**
-   * 处理在线歌词 (内部实现)
-   * @param id 歌曲 ID
+   * 处理在线歌词
+   * @param song 歌曲对象
    * @returns 歌词数据和元数据
    */
-  private async _fetchOnlineLyric(song: SongType): Promise<LyricFetchResult> {
+  private async fetchOnlineLyric(song: SongType): Promise<LyricFetchResult> {
     const settingStore = useSettingStore();
     const id = song.type === "radio" ? song.dj?.id : song.id;
     if (!id)
@@ -385,20 +359,20 @@ class LyricManager {
         lrcLines = parseLrc(data.lrc.lyric) || [];
         // 普通歌词翻译
         if (data?.tlyric?.lyric)
-          lrcLines = this.alignLyrics(lrcLines, parseLrc(data.tlyric.lyric), "translatedLyric");
+          lrcLines = alignLyrics(lrcLines, parseLrc(data.tlyric.lyric), "translatedLyric");
         // 普通歌词音译
         if (data?.romalrc?.lyric)
-          lrcLines = this.alignLyrics(lrcLines, parseLrc(data.romalrc.lyric), "romanLyric");
+          lrcLines = alignLyrics(lrcLines, parseLrc(data.romalrc.lyric), "romanLyric");
       }
       // 逐字歌词
       if (data?.yrc?.lyric) {
         yrcLines = parseYrc(data.yrc.lyric) || [];
         // 逐字歌词翻译
         if (data?.ytlrc?.lyric)
-          yrcLines = this.alignLyrics(yrcLines, parseLrc(data.ytlrc.lyric), "translatedLyric");
+          yrcLines = alignLyrics(yrcLines, parseLrc(data.ytlrc.lyric), "translatedLyric");
         // 逐字歌词音译
         if (data?.yromalrc?.lyric)
-          yrcLines = this.alignLyrics(yrcLines, parseLrc(data.yromalrc.lyric), "romanLyric");
+          yrcLines = alignLyrics(yrcLines, parseLrc(data.yromalrc.lyric), "romanLyric");
       }
       if (lrcLines.length) result.lrcData = lrcLines;
       // 如果没有 TTML 且没有 QM YRC，则采用 网易云 YRC
@@ -450,29 +424,27 @@ class LyricManager {
 
   /**
    * 处理本地歌词
-   * @param path 本地歌词路径
+   * @param song 歌曲对象
    * @returns 歌词数据和元数据
    */
-  private async _fetchLocalLyric(path: string): Promise<LyricFetchResult> {
+  private async fetchLocalLyric(song: SongType): Promise<LyricFetchResult> {
     const defaultResult: LyricFetchResult = {
       data: { lrcData: [], yrcData: [] },
       meta: { usingTTMLLyric: false, usingQRCLyric: false },
     };
+    if (!song.path) return defaultResult;
 
     try {
-      const musicStore = useMusicStore();
       const settingStore = useSettingStore();
       const { lyric, format }: { lyric?: string; format?: "lrc" | "ttml" | "yrc" } =
-        await window.electron.ipcRenderer.invoke("get-music-lyric", path);
-
+        await window.electron.ipcRenderer.invoke("get-music-lyric", song.path);
       if (!lyric) return defaultResult;
-
       // YRC 直接解析
       if (format === "yrc") {
         let lines: LyricLine[] = [];
         // 检测是否为 XML 格式 (QRC)
         if (lyric.trim().startsWith("<") || lyric.includes("<QrcInfos>")) {
-          lines = this.parseQRCLyric(lyric);
+          lines = parseQRCLyric(lyric);
         } else {
           lines = parseYrc(lyric) || [];
         }
@@ -481,7 +453,6 @@ class LyricManager {
           meta: { usingTTMLLyric: false, usingQRCLyric: false },
         };
       }
-
       // TTML 直接返回
       if (format === "ttml") {
         const sorted = this.cleanTTMLTranslations(lyric);
@@ -492,10 +463,8 @@ class LyricManager {
           meta: { usingTTMLLyric: true, usingQRCLyric: false },
         };
       }
-
-      // 解析本地歌词（智能识别格式）
+      // 解析本地歌词
       const { format: lrcFormat, lines: parsedLines } = parseSmartLrc(lyric);
-
       // 如果是逐字格式，直接作为 yrcData
       if (isWordLevelFormat(lrcFormat)) {
         return {
@@ -503,15 +472,12 @@ class LyricManager {
           meta: { usingTTMLLyric: false, usingQRCLyric: false },
         };
       }
-
-      // 普通格式，继续原有逻辑
+      // 普通格式
       let aligned = this.alignLocalLyrics({ lrcData: parsedLines, yrcData: [] });
       let usingQRCLyric = false;
-
       // 如果开启了本地歌曲 QQ 音乐匹配，尝试获取逐字歌词
-      if (settingStore.localLyricQQMusicMatch && musicStore.playSong) {
-        // 注意：这里可能会产生递归调用风险，但 fetchQQMusicLyric 是独立的
-        const qqLyric = await this.fetchQQMusicLyric(musicStore.playSong);
+      if (settingStore.localLyricQQMusicMatch && song) {
+        const qqLyric = await this.fetchQQMusicLyric(song);
         if (qqLyric && qqLyric.yrcData.length > 0) {
           // 使用 QQ 音乐的逐字歌词，但保留本地歌词作为 lrcData
           aligned = {
@@ -521,7 +487,6 @@ class LyricManager {
           usingQRCLyric = true;
         }
       }
-
       return {
         data: aligned,
         meta: { usingTTMLLyric: false, usingQRCLyric },
@@ -607,7 +572,7 @@ class LyricManager {
    * @param id 歌曲 ID
    * @returns 歌词数据和元数据
    */
-  private async _fetchLocalOverrideLyric(id: number): Promise<LyricFetchResult> {
+  private async fetchLocalOverrideLyric(id: number): Promise<LyricFetchResult> {
     const settingStore = useSettingStore();
     const { localLyricPath } = settingStore;
     const defaultResult: LyricFetchResult = {
@@ -881,14 +846,9 @@ class LyricManager {
   /**
    * 处理流媒体歌词
    * @param song 歌曲对象
-   * @returns 歌词数据
-   */
-  /**
-   * 处理流媒体歌词 (内部实现)
-   * @param song 歌曲对象
    * @returns 歌词数据和元数据
    */
-  private async _fetchStreamingLyric(song: SongType): Promise<LyricFetchResult> {
+  private async fetchStreamingLyric(song: SongType): Promise<LyricFetchResult> {
     const result: SongLyric = { lrcData: [], yrcData: [] };
     const defaultMeta = { usingTTMLLyric: false, usingQRCLyric: false };
 
@@ -977,25 +937,25 @@ class LyricManager {
 
     try {
       if (isStreaming) {
-        fetchResult = await this._fetchStreamingLyric(song);
+        fetchResult = await this.fetchStreamingLyric(song);
       } else {
         // 检查本地覆盖
-        const overrideResult = await this._fetchLocalOverrideLyric(song.id);
+        const overrideResult = await this.fetchLocalOverrideLyric(song.id);
         if (!isEmpty(overrideResult.data.lrcData) || !isEmpty(overrideResult.data.yrcData)) {
           // 对齐
           overrideResult.data = this.alignLocalLyrics(overrideResult.data);
           fetchResult = overrideResult;
         } else if (song.path) {
           // 本地文件
-          fetchResult = await this._fetchLocalLyric(song.path);
+          fetchResult = await this.fetchLocalLyric(song);
         } else {
           // 在线获取 (已包含排除和变体处理)
-          fetchResult = await this._fetchOnlineLyric(song);
+          fetchResult = await this.fetchOnlineLyric(song);
           return fetchResult;
         }
       }
 
-      // 对于非 _fetchOnlineLyric 的结果，需要统一处理排除和变体
+      // 对于非 fetchOnlineLyric 的结果，需要统一处理排除和变体
       if (settingStore.enableExcludeLyricsLocal) {
         fetchResult.data = this.handleLyricExclude(fetchResult.data, song);
       }
