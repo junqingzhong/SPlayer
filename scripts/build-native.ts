@@ -1,8 +1,8 @@
+import dotenv from "dotenv";
 import { execSync } from "node:child_process";
 import os from "node:os";
-import process from "node:process";
-import dotenv from "dotenv";
 import path from "node:path";
+import process from "node:process";
 
 const isRustAvailable = () => {
   try {
@@ -37,18 +37,22 @@ console.log(`[BuildNative] 当前构建目标: ${process.platform}`);
 try {
   console.log("[BuildNative] 开始构建原生模块...");
 
-  execSync("pnpm --filter external-media-integration build", {
+  const args = process.argv.slice(2);
+  const isDev = args.includes("--dev");
+  const buildCommand = isDev ? "build:debug" : "build";
+
+  execSync(`pnpm --filter external-media-integration ${buildCommand}`, {
     stdio: "inherit",
   });
 
-  console.log("[BuildNative] 构建 tools 原生模块...");
-  execSync("pnpm --filter tools build", {
+  console.log(`[BuildNative] 构建 tools 原生模块 (${buildCommand})...`);
+  execSync(`pnpm --filter tools ${buildCommand}`, {
     stdio: "inherit",
   });
 
   if (isWindows) {
-    console.log("[BuildNative] 构建任务栏歌词原生模块...");
-    execSync("pnpm --filter taskbar-lyric build", {
+    console.log(`[BuildNative] 构建任务栏歌词原生模块 (${buildCommand})...`);
+    execSync(`pnpm --filter taskbar-lyric ${buildCommand}`, {
       stdio: "inherit",
     });
   }
