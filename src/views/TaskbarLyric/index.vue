@@ -123,16 +123,6 @@ const rootStyle = computed<CSSProperties>(() => {
   };
 
   if (state.themeColor) {
-    // If state.isDark (Taskbar is light), use light primary color?
-    // Wait, state.isDark means "Taskbar is Dark" or "Should use Dark Colors"?
-    // In main window, isDark means "Dark Mode is ON" (Background is Dark).
-    // In taskbar window, ipc sends "isDark" based on nativeTheme.shouldUseDarkColors.
-    // If nativeTheme.shouldUseDarkColors is true -> Taskbar is Dark -> Text should be Light.
-    // If nativeTheme.shouldUseDarkColors is false -> Taskbar is Light -> Text should be Dark.
-    // Material Design:
-    // dark.primary is Light Red (for Dark Background).
-    // light.primary is Dark Red (for Light Background).
-    // So if state.isDark (Dark Background), use dark.primary.
     style.color = state.isDark ? state.themeColor.dark : state.themeColor.light;
   }
 
