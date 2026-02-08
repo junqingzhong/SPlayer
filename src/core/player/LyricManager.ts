@@ -634,12 +634,16 @@ class LyricManager {
   /**
    * 处理歌词排除
    * @param lyricData 歌词数据
-   * @param targetSong 目标歌曲（默认为当前播放歌曲）
+   * @param targetSong 目标歌曲
+   * @param usingTTMLLyric 是否使用 TTML 歌词
    * @returns 处理后的歌词数据
    */
-  private handleLyricExclude(lyricData: SongLyric, targetSong?: SongType): SongLyric {
+  private handleLyricExclude(
+    lyricData: SongLyric,
+    targetSong?: SongType,
+    usingTTMLLyric?: boolean,
+  ): SongLyric {
     const settingStore = useSettingStore();
-    const statusStore = useStatusStore();
     const musicStore = useMusicStore();
 
     const { enableExcludeLyrics, excludeLyricsUserKeywords, excludeLyricsUserRegexes } =
@@ -683,7 +687,9 @@ class LyricManager {
     const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
     let yrcData = lyricData.yrcData || [];
 
-    if (!statusStore.usingTTMLLyric || settingStore.enableExcludeLyricsTTML) {
+    // usingTTMLLyric 未传入时从 lyricData 推断（预加载场景）
+    const isTTML = usingTTMLLyric ?? false;
+    if (!isTTML || settingStore.enableExcludeLyricsTTML) {
       yrcData = stripLyricMetadata(yrcData, options);
     }
 
@@ -950,7 +956,11 @@ class LyricManager {
       }
       // 后处理：元数据排除
       if (isLocal ? settingStore.enableExcludeLyricsLocal : true) {
-        fetchResult.data = this.handleLyricExclude(fetchResult.data, song);
+        fetchResult.data = this.handleLyricExclude(
+          fetchResult.data,
+          song,
+          fetchResult.meta.usingTTMLLyric,
+        );
       }
       // 后处理：简繁转换
       fetchResult.data = await this.applyChineseVariant(fetchResult.data);

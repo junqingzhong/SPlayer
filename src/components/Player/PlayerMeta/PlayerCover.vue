@@ -53,6 +53,7 @@
 <script setup lang="ts">
 import { songDynamicCover } from "@/api/song";
 import { useMobile } from "@/composables/useMobile";
+import { useBlobURLManager } from "@/core/resource/BlobURLManager";
 import { useSettingStore, useStatusStore, useMusicStore } from "@/stores";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
@@ -102,9 +103,15 @@ const { start: dynamicCoverStart, stop: dynamicCoverStop } = useTimeoutFn(
 
 // 获取本地歌曲高清封面
 const getLocalCover = async () => {
-  // 非本地歌曲或非 Electron 环境，清理并返回
   if (!isElectron || !musicStore.playSong.path || musicStore.playSong.type === "streaming") {
     cleanupLocalCover();
+    return;
+  }
+  // 先检查blob中是否存在
+  const blobURLManager = useBlobURLManager();
+  const blobURL = blobURLManager.getBlobURL(musicStore.playSong.path);
+  if (blobURL) {
+    localCoverDataUrl.value = blobURL;
     return;
   }
   try {

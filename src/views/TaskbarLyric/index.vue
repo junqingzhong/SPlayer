@@ -6,9 +6,9 @@
     @mouseenter="isHovering = true"
     @mouseleave="isHovering = false"
   >
-    <div class="cover-wrapper" v-if="state.cover && settingStore.taskbarLyricShowCover">
+    <div class="cover-wrapper" v-if="coverSrc && settingStore.taskbarLyricShowCover">
       <Transition name="cross-fade">
-        <img :key="state.cover" :src="state.cover" class="cover" alt="cover" />
+        <img :key="coverSrc" :src="coverSrc" class="cover" alt="cover" @error="onCoverError" />
       </Transition>
     </div>
 
@@ -114,6 +114,25 @@ const state = reactive({
 });
 
 const isVisible = computed(() => state.isPlaying || state.showWhenPaused);
+
+// 默认封面图片
+const DEFAULT_COVER = "/images/song.jpg?asset";
+
+// 封面加载失败标记
+const coverLoadFailed = ref(false);
+
+// 计算实际显示的封面 URL
+const coverSrc = computed(() => {
+  if (coverLoadFailed.value || !state.cover) {
+    return DEFAULT_COVER;
+  }
+  return state.cover;
+});
+
+// 封面加载失败处理
+const onCoverError = () => {
+  coverLoadFailed.value = true;
+};
 
 const rootStyle = computed<CSSProperties>(() => {
   const style: CSSProperties = {
@@ -410,6 +429,8 @@ onMounted(() => {
   ipc.on("taskbar:update-metadata", (_, { title, artist, cover }: TaskbarMetadataPayload) => {
     if (title !== undefined) state.title = title;
     if (artist !== undefined) state.artist = artist;
+    // 重置封面加载失败标记
+    coverLoadFailed.value = false;
     state.cover = cover || "";
     state.lyricIndex = -1;
     jumpCount.value = 0;
