@@ -187,7 +187,7 @@ class PlayerController {
       }
       // 更新任务栏歌词窗口的元数据
       const { name, artist } = getPlayerInfoObj() || {};
-      const coverUrl = playSongData.cover || "";
+      const coverUrl = playSongData.coverSize?.s || playSongData.cover || "";
       playerIpc.sendTaskbarMetadata({
         title: name || "",
         artist: artist || "",
@@ -425,7 +425,7 @@ class PlayerController {
       getCoverColor(musicStore.playSong.cover);
       // 更新媒体会话
       mediaSessionManager.updateMetadata();
-      // 更新任务栏歌词
+      // 更新任务栏歌词（本地文件封面是 Data URL，直接使用）
       const { name, artist } = getPlayerInfoObj() || {};
       playerIpc.sendTaskbarMetadata({
         title: name || "",

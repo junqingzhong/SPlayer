@@ -61,7 +61,7 @@ const initIpc = () => {
       const statusStore = useStatusStore();
       const settingStore = useSettingStore();
       const { name, artist } = getPlayerInfoObj() || {};
-      const cover = musicStore.playSong?.cover || "";
+      const cover = musicStore.getSongCover("s") || "";
 
       playerIpc.sendTaskbarMetadata({
         title: name || "",
