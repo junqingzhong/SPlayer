@@ -405,19 +405,12 @@ class LyricManager {
       }
       await Promise.all([adoptTTML(), adoptLRC()]);
     }
-
     // 设置元数据状态
     meta.usingTTMLLyric = ttmlAdopted;
     meta.usingQRCLyric = qqMusicAdopted && !ttmlAdopted;
 
-    // 处理排除
-    let processedData = result;
-    if (settingStore.enableExcludeLyricsLocal) {
-      processedData = this.handleLyricExclude(result, song);
-    }
-
     return {
-      data: await this.applyChineseVariant(processedData),
+      data: result,
       meta,
     };
   }
@@ -936,6 +929,8 @@ class LyricManager {
     };
 
     try {
+      // 判断歌词来源
+      const isLocal = Boolean(song.path) || false;
       if (isStreaming) {
         fetchResult = await this.fetchStreamingLyric(song);
       } else {
@@ -949,16 +944,15 @@ class LyricManager {
           // 本地文件
           fetchResult = await this.fetchLocalLyric(song);
         } else {
-          // 在线获取 (已包含排除和变体处理)
+          // 在线获取
           fetchResult = await this.fetchOnlineLyric(song);
-          return fetchResult;
         }
       }
-
-      // 对于非 fetchOnlineLyric 的结果，需要统一处理排除和变体
-      if (settingStore.enableExcludeLyricsLocal) {
+      // 后处理：元数据排除
+      if (isLocal ? settingStore.enableExcludeLyricsLocal : true) {
         fetchResult.data = this.handleLyricExclude(fetchResult.data, song);
       }
+      // 后处理：简繁转换
       fetchResult.data = await this.applyChineseVariant(fetchResult.data);
 
       return fetchResult;
