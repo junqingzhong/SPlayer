@@ -862,6 +862,15 @@ class PlayerController {
   }
 
   /**
+   * 快进/快退指定时间
+   * @param delta 时间增量 (ms)，正数快进，负数快退
+   */
+  public seekBy(delta: number) {
+    const currentTime = this.getSeek();
+    this.setSeek(currentTime + delta);
+  }
+
+  /**
    * 设置音量
    * @param actions 音量值或滚动事件
    */

@@ -167,8 +167,15 @@ watch(lyricPlayerRef, (player) => {
         display: var(--display-count-down-show);
       }
     }
-    @media (max-width: 500px) {
+    @media (max-width: 990px) {
+      padding: 0;
       margin-left: 0;
+      .amll-lyric-player {
+        > div {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+      }
     }
   }
 

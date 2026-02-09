@@ -193,6 +193,12 @@ const keyDownEvent = debounce((event: KeyboardEvent) => {
         case "playNext":
           player.nextOrPrev("next");
           break;
+        case "seekForward":
+          player.seekBy(5000);
+          break;
+        case "seekBackward":
+          player.seekBy(-5000);
+          break;
         case "volumeUp":
           player.setVolume("up");
           break;

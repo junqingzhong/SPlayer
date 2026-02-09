@@ -36,6 +36,9 @@ const initIpc = () => {
     window.electron.ipcRenderer.on("volumeUp", () => player.setVolume("up"));
     // 音量减
     window.electron.ipcRenderer.on("volumeDown", () => player.setVolume("down"));
+    // 快进 / 快退
+    window.electron.ipcRenderer.on("seekForward", () => player.seekBy(5000));
+    window.electron.ipcRenderer.on("seekBackward", () => player.seekBy(-5000));
     // 播放模式切换
     window.electron.ipcRenderer.on("changeRepeat", (_, mode) => player.toggleRepeat(mode));
     window.electron.ipcRenderer.on("toggleShuffle", (_, mode) => player.toggleShuffle(mode));

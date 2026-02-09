@@ -239,14 +239,15 @@ onBeforeUnmount(() => {
   }
   &.record {
     position: relative;
-    width: 50vh;
+    max-width: 46vh;
+    margin-bottom: 4%;
     .pointer {
       position: absolute;
-      width: 14vh;
-      left: calc(50% - 1.8vh);
-      top: -11.5vh;
+      width: 30%;
+      left: 46%;
+      top: -22%;
       transform: rotate(-20deg);
-      transform-origin: 1.8vh 1.8vh;
+      transform-origin: 10% 10%;
       z-index: 2;
       transition: transform 0.3s;
     }
@@ -322,9 +323,11 @@ onBeforeUnmount(() => {
           #555
         );
       background-clip: content-box;
-      width: 46vh;
-      height: 46vh;
-      min-width: 46vh;
+      // width: 46vh;
+      // height: 46vh;
+      // min-width: 46vh;
+      width: 100%;
+      height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -356,7 +359,7 @@ onBeforeUnmount(() => {
   }
   &.playing {
     .pointer {
-      transform: rotate(0);
+      transform: rotate(-8deg);
     }
     .cover-img {
       animation-play-state: running;
