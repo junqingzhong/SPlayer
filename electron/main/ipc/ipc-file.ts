@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain } from "electron";
+import { BrowserWindow, ipcMain, WebContents } from "electron";
 import { LocalMusicService } from "../services/LocalMusicService";
 import { MusicFileService } from "../services/MusicFileService";
 import { DownloadService } from "../services/DownloadService";
@@ -12,6 +12,17 @@ const initFileIpc = (): void => {
   const musicFileService = new MusicFileService();
   const downloadService = new DownloadService();
   const fileService = new FileService();
+
+  // Map to track which WebContents requested which download
+  const downloadMap = new Map<number, WebContents>();
+
+  // Listen for progress events from DownloadService
+  downloadService.on("progress", (data) => {
+    const sender = downloadMap.get(data.id);
+    if (sender && !sender.isDestroyed()) {
+      sender.send("download-progress", data);
+    }
+  });
 
   // 检查文件是否存在
   ipcMain.handle("file-exists", async (_, path: string) => {
@@ -124,7 +135,18 @@ const initFileIpc = (): void => {
       ...options,
     };
 
-    return downloadService.downloadFile(url, downloadOptions, win);
+    const downloadId = downloadOptions.songData?.id;
+    if (downloadId) {
+      downloadMap.set(downloadId, event.sender);
+    }
+
+    try {
+      return await downloadService.downloadFile(url, downloadOptions);
+    } finally {
+      if (downloadId) {
+        downloadMap.delete(downloadId);
+      }
+    }
   });
 
   // 取消下载

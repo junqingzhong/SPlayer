@@ -1,6 +1,7 @@
-import { BrowserWindow } from "electron";
-import { mkdir, access, writeFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { app, net } from "electron";
+import { mkdir, access, writeFile, unlink } from "node:fs/promises";
+import { join, resolve, extname } from "node:path";
+import { EventEmitter } from "events";
 import { loadNativeModule } from "../utils/native-loader";
 import { useStore } from "../store";
 import { ipcLog } from "../logger";
@@ -10,9 +11,9 @@ type toolModule = typeof import("@native/tools");
 const tools: toolModule = loadNativeModule("tools.node", "tools");
 
 export interface DownloadOptions {
-  fileName: string;
-  fileType: string;
-  path: string;
+  fileName?: string;
+  fileType?: string;
+  path?: string;
   downloadMeta?: boolean;
   downloadCover?: boolean;
   downloadLyric?: boolean;
@@ -32,18 +33,27 @@ export interface DownloadProgress {
   totalBytes: number;
 }
 
-export class DownloadService {
+export class DownloadService extends EventEmitter {
   private activeDownloads = new Map<number, any>();
 
-  constructor() {}
+  constructor() {
+    super();
+  }
 
   async downloadFile(
     url: string,
     options: DownloadOptions,
-    win: BrowserWindow,
   ): Promise<{ status: "success" | "skipped" | "error" | "cancelled"; message?: string }> {
     try {
-      const { path, fileName, fileType, skipIfExist } = options;
+      // Apply defaults
+      const defaults = {
+        fileName: "未知文件名",
+        fileType: "mp3",
+        path: app.getPath("downloads"),
+      };
+      const finalOptions = { ...defaults, ...options };
+      const { path, fileName, fileType, skipIfExist } = finalOptions;
+
       const downloadPath = resolve(path);
       const finalFilePath = fileType
         ? join(downloadPath, `${fileName}.${fileType}`)
@@ -66,15 +76,27 @@ export class DownloadService {
         }
       }
 
-      // 3. 准备元数据
-      const metadata = this.prepareMetadata(options);
+      // 3. 执行纯下载
+      const downloadId = finalOptions.songData?.id || 0;
+      await this.downloadRaw(url, finalFilePath, finalOptions, downloadId);
 
-      // 4. 执行下载
-      const downloadId = options.songData?.id || 0;
-      await this.executeDownload(url, finalFilePath, metadata, options, downloadId, win);
+      // 4. 处理元数据
+      if (finalOptions.downloadMeta && finalOptions.songData) {
+        try {
+          await this.processMetadata(finalFilePath, finalOptions);
+        } catch (e) {
+          ipcLog.error("Metadata processing failed:", e);
+        }
+      }
 
-      // 5. 后处理（如保存歌词文件）
-      await this.postProcess(downloadPath, options);
+      // 5. 保存歌词
+      if (finalOptions.downloadLyric && finalOptions.lyric && finalOptions.saveMetaFile) {
+        try {
+          await this.saveLyric(downloadPath, fileName, finalOptions.lyric);
+        } catch (e) {
+          ipcLog.error("Lyric saving failed:", e);
+        }
+      }
 
       return { status: "success" };
     } catch (error: any) {
@@ -112,13 +134,11 @@ export class DownloadService {
     };
   }
 
-  private async executeDownload(
+  private async downloadRaw(
     url: string,
     filePath: string,
-    metadata: SongMetadata | null,
     options: DownloadOptions,
     downloadId: number,
-    win: BrowserWindow
   ) {
     const store = useStore();
     const threadCount = options.threadCount || (store.get("downloadThreadCount") as number) || 8;
@@ -140,10 +160,10 @@ export class DownloadService {
       await task.download(
         finalUrl,
         filePath,
-        metadata,
+        null, // No metadata here
         threadCount,
         options.referer,
-        (data: any) => this.handleProgress(data, downloadId, win),
+        (data: any) => this.handleProgress(data, downloadId),
         enableHttp2,
       );
     } finally {
@@ -151,12 +171,69 @@ export class DownloadService {
     }
   }
 
-  private async postProcess(dirPath: string, options: DownloadOptions) {
-    const { lyric, saveMetaFile, downloadLyric, fileName } = options;
-    if (lyric && saveMetaFile && downloadLyric) {
-      const lrcPath = join(dirPath, `${fileName}.lrc`);
-      await writeFile(lrcPath, lyric, "utf-8");
+  private async processMetadata(filePath: string, options: DownloadOptions) {
+    const metadata = this.prepareMetadata(options);
+    if (!metadata) return;
+
+    let coverPath: string | undefined;
+
+    if (metadata.coverUrl) {
+      try {
+        const tempDir = app.getPath("temp");
+        // Use a simple name or random
+        const tempCoverPath = join(
+          tempDir,
+          `cover-${Date.now()}-${Math.random().toString(36).substr(2, 5)}${extname(metadata.coverUrl) || ".jpg"}`,
+        );
+        await this.downloadCover(metadata.coverUrl, tempCoverPath);
+        coverPath = tempCoverPath;
+      } catch (e) {
+        ipcLog.error("Failed to download cover:", e);
+      }
     }
+
+    try {
+      await tools.writeMusicMetadata(filePath, metadata, coverPath);
+    } finally {
+      if (coverPath) {
+        try {
+          await unlink(coverPath);
+        } catch {
+          // Ignore error if file deletion fails
+        }
+      }
+    }
+  }
+
+  private async saveLyric(dirPath: string, fileName: string, lyric: string) {
+    const lrcPath = join(dirPath, `${fileName}.lrc`);
+    await writeFile(lrcPath, lyric, "utf-8");
+  }
+
+  private async downloadCover(url: string, targetPath: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = net.request(url);
+      request.on("response", (response) => {
+        if (response.statusCode !== 200) {
+          reject(new Error(`Failed to download cover: ${response.statusCode}`));
+          return;
+        }
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", async () => {
+          try {
+            const buffer = Buffer.concat(chunks);
+            await writeFile(targetPath, buffer);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        });
+        response.on("error", (err) => reject(err));
+      });
+      request.on("error", (err) => reject(err));
+      request.end();
+    });
   }
 
   cancelDownload(songId: number): boolean {
@@ -181,7 +258,7 @@ export class DownloadService {
     return "未知艺术家";
   }
 
-  private handleProgress(progressData: any, id: number, win: BrowserWindow) {
+  private handleProgress(progressData: any, id: number) {
     try {
       if (!progressData) return;
 
@@ -199,7 +276,7 @@ export class DownloadService {
       const transferredBytes = progressData.transferredBytes ?? progressData.transferred_bytes ?? 0;
       const totalBytes = progressData.totalBytes ?? progressData.total_bytes ?? 0;
 
-      win.webContents.send("download-progress", {
+      this.emit("progress", {
         id,
         percent,
         transferredBytes,
