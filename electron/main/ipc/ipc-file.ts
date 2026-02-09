@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, WebContents } from "electron";
+import { BrowserWindow, ipcMain } from "electron";
 import { LocalMusicService } from "../services/LocalMusicService";
 import { MusicFileService } from "../services/MusicFileService";
 import { DownloadService } from "../services/DownloadService";
@@ -13,15 +13,14 @@ const initFileIpc = (): void => {
   const downloadService = new DownloadService();
   const fileService = new FileService();
 
-  // Map to track which WebContents requested which download
-  const downloadMap = new Map<number, WebContents>();
-
-  // Listen for progress events from DownloadService
+  // 监听下载进度 (Events)
+  // 广播给所有窗口
   downloadService.on("progress", (data) => {
-    const sender = downloadMap.get(data.id);
-    if (sender && !sender.isDestroyed()) {
-      sender.send("download-progress", data);
-    }
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send("download-progress", data);
+      }
+    });
   });
 
   // 检查文件是否存在
@@ -123,30 +122,10 @@ const initFileIpc = (): void => {
   });
 
   // 下载文件
-  ipcMain.handle("download-file", async (event, url: string, options: any) => {
-    const win = BrowserWindow.fromWebContents(event.sender);
-    if (!win) return { status: "error", message: "Window not found" };
-
-    // Set default options if not provided
-    const downloadOptions = {
-      fileName: "未知文件名",
-      fileType: "mp3",
-      path: fileService.getDefaultDir("downloads"),
-      ...options,
-    };
-
-    const downloadId = downloadOptions.songData?.id;
-    if (downloadId) {
-      downloadMap.set(downloadId, event.sender);
-    }
-
-    try {
-      return await downloadService.downloadFile(url, downloadOptions);
-    } finally {
-      if (downloadId) {
-        downloadMap.delete(downloadId);
-      }
-    }
+  ipcMain.handle("download-file", async (_, url: string, options: any) => {
+    // IPC 层只做一件事：透传参数
+    // 真正的业务逻辑（比如默认路径、参数校验）都在 Service 里
+    return await downloadService.downloadMusic(url, options);
   });
 
   // 取消下载
@@ -169,7 +148,5 @@ const initFileIpc = (): void => {
     return fileService.saveFileContent(options);
   });
 };
-
-
 
 export default initFileIpc;

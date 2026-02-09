@@ -1,10 +1,12 @@
-import { app, net } from "electron";
+import { app } from "electron";
 import { mkdir, access, writeFile, unlink } from "node:fs/promises";
 import { join, resolve, extname } from "node:path";
 import { EventEmitter } from "events";
 import { loadNativeModule } from "../utils/native-loader";
 import { useStore } from "../store";
 import { ipcLog } from "../logger";
+import { formatArtist } from "../utils/artist";
+import { downloadFromUrl } from "../utils/network";
 import type { SongMetadata } from "@native/tools";
 
 type toolModule = typeof import("@native/tools");
@@ -40,65 +42,52 @@ export class DownloadService extends EventEmitter {
     super();
   }
 
-  async downloadFile(
+  async downloadMusic(
     url: string,
-    options: DownloadOptions,
-  ): Promise<{ status: "success" | "skipped" | "error" | "cancelled"; message?: string }> {
+    rawOptions: any,
+  ): Promise<{ status: "success" | "skipped" | "error" | "cancelled"; message?: string; filePath?: string }> {
     try {
-      // Apply defaults
-      const defaults = {
-        fileName: "未知文件名",
-        fileType: "mp3",
-        path: app.getPath("downloads"),
-      };
-      const finalOptions = { ...defaults, ...options };
-      const { path, fileName, fileType, skipIfExist } = finalOptions;
+      // 数据清洗与默认值 (Business Logic)
+      const options = this.normalizeOptions(rawOptions);
+      const { path, fileName, fileType, skipIfExist } = options;
+
+      // Ensure path, fileName, fileType are strings (normalizeOptions guarantees this but type system needs to know)
+      if (!path || !fileName) {
+          throw new Error("Invalid options: path and fileName are required");
+      }
 
       const downloadPath = resolve(path);
       const finalFilePath = fileType
         ? join(downloadPath, `${fileName}.${fileType}`)
         : join(downloadPath, fileName);
 
-      // 1. 准备目录
+      // 准备目录
       try {
         await access(downloadPath);
       } catch {
         await mkdir(downloadPath, { recursive: true });
       }
 
-      // 2. 检查是否存在
+      // 检查是否存在
       if (skipIfExist) {
         try {
           await access(finalFilePath);
-          return { status: "skipped", message: "文件已存在" };
+          return { status: "skipped", message: "文件已存在", filePath: finalFilePath };
         } catch {
           // File does not exist, continue
         }
       }
 
-      // 3. 执行纯下载
-      const downloadId = finalOptions.songData?.id || 0;
-      await this.downloadRaw(url, finalFilePath, finalOptions, downloadId);
+      //  执行纯下载
+      const downloadId = options.songData?.id || 0;
+      await this.performDownload(url, finalFilePath, options, downloadId);
 
-      // 4. 处理元数据
-      if (finalOptions.downloadMeta && finalOptions.songData) {
-        try {
-          await this.processMetadata(finalFilePath, finalOptions);
-        } catch (e) {
-          ipcLog.error("Metadata processing failed:", e);
-        }
+      // 后处理 (Post-processing)
+      if (options.songData) {
+        await this.postProcessMusic(finalFilePath, options, downloadPath, fileName);
       }
 
-      // 5. 保存歌词
-      if (finalOptions.downloadLyric && finalOptions.lyric && finalOptions.saveMetaFile) {
-        try {
-          await this.saveLyric(downloadPath, fileName, finalOptions.lyric);
-        } catch (e) {
-          ipcLog.error("Lyric saving failed:", e);
-        }
-      }
-
-      return { status: "success" };
+      return { status: "success", filePath: finalFilePath };
     } catch (error: any) {
       ipcLog.error("❌ Error downloading file:", error);
       if ((error.message && error.message.includes("cancelled")) || error.code === "Cancelled") {
@@ -111,30 +100,16 @@ export class DownloadService extends EventEmitter {
     }
   }
 
-  private prepareMetadata(options: DownloadOptions): SongMetadata | null {
-    const { downloadMeta, songData, downloadCover, downloadLyric, lyric } = options;
-    
-    if (!downloadMeta || !songData) return null;
-
-    const artist = this.formatArtist(songData.artists);
-    const coverUrl =
-      downloadCover && (songData.coverSize?.l || songData.cover)
-        ? songData.coverSize?.l || songData.cover
-        : undefined;
-
+  private normalizeOptions(raw: any): DownloadOptions {
     return {
-      title: songData.name || "未知曲目",
-      artist: artist,
-      album:
-        (typeof songData.album === "string" ? songData.album : songData.album?.name) ||
-        "未知专辑",
-      coverUrl: coverUrl,
-      lyric: downloadLyric && lyric ? lyric : undefined,
-      description: songData.alia || "",
+      fileName: raw.fileName || "未知文件名",
+      fileType: raw.fileType || "mp3",
+      path: raw.path || app.getPath("downloads"),
+      ...raw,
     };
   }
 
-  private async downloadRaw(
+  private async performDownload(
     url: string,
     filePath: string,
     options: DownloadOptions,
@@ -171,6 +146,54 @@ export class DownloadService extends EventEmitter {
     }
   }
 
+  private async postProcessMusic(
+    filePath: string,
+    options: DownloadOptions,
+    dirPath: string,
+    fileName: string,
+  ) {
+    // 4. 处理元数据
+    if (options.downloadMeta && options.songData) {
+      try {
+        await this.processMetadata(filePath, options);
+      } catch (e) {
+        ipcLog.error("Metadata processing failed:", e);
+      }
+    }
+
+    // 5. 保存歌词
+    if (options.downloadLyric && options.lyric && options.saveMetaFile) {
+      try {
+        await this.saveLyric(dirPath, fileName, options.lyric);
+      } catch (e) {
+        ipcLog.error("Lyric saving failed:", e);
+      }
+    }
+  }
+
+  private prepareMetadata(options: DownloadOptions): SongMetadata | null {
+    const { downloadMeta, songData, downloadCover, downloadLyric, lyric } = options;
+
+    if (!downloadMeta || !songData) return null;
+
+    const artist = formatArtist(songData.artists);
+    const coverUrl =
+      downloadCover && (songData.coverSize?.l || songData.cover)
+        ? songData.coverSize?.l || songData.cover
+        : undefined;
+
+    return {
+      title: songData.name || "未知曲目",
+      artist: artist,
+      album:
+        (typeof songData.album === "string" ? songData.album : songData.album?.name) ||
+        "未知专辑",
+      coverUrl: coverUrl,
+      lyric: downloadLyric && lyric ? lyric : undefined,
+      description: songData.alia || "",
+    };
+  }
+
   private async processMetadata(filePath: string, options: DownloadOptions) {
     const metadata = this.prepareMetadata(options);
     if (!metadata) return;
@@ -180,12 +203,13 @@ export class DownloadService extends EventEmitter {
     if (metadata.coverUrl) {
       try {
         const tempDir = app.getPath("temp");
-        // Use a simple name or random
         const tempCoverPath = join(
           tempDir,
-          `cover-${Date.now()}-${Math.random().toString(36).substr(2, 5)}${extname(metadata.coverUrl) || ".jpg"}`,
+          `cover-${Date.now()}-${Math.random().toString(36).substr(2, 5)}${extname(
+            metadata.coverUrl,
+          ) || ".jpg"}`,
         );
-        await this.downloadCover(metadata.coverUrl, tempCoverPath);
+        await downloadFromUrl(metadata.coverUrl, tempCoverPath);
         coverPath = tempCoverPath;
       } catch (e) {
         ipcLog.error("Failed to download cover:", e);
@@ -210,32 +234,6 @@ export class DownloadService extends EventEmitter {
     await writeFile(lrcPath, lyric, "utf-8");
   }
 
-  private async downloadCover(url: string, targetPath: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const request = net.request(url);
-      request.on("response", (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to download cover: ${response.statusCode}`));
-          return;
-        }
-        const chunks: Buffer[] = [];
-        response.on("data", (chunk) => chunks.push(chunk));
-        response.on("end", async () => {
-          try {
-            const buffer = Buffer.concat(chunks);
-            await writeFile(targetPath, buffer);
-            resolve();
-          } catch (e) {
-            reject(e);
-          }
-        });
-        response.on("error", (err) => reject(err));
-      });
-      request.on("error", (err) => reject(err));
-      request.end();
-    });
-  }
-
   cancelDownload(songId: number): boolean {
     const task = this.activeDownloads.get(songId);
     if (task) {
@@ -243,19 +241,6 @@ export class DownloadService extends EventEmitter {
       return true;
     }
     return false;
-  }
-
-  private formatArtist(artists: any): string {
-    if (Array.isArray(artists)) {
-      return artists
-        .map((ar: any) => (typeof ar === "string" ? ar : ar?.name || ""))
-        .filter((name: string) => name && name.trim().length > 0)
-        .join(", ");
-    }
-    if (typeof artists === "string" && artists.trim().length > 0) {
-      return artists;
-    }
-    return "未知艺术家";
   }
 
   private handleProgress(progressData: any, id: number) {
