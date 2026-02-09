@@ -39,7 +39,7 @@
         :wordFadeWidth="settingStore.wordFadeWidth"
         :style="{
           '--display-count-down-show': settingStore.countDownShow ? 'flex' : 'none',
-          '--amll-lp-font-size': getFontSize(settingStore.lyricFontSize),
+          '--amll-lp-font-size': getFontSize(settingStore.lyricFontSize, settingStore.lyricFontSizeMode),
           'font-weight': settingStore.lyricFontWeight,
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
           ...lyricLangFontStyle(settingStore),
@@ -58,6 +58,7 @@ import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { cloneDeep } from "lodash-es";
 import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
+import { getFontSize } from "@/utils/style";
 
 defineProps({
   currentTime: {
@@ -70,13 +71,6 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
-
-const getFontSize = (size: number) => {
-  if (settingStore.lyricFontSizeMode === "adaptive") {
-    return `calc(${size} / 1080 * 100vh)`;
-  }
-  return `${size}px`;
-};
 
 const lyricPlayerRef = ref<any | null>(null);
 

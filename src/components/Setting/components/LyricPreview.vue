@@ -5,9 +5,9 @@
       'flex-direction': 'column',
       'align-items': settingStore.lyricsPosition,
       '--font-weight': settingStore.lyricFontWeight,
-      '--font-size': getFontSize(settingStore.lyricFontSize),
-      '--font-tran-size': getFontSize(tranFontSize),
-      '--font-roma-size': getFontSize(romaFontSize),
+      '--font-size': getFontSize(settingStore.lyricFontSize, settingStore.lyricFontSizeMode),
+      '--font-tran-size': getFontSize(tranFontSize, settingStore.lyricFontSizeMode),
+      '--font-roma-size': getFontSize(romaFontSize, settingStore.lyricFontSizeMode),
       '--transform-origin':
         settingStore.lyricsPosition === 'center'
           ? 'center'
@@ -37,15 +37,9 @@
 
 <script setup lang="ts">
 import { useSettingStore } from "@/stores";
+import { getFontSize } from "@/utils/style";
 
 const settingStore = useSettingStore();
-
-const getFontSize = (size: number) => {
-  if (settingStore.lyricFontSizeMode === "adaptive") {
-    return `calc(${size} / 1080 * 100vh)`;
-  }
-  return `${size}px`;
-};
 
 const fontSizeComputed = (key: string) =>
   computed({

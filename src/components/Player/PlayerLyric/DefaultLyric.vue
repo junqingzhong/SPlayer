@@ -2,9 +2,9 @@
   <div
     :key="`lyric-${musicStore.playSong.id}`"
     :style="{
-      '--lrc-size': getFontSize(settingStore.lyricFontSize),
-      '--lrc-tran-size': getFontSize(settingStore.lyricTranFontSize),
-      '--lrc-roma-size': getFontSize(settingStore.lyricRomaFontSize),
+      '--lrc-size': getFontSize(settingStore.lyricFontSize, settingStore.lyricFontSizeMode),
+      '--lrc-tran-size': getFontSize(settingStore.lyricTranFontSize, settingStore.lyricFontSizeMode),
+      '--lrc-roma-size': getFontSize(settingStore.lyricRomaFontSize, settingStore.lyricFontSizeMode),
       '--lrc-bold': settingStore.lyricFontWeight,
       '--lrc-left-padding': `${settingStore.lyricHorizontalOffset}px`,
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
@@ -133,6 +133,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { getLyricLanguage } from "@/utils/format";
 import { isElectron } from "@/utils/env";
 import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
+import { getFontSize } from "@/utils/style";
 
 const props = defineProps({
   currentTime: {
@@ -145,13 +146,6 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
-
-const getFontSize = (size: number) => {
-  if (settingStore.lyricFontSizeMode === "adaptive") {
-    return `calc(${size} / 1080 * 100vh)`;
-  }
-  return `${size}px`;
-};
 
 const lyricScrollContainer = ref<HTMLElement | null>(null);
 
