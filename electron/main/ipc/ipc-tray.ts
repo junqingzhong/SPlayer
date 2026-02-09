@@ -43,8 +43,8 @@ const initTrayIpc = (): void => {
   });
 
   // 锁定/解锁桌面歌词
-  ipcMain.on("toggle-desktop-lyric-lock", (_, isLock: boolean) => {
-    tray?.setDesktopLyricLock(isLock);
+  ipcMain.on("toggle-desktop-lyric-lock", (_, { lock }: { lock: boolean }) => {
+    tray?.setDesktopLyricLock(lock);
   });
 };
 

@@ -211,26 +211,29 @@ class DesktopLyricManager {
     });
 
     // 锁定状态管理
-    ipcMain.on("toggle-desktop-lyric-lock", (_, lock: boolean, isTemp: boolean = false) => {
-      if (!isTemp) this.isLocked = lock;
+    ipcMain.on(
+      "toggle-desktop-lyric-lock",
+      (_, { lock, temp }: { lock: boolean; temp?: boolean }) => {
+        if (!temp) this.isLocked = lock;
 
-      if (this.isValid) {
-        if (lock) {
-          this.window!.setIgnoreMouseEvents(true, { forward: true });
-        } else {
-          this.window!.setIgnoreMouseEvents(false);
+        if (this.isValid) {
+          if (lock) {
+            this.window!.setIgnoreMouseEvents(true, { forward: true });
+          } else {
+            this.window!.setIgnoreMouseEvents(false);
+          }
         }
-      }
 
-      if (!isTemp) {
-        this.store.set("lyric.config.isLock", lock);
-        const config = this.store.get("lyric.config");
-        const mainWin = mainWindow.getWin();
-        if (mainWin && !mainWin.isDestroyed()) {
-          mainWin.webContents.send("update-desktop-lyric-option", config);
+        if (!temp) {
+          this.store.set("lyric.config.isLock", lock);
+          const config = this.store.get("lyric.config");
+          const mainWin = mainWindow.getWin();
+          if (mainWin && !mainWin.isDestroyed()) {
+            mainWin.webContents.send("update-desktop-lyric-option", config);
+          }
         }
-      }
-    });
+      },
+    );
 
     // 屏幕信息工具
     ipcMain.handle("get-screen-size", () => {

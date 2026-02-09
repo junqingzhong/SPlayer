@@ -708,7 +708,7 @@ const sendToMainWin = (eventName: string, ...args: any[]) => {
 
 // 切换桌面歌词锁定状态
 const toggleLyricLock = () => {
-  sendToMain("toggle-desktop-lyric-lock", !lyricConfig.isLock);
+  sendToMain("toggle-desktop-lyric-lock", { lock: !lyricConfig.isLock });
   lyricConfig.isLock = !lyricConfig.isLock;
 };
 
@@ -719,7 +719,7 @@ const toggleLyricLock = () => {
 const tempToggleLyricLock = (isLock: boolean) => {
   // 是否已经解锁
   if (!lyricConfig.isLock) return;
-  window.electron.ipcRenderer.send("toggle-desktop-lyric-lock", isLock, true);
+  window.electron.ipcRenderer.send("toggle-desktop-lyric-lock", { lock: isLock, temp: true });
 };
 
 onMounted(() => {
@@ -772,7 +772,7 @@ onMounted(() => {
     const height = fontSizeToHeight(config.fontSize);
     if (height) pushWindowHeight(height);
     // 是否锁定
-    sendToMain("toggle-desktop-lyric-lock", config.isLock);
+    sendToMain("toggle-desktop-lyric-lock", { lock: config.isLock });
   });
   // 请求歌词数据及配置
   window.electron.ipcRenderer.send("request-desktop-lyric-data");
