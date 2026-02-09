@@ -67,7 +67,7 @@
       <n-scrollbar
         ref="setScrollbar"
         class="set-content"
-        :content-style="{ overflow: 'hidden', padding: '40px 0' }"
+        :content-style="{ overflow: 'hidden', padding: '40px 10px' }"
       >
         <Transition
           name="fade"
@@ -476,7 +476,7 @@ onMounted(() => {
       transition: opacity 0.2s ease-in-out;
     }
     .set-content {
-      padding: 0 40px;
+      padding: 0 30px;
     }
     .set-list {
       padding-top: 30px;
@@ -518,6 +518,7 @@ onMounted(() => {
         .name {
           font-size: 16px;
           display: inline-flex;
+          align-items: center;
           gap: 6px;
         }
       }
