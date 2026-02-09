@@ -15,9 +15,10 @@ import { type DebouncedFunc, throttle } from "lodash-es";
 import { useAudioManager } from "./AudioManager";
 import { useLyricManager } from "./LyricManager";
 import { mediaSessionManager } from "./MediaSessionManager";
-import * as playerIpc from "./PlayerIpc";
 import { PlayModeManager } from "./PlayModeManager";
 import { useSongManager } from "./SongManager";
+import { useBlobURLManager } from "../resource/BlobURLManager";
+import * as playerIpc from "./PlayerIpc";
 
 /**
  * 播放器核心类
@@ -381,7 +382,7 @@ class PlayerController {
     }
 
     // 预载下一首
-    if (settingStore.useNextPrefetch) songManager.getNextSongUrl();
+    if (settingStore.useNextPrefetch) songManager.prefetchNextSong();
 
     // Last.fm Scrobbler
     if (settingStore.lastfm.enabled && settingStore.isLastfmConfigured) {
@@ -400,6 +401,23 @@ class PlayerController {
       const musicStore = useMusicStore();
       if (musicStore.playSong.type === "streaming") return;
       const statusStore = useStatusStore();
+      const blobURLManager = useBlobURLManager();
+      // Blob URL 清理
+      const oldCover = musicStore.playSong.cover;
+      if (oldCover && oldCover.startsWith("blob:")) {
+        blobURLManager.revokeBlobURL(musicStore.playSong.path || "");
+      }
+      // 获取封面数据
+      if (!oldCover || oldCover === "/images/song.jpg?asset") {
+        console.log("获取封面数据");
+        const coverData = await window.electron.ipcRenderer.invoke("get-music-cover", path);
+        if (coverData) {
+          const blobURL = blobURLManager.createBlobURL(coverData.data, coverData.format, path);
+          if (blobURL) musicStore.playSong.cover = blobURL;
+        } else {
+          musicStore.playSong.cover = "/images/song.jpg?asset";
+        }
+      }
       // 获取元数据
       const infoData = await window.electron.ipcRenderer.invoke("get-music-metadata", path);
       statusStore.songQuality = handleSongQuality(infoData.format?.bitrate ?? 0, "local");

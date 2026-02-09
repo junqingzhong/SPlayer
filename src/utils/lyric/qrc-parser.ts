@@ -11,18 +11,18 @@ const domParser: QRCParserFn = (xmlStr) => {
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlStr, "text/xml");
-
-    // 检查解析错误
+    // 检查解析错误（如未转义的 & 等）
     const parseError = doc.querySelector("parsererror");
     if (parseError) {
-      console.warn("[QRC Parser] XML Parsing Error:", parseError.textContent);
-      return "";
+      // DOM 解析失败，回退到正则解析
+      return regexParser(xmlStr);
     }
 
     return doc.documentElement.getAttribute("LyricContent") || "";
   } catch (e) {
     console.error("[QRC Parser] Fatal Error:", e);
-    return "";
+    // 回退到正则解析
+    return regexParser(xmlStr);
   }
 };
 
