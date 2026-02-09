@@ -110,7 +110,7 @@ export const useLyricSettings = (): SettingConfig => {
             description: computed(() =>
               settingStore.lyricFontSizeMode === "adaptive"
                 ? "作为基准大小 (以 1080p 高度为准)"
-                : "单位 px，最小 12，最大 60"
+                : "单位 px，最小 12，最大 60",
             ),
             min: 12,
             max: 60,
@@ -128,7 +128,7 @@ export const useLyricSettings = (): SettingConfig => {
             description: computed(() =>
               settingStore.lyricFontSizeMode === "adaptive"
                 ? "作为基准大小 (以 1080p 高度为准)"
-                : "单位 px，最小 5，最大 40"
+                : "单位 px，最小 5，最大 40",
             ),
             min: 5,
             max: 40,
@@ -151,7 +151,7 @@ export const useLyricSettings = (): SettingConfig => {
             description: computed(() =>
               settingStore.lyricFontSizeMode === "adaptive"
                 ? "作为基准大小 (以 1080p 高度为准)"
-                : "单位 px，最小 5，最大 40"
+                : "单位 px，最小 5，最大 40",
             ),
             min: 5,
             max: 40,
