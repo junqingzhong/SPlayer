@@ -11,7 +11,6 @@ const domParser: QRCParserFn = (xmlStr) => {
   try {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlStr, "text/xml");
-
     // 检查解析错误（如未转义的 & 等）
     const parseError = doc.querySelector("parsererror");
     if (parseError) {
