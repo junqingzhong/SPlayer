@@ -7,7 +7,7 @@
           <SvgIcon name="SPlayer" size="26" />
           <n-text class="logo-name">SPlayer</n-text>
           <n-tag v-if="statusStore.isDeveloperMode" size="small" type="warning" round> DEV </n-tag>
-          <n-tag :bordered="false" size="small" type="primary" round @click="openDeveloperMode">
+          <n-tag size="small" type="primary" round @click="openDeveloperMode">
             {{ packageJson.version }}
           </n-tag>
         </n-flex>
@@ -249,7 +249,6 @@ const getContributors = async () => {
     }
   } catch (error) {
     console.error("Failed to fetch contributors:", error);
-    // Fallback or empty state handling if needed, currently just empty
   }
 };
 
@@ -305,7 +304,7 @@ const specialContributors = [
     description: "这个人一点都不神秘，虽然写了一点，但就像什么都没有写",
     avatar: "/images/avatar/moyingji.webp",
     buttonText: "GitHub",
-    url: "https://avatars.githubusercontent.com/u/64307394",
+    url: "https://github.com/MoYingJi",
   },
   {
     name: "apoint123",

@@ -166,8 +166,8 @@ const initFileIpc = (): void => {
           try {
             // 处理元信息 (跳过封面解析以提升速度)
             const { common, format } = await parseFile(fullPath, { skipCovers: true });
-            // 获取文件大小
-            const { size } = await stat(fullPath);
+            // 获取文件状态信息（大小和创建时间）
+            const fileStat = await stat(fullPath);
             const ext = extname(fullPath);
 
             return {
@@ -177,9 +177,11 @@ const initFileIpc = (): void => {
               album: common.album || "",
               alia: common.comment?.[0]?.text || "",
               duration: (format?.duration ?? 0) * 1000,
-              size: (size / (1024 * 1024)).toFixed(2),
+              size: (fileStat.size / (1024 * 1024)).toFixed(2),
               path: fullPath,
               quality: format.bitrate ?? 0,
+              // 文件创建时间（用于排序）
+              createTime: fileStat.birthtime.getTime(),
               replayGain: {
                 trackGain: common.replaygain_track_gain?.ratio,
                 trackPeak: common.replaygain_track_peak?.ratio,
@@ -194,8 +196,10 @@ const initFileIpc = (): void => {
         }),
       );
       const metadataResults = await Promise.all(metadataPromises);
-      // 过滤掉解析失败的文件
-      return metadataResults.filter((item) => item !== null);
+      // 过滤掉解析失败的文件，并按创建时间降序排序（最新的在前）
+      return metadataResults
+        .filter((item): item is NonNullable<typeof item> => item !== null)
+        .sort((a, b) => b.createTime - a.createTime);
     } catch (error) {
       ipcLog.error("❌ Error fetching music metadata:", error);
       return [];

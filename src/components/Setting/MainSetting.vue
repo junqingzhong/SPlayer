@@ -133,9 +133,6 @@ import { useStatusStore } from "@/stores";
 import { getDisplayVersion, isNightly } from "@/utils/version";
 import packageJson from "@/../package.json";
 import { usePlaySettings } from "./config/play";
-
-const displayVersion = getDisplayVersion();
-
 import { useGeneralSettings } from "./config/general";
 import { useAppearanceSettings } from "./config/appearance";
 import { useLyricSettings } from "./config/lyric";
@@ -178,6 +175,7 @@ const allSettingGroups = computed(() => {
 });
 
 const statusStore = useStatusStore();
+const displayVersion = getDisplayVersion();
 const { isSmallScreen } = useMobile();
 
 // 设置内容

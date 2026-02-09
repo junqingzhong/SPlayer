@@ -65,6 +65,24 @@ jobs:
           # 强制推送到远程
           git push -f origin dev-nightly
 
+      # 复制环境变量文件
+      - name: Copy .env file on Windows
+        if: runner.os == 'Windows'
+        run: |
+          if (-not (Test-Path .env)) {
+            Copy-Item .env.example .env
+          } else {
+            Write-Host ".env file already exists. Skipping the copy step."
+          }
+      - name: Copy .env file on macOS & Linux
+        if: runner.os == 'macOS' || runner.os == 'Linux'
+        run: |
+          if [ ! -f .env ]; then
+            cp .env.example .env
+          else
+            echo ".env file already exists. Skipping the copy step."
+          fi
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -193,8 +211,19 @@ jobs:
             fi
           fi
 
+          # 构建 Release Body
+          {
+            echo "> [!WARNING]"
+            echo "> "
+            echo "> 这是一个自动生成的 Nightly 构建版本。它可能包含 Bug，仅供测试使用。使用风险自负。"
+            echo ""
+            echo "## 自上次构建以来的变更："
+            echo ""
+            echo "$NOTES"
+          } > release_notes.md
+
           # 更新 Release Body
-          # gh release edit nightly --notes "## Nightly Build Update $(date +'%Y-%m-%d')\n\n$NOTES"
+          gh release edit nightly --notes-file release_notes.md
 
           # 3. 删除旧 Assets 并上传新 Assets
           echo "Deleting old assets..."
