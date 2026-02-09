@@ -43,33 +43,20 @@ export class DownloadService {
     win: BrowserWindow,
   ): Promise<{ status: "success" | "skipped" | "error" | "cancelled"; message?: string }> {
     try {
-      const {
-        fileName,
-        fileType,
-        path,
-        lyric,
-        downloadMeta,
-        downloadCover,
-        downloadLyric,
-        saveMetaFile,
-        songData,
-        skipIfExist,
-        referer,
-        enableDownloadHttp2,
-      } = options;
-
+      const { path, fileName, fileType, skipIfExist } = options;
       const downloadPath = resolve(path);
+      const finalFilePath = fileType
+        ? join(downloadPath, `${fileName}.${fileType}`)
+        : join(downloadPath, fileName);
 
+      // 1. 准备目录
       try {
         await access(downloadPath);
       } catch {
         await mkdir(downloadPath, { recursive: true });
       }
 
-      const finalFilePath = fileType
-        ? join(downloadPath, `${fileName}.${fileType}`)
-        : join(downloadPath, fileName);
-
+      // 2. 检查是否存在
       if (skipIfExist) {
         try {
           await access(finalFilePath);
@@ -79,65 +66,15 @@ export class DownloadService {
         }
       }
 
-      // Metadata preparation
-      let metadata: SongMetadata | undefined | null = null;
-      if (downloadMeta && songData) {
-        const artist = this.formatArtist(songData.artists);
-        const coverUrl =
-          downloadCover && (songData.coverSize?.l || songData.cover)
-            ? songData.coverSize?.l || songData.cover
-            : undefined;
+      // 3. 准备元数据
+      const metadata = this.prepareMetadata(options);
 
-        metadata = {
-          title: songData.name || "未知曲目",
-          artist: artist,
-          album:
-            (typeof songData.album === "string" ? songData.album : songData.album?.name) ||
-            "未知专辑",
-          coverUrl: coverUrl,
-          lyric: downloadLyric && lyric ? lyric : undefined,
-          description: songData.alia || "",
-        };
-      }
+      // 4. 执行下载
+      const downloadId = options.songData?.id || 0;
+      await this.executeDownload(url, finalFilePath, metadata, options, downloadId, win);
 
-      const store = useStore();
-      const threadCount = options.threadCount || (store.get("downloadThreadCount") as number) || 8;
-      const enableHttp2 =
-        enableDownloadHttp2 !== undefined
-          ? enableDownloadHttp2
-          : (store.get("enableDownloadHttp2", true) as boolean);
-
-      // Upgrade HTTP to HTTPS if HTTP2 is enabled
-      // Note: Logic moved here but arguably should be upstream.
-      // Keeping it here for now to maintain behavior but could be refactored later.
-      let finalUrl = url;
-      if (enableHttp2 && finalUrl.startsWith("http://")) {
-        finalUrl = finalUrl.replace(/^http:\/\//, "https://");
-        ipcLog.info(`🔒 Upgraded download URL to HTTPS for HTTP/2 support: ${finalUrl}`);
-      }
-
-      const task = new tools.DownloadTask();
-      const downloadId = songData?.id || 0;
-      this.activeDownloads.set(downloadId, task);
-
-      try {
-        await task.download(
-          finalUrl,
-          finalFilePath,
-          metadata,
-          threadCount,
-          referer,
-          (data: any) => this.handleProgress(data, downloadId, win),
-          enableHttp2,
-        );
-      } finally {
-        this.activeDownloads.delete(downloadId);
-      }
-
-      if (lyric && saveMetaFile && downloadLyric) {
-        const lrcPath = join(downloadPath, `${fileName}.lrc`);
-        await writeFile(lrcPath, lyric, "utf-8");
-      }
+      // 5. 后处理（如保存歌词文件）
+      await this.postProcess(downloadPath, options);
 
       return { status: "success" };
     } catch (error: any) {
@@ -149,6 +86,76 @@ export class DownloadService {
         status: "error",
         message: error instanceof Error ? error.message : "Unknown error",
       };
+    }
+  }
+
+  private prepareMetadata(options: DownloadOptions): SongMetadata | null {
+    const { downloadMeta, songData, downloadCover, downloadLyric, lyric } = options;
+    
+    if (!downloadMeta || !songData) return null;
+
+    const artist = this.formatArtist(songData.artists);
+    const coverUrl =
+      downloadCover && (songData.coverSize?.l || songData.cover)
+        ? songData.coverSize?.l || songData.cover
+        : undefined;
+
+    return {
+      title: songData.name || "未知曲目",
+      artist: artist,
+      album:
+        (typeof songData.album === "string" ? songData.album : songData.album?.name) ||
+        "未知专辑",
+      coverUrl: coverUrl,
+      lyric: downloadLyric && lyric ? lyric : undefined,
+      description: songData.alia || "",
+    };
+  }
+
+  private async executeDownload(
+    url: string,
+    filePath: string,
+    metadata: SongMetadata | null,
+    options: DownloadOptions,
+    downloadId: number,
+    win: BrowserWindow
+  ) {
+    const store = useStore();
+    const threadCount = options.threadCount || (store.get("downloadThreadCount") as number) || 8;
+    const enableHttp2 =
+      options.enableDownloadHttp2 !== undefined
+        ? options.enableDownloadHttp2
+        : (store.get("enableDownloadHttp2", true) as boolean);
+
+    let finalUrl = url;
+    if (enableHttp2 && finalUrl.startsWith("http://")) {
+      finalUrl = finalUrl.replace(/^http:\/\//, "https://");
+      ipcLog.info(`🔒 Upgraded download URL to HTTPS for HTTP/2 support: ${finalUrl}`);
+    }
+
+    const task = new tools.DownloadTask();
+    this.activeDownloads.set(downloadId, task);
+
+    try {
+      await task.download(
+        finalUrl,
+        filePath,
+        metadata,
+        threadCount,
+        options.referer,
+        (data: any) => this.handleProgress(data, downloadId, win),
+        enableHttp2,
+      );
+    } finally {
+      this.activeDownloads.delete(downloadId);
+    }
+  }
+
+  private async postProcess(dirPath: string, options: DownloadOptions) {
+    const { lyric, saveMetaFile, downloadLyric, fileName } = options;
+    if (lyric && saveMetaFile && downloadLyric) {
+      const lrcPath = join(dirPath, `${fileName}.lrc`);
+      await writeFile(lrcPath, lyric, "utf-8");
     }
   }
 

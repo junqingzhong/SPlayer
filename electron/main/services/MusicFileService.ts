@@ -52,40 +52,48 @@ export class MusicFileService {
       );
 
       const limit = pLimit(10);
-      const metadataPromises = musicFiles.map((file) =>
-        limit(async () => {
-          const fullPath = join(dirPath, file);
-          try {
-            const { common, format } = await parseFile(fullPath, { skipCovers: true });
-            const fileStat = await stat(fullPath);
-            const ext = extname(fullPath);
+      const results: any[] = [];
+      const BATCH_SIZE = 500; // Batch processing to avoid creating too many Promises at once
 
-            return {
-              id: getFileID(fullPath),
-              name: common.title || basename(fullPath, ext),
-              artists: common.artists?.[0] || common.artist,
-              album: common.album || "",
-              alia: common.comment?.[0]?.text || "",
-              duration: (format?.duration ?? 0) * 1000,
-              size: fileStat.size, // Return bytes, let frontend format it
-              path: fullPath,
-              quality: format.bitrate ?? 0,
-              createTime: fileStat.birthtime.getTime(),
-              replayGain: {
-                trackGain: common.replaygain_track_gain?.ratio,
-                trackPeak: common.replaygain_track_peak?.ratio,
-                albumGain: common.replaygain_album_gain?.ratio,
-                albumPeak: common.replaygain_album_peak?.ratio,
-              },
-            };
-          } catch (err) {
-            ipcLog.warn(`⚠️ Failed to parse file: ${fullPath}`, err);
-            return null;
-          }
-        }),
-      );
-      const metadataResults = await Promise.all(metadataPromises);
-      return metadataResults
+      for (let i = 0; i < musicFiles.length; i += BATCH_SIZE) {
+        const batch = musicFiles.slice(i, i + BATCH_SIZE);
+        const batchPromises = batch.map((file) =>
+          limit(async () => {
+            const fullPath = join(dirPath, file);
+            try {
+              const { common, format } = await parseFile(fullPath, { skipCovers: true });
+              const fileStat = await stat(fullPath);
+              const ext = extname(fullPath);
+
+              return {
+                id: getFileID(fullPath),
+                name: common.title || basename(fullPath, ext),
+                artists: common.artists?.[0] || common.artist,
+                album: common.album || "",
+                alia: common.comment?.[0]?.text || "",
+                duration: (format?.duration ?? 0) * 1000,
+                size: fileStat.size, // Return bytes, let frontend format it
+                path: fullPath,
+                quality: format.bitrate ?? 0,
+                createTime: fileStat.birthtime.getTime(),
+                replayGain: {
+                  trackGain: common.replaygain_track_gain?.ratio,
+                  trackPeak: common.replaygain_track_peak?.ratio,
+                  albumGain: common.replaygain_album_gain?.ratio,
+                  albumPeak: common.replaygain_album_peak?.ratio,
+                },
+              };
+            } catch (err) {
+              ipcLog.warn(`⚠️ Failed to parse file: ${fullPath}`, err);
+              return null;
+            }
+          }),
+        );
+        const batchResults = await Promise.all(batchPromises);
+        results.push(...batchResults);
+      }
+
+      return results
         .filter((item): item is NonNullable<typeof item> => item !== null)
         .sort((a, b) => b.createTime - a.createTime);
     } catch (error) {

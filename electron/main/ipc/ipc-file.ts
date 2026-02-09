@@ -1,10 +1,8 @@
 import { BrowserWindow, ipcMain } from "electron";
-import { join } from "node:path";
 import { LocalMusicService } from "../services/LocalMusicService";
 import { MusicFileService } from "../services/MusicFileService";
 import { DownloadService } from "../services/DownloadService";
 import { FileService } from "../services/FileService";
-import type { MusicTrack } from "../database/LocalMusicDB";
 
 /**
  * 文件相关 IPC
@@ -40,47 +38,23 @@ const initFileIpc = (): void => {
   // 本地音乐同步（批量流式传输）
   ipcMain.handle("local-music-sync", async (event, dirs: string[]) => {
     try {
-      // 获取封面目录路径
-      const { coverDir } = localMusicService.paths;
-
-      const processTracksCover = (tracks: MusicTrack[]) => {
-        return tracks.map((track) => {
-          let coverPath: string | undefined;
-          if (track.cover) {
-            const fullPath = join(coverDir, track.cover);
-            coverPath = `file://${fullPath.replace(/\\/g, "/")}`;
-          }
-          return { ...track, cover: coverPath };
-        });
-      };
-
-      const allTracks = await localMusicService.refreshLibrary(
+      const result = await localMusicService.syncLibrary(
         dirs,
         (current, total) => {
           event.sender.send("music-sync-progress", { current, total });
         },
-        () => {},
+        (chunk) => {
+          event.sender.send("music-sync-tracks-batch", chunk);
+        },
       );
-
-      const finalTracks = processTracksCover(allTracks);
-      const CHUNK_SIZE = 1000;
-
-      for (const chunk of chunkArray(finalTracks, CHUNK_SIZE)) {
-        event.sender.send("music-sync-tracks-batch", chunk);
-        await new Promise((resolve) => setImmediate(resolve));
-      }
 
       event.sender.send("music-sync-complete", {
         success: true,
       });
 
-      return { success: true };
+      return result;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      // 如果正在扫描中
-      if (errorMessage === LocalMusicService.ERROR_SCAN_IN_PROGRESS) {
-        return { success: false, message: "扫描正在进行中，请稍候" };
-      }
       // 错误信号
       event.sender.send("music-sync-complete", { success: false, message: errorMessage });
       return { success: false, message: errorMessage };
@@ -174,10 +148,6 @@ const initFileIpc = (): void => {
   });
 };
 
-function* chunkArray<T>(array: T[], size: number): Generator<T[], void, unknown> {
-  for (let i = 0; i < array.length; i += size) {
-    yield array.slice(i, i + size);
-  }
-}
+
 
 export default initFileIpc;
