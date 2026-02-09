@@ -2,9 +2,9 @@
   <div
     :key="`lyric-${musicStore.playSong.id}`"
     :style="{
-      '--lrc-size': settingStore.lyricFontSize + 'px',
-      '--lrc-tran-size': settingStore.lyricTranFontSize + 'px',
-      '--lrc-roma-size': settingStore.lyricRomaFontSize + 'px',
+      '--lrc-size': getFontSize(settingStore.lyricFontSize, settingStore.lyricFontSizeMode),
+      '--lrc-tran-size': getFontSize(settingStore.lyricTranFontSize, settingStore.lyricFontSizeMode),
+      '--lrc-roma-size': getFontSize(settingStore.lyricRomaFontSize, settingStore.lyricFontSizeMode),
       '--lrc-bold': settingStore.lyricFontWeight,
       '--lrc-left-padding': `${settingStore.lyricHorizontalOffset}px`,
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
@@ -133,6 +133,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { getLyricLanguage } from "@/utils/format";
 import { isElectron } from "@/utils/env";
 import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
+import { getFontSize } from "@/utils/style";
 
 const props = defineProps({
   currentTime: {
