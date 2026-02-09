@@ -39,7 +39,7 @@
         :wordFadeWidth="settingStore.wordFadeWidth"
         :style="{
           '--display-count-down-show': settingStore.countDownShow ? 'flex' : 'none',
-          '--amll-lp-font-size': settingStore.lyricFontSize + 'px',
+          '--amll-lp-font-size': getFontSize(settingStore.lyricFontSize),
           'font-weight': settingStore.lyricFontWeight,
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
           ...lyricLangFontStyle(settingStore),
@@ -70,6 +70,13 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
+
+const getFontSize = (size: number) => {
+  if (settingStore.lyricFontSizeMode === "adaptive") {
+    return `calc(${size} / 1080 * 100vh)`;
+  }
+  return `${size}px`;
+};
 
 const lyricPlayerRef = ref<any | null>(null);
 

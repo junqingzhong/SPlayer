@@ -2,9 +2,9 @@
   <div
     :key="`lyric-${musicStore.playSong.id}`"
     :style="{
-      '--lrc-size': settingStore.lyricFontSize + 'px',
-      '--lrc-tran-size': settingStore.lyricTranFontSize + 'px',
-      '--lrc-roma-size': settingStore.lyricRomaFontSize + 'px',
+      '--lrc-size': getFontSize(settingStore.lyricFontSize),
+      '--lrc-tran-size': getFontSize(settingStore.lyricTranFontSize),
+      '--lrc-roma-size': getFontSize(settingStore.lyricRomaFontSize),
       '--lrc-bold': settingStore.lyricFontWeight,
       '--lrc-left-padding': `${settingStore.lyricHorizontalOffset}px`,
       'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
@@ -145,6 +145,13 @@ const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 const player = usePlayerController();
+
+const getFontSize = (size: number) => {
+  if (settingStore.lyricFontSizeMode === "adaptive") {
+    return `calc(${size} / 1080 * 100vh)`;
+  }
+  return `${size}px`;
+};
 
 const lyricScrollContainer = ref<HTMLElement | null>(null);
 

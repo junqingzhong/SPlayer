@@ -5,9 +5,9 @@
       'flex-direction': 'column',
       'align-items': settingStore.lyricsPosition,
       '--font-weight': settingStore.lyricFontWeight,
-      '--font-size': settingStore.lyricFontSize,
-      '--font-tran-size': tranFontSize,
-      '--font-roma-size': romaFontSize,
+      '--font-size': getFontSize(settingStore.lyricFontSize),
+      '--font-tran-size': getFontSize(tranFontSize),
+      '--font-roma-size': getFontSize(romaFontSize),
       '--transform-origin':
         settingStore.lyricsPosition === 'center'
           ? 'center'
@@ -39,6 +39,13 @@
 import { useSettingStore } from "@/stores";
 
 const settingStore = useSettingStore();
+
+const getFontSize = (size: number) => {
+  if (settingStore.lyricFontSizeMode === "adaptive") {
+    return `calc(${size} / 1080 * 100vh)`;
+  }
+  return `${size}px`;
+};
 
 const fontSizeComputed = (key: string) =>
   computed({
@@ -72,15 +79,15 @@ const romaFontSize = fontSizeComputed("lyricRomaFontSize");
 
       &:nth-of-type(1) {
         font-weight: var(--font-weight);
-        font-size: calc(var(--font-size) * 1px);
+        font-size: var(--font-size);
       }
       &:nth-of-type(2) {
         opacity: 0.6;
-        font-size: calc(var(--font-tran-size) * 1px);
+        font-size: var(--font-tran-size);
       }
       &:nth-of-type(3) {
         opacity: 0.6;
-        font-size: calc(var(--font-roma-size) * 1px);
+        font-size: var(--font-roma-size);
       }
     }
   }
