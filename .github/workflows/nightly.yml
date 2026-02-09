@@ -21,7 +21,8 @@ jobs:
       - name: Check for changes since last nightly tag
         id: check
         run: |
-          LATEST_TAG="nightly"
+          BASE_VERSION=$(node -p "require('./package.json').version.split('-')[0]")
+          LATEST_TAG="v${BASE_VERSION}-nightly"
           # 检查 tag 是否存在
           if git rev-parse "$LATEST_TAG" >/dev/null 2>&1; then
             # 检查是否有新提交
@@ -175,9 +176,14 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 获取基础版本号
+          BASE_VERSION=$(node -p "require('./package.json').version.split('-')[0]")
+          TAG_NAME="v${BASE_VERSION}-nightly"
+
           # 强制移动 nightly tag 到当前 HEAD (即 dev-nightly 的最新提交)
-          git tag -f nightly HEAD
-          git push -f origin nightly
+          git tag -f $TAG_NAME HEAD
+          git push -f origin $TAG_NAME
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -188,26 +194,33 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # 获取基础版本号和 tag
+          BASE_VERSION=$(node -p "require('./package.json').version.split('-')[0]")
+          TAG_NAME="v${BASE_VERSION}-nightly"
+
           # 1. 确保 nightly tag 和 release 存在
           # 如果不存在则创建，存在则忽略
-          gh release create nightly --prerelease --title "Dev Nightly Build" --notes "Auto generated nightly build" --target dev-nightly || true
+          gh release create $TAG_NAME --prerelease --title "Dev Nightly Build" --notes "Auto generated nightly build" --target dev-nightly || true
 
           # 2. 获取最近更新日志 (从上一个 tag 到 HEAD)
           # 注意：这里我们比较 dev 分支的变更
-          # 如果没有 tag，就显示最近 10 条
+          # 如果没有 tag，就显示最近 20 条
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
           if [ -z "$LAST_TAG" ]; then
-            NOTES=$(git log -n 10 --pretty=format:"- %h %s")
+            NOTES=$(git log -n 20 --pretty=format:"- %h %s")
           else
-            # 排除 nightly tag 本身，找前一个
-            if [ "$LAST_TAG" == "nightly" ]; then
+            # 排除当前 tag 本身（它已经指向 HEAD），找前一个
+            if [[ "$LAST_TAG" == *"-nightly" ]]; then
                LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
             fi
             
             if [ -z "$LAST_TAG" ]; then
-               NOTES=$(git log -n 10 --pretty=format:"- %h %s")
+               NOTES=$(git log -n 20 --pretty=format:"- %h %s")
             else 
-               NOTES=$(git log "$LAST_TAG"..HEAD --pretty=format:"- %h %s")
+               NOTES=$(git log "$LAST_TAG"..HEAD --pretty=format:"- %h %s" | head -n 20)
+               # 添加查看完整变更的链接
+               COMPARE_URL="https://github.com/imsyy/SPlayer/compare/$LAST_TAG...HEAD"
+               NOTES="$NOTES\n\n[🔍 View full changes]($COMPARE_URL)"
             fi
           fi
 
@@ -219,20 +232,20 @@ jobs:
             echo ""
             echo "## 自上次构建以来的变更："
             echo ""
-            echo "$NOTES"
+            echo -e "$NOTES"
           } > release_notes.md
 
           # 更新 Release Body
-          gh release edit nightly --notes-file release_notes.md
+          gh release edit $TAG_NAME --notes-file release_notes.md
 
           # 3. 删除旧 Assets 并上传新 Assets
           echo "Deleting old assets..."
           # 获取当前 Release 的所有 assets
-          ASSETS=$(gh release view nightly --json assets -q '.assets[].name')
+          ASSETS=$(gh release view $TAG_NAME --json assets -q '.assets[].name')
 
           for asset in $ASSETS; do
             echo "Deleting $asset..."
-            gh release delete-asset nightly "$asset" -y
+            gh release delete-asset $TAG_NAME "$asset" -y
           done
 
           echo "Uploading new assets..."
@@ -242,4 +255,4 @@ jobs:
 
           # 排除 unpacked 文件夹 (虽然 find -type f 应该已经排除目录，但以防万一)
           # 并且排除非构建产物
-          gh release upload nightly upload_dist/* --clobber
+          gh release upload $TAG_NAME upload_dist/* --clobber
