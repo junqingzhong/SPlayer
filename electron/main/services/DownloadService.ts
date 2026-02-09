@@ -101,11 +101,24 @@ export class DownloadService extends EventEmitter {
   }
 
   private normalizeOptions(raw: any): DownloadOptions {
+    const defaults = {
+      fileName: "未知文件名",
+      fileType: "mp3",
+      path: app.getPath("downloads"),
+      downloadMeta: true,
+      downloadCover: true,
+      downloadLyric: true,
+      saveMetaFile: true,
+    };
+    
     return {
-      fileName: raw.fileName || "未知文件名",
-      fileType: raw.fileType || "mp3",
-      path: raw.path || app.getPath("downloads"),
+      ...defaults,
       ...raw,
+      // 强制处理 undefined，防止 raw 显式传递 undefined 覆盖默认值
+      downloadMeta: raw.downloadMeta ?? defaults.downloadMeta,
+      downloadCover: raw.downloadCover ?? defaults.downloadCover,
+      downloadLyric: raw.downloadLyric ?? defaults.downloadLyric,
+      saveMetaFile: raw.saveMetaFile ?? defaults.saveMetaFile,
     };
   }
 
@@ -203,11 +216,13 @@ export class DownloadService extends EventEmitter {
     if (metadata.coverUrl) {
       try {
         const tempDir = app.getPath("temp");
+        // 解析 URL 去除 query 参数，防止文件名非法
+        const urlObj = new URL(metadata.coverUrl);
+        const ext = extname(urlObj.pathname) || ".jpg";
+
         const tempCoverPath = join(
           tempDir,
-          `cover-${Date.now()}-${Math.random().toString(36).substr(2, 5)}${extname(
-            metadata.coverUrl,
-          ) || ".jpg"}`,
+          `cover-${Date.now()}-${Math.random().toString(36).substr(2, 5)}${ext}`,
         );
         await downloadFromUrl(metadata.coverUrl, tempCoverPath);
         coverPath = tempCoverPath;
