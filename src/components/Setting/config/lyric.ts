@@ -22,11 +22,11 @@ export const useLyricSettings = (): SettingConfig => {
 
   const getDesktopLyricConfig = async () => {
     if (!isElectron) return;
-    const config = await window.electron.ipcRenderer.invoke("request-desktop-lyric-option");
+    const config = await window.electron.ipcRenderer.invoke("desktop-lyric:get-option");
     if (config) Object.assign(desktopLyricConfig, config);
 
     // 监听更新
-    window.electron.ipcRenderer.on("update-desktop-lyric-option", (_, config) => {
+    window.electron.ipcRenderer.on("desktop-lyric:update-option", (_, config) => {
       if (config && !isEqual(desktopLyricConfig, config)) {
         Object.assign(desktopLyricConfig, config);
       }
@@ -37,7 +37,7 @@ export const useLyricSettings = (): SettingConfig => {
     try {
       if (!isElectron) return;
       window.electron.ipcRenderer.send(
-        "update-desktop-lyric-option",
+        "desktop-lyric:set-option",
         cloneDeep(desktopLyricConfig),
         true,
       );
@@ -59,7 +59,7 @@ export const useLyricSettings = (): SettingConfig => {
         negativeText: "取消",
         onPositiveClick: () => {
           window.electron.ipcRenderer.send(
-            "update-desktop-lyric-option",
+            "desktop-lyric:set-option",
             defaultDesktopLyricConfig,
             true,
           );

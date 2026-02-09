@@ -182,7 +182,7 @@ class PlayerController {
       statusStore.abLoop.pointB = null;
       // 通知桌面歌词
       if (isElectron) {
-        window.electron.ipcRenderer.send("update-desktop-lyric-data", {
+        window.electron.ipcRenderer.send("desktop-lyric:update-data", {
           lyricLoading: true,
         });
       }
