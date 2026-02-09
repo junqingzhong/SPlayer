@@ -78,10 +78,18 @@ import type {
 } from "@/core/player/PlayerIpc";
 import { useSettingStore } from "@/stores";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
-import { type CSSProperties } from "vue";
+import type { CSSProperties } from "vue";
 import LyricScroll from "./LyricScroll.vue";
 
 const settingStore = useSettingStore();
+
+/**
+ * 只有当 IPC 时间与本地时间误差超过 100ms 时，才同步 IPC 的时间
+ *
+ * IPC 传来的时间有约 50ms 的延迟，可能导致 rAF 的时间抢跑了 50ms
+ * 显示到了下一行歌词，而 IPC 传的时间又把歌词拉回到上一句
+ */
+const SYNC_THRESHOLD_MS = 100;
 
 interface DisplayItem {
   key: string | number;
@@ -449,9 +457,16 @@ onMounted(() => {
   ipc.on(
     "taskbar:update-progress",
     (_, { currentTime, duration, offset }: TaskbarProgressPayload) => {
-      state.currentTime = currentTime;
       state.duration = duration;
       state.offset = offset || 0;
+
+      const diff = Math.abs(currentTime - state.currentTime);
+
+      if (diff <= SYNC_THRESHOLD_MS && state.isPlaying) {
+        return;
+      }
+
+      state.currentTime = currentTime;
       lastTimestamp = performance.now();
       updateLyric();
     },
