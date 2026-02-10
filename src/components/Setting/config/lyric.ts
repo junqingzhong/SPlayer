@@ -94,10 +94,24 @@ export const useLyricSettings = (): SettingConfig => {
             component: markRaw(LyricPreview),
           },
           {
+            key: "lyricFontSizeMode",
+            label: "自适应歌词大小",
+            type: "switch",
+            description: "开启后歌词大小将根据窗口高度自动缩放，避免全屏时过小或窗口时过大",
+            value: computed({
+              get: () => settingStore.lyricFontSizeMode === "adaptive",
+              set: (v) => (settingStore.lyricFontSizeMode = v ? "adaptive" : "fixed"),
+            }),
+          },
+          {
             key: "lyricFontSize",
             label: "歌词字体大小",
             type: "input-number",
-            description: "单位 px，最小 12，最大 60",
+            description: computed(() =>
+              settingStore.lyricFontSizeMode === "adaptive"
+                ? "作为基准大小 (以 1080p 高度为准)"
+                : "单位 px，最小 12，最大 60",
+            ),
             min: 12,
             max: 60,
             suffix: "px",
@@ -111,7 +125,11 @@ export const useLyricSettings = (): SettingConfig => {
             key: "lyricTranFontSize",
             label: "翻译歌词大小",
             type: "input-number",
-            description: "单位 px，最小 5，最大 40",
+            description: computed(() =>
+              settingStore.lyricFontSizeMode === "adaptive"
+                ? "作为基准大小 (以 1080p 高度为准)"
+                : "单位 px，最小 5，最大 40",
+            ),
             min: 5,
             max: 40,
             suffix: "px",
@@ -130,7 +148,11 @@ export const useLyricSettings = (): SettingConfig => {
             key: "lyricRomaFontSize",
             label: "音译歌词大小",
             type: "input-number",
-            description: "单位 px，最小 5，最大 40",
+            description: computed(() =>
+              settingStore.lyricFontSizeMode === "adaptive"
+                ? "作为基准大小 (以 1080p 高度为准)"
+                : "单位 px，最小 5，最大 40",
+            ),
             min: 5,
             max: 40,
             suffix: "px",
