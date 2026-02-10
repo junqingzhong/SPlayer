@@ -263,14 +263,20 @@ export class LocalMusicDB {
    */
   public getTracksInPath(dirPath: string): MusicTrack[] {
     if (!this.db) return [];
-    // 生成两种形式的路径前缀以匹配不同分隔符
-    // 统一转为 /
-    const unixPath = dirPath.replace(/\\/g, "/") + "%";
-    // 统一转为 \
-    const winPath = dirPath.replace(/\//g, "\\") + "%";
-    // 使用 OR 查询，这样可以利用 path 的索引（只要不是 WHERE function(path)）
+    // 确保路径以分隔符结尾，避免匹配到同名前缀的其他目录
+    const pathWithSep =
+      dirPath.endsWith("/") || dirPath.endsWith("\\") ? dirPath : dirPath + "/";
+    // 先统一路径分隔符
+    const unixBase = pathWithSep.replace(/\\/g, "/");
+    const winBase = pathWithSep.replace(/\//g, "\\");
+    // 转义 LIKE 通配符（使用 ^ 作为转义字符，同时转义 ^ 本身）
+    const escapeLike = (s: string) =>
+      s.replace(/\^/g, "^^").replace(/%/g, "^%").replace(/_/g, "^_");
+    const unixPath = escapeLike(unixBase) + "%";
+    const winPath = escapeLike(winBase) + "%";
+    // 使用 OR 查询并指定 ESCAPE 字符
     return this.db
-      .prepare("SELECT * FROM tracks WHERE path LIKE ? OR path LIKE ?")
+      .prepare("SELECT * FROM tracks WHERE path LIKE ? ESCAPE '^' OR path LIKE ? ESCAPE '^'")
       .all(unixPath, winPath) as MusicTrack[];
   }
 }

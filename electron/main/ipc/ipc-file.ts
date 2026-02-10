@@ -16,6 +16,13 @@ const downloadService = new DownloadService();
 /** 音乐元数据服务 */
 const musicMetadataService = new MusicMetadataService();
 
+/** 获取封面目录路径 */
+const getCoverDir = (): string => {
+  const store = useStore();
+  const localCachePath = join(store.get("cachePath"), "local-data");
+  return join(localCachePath, "covers");
+};
+
 /**
  * 处理本地音乐同步（批量流式传输）
  * @param event IPC 调用事件
@@ -26,10 +33,7 @@ const handleLocalMusicSync = async (
   dirs: string[],
 ): Promise<{ success: boolean; message?: string }> => {
   try {
-    // 获取封面目录路径
-    const store = useStore();
-    const localCachePath = join(store.get("cachePath"), "local-data");
-    const coverDir = join(localCachePath, "covers");
+    const coverDir = getCoverDir();
     // 刷新本地音乐库
     const allTracks = await localMusicService.refreshLibrary(
       dirs,
@@ -108,10 +112,7 @@ const initFileIpc = (): void => {
   // 获取已下载音乐
   ipcMain.handle("get-downloaded-songs", async (_event, dirPath: string) => {
     try {
-      // 获取封面目录路径
-      const store = useStore();
-      const localCachePath = join(store.get("cachePath"), "local-data");
-      const coverDir = join(localCachePath, "covers");
+      const coverDir = getCoverDir();
       // 扫描指定目录
       const tracks = await localMusicService.scanDirectory(dirPath);
       return processMusicList(tracks, coverDir);
@@ -127,7 +128,7 @@ const initFileIpc = (): void => {
   });
 
   // 修改音乐元信息
-  ipcMain.handle("set-music-metadata", async (_, path: string, metadata: any) => {
+  ipcMain.handle("set-music-metadata", async (_, path: string, metadata) => {
     return musicMetadataService.setMetadata(path, metadata);
   });
 
@@ -172,16 +173,11 @@ const initFileIpc = (): void => {
       // 规范化路径
       const resolvedPath = resolve(path);
       // 检查文件夹是否存在
-      try {
-        await access(resolvedPath);
-      } catch {
-        throw new Error("❌ Folder not found");
-      }
+      await access(resolvedPath);
       // 打开文件夹
       shell.showItemInFolder(resolvedPath);
     } catch (error) {
       ipcLog.error("❌ Folder open error", error);
-      throw error;
     }
   });
 
