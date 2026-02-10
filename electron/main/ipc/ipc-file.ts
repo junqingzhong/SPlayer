@@ -1,4 +1,3 @@
-import type { MusicTrack } from "../database/LocalMusicDB";
 import { app, dialog, ipcMain, shell } from "electron";
 import { access, mkdir, unlink, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
@@ -8,6 +7,7 @@ import { DownloadService } from "../services/DownloadService";
 import { MusicMetadataService } from "../services/MusicMetadataService";
 import { useStore } from "../store";
 import { chunkArray } from "../utils/helper";
+import { processMusicList } from "../utils/format";
 
 /** 本地音乐服务 */
 const localMusicService = new LocalMusicService();
@@ -30,21 +30,6 @@ const handleLocalMusicSync = async (
     const store = useStore();
     const localCachePath = join(store.get("cachePath"), "local-data");
     const coverDir = join(localCachePath, "covers");
-    /**
-     * 处理音乐封面路径
-     * @param tracks 音乐列表
-     * @returns 处理后的音乐列表
-     */
-    const processTracksCover = (tracks: MusicTrack[]) => {
-      return tracks.map((track) => {
-        let coverPath: string | undefined;
-        if (track.cover) {
-          const fullPath = join(coverDir, track.cover);
-          coverPath = `file://${fullPath.replace(/\\/g, "/")}`;
-        }
-        return { ...track, cover: coverPath };
-      });
-    };
     // 刷新本地音乐库
     const allTracks = await localMusicService.refreshLibrary(
       dirs,
@@ -54,7 +39,7 @@ const handleLocalMusicSync = async (
       () => {},
     );
     // 处理音乐封面路径
-    const finalTracks = processTracksCover(allTracks);
+    const finalTracks = processMusicList(allTracks, coverDir);
     // 分块发送
     const CHUNK_SIZE = 1000;
     for (const chunk of chunkArray(finalTracks, CHUNK_SIZE)) {
@@ -120,9 +105,20 @@ const initFileIpc = (): void => {
   // 本地音乐同步（批量流式传输）
   ipcMain.handle("local-music-sync", handleLocalMusicSync);
 
-  // 遍历音乐文件
-  ipcMain.handle("get-music-files", async (_, dirPath: string) => {
-    return musicMetadataService.scanDirectory(dirPath);
+  // 获取已下载音乐
+  ipcMain.handle("get-downloaded-songs", async (_event, dirPath: string) => {
+    try {
+      // 获取封面目录路径
+      const store = useStore();
+      const localCachePath = join(store.get("cachePath"), "local-data");
+      const coverDir = join(localCachePath, "covers");
+      // 扫描指定目录
+      const tracks = await localMusicService.scanDirectory(dirPath);
+      return processMusicList(tracks, coverDir);
+    } catch (err) {
+      console.error("Failed to get downloaded songs:", err);
+      return [];
+    }
   });
 
   // 获取音乐元信息

@@ -256,4 +256,21 @@ export class LocalMusicDB {
     if (!this.db) return [];
     return this.db.prepare("SELECT * FROM tracks").all() as MusicTrack[];
   }
+
+  /**
+   * 获取指定目录下的所有歌曲
+   * @param dirPath 目录路径
+   */
+  public getTracksInPath(dirPath: string): MusicTrack[] {
+    if (!this.db) return [];
+    // 生成两种形式的路径前缀以匹配不同分隔符
+    // 统一转为 /
+    const unixPath = dirPath.replace(/\\/g, "/") + "%";
+    // 统一转为 \
+    const winPath = dirPath.replace(/\//g, "\\") + "%";
+    // 使用 OR 查询，这样可以利用 path 的索引（只要不是 WHERE function(path)）
+    return this.db
+      .prepare("SELECT * FROM tracks WHERE path LIKE ? OR path LIKE ?")
+      .all(unixPath, winPath) as MusicTrack[];
+  }
 }
