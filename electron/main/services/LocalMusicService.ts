@@ -23,7 +23,7 @@ export class LocalMusicService {
   public static readonly ERROR_SCAN_IN_PROGRESS = "SCAN_IN_PROGRESS";
 
   /** 获取动态路径 */
-  public get paths() {
+  get paths() {
     const store = useStore();
     const localCachePath = join(store.get("cachePath"), "local-data");
     return {
@@ -66,54 +66,6 @@ export class LocalMusicService {
     })();
 
     return this.initPromise;
-  }
-
-  /**
-   * 同步音乐库（封装了扫描、封面处理、分块发送）
-   * @param dirPaths 文件夹路径数组
-   * @param onProgress 进度回调
-   * @param onBatch 批量数据回调
-   */
-  async syncLibrary(
-    dirPaths: string[],
-    onProgress: (current: number, total: number) => void,
-    onBatch: (tracks: MusicTrack[]) => void,
-  ) {
-    try {
-      // 1. 调用刷新逻辑
-      const allTracks = await this.refreshLibrary(dirPaths, onProgress);
-
-      // 2. 处理封面路径
-      const { coverDir } = this.paths;
-      const processTracksCover = (tracks: MusicTrack[]) => {
-        return tracks.map((track) => {
-          let coverPath: string | undefined;
-          if (track.cover) {
-            const fullPath = join(coverDir, track.cover);
-            coverPath = `file://${fullPath.replace(/\\/g, "/")}`;
-          }
-          return { ...track, cover: coverPath };
-        });
-      };
-      const finalTracks = processTracksCover(allTracks);
-
-      // 3. 分块发送
-      const CHUNK_SIZE = 1000;
-      for (let i = 0; i < finalTracks.length; i += CHUNK_SIZE) {
-        const chunk = finalTracks.slice(i, i + CHUNK_SIZE);
-        onBatch(chunk);
-        // 让出事件循环，避免阻塞
-        await new Promise((resolve) => setImmediate(resolve));
-      }
-
-      return { success: true };
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Unknown error";
-      if (errorMessage === LocalMusicService.ERROR_SCAN_IN_PROGRESS) {
-        return { success: false, message: "扫描正在进行中，请稍候" };
-      }
-      throw err;
-    }
   }
 
   /**

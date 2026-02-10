@@ -1,93 +1,208 @@
-import { app } from "electron";
-import { mkdir, access, writeFile, unlink } from "node:fs/promises";
-import { join, resolve, extname } from "node:path";
-import { EventEmitter } from "events";
-import { loadNativeModule } from "../utils/native-loader";
-import { useStore } from "../store";
-import { ipcLog } from "../logger";
-import { formatArtist } from "../utils/artist";
-import { downloadFromUrl } from "../utils/network";
 import type { SongMetadata } from "@native/tools";
+import { app, BrowserWindow } from "electron";
+import { mkdir, access, writeFile, rename, unlink } from "node:fs/promises";
+import { join, resolve } from "node:path";
+import { ipcLog } from "../logger";
+import { useStore } from "../store";
+import { loadNativeModule } from "../utils/native-loader";
+import { getArtistNames } from "../utils/format";
 
 type toolModule = typeof import("@native/tools");
 const tools: toolModule = loadNativeModule("tools.node", "tools");
 
-export interface DownloadOptions {
-  fileName?: string;
-  fileType?: string;
-  path?: string;
-  downloadMeta?: boolean;
-  downloadCover?: boolean;
-  downloadLyric?: boolean;
-  saveMetaFile?: boolean;
-  lyric?: string;
-  songData?: any;
-  skipIfExist?: boolean;
-  threadCount?: number;
-  referer?: string;
-  enableDownloadHttp2?: boolean;
-}
-
-export interface DownloadProgress {
-  id: number;
-  percent: number;
-  transferredBytes: number;
-  totalBytes: number;
-}
-
-export class DownloadService extends EventEmitter {
+export class DownloadService {
+  /** 存储活动下载任务：ID -> DownloadTask 实例 */
   private activeDownloads = new Map<number, any>();
 
-  constructor() {
-    super();
-  }
-
-  async downloadMusic(
+  /**
+   * 处理文件下载请求
+   * @param event IPC 调用事件
+   * @param url 下载链接
+   * @param options 下载选项
+   * @returns 下载结果状态
+   */
+  async downloadFile(
+    event: Electron.IpcMainInvokeEvent,
     url: string,
-    rawOptions: any,
-  ): Promise<{ status: "success" | "skipped" | "error" | "cancelled"; message?: string; filePath?: string }> {
+    options: {
+      fileName: string;
+      fileType: string;
+      path: string;
+      downloadMeta?: boolean;
+      downloadCover?: boolean;
+      downloadLyric?: boolean;
+      saveMetaFile?: boolean;
+      lyric?: string;
+      songData?: any;
+      skipIfExist?: boolean;
+      threadCount?: number;
+      referer?: string;
+      enableDownloadHttp2?: boolean;
+    } = {
+      fileName: "未知文件名",
+      fileType: "mp3",
+      path: app.getPath("downloads"),
+    },
+  ): Promise<{ status: "success" | "skipped" | "error" | "cancelled"; message?: string }> {
     try {
-      // 数据清洗与默认值 (Business Logic)
-      const options = this.normalizeOptions(rawOptions);
-      const { path, fileName, fileType, skipIfExist } = options;
-
-      // Ensure path, fileName, fileType are strings (normalizeOptions guarantees this but type system needs to know)
-      if (!path || !fileName) {
-          throw new Error("Invalid options: path and fileName are required");
-      }
-
+      // 获取窗口
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win || !win.webContents) return { status: "error", message: "Window not found" };
+      // 获取配置
+      const {
+        fileName,
+        fileType,
+        path,
+        lyric,
+        downloadMeta,
+        downloadCover,
+        downloadLyric,
+        saveMetaFile,
+        songData,
+        skipIfExist,
+        referer,
+      } = options;
+      // 规范化路径
       const downloadPath = resolve(path);
-      const finalFilePath = fileType
-        ? join(downloadPath, `${fileName}.${fileType}`)
-        : join(downloadPath, fileName);
-
-      // 准备目录
+      // 检查文件夹是否存在，不存在则自动递归创建
       try {
         await access(downloadPath);
       } catch {
         await mkdir(downloadPath, { recursive: true });
       }
-
-      // 检查是否存在
+      // 规范化文件名
+      const finalFilePath = fileType
+        ? join(downloadPath, `${fileName}.${fileType}`)
+        : join(downloadPath, fileName);
+      // 检查文件是否存在
       if (skipIfExist) {
         try {
           await access(finalFilePath);
-          return { status: "skipped", message: "文件已存在", filePath: finalFilePath };
+          return { status: "skipped", message: "文件已存在" };
         } catch {
-          // File does not exist, continue
+          // 文件不存在，继续下载
         }
       }
+      // 使用隐藏的临时文件夹来避免扫描
+      const tempDir = join(downloadPath, ".splayer_temp");
+      try {
+        await access(tempDir);
+      } catch {
+        await mkdir(tempDir, { recursive: true });
+      }
+      const tempFileName = fileType ? `${fileName}.${fileType}` : fileName;
+      const tempFilePath = join(tempDir, tempFileName);
+      // 准备元数据
+      let metadata: SongMetadata | undefined | null = null;
+      if (downloadMeta && songData) {
+        const artistNames = getArtistNames(songData.artists);
+        const artist = artistNames.join(", ") || "未知艺术家";
+        const coverUrl =
+          downloadCover && (songData.coverSize?.l || songData.cover)
+            ? songData.coverSize?.l || songData.cover
+            : undefined;
+        metadata = {
+          title: songData.name || "未知曲目",
+          artist: artist,
+          album:
+            (typeof songData.album === "string" ? songData.album : songData.album?.name) ||
+            "未知专辑",
+          coverUrl: coverUrl,
+          lyric: downloadLyric && lyric ? lyric : undefined,
+          description: songData.alia || "",
+        };
+      }
+      // 进度回调
+      const onProgress = (...args: any[]) => {
+        let progressData: any;
+        // 处理 (err, value) 或 (value) 签名
+        if (args.length > 1 && args[0] === null) {
+          progressData = args[1];
+        } else if (args.length > 0) {
+          progressData = args[0];
+        }
+        // 处理进度数据
+        try {
+          if (!progressData) return;
+          // 处理对象（新）和 JSON 字符串（旧/回退）
+          if (typeof progressData === "string") {
+            try {
+              progressData = JSON.parse(progressData);
+            } catch (e) {
+              console.error("Failed to parse progress json", e);
+              return;
+            }
+          }
+          // 检查进度数据
+          if (!progressData || typeof progressData !== "object") return;
+          // 映射 snake_case（Rust）到 camelCase（JS）
+          // Rust struct: { percent, transferred_bytes, total_bytes }
+          const percent = progressData.percent;
+          const transferredBytes =
+            progressData.transferredBytes ?? progressData.transferred_bytes ?? 0;
+          const totalBytes = progressData.totalBytes ?? progressData.total_bytes ?? 0;
+          // 发送进度更新
+          win.webContents.send("download-progress", {
+            id: songData?.id,
+            percent: percent,
+            transferredBytes: transferredBytes,
+            totalBytes: totalBytes,
+          });
+        } catch (e) {
+          console.error("Error processing progress callback", e, "Args:", args);
+        }
+      };
+      // 检查工具模块
+      if (!tools) throw new Error("Native tools not loaded");
+      // 获取配置
+      const store = useStore();
+      // 使用 threadCount（如果可用），否则回退到 store
+      const threadCount = options.threadCount || store.get("downloadThreadCount") || 8;
+      // 使用 enableDownloadHttp2（如果可用），否则回退到 store
+      const enableHttp2 = options.enableDownloadHttp2 ?? store.get("enableDownloadHttp2", true);
+      // 如果启用了 HTTP/2，将 HTTP 升级到 HTTPS（HTTP/2 通常需要 HTTPS）
+      let finalUrl = url;
+      if (enableHttp2 && finalUrl.startsWith("http://")) {
+        finalUrl = finalUrl.replace(/^http:\/\//, "https://");
+        ipcLog.info(`🔒 Upgraded download URL to HTTPS for HTTP/2 support: ${finalUrl}`);
+      }
+      // 创建下载任务
+      const task = new tools.DownloadTask();
+      const downloadId = songData?.id || 0;
+      this.activeDownloads.set(downloadId, task);
 
-      //  执行纯下载
-      const downloadId = options.songData?.id || 0;
-      await this.performDownload(url, finalFilePath, options, downloadId);
-
-      // 后处理 (Post-processing)
-      if (options.songData) {
-        await this.postProcessMusic(finalFilePath, options, downloadPath, fileName);
+      try {
+        // 下载到临时文件
+        await task.download(
+          finalUrl,
+          tempFilePath,
+          metadata,
+          threadCount,
+          referer,
+          onProgress,
+          enableHttp2,
+        );
+        // 下载完成后重命名为最终文件名
+        await rename(tempFilePath, finalFilePath);
+      } catch (err) {
+        // 下载失败或取消，尝试清理临时文件
+        try {
+          await unlink(tempFilePath);
+        } catch {
+          // 忽略清理错误
+        }
+        throw err;
+      } finally {
+        this.activeDownloads.delete(downloadId);
       }
 
-      return { status: "success", filePath: finalFilePath };
+      // 创建同名歌词文件
+      if (lyric && saveMetaFile && downloadLyric) {
+        const lrcPath = join(downloadPath, `${fileName}.lrc`);
+        await writeFile(lrcPath, lyric, "utf-8");
+      }
+
+      return { status: "success" };
     } catch (error: any) {
       ipcLog.error("❌ Error downloading file:", error);
       if ((error.message && error.message.includes("cancelled")) || error.code === "Cancelled") {
@@ -100,155 +215,11 @@ export class DownloadService extends EventEmitter {
     }
   }
 
-  private normalizeOptions(raw: any): DownloadOptions {
-    const defaults = {
-      fileName: "未知文件名",
-      fileType: "mp3",
-      path: app.getPath("downloads"),
-      downloadMeta: true,
-      downloadCover: true,
-      downloadLyric: true,
-      saveMetaFile: true,
-    };
-    
-    return {
-      ...defaults,
-      ...raw,
-      // 强制处理 undefined，防止 raw 显式传递 undefined 覆盖默认值
-      downloadMeta: raw.downloadMeta ?? defaults.downloadMeta,
-      downloadCover: raw.downloadCover ?? defaults.downloadCover,
-      downloadLyric: raw.downloadLyric ?? defaults.downloadLyric,
-      saveMetaFile: raw.saveMetaFile ?? defaults.saveMetaFile,
-    };
-  }
-
-  private async performDownload(
-    url: string,
-    filePath: string,
-    options: DownloadOptions,
-    downloadId: number,
-  ) {
-    const store = useStore();
-    const threadCount = options.threadCount || (store.get("downloadThreadCount") as number) || 8;
-    const enableHttp2 =
-      options.enableDownloadHttp2 !== undefined
-        ? options.enableDownloadHttp2
-        : (store.get("enableDownloadHttp2", true) as boolean);
-
-    let finalUrl = url;
-    if (enableHttp2 && finalUrl.startsWith("http://")) {
-      finalUrl = finalUrl.replace(/^http:\/\//, "https://");
-      ipcLog.info(`🔒 Upgraded download URL to HTTPS for HTTP/2 support: ${finalUrl}`);
-    }
-
-    const task = new tools.DownloadTask();
-    this.activeDownloads.set(downloadId, task);
-
-    try {
-      await task.download(
-        finalUrl,
-        filePath,
-        null, // No metadata here
-        threadCount,
-        options.referer,
-        (data: any) => this.handleProgress(data, downloadId),
-        enableHttp2,
-      );
-    } finally {
-      this.activeDownloads.delete(downloadId);
-    }
-  }
-
-  private async postProcessMusic(
-    filePath: string,
-    options: DownloadOptions,
-    dirPath: string,
-    fileName: string,
-  ) {
-    // 4. 处理元数据
-    if (options.downloadMeta && options.songData) {
-      try {
-        await this.processMetadata(filePath, options);
-      } catch (e) {
-        ipcLog.error("Metadata processing failed:", e);
-      }
-    }
-
-    // 5. 保存歌词
-    if (options.downloadLyric && options.lyric && options.saveMetaFile) {
-      try {
-        await this.saveLyric(dirPath, fileName, options.lyric);
-      } catch (e) {
-        ipcLog.error("Lyric saving failed:", e);
-      }
-    }
-  }
-
-  private prepareMetadata(options: DownloadOptions): SongMetadata | null {
-    const { downloadMeta, songData, downloadCover, downloadLyric, lyric } = options;
-
-    if (!downloadMeta || !songData) return null;
-
-    const artist = formatArtist(songData.artists);
-    const coverUrl =
-      downloadCover && (songData.coverSize?.l || songData.cover)
-        ? songData.coverSize?.l || songData.cover
-        : undefined;
-
-    return {
-      title: songData.name || "未知曲目",
-      artist: artist,
-      album:
-        (typeof songData.album === "string" ? songData.album : songData.album?.name) ||
-        "未知专辑",
-      coverUrl: coverUrl,
-      lyric: downloadLyric && lyric ? lyric : undefined,
-      description: songData.alia || "",
-    };
-  }
-
-  private async processMetadata(filePath: string, options: DownloadOptions) {
-    const metadata = this.prepareMetadata(options);
-    if (!metadata) return;
-
-    let coverPath: string | undefined;
-
-    if (metadata.coverUrl) {
-      try {
-        const tempDir = app.getPath("temp");
-        // 解析 URL 去除 query 参数，防止文件名非法
-        const urlObj = new URL(metadata.coverUrl);
-        const ext = extname(urlObj.pathname) || ".jpg";
-
-        const tempCoverPath = join(
-          tempDir,
-          `cover-${Date.now()}-${Math.random().toString(36).substr(2, 5)}${ext}`,
-        );
-        await downloadFromUrl(metadata.coverUrl, tempCoverPath);
-        coverPath = tempCoverPath;
-      } catch (e) {
-        ipcLog.error("Failed to download cover:", e);
-      }
-    }
-
-    try {
-      await tools.writeMusicMetadata(filePath, metadata, coverPath);
-    } finally {
-      if (coverPath) {
-        try {
-          await unlink(coverPath);
-        } catch {
-          // Ignore error if file deletion fails
-        }
-      }
-    }
-  }
-
-  private async saveLyric(dirPath: string, fileName: string, lyric: string) {
-    const lrcPath = join(dirPath, `${fileName}.lrc`);
-    await writeFile(lrcPath, lyric, "utf-8");
-  }
-
+  /**
+   * 取消下载
+   * @param songId 歌曲ID
+   * @returns 是否成功取消
+   */
   cancelDownload(songId: number): boolean {
     const task = this.activeDownloads.get(songId);
     if (task) {
@@ -256,34 +227,5 @@ export class DownloadService extends EventEmitter {
       return true;
     }
     return false;
-  }
-
-  private handleProgress(progressData: any, id: number) {
-    try {
-      if (!progressData) return;
-
-      if (typeof progressData === "string") {
-        try {
-          progressData = JSON.parse(progressData);
-        } catch {
-          return;
-        }
-      }
-
-      if (!progressData || typeof progressData !== "object") return;
-
-      const percent = progressData.percent;
-      const transferredBytes = progressData.transferredBytes ?? progressData.transferred_bytes ?? 0;
-      const totalBytes = progressData.totalBytes ?? progressData.total_bytes ?? 0;
-
-      this.emit("progress", {
-        id,
-        percent,
-        transferredBytes,
-        totalBytes,
-      });
-    } catch (e) {
-      console.error("Error processing progress callback", e);
-    }
   }
 }
