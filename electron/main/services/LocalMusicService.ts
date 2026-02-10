@@ -20,8 +20,6 @@ export class LocalMusicService {
   /** 记录最后一次使用的 DB 路径 */
   private lastDbPath: string = "";
 
-  public static readonly ERROR_SCAN_IN_PROGRESS = "SCAN_IN_PROGRESS";
-
   /** 获取动态路径 */
   get paths() {
     const store = useStore();
