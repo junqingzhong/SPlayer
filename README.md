@@ -48,9 +48,9 @@
 1. 安装依赖：`pnpm install`
 2. 复制 `.env.example` 为 `.env` 并按需修改
 3. 启动开发：`pnpm dev`
-4. 构建
-- `pnpm build`
-- `pnpm build:win`
+4. 构建：
+   - `pnpm build`
+   - `pnpm build:win`
 
 ### 跳过原生模块构建
 
