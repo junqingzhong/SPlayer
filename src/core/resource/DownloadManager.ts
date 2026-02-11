@@ -384,7 +384,7 @@ class DownloadManager {
    * 获取已下载的歌曲
    * @returns 已下载的歌曲列表
    */
-  public async getDownloadedSongs(): Promise<SongType[]> {
+  public async getDownloadedSongs(): Promise<Record<string, unknown>[]> {
     const settingStore = useSettingStore();
     if (!isElectron) return [];
     const downloadPath = settingStore.downloadPath;

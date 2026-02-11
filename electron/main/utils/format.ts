@@ -19,25 +19,24 @@ export const getArtistNames = (artists: any): string[] => {
 };
 
 /**
- * 处理音乐列表 - 带封面
+ * 处理音乐列表
  * @param tracks 音乐列表
  * @param coverDir 封面目录
  * @returns 处理后的音乐列表
  */
 export const processMusicList = (tracks: MusicTrack[], coverDir: string) => {
   return tracks.map((track) => {
-    let coverPath: string | undefined;
+    let cover: string | undefined;
     if (track.cover) {
       const fullPath = join(coverDir, track.cover);
-      coverPath = `file://${fullPath.replace(/\\/g, "/")}`;
+      cover = `file://${fullPath.replace(/\\/g, "/")}`;
     }
     return {
       ...track,
       name: track.title,
-      cover: coverPath,
-      size: Number((track.size / 1024 / 1024).toFixed(2)),
-      duration: track.duration * 1000,
-      quality: track.bitrate || 0,
+      cover,
+      // 码率映射到 quality 字段
+      quality: track.bitrate ?? 0,
     };
   });
 };
