@@ -238,7 +238,7 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 
 #### ⚙️ 本地部署
 
-1. 本地部署需要用到 `Node.js`（>= 20）可前往 [Node.js 官网](https://nodejs.org/zh-cn/) 下载安装包，请下载最新稳定版
+1. 本地部署需要用到 `Node.js`（>= 20），可前往 [Node.js 官网](https://nodejs.org/zh-cn/) 下载安装包，请下载最新稳定版
 2. 安装 pnpm（>= 10）
 
    ```bash
