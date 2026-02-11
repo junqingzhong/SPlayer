@@ -42,8 +42,6 @@ const initUpdaterListeners = (win: BrowserWindow) => {
   autoUpdater.on("update-downloaded", (info) => {
     win.webContents.send("update-downloaded", info);
     updateLog.info(`🚀 Update downloaded: ${info.version}`);
-    // 安装更新
-    autoUpdater.quitAndInstall();
   });
 
   // 当没有新版本时
@@ -104,4 +102,9 @@ export const checkUpdate = (
 // 开始下载
 export const startDownloadUpdate = () => {
   autoUpdater.downloadUpdate();
+};
+
+// 安装已下载的更新
+export const installUpdate = () => {
+  autoUpdater.quitAndInstall();
 };

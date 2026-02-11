@@ -22,6 +22,7 @@ const initIpc = () => {
   try {
     if (!isElectron) return;
     const player = usePlayerController();
+    const statusStore = useStatusStore();
 
     // 播放
     window.electron.ipcRenderer.on("play", () => player.play());
@@ -139,13 +140,34 @@ const initIpc = () => {
     });
     // 有更新
     window.electron.ipcRenderer.on("update-available", (_, info) => {
+      const isManualCheck = statusStore.updateCheck;
       closeUpdateStatus();
-      openUpdateApp(info);
+      statusStore.updateAvailable = true;
+      statusStore.updateInfo = info;
+      statusStore.updateDownloaded = false;
+      statusStore.updateDownloading = false;
+      statusStore.updateDownloadProgress = 0;
+      // 仅在用户主动检查时弹窗
+      if (isManualCheck) {
+        openUpdateApp(info);
+      }
+    });
+    // 更新下载进度
+    window.electron.ipcRenderer.on("download-progress", (_, progress) => {
+      statusStore.updateDownloading = true;
+      statusStore.updateDownloadProgress = Number((progress?.percent || 0).toFixed(1));
+    });
+    // 更新下载完成
+    window.electron.ipcRenderer.on("update-downloaded", () => {
+      statusStore.updateDownloading = false;
+      statusStore.updateDownloaded = true;
+      statusStore.updateDownloadProgress = 100;
     });
     // 更新错误
     window.electron.ipcRenderer.on("update-error", (_, error) => {
       console.error("Error updating:", error);
       closeUpdateStatus();
+      statusStore.updateDownloading = false;
       window.$message.error("更新过程出现错误");
     });
     // 协议数据
