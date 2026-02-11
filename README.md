@@ -46,9 +46,9 @@
 ### 快速开始
 
 1. 安装依赖：`pnpm install`
-2. 复制 `/.env.example` 为 `/.env` 并按需修改
+2. 复制 `.env.example` 为 `.env` 并按需修改
 3. 启动开发：`pnpm dev`
-4. 启用编译
+4. 构建
 - `pnpm build`
 - `pnpm build:win`
 
@@ -249,7 +249,7 @@ docker run -d --name SPlayer -p 25884:25884 imsyy/splayer:latest
 
 3. 克隆仓库并拉取至本地，此处不再赘述
 4. 使用 `pnpm install` 安装项目依赖（若安装过程中遇到网络错误，请使用国内镜像源替代，此处不再赘述）
-5. 复制 `/.env.example` 文件并重命名为 `/.env` 并修改配置（如需跳过原生模块构建，可设置 `SKIP_NATIVE_BUILD=true`）
+5. 复制 `.env.example` 文件并重命名为 `.env` 并修改配置（如需跳过原生模块构建，可设置 `SKIP_NATIVE_BUILD=true`）
 6. 打包客户端，请依据你的系统类型来选择，打包成功后，会输出安装包或可执行文件在 `/dist` 目录中，可自行安装
 
    > 默认情况下，构建命令仅会构建当前系统架构的版本。如需构建特定架构（如 x64 + arm64），请在命令后追加参数，例如：`pnpm build:win -- --x64 --arm64`
