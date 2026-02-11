@@ -7,6 +7,7 @@ import { cloneDeep } from "lodash-es";
 import { toRaw } from "vue";
 import { toLikeSong } from "./auth";
 import { isElectron } from "./env";
+import { sendTaskbarCoverColor } from "./color";
 import { getPlayerInfoObj } from "./format";
 import { openSetting, openUpdateApp } from "./modal";
 
@@ -65,7 +66,6 @@ const initIpc = () => {
       const settingStore = useSettingStore();
       const { name, artist } = getPlayerInfoObj() || {};
       const cover = musicStore.getSongCover("s") || "";
-
       playerIpc.sendTaskbarMetadata({
         title: name || "",
         artist: artist || "",
@@ -74,10 +74,8 @@ const initIpc = () => {
       playerIpc.sendTaskbarState({
         isPlaying: statusStore.playStatus,
       });
-
       // 发送歌词数据
       playerIpc.sendTaskbarLyrics(musicStore.songLyric);
-
       // 发送设置
       window.electron.ipcRenderer.send(
         "taskbar:set-show-cover",
@@ -102,12 +100,13 @@ const initIpc = () => {
         showTran: settingStore.showTran,
         showRoma: settingStore.showRoma,
       });
-
       playerIpc.sendTaskbarProgressData({
         currentTime: statusStore.currentTime * 1000,
         duration: statusStore.duration * 1000,
         offset: statusStore.getSongOffset(musicStore.playSong?.id),
       });
+      // 发送封面颜色
+      sendTaskbarCoverColor();
     });
 
     // 请求歌词数据
