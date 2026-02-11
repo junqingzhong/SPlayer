@@ -264,8 +264,7 @@ export class LocalMusicDB {
   public getTracksInPath(dirPath: string): MusicTrack[] {
     if (!this.db) return [];
     // 确保路径以分隔符结尾，避免匹配到同名前缀的其他目录
-    const pathWithSep =
-      dirPath.endsWith("/") || dirPath.endsWith("\\") ? dirPath : dirPath + "/";
+    const pathWithSep = dirPath.endsWith("/") || dirPath.endsWith("\\") ? dirPath : dirPath + "/";
     // 先统一路径分隔符
     const unixBase = pathWithSep.replace(/\\/g, "/");
     const winBase = pathWithSep.replace(/\//g, "\\");

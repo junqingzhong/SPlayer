@@ -20,26 +20,48 @@
     </div>
     <n-flex class="menu" justify="space-between">
       <n-flex class="left" align="flex-end">
-        <n-button :focusable="false" :disabled="currentTab !== 'download-downloaded'" type="primary" strong secondary
-          round @click="handlePlayAll">
+        <n-button
+          :focusable="false"
+          :disabled="currentTab !== 'download-downloaded'"
+          type="primary"
+          strong
+          secondary
+          round
+          @click="handlePlayAll"
+        >
           <template #icon>
             <SvgIcon name="Play" />
           </template>
           播放全部
         </n-button>
-        <n-button :focusable="false" :disabled="currentTab === 'download-downloaded' ? false : dataStore.downloadingSongs.length === 0
-          " :loading="loading" class="more" strong secondary circle @click="
+        <n-button
+          :focusable="false"
+          :disabled="
+            currentTab === 'download-downloaded' ? false : dataStore.downloadingSongs.length === 0
+          "
+          :loading="loading"
+          class="more"
+          strong
+          secondary
+          circle
+          @click="
             currentTab === 'download-downloaded'
               ? getDownloadMusic(true)
               : downloadManager.retryAllDownloads()
-            ">
+          "
+        >
           <template #icon>
             <SvgIcon name="Refresh" />
           </template>
         </n-button>
       </n-flex>
       <n-flex class="right" justify="end">
-        <n-tabs v-model:value="currentTab" class="tabs" type="segment" @update:value="handleTabChange">
+        <n-tabs
+          v-model:value="currentTab"
+          class="tabs"
+          type="segment"
+          @update:value="handleTabChange"
+        >
           <n-tab name="download-downloaded"> 下载完成 </n-tab>
           <n-tab name="download-downloading"> 下载中 </n-tab>
         </n-tabs>
