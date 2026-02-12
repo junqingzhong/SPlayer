@@ -3,7 +3,7 @@ import { useEventListener } from "@vueuse/core";
 import { watch, onMounted } from "vue";
 import { openUserAgreement } from "@/utils/modal";
 import { debounce } from "lodash-es";
-import { isElectron } from "@/utils/env";
+import { isElectron, isMac } from "@/utils/env";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { mediaSessionManager } from "@/core/player/MediaSessionManager";
 import { useDownloadManager } from "@/core/resource/DownloadManager";
@@ -71,6 +71,11 @@ export const useInit = () => {
       window.electron.ipcRenderer.send("desktop-lyric:toggle", statusStore.showDesktopLyric);
       // 检查更新
       if (settingStore.checkUpdateOnStart) window.electron.ipcRenderer.send("check-update", false);
+
+      // 启动时，如果启用macOS歌词，发送初始数据
+      if (isMac && settingStore.macos.statusBarLyric.enabled) {
+        window.electron.ipcRenderer.send("mac-statusbar:request-data");
+      }
 
       // 监听任务栏歌词设置
       watch(

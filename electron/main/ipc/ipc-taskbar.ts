@@ -6,11 +6,11 @@ import mainWindow from "../windows/main-window";
 import taskbarLyricWindow from "../windows/taskbar-lyric-window";
 
 const initTaskbarIpc = () => {
+  // 在函数内部获取 store，确保在 app ready 事件之后
   const store = useStore();
-
   const envEnabled = store.get("taskbar.enabled");
-
   const tray = getMainTray();
+
   tray?.setTaskbarLyricShow(envEnabled);
 
   if (envEnabled) {
@@ -20,7 +20,14 @@ const initTaskbarIpc = () => {
   ipcMain.on("taskbar:toggle", (_event, show: boolean) => {
     store.set("taskbar.enabled", show);
     const tray = getMainTray();
+
     tray?.setTaskbarLyricShow(show);
+
+    const mainWin = mainWindow.getWin(); // 获取主窗口实例
+    if (mainWin && !mainWin.isDestroyed()) {
+      // 发送更新给渲染进程，同步 Pinia store
+      mainWin.webContents.send("setting:update-taskbar-lyric-enabled", show);
+    }
 
     if (show) {
       taskbarLyricWindow.create();
