@@ -4,11 +4,10 @@ import mainWindow from "../windows/main-window";
 
 const initUpdateIpc = () => {
   // 检查更新
-  ipcMain.on("check-update", (_event, showTip, channel) => {
+  ipcMain.on("check-update", (_event, showTip) => {
     const mainWin = mainWindow.getWin();
     if (!mainWin) return;
-    const allowPrerelease = channel === "nightly";
-    checkUpdate(mainWin, showTip, allowPrerelease);
+    checkUpdate(mainWin, showTip);
   });
 
   // 开始下载更新

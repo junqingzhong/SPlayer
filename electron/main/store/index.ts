@@ -73,6 +73,8 @@ export interface StoreType {
   downloadThreadCount?: number;
   /** 启用HTTP2下载 */
   enableDownloadHttp2?: boolean;
+  /** 更新通道 */
+  updateChannel?: "stable" | "nightly";
 }
 
 /**
@@ -115,6 +117,7 @@ export const useStore = () => {
       },
       downloadThreadCount: 8,
       enableDownloadHttp2: true,
+      updateChannel: "stable",
     },
   });
 };

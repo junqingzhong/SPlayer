@@ -136,21 +136,20 @@ const initIpc = () => {
     // 无更新
     window.electron.ipcRenderer.on("update-not-available", () => {
       closeUpdateStatus();
+      statusStore.updateAvailable = false;
+      statusStore.updateInfo = null;
       window.$message.success("当前已是最新版本");
     });
     // 有更新
     window.electron.ipcRenderer.on("update-available", (_, info) => {
-      const isManualCheck = statusStore.updateCheck;
       closeUpdateStatus();
       statusStore.updateAvailable = true;
       statusStore.updateInfo = info;
       statusStore.updateDownloaded = false;
       statusStore.updateDownloading = false;
       statusStore.updateDownloadProgress = 0;
-      // 仅在用户主动检查时弹窗
-      if (isManualCheck) {
-        openUpdateApp(info);
-      }
+      // 弹窗提示
+      openUpdateApp(info);
     });
     // 更新下载进度
     window.electron.ipcRenderer.on("download-progress", (_, progress) => {

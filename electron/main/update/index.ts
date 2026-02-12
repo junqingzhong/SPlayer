@@ -2,6 +2,7 @@ import { type BrowserWindow } from "electron";
 import { updateLog } from "../logger";
 import electronUpdater from "electron-updater";
 import { isDev } from "../utils/config";
+import { useStore } from "../store";
 
 // import
 const { autoUpdater } = electronUpdater;
@@ -63,15 +64,19 @@ const initUpdaterListeners = (win: BrowserWindow) => {
 if (isDev) autoUpdater.forceDevUpdateConfig = true;
 
 // 检查更新
-export const checkUpdate = (
-  win: BrowserWindow,
-  showTip: boolean = false,
-  allowPrerelease: boolean = false,
-) => {
+export const checkUpdate = (win: BrowserWindow, showTip: boolean = false) => {
   // 初始化事件监听器
   initUpdaterListeners(win);
   // 更改提示
   isShowTip = showTip;
+
+  // 获取更新通道
+  const store = useStore();
+  const updateChannel = store.get("updateChannel") || "stable";
+  const allowPrerelease = updateChannel === "nightly";
+
+  // 设置更新通道
+  autoUpdater.channel = updateChannel === "nightly" ? "nightly" : "latest";
   // 设置是否允许 Pre-release
   autoUpdater.allowPrerelease = allowPrerelease;
   // 检查更新
