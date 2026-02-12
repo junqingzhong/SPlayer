@@ -70,8 +70,7 @@ export const useInit = () => {
       // 显示桌面歌词
       window.electron.ipcRenderer.send("desktop-lyric:toggle", statusStore.showDesktopLyric);
       // 检查更新
-      if (settingStore.checkUpdateOnStart)
-        window.electron.ipcRenderer.send("check-update", false, settingStore.updateChannel);
+      if (settingStore.checkUpdateOnStart) window.electron.ipcRenderer.send("check-update", false);
 
       // 监听任务栏歌词设置
       watch(
