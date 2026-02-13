@@ -297,6 +297,7 @@ class LyricManager {
       if (qqLyric.yrcData.length > 0) {
         result.yrcData = qqLyric.yrcData;
         qqMusicAdopted = true;
+        meta.usingQRCLyric = true;
       }
       if (qqLyric.lrcData.length > 0) {
         result.lrcData = qqLyric.lrcData;
@@ -334,7 +335,9 @@ class LyricManager {
 
     // 处理 LRC 歌词
     const adoptLRC = async () => {
-      if (qqMusicAdopted) return;
+      // 如果已经采用了 QRC，则不需要再获取网易云歌词
+      if (qqMusicAdopted && result.yrcData.length > 0) return;
+
       if (typeof id !== "number") return;
       let data: any = null;
       const cached = await this.getRawLyricCache(id, "lrc");
@@ -407,7 +410,10 @@ class LyricManager {
     }
     // 设置元数据状态
     meta.usingTTMLLyric = ttmlAdopted;
-    meta.usingQRCLyric = qqMusicAdopted && !ttmlAdopted;
+    // 如果采用了 TTML，则 QRC 标记失效
+    if (ttmlAdopted) {
+      meta.usingQRCLyric = false;
+    }
 
     return {
       data: result,
