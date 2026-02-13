@@ -22,7 +22,7 @@ on:
 
 env:
   NODE_VERSION: 22.x
-  PNPM_VERSION: 10
+  PNPM_VERSION: 10.28.1
 
 jobs:
   # ===================================================================
@@ -52,7 +52,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -63,7 +62,7 @@ jobs:
       - name: Clean workspace on Windows
         if: runner.os == 'Windows'
         run: |
-          Write-Host "🧹 Cleaning workspace, node_modules, and Electron caches..."
+          Write-Host "🧹 Cleaning workspace, node_modules, Electron caches, and pnpm store..."
           if (Test-Path dist) { Remove-Item -Recurse -Force dist }
           if (Test-Path out) { Remove-Item -Recurse -Force out }
           if (Test-Path node_modules) { Remove-Item -Recurse -Force node_modules }
@@ -74,11 +73,15 @@ jobs:
           if (Test-Path "$env:LOCALAPPDATA\electron") {
             Remove-Item "$env:LOCALAPPDATA\electron" -Recurse -Force -ErrorAction SilentlyContinue
           }
+
+          if (Test-Path "$env:USERPROFILE\.pnpm-store") {
+            Remove-Item "$env:USERPROFILE\.pnpm-store" -Recurse -Force -ErrorAction SilentlyContinue
+          }
       - name: Clean workspace on macOS & Linux
         if: runner.os == 'macOS' || runner.os == 'Linux'
         run: |
-          echo "🧹 Cleaning workspace, node_modules, and Electron caches..."
-          rm -rf dist out node_modules ~/.cache/electron-builder ~/.cache/electron
+          echo "🧹 Cleaning workspace, node_modules, Electron caches, and pnpm store..."
+          rm -rf dist out node_modules ~/.cache/electron-builder ~/.cache/electron ~/.pnpm-store
       # macOS 上安装 LLVM 以支持 Wasm 编译
       - name: Install LLVM on macOS
         if: runner.os == 'macOS'
