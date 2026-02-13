@@ -107,12 +107,9 @@ jobs:
           else
             echo ".env file already exists. Skipping the copy step."
           fi
-
+      # 设置 pnpm
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
-        with:
-          version: 10.28.1
-
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
@@ -236,10 +233,10 @@ jobs:
             if [[ "$LAST_TAG" == *"-nightly" ]]; then
                LAST_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
             fi
-            
+
             if [ -z "$LAST_TAG" ]; then
                NOTES=$(git log -n 20 --pretty=format:"- %h %s")
-            else 
+            else
                NOTES=$(git log "$LAST_TAG"..HEAD --pretty=format:"- %h %s" | head -n 20)
                # 添加查看完整变更的链接
                COMPARE_URL="https://github.com/imsyy/SPlayer/compare/$LAST_TAG...HEAD"

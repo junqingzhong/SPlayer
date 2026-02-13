@@ -8,7 +8,6 @@ on:
 
 env:
   NODE_VERSION: 22.x
-  PNPM_VERSION: 10
   # SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_TOKEN }}
 
 jobs:
@@ -29,17 +28,14 @@ jobs:
       # 检出 Git 仓库
       - name: Check out git repository
         uses: actions/checkout@v4
-      # 设置 pnpm 版本
+      # 设置 pnpm
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
-        with:
-          version: ${{ env.PNPM_VERSION }}
       # 安装 Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
