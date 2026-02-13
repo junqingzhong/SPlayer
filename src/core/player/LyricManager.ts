@@ -660,6 +660,8 @@ class LyricManager {
     // 合并默认规则和用户自定义规则
     const mergedKeywords = [...new Set([...defaultKeywords, ...(excludeLyricsUserKeywords ?? [])])];
     const mergedRegexes = [...new Set([...defaultRegexes, ...(excludeLyricsUserRegexes ?? [])])];
+    // 额外规则：匹配 * 计划
+    mergedRegexes.push(".*计划.*");
 
     const song = targetSong || musicStore.playSong;
     const { name, artists } = song;
@@ -690,7 +692,7 @@ class LyricManager {
       softMatchRegexes: songMetadataRegexes,
     };
 
-    const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
+    let lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
     let yrcData = lyricData.yrcData || [];
 
     // usingTTMLLyric 未传入时从 lyricData 推断（预加载场景）
@@ -698,6 +700,29 @@ class LyricManager {
     if (!isTTML || settingStore.enableExcludeLyricsTTML) {
       yrcData = stripLyricMetadata(yrcData, options);
     }
+
+    // 额外排除规则处理
+    const processExtraRules = (lines: LyricLine[]) => {
+      if (lines.length === 0) return lines;
+
+      // 规则：去除第一行包含歌曲名
+      if (name && name !== "未播放歌曲") {
+        const firstLine = lines[0].words.map((w) => w.word).join("");
+        if (firstLine.includes(name)) {
+          lines.shift();
+        }
+      }
+
+      // 规则：去除只有一行歌词的歌词
+      if (lines.length === 1) {
+        return [];
+      }
+
+      return lines;
+    };
+
+    lrcData = processExtraRules(lrcData);
+    yrcData = processExtraRules(yrcData);
 
     return {
       lrcData,
