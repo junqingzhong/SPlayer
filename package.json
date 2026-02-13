@@ -19,7 +19,7 @@
   "type": "module",
   "scripts": {
     "format": "prettier --write .",
-    "lint": "eslint . --fix",
+    "lint": "eslint . --max-warnings=0",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
     "typecheck:web": "vue-tsc --noEmit -p tsconfig.web.json --composite false",
     "typecheck": "pnpm typecheck:node && pnpm typecheck:web",
@@ -59,6 +59,7 @@
     "better-sqlite3": "^12.5.0",
     "change-case": "^5.4.4",
     "dayjs": "^1.11.19",
+    "es-object-atoms": "^1.1.1",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.6.2",
     "file-saver": "^2.0.5",

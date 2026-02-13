@@ -5,6 +5,7 @@ import type {
   TrayWatcher,
   UiaWatcher,
 } from "@native/taskbar-lyric";
+import { TASKBAR_IPC_CHANNELS } from "@shared";
 import { app, type BrowserWindow, ipcMain, nativeTheme, screen } from "electron";
 import { debounce } from "lodash-es";
 import { join } from "node:path";
@@ -49,6 +50,8 @@ class TaskbarLyricWindow {
   private isNativeDisposed = false;
   private contentWidth = 300;
   private maxWidthPercent = 30;
+  private isFadingOut = false;
+  private shouldBeVisible = false;
 
   private debouncedUpdateLayout = debounce(() => {
     this.updateLayout(true);
@@ -129,7 +132,10 @@ class TaskbarLyricWindow {
     const sendTheme = () => {
       if (this.win && !this.win.isDestroyed()) {
         const isDark = nativeTheme.shouldUseDarkColors;
-        this.win.webContents.send("taskbar:update-theme", { isDark });
+        this.win.webContents.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
+          type: "system-theme",
+          data: { isDark },
+        });
       }
     };
 
@@ -151,7 +157,9 @@ class TaskbarLyricWindow {
     this.win.once("ready-to-show", () => {
       if (this.win) {
         this.embed();
-        this.win.show();
+        if (this.shouldBeVisible) {
+          this.win.show();
+        }
         this.updateLayout(false);
         sendTheme();
       }
@@ -424,6 +432,34 @@ class TaskbarLyricWindow {
         this.win.setBounds(target);
       }
     }, interval);
+  }
+
+  public setVisibility(shouldShow: boolean) {
+    this.shouldBeVisible = shouldShow;
+
+    if (!this.win || this.win.isDestroyed()) return;
+
+    if (shouldShow) {
+      this.isFadingOut = false;
+
+      if (!this.win.isVisible()) {
+        this.win.show();
+      }
+
+      this.win.webContents.send("taskbar:fade-in");
+    } else {
+      if (this.win.isVisible() && !this.isFadingOut) {
+        this.isFadingOut = true;
+        this.win.webContents.send("taskbar:fade-out");
+      }
+    }
+  }
+
+  public handleFadeDone() {
+    if (this.isFadingOut && this.win && !this.win.isDestroyed()) {
+      this.win.hide();
+      this.isFadingOut = false;
+    }
   }
 
   public destroy() {
