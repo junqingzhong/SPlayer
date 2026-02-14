@@ -154,6 +154,7 @@ class PlayerController {
     const songManager = useSongManager();
     const audioManager = useAudioManager();
     const lyricManager = useLyricManager();
+    const settingStore = useSettingStore();
 
     // 重置过渡状态
     this.isTransitioning = false;

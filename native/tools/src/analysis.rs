@@ -2,13 +2,12 @@ use napi_derive::napi;
 use std::fs::File;
 use std::path::Path;
 use symphonia::core::audio::{AudioBufferRef, Signal};
-use symphonia::core::codecs::{DecoderOptions, CODEC_TYPE_NULL};
+use symphonia::core::codecs::DecoderOptions;
 use symphonia::core::errors::Error;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
-use symphonia::core::conv::FromSample;
 
 #[napi(object)]
 pub struct AudioAnalysis {
@@ -177,20 +176,20 @@ fn detect_silence_from_envelope(envelope: &[f32], rate: f64, threshold_db: f32) 
     if envelope.is_empty() { return (0.0, 0.0); }
     
     let threshold = 10.0f32.powf(threshold_db / 20.0);
-    let mut fade_in = 0.0;
-    let mut fade_out = envelope.len() as f64 / rate;
     
     // Forward
-    if let Some(pos) = envelope.iter().position(|&x| x > threshold) {
-        fade_in = pos as f64 / rate;
+    let fade_in = if let Some(pos) = envelope.iter().position(|&x| x > threshold) {
+        pos as f64 / rate
     } else {
         return (0.0, envelope.len() as f64 / rate);
-    }
+    };
     
     // Backward
-    if let Some(pos) = envelope.iter().rposition(|&x| x > threshold) {
-        fade_out = (pos + 1) as f64 / rate;
-    }
+    let fade_out = if let Some(pos) = envelope.iter().rposition(|&x| x > threshold) {
+        (pos + 1) as f64 / rate
+    } else {
+        envelope.len() as f64 / rate
+    };
     
     (fade_in, fade_out)
 }
