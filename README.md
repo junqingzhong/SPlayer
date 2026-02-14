@@ -64,7 +64,7 @@
 
 ## 👀 Demo
 
-- 在线演示：[SPlayer](splayer.20100907.xyz)
+- 在线演示：[SPlayer](https://splayer.20100907.xyz)
 
   > 如打不开，说明已经失效请自行前往 [获取](#️-获取)
 
