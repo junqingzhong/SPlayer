@@ -71,6 +71,8 @@ class PlayerController {
   private nextAnalysis: AudioAnalysis | null = null;
   /** 是否正在获取下一首歌分析 */
   private isFetchingNextAnalysis = false;
+  /** Automix 增益调整 (LUFS Normalization) */
+  private automixGain = 1.0;
 
   constructor() {
     // 初始化 AudioManager（会根据设置自动选择引擎）
@@ -102,21 +104,24 @@ class PlayerController {
 
   /**
    * 应用 ReplayGain (音量平衡)
+   * @param songOverride 强制指定歌曲 (不从 store 读取)
+   * @param apply 是否立即应用到当前引擎
+   * @returns 计算出的增益值
    */
-  private applyReplayGain() {
+  private applyReplayGain(songOverride?: SongType, apply: boolean = true): number {
     const musicStore = useMusicStore();
     const settingStore = useSettingStore();
     const audioManager = useAudioManager();
 
     if (!settingStore.enableReplayGain) {
-      audioManager.setReplayGain(1);
-      return;
+      if (apply) audioManager.setReplayGain(1);
+      return 1;
     }
 
-    const song = musicStore.playSong;
+    const song = songOverride || musicStore.playSong;
     if (!song || !song.replayGain) {
-      audioManager.setReplayGain(1);
-      return;
+      if (apply) audioManager.setReplayGain(1);
+      return 1;
     }
 
     const { trackGain, albumGain, trackPeak, albumPeak } = song.replayGain;
@@ -131,10 +136,13 @@ class PlayerController {
       targetGain = trackGain ?? albumGain ?? 1;
     }
 
-    // 简单的防削波保护 (如果有峰值信息)
-    // 目标: gain * peak <= 1.0
+    // 简单防削波保护
     const peak =
       settingStore.replayGainMode === "album" ? (albumPeak ?? trackPeak) : (trackPeak ?? albumPeak);
+    
+    // 应用 Automix 增益
+    targetGain *= this.automixGain;
+
     if (peak && peak > 0) {
       if (targetGain * peak > 1.0) {
         targetGain = 1.0 / peak;
@@ -144,7 +152,8 @@ class PlayerController {
     console.log(
       `🔊 [ReplayGain] Applied: ${targetGain.toFixed(4)} (Mode: ${settingStore.replayGainMode})`,
     );
-    audioManager.setReplayGain(targetGain);
+    if (apply) audioManager.setReplayGain(targetGain);
+    return targetGain;
   }
 
   /**
@@ -446,7 +455,13 @@ class PlayerController {
     url: string,
     autoPlay: boolean,
     seek: number,
-    crossfadeOptions?: { duration: number; uiSwitchDelay?: number; onSwitch?: () => void },
+    crossfadeOptions?: {
+      duration: number;
+      uiSwitchDelay?: number;
+      onSwitch?: () => void;
+      mixType?: "default" | "bassSwap";
+      replayGain?: number;
+    },
     initialRate: number = 1.0,
   ) {
     const statusStore = useStatusStore();
@@ -467,9 +482,11 @@ class PlayerController {
     audioManager.setVolume(statusStore.playVolume);
     // 仅当引擎支持倍速时设置
     if (audioManager.capabilities.supportsRate) {
-      // 叠加 Automix Rate
       const baseRate = statusStore.playRate;
-      audioManager.setRate(baseRate * initialRate);
+      // 仅在非 Crossfade 时直接设置速率，否则会导致上一首歌变调
+      if (!crossfadeOptions) {
+        audioManager.setRate(baseRate * initialRate);
+      }
 
       // Schedule reset
       if (initialRate !== 1.0 && crossfadeOptions) {
@@ -480,7 +497,8 @@ class PlayerController {
     }
 
     // 应用 ReplayGain
-    this.applyReplayGain();
+    const replayGain =
+      crossfadeOptions?.replayGain ?? this.applyReplayGain(undefined, !crossfadeOptions);
 
     // 切换输出设备（非 MPV 引擎且未开启频谱时）
     if (audioManager.engineType !== "mpv" && !settingStore.showSpectrums) {
@@ -501,6 +519,11 @@ class PlayerController {
           autoPlay,
           uiSwitchDelay: crossfadeOptions.uiSwitchDelay,
           onSwitch: crossfadeOptions.onSwitch,
+          mixType: crossfadeOptions.mixType,
+          rate: audioManager.capabilities.supportsRate
+            ? statusStore.playRate * initialRate
+            : undefined,
+          replayGain,
         });
       } else {
         // 计算渐入时间
@@ -808,40 +831,61 @@ class PlayerController {
             let initialRate = 1.0;
             let startSeek = 0;
             let uiSwitchDelay = 0;
+            let mixType: "default" | "bassSwap" = "default";
 
             // 如果有下一首分析数据，进行智能计算
             if (this.nextAnalysis) {
-              startSeek = (this.nextAnalysis.fade_in_pos || 0) * 1000;
+              const fadeIn = (this.nextAnalysis.fade_in_pos || 0) * 1000;
+              startSeek = fadeIn;
 
-              // BPM 对齐
+              // BPM Alignment
               if (
                 this.currentAnalysis?.bpm &&
                 this.nextAnalysis.bpm &&
                 (this.currentAnalysis.bpm_confidence ?? 0) > 0.4 &&
                 (this.nextAnalysis.bpm_confidence ?? 0) > 0.4
               ) {
-                const ratio = this.currentAnalysis.bpm / this.nextAnalysis.bpm;
-                if (ratio >= 0.97 && ratio <= 1.03) {
-                  initialRate = ratio;
-                  // 对齐到 32 拍 (约 10-15s)
-                  // Duration = 32 * (60 / BPM)
-                  const beatDuration = 60 / this.currentAnalysis.bpm;
-                  crossfadeDuration = Math.min(beatDuration * 32, 15);
+                const bpmA = this.currentAnalysis.bpm;
+                const bpmB = this.nextAnalysis.bpm;
+                const ratio = bpmA / bpmB;
 
-                  // 尝试在 Downbeat 处切换 UI
-                  if (this.nextAnalysis.first_beat_pos) {
-                    const firstBeat = this.nextAnalysis.first_beat_pos;
-                    const startSec = startSeek / 1000;
-                    if (firstBeat > startSec) {
-                      const timeToBeat = (firstBeat - startSec) / initialRate;
-                      if (timeToBeat > 0 && timeToBeat < crossfadeDuration) {
-                        uiSwitchDelay = timeToBeat;
-                      }
+                // 允许 6% 的误差进行 Beat Match
+                if (ratio >= 0.94 && ratio <= 1.06) {
+                  initialRate = ratio;
+                  mixType = "bassSwap";
+
+                  // Duration = 32 beats (Standard Phrase)
+                  const beatDuration = 60 / bpmA;
+                  crossfadeDuration = Math.max(8, Math.min(beatDuration * 32, 25));
+
+                  // Smart Start Position
+                  // 策略 1: Drop Align (优先) - 让 Crossfade 结束在 Drop 点
+                  if (
+                    this.nextAnalysis.drop_pos &&
+                    this.nextAnalysis.drop_pos * 1000 > fadeIn + 5000
+                  ) {
+                    const dropTime = this.nextAnalysis.drop_pos * 1000;
+                    const calculatedStart = dropTime - crossfadeDuration * 1000;
+
+                    if (calculatedStart >= fadeIn) {
+                      startSeek = calculatedStart;
+                      // 在 Drop 前夕切换 UI
+                      uiSwitchDelay = crossfadeDuration * 0.9;
+                      console.log(
+                        `✨ [Automix] Drop Align: Target Drop at ${this.nextAnalysis.drop_pos.toFixed(2)}s`,
+                      );
+                    }
+                  }
+                  // 策略 2: First Beat Align - 从第一个重拍开始混音
+                  else if (this.nextAnalysis.first_beat_pos) {
+                    const firstBeat = this.nextAnalysis.first_beat_pos * 1000;
+                    if (firstBeat >= fadeIn) {
+                      startSeek = firstBeat;
                     }
                   }
 
                   console.log(
-                    `✨ [Automix] BPM Match: ${this.currentAnalysis.bpm.toFixed(1)} -> ${this.nextAnalysis.bpm.toFixed(1)}, Duration: ${crossfadeDuration.toFixed(2)}s, UI Switch: ${uiSwitchDelay > 0 ? uiSwitchDelay.toFixed(2) : "Center"}s`,
+                    `✨ [Automix] BPM Match: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
                   );
                 }
               }
@@ -882,6 +926,7 @@ class PlayerController {
                 startSeek,
                 initialRate,
                 uiSwitchDelay,
+                mixType,
               }).catch((e) => {
                 console.error("❌ [Automix] Failed:", e);
                 this.isTransitioning = false;
@@ -1206,6 +1251,7 @@ class PlayerController {
       startSeek: number;
       initialRate: number;
       uiSwitchDelay?: number;
+      mixType?: "default" | "bassSwap";
     },
   ) {
     const statusStore = useStatusStore();
@@ -1221,6 +1267,21 @@ class PlayerController {
         requestToken,
       );
 
+      // Automix Gain Calculation (LUFS)
+      if (this.currentAnalysis?.loudness && analysis?.loudness) {
+        const currentLoudness = this.currentAnalysis.loudness;
+        const nextLoudness = analysis.loudness;
+        const gainDb = currentLoudness - nextLoudness;
+        // Limit gain to avoiding extreme changes (+/- 9dB)
+        const safeGainDb = Math.max(-9, Math.min(gainDb, 9));
+        this.automixGain = Math.pow(10, safeGainDb / 20);
+        console.log(
+          `🔊 [Automix] Loudness Match: ${currentLoudness.toFixed(2)} -> ${nextLoudness.toFixed(2)} LUFS (Gain: ${safeGainDb.toFixed(2)}dB)`,
+        );
+      } else {
+        this.automixGain = 1.0;
+      }
+
       // 更新当前分析结果
       this.currentAnalysis = analysis;
       // 重置下一首分析缓存
@@ -1230,6 +1291,9 @@ class PlayerController {
       // 2. 启动 Crossfade
       const uiSwitchDelay =
         options.uiSwitchDelay ?? options.crossfadeDuration * 0.5;
+
+      // 计算 ReplayGain
+      const replayGain = this.applyReplayGain(targetSong, false);
 
       // 提示用户
       const nextTitle = targetSong.name || "Unknown";
@@ -1244,6 +1308,8 @@ class PlayerController {
         {
           duration: options.crossfadeDuration,
           uiSwitchDelay,
+          mixType: options.mixType,
+          replayGain,
           onSwitch: () => {
             console.log("🔀 [Automix] Switching UI to new song");
             // 提交状态切换

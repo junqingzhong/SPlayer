@@ -124,6 +124,9 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       autoPlay?: boolean;
       uiSwitchDelay?: number;
       onSwitch?: () => void;
+      mixType?: "default" | "bassSwap";
+      rate?: number;
+      replayGain?: number;
     },
   ): Promise<void> {
     // MPV 不支持 Web Audio API 级别的 Crossfade，回退到普通播放
@@ -139,7 +142,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       return;
     }
 
-    console.log(`🔀 [AudioManager] Starting Crossfade (duration: ${options.duration}s)`);
+    console.log(`🔀 [AudioManager] Starting Crossfade (duration: ${options.duration}s, type: ${options.mixType})`);
 
     // 清理之前的 pending
     this.clearPendingSwitch();
@@ -158,7 +161,21 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     // 2. 预设状态
     newEngine.setVolume(this.getVolume());
     if (this.engine.capabilities.supportsRate) {
-      newEngine.setRate(this.getRate());
+      newEngine.setRate(options.rate ?? this.getRate());
+    }
+    
+    // Apply ReplayGain to new engine
+    if (options.replayGain !== undefined) {
+      newEngine.setReplayGain?.(options.replayGain);
+    } else {
+      // Default to 1.0 or copy? ReplayGain is specific to song, so 1.0 is safer if not provided.
+      newEngine.setReplayGain?.(1.0);
+    }
+
+    // Bass Swap Filter Setup
+    if (options.mixType === "bassSwap") {
+      // New engine starts with Bass Cut (HPF at 400Hz), then ramps down to 0
+      newEngine.setHighPassFilter?.(400, 0); 
     }
 
     // 3. 启动新引擎 (Fade In, Equal Power)
@@ -169,6 +186,15 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       fadeDuration: options.duration,
       fadeCurve: "equalPower",
     });
+
+    // Apply Bass Swap Ramps
+    if (options.mixType === "bassSwap") {
+      // Old Engine: Bass Fade Out (HPF 0 -> 400Hz)
+      this.engine.setHighPassFilter?.(400, options.duration);
+      // New Engine: Bass Fade In (HPF 400 -> 0Hz)
+      // Note: We already set it to 400 above. Now ramp to 0.
+      newEngine.setHighPassFilter?.(0, options.duration);
+    }
 
     // 4. 旧引擎淡出 (Fade Out, Equal Power, Keep Context)
     const oldEngine = this.engine;
@@ -202,6 +228,11 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       // 触发一次 update 以刷新 UI
       this.dispatch(AUDIO_EVENTS.TIME_UPDATE, undefined);
       this.dispatch(AUDIO_EVENTS.PLAY, undefined);
+      
+      // Reset filters on the new engine (just in case) if not bass swapped, or ensure 0
+      if (options.mixType === "bassSwap") {
+         this.engine.setHighPassFilter?.(0, 0);
+      }
     };
 
     const switchDelay = options.uiSwitchDelay ?? 0;

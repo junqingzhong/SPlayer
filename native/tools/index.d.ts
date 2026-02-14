@@ -16,6 +16,7 @@ export interface AudioAnalysis {
   fadeOutPos: number
   firstBeatPos?: number
   loudness?: number
+  dropPos?: number
   version: number
   analyzeWindow: number
   cutInPos?: number
