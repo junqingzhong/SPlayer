@@ -161,6 +161,14 @@ class PlayerController {
     }
     if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
 
+    // 确保 url 存在
+    const safeAudioSource = {
+      ...audioSource,
+      url: audioSource.url!,
+      quality: audioSource.quality || "standard",
+      source: audioSource.source || "unknown",
+    };
+
     let analysis: AudioAnalysis | null = null;
     if (
       isElectron &&
@@ -177,7 +185,7 @@ class PlayerController {
         console.warn("[Automix] Analysis failed", e);
       }
     }
-    return { audioSource, analysis };
+    return { audioSource: safeAudioSource, analysis };
   }
 
   /**
@@ -226,8 +234,8 @@ class PlayerController {
     lyricManager.handleLyric(song);
     console.log(`🎧 [${song.id}] 最终播放信息:`, audioSource);
     // 更新音质和解锁状态
-    statusStore.songQuality = audioSource.quality;
-    statusStore.audioSource = audioSource.source;
+    statusStore.songQuality = audioSource.quality as any; // Cast to QualityType
+    statusStore.audioSource = audioSource.source as any; // Cast to AudioSourceType
   }
 
   /**

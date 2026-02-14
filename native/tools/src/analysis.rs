@@ -73,6 +73,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     let track = format.default_track()?;
     let track_id = track.id;
     let time_base = track.codec_params.time_base;
+    let n_frames = track.codec_params.n_frames;
     let sample_rate = track.codec_params.sample_rate.unwrap_or(44100);
 
     let dec_opts: DecoderOptions = Default::default();
@@ -102,31 +103,13 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     
     // Phase: 0 = Head, 1 = Tail
     let mut phase = 0;
-    let mut seek_done = false;
-    // If file duration is short, we just do one pass
-    // We don't know duration exactly yet, so we assume we are in Head.
+    let mut _seek_done = false;
     
     // We will collect data into temporary buffer then decide where to put it
     let mut temp_envelope = Vec::new();
     let mut temp_vocal = Vec::new();
 
-    let mut processed_duration = 0.0;
-    
-    // Helper to flush window
-    let mut flush_window = |env: &mut Vec<f32>, voc: &mut Vec<f32>| {
-        let rms = (current_sum_sq / window_size as f32).sqrt();
-        let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
-        
-        env.push(rms);
-        
-        // Avoid division by zero
-        let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
-        voc.push(ratio);
-        
-        current_sum_sq = 0.0;
-        current_high_sum_sq = 0.0;
-        current_count = 0;
-    };
+    let processed_duration = 0.0;
 
     loop {
         let packet = match format.next_packet() {
@@ -161,34 +144,10 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                 // Copy head for BPM (use at most max_time)
                 full_envelope = head_envelope.clone();
 
-                // Try seek to tail
-                // We assume total duration might be available in format metadata or we just guess?
-                // Symphonia format.next_packet() doesn't give total duration directly unless we scan.
-                // But some formats have it.
-                // If we don't know duration, we can't seek to tail reliably without scanning.
-                // But `analyze_audio` implies we might not scan whole file.
-                
-                // Let's check format duration hint
-                // If duration is unknown, we might just continue (scan mode) until end?
-                // But that defeats "Max Analyze Time".
-                // If we can't seek, we just stop here and assume tail = head end (not ideal but safe).
-                
-                // Try to get duration from track params or metadata
-                // Actually `duration` var is just current pos.
-                
-                // We'll rely on `seek` returning success.
-                // We need to know target time. 
-                // We can't know target time if we don't know total duration.
-                // So: if we don't know duration, we MUST scan or give up.
-                // Given "Smart Cut", let's assume we try to seek to end if possible.
-                // If no duration info, we just break (Head only analysis).
-                
-                // Try getting duration hint
-                // Note: track.codec_params.n_frames might exist
                 let mut total_duration = None;
-                if let Some(n_frames) = track.codec_params.n_frames {
+                if let Some(n) = n_frames {
                     if let Some(tb) = time_base {
-                        let t = tb.calc_time(n_frames);
+                        let t = tb.calc_time(n);
                         total_duration = Some(t.seconds as f64 + t.frac);
                     }
                 }
@@ -197,16 +156,12 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                     if tot > max_time * 2.0 {
                         // We can seek to tot - max_time
                         let seek_time = tot - max_time;
-                        let seek_ts = if let Some(tb) = time_base {
-                             Time::from(seek_time)
-                        } else {
-                             Time::from(seek_time) // Fallback
-                        };
+                        let seek_ts = Time::from(seek_time);
                         
                         match format.seek(SeekMode::Accurate, SeekTo::Time { time: seek_ts, track_id: Some(track_id) }) {
                             Ok(_) => {
                                 phase = 1;
-                                seek_done = true;
+                                _seek_done = true;
                                 // Reset filters/state
                                 current_sum_sq = 0.0;
                                 current_high_sum_sq = 0.0;
@@ -219,17 +174,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             }
                         }
                     } else {
-                        // File too short to split, just continue scanning until end
-                        // Keep phase 0, but increase max limit effectively?
-                        // No, if file is short (< 2*max), we just scan it all.
-                        // But we already checked `current_time > max_time`.
-                        // If tot < 2*max, we should just continue.
-                        // So we only break if we REALLY want to skip middle.
-                        // If we are here, it means we passed max_time. 
-                        // If file is short, we should have just kept going.
-                        // Let's change logic: 
-                        // If tot known and > 2*max, we seek.
-                        // Else we continue.
+                         // File too short to split, just continue scanning until end
                     }
                 } else {
                     // Duration unknown, can't seek safely. Stop.
@@ -262,7 +207,14 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             current_count += 1;
                             
                             if current_count >= window_size {
-                                flush_window(&mut temp_envelope, &mut temp_vocal);
+                                let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                temp_envelope.push(rms);
+                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                temp_vocal.push(ratio);
+                                current_sum_sq = 0.0;
+                                current_high_sum_sq = 0.0;
+                                current_count = 0;
                             }
                         }
                     }
@@ -275,7 +227,16 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             current_sum_sq += val * val;
                             current_high_sum_sq += high * high;
                             current_count += 1;
-                            if current_count >= window_size { flush_window(&mut temp_envelope, &mut temp_vocal); }
+                            if current_count >= window_size {
+                                let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                temp_envelope.push(rms);
+                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                temp_vocal.push(ratio);
+                                current_sum_sq = 0.0;
+                                current_high_sum_sq = 0.0;
+                                current_count = 0;
+                            }
                         }
                     }
                      AudioBufferRef::S16(buf) => {
@@ -287,7 +248,16 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             current_sum_sq += val * val;
                             current_high_sum_sq += high * high;
                             current_count += 1;
-                            if current_count >= window_size { flush_window(&mut temp_envelope, &mut temp_vocal); }
+                            if current_count >= window_size {
+                                let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                temp_envelope.push(rms);
+                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                temp_vocal.push(ratio);
+                                current_sum_sq = 0.0;
+                                current_high_sum_sq = 0.0;
+                                current_count = 0;
+                            }
                         }
                     }
                     AudioBufferRef::S24(buf) => {
@@ -299,7 +269,16 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                            current_sum_sq += val * val;
                            current_high_sum_sq += high * high;
                            current_count += 1;
-                           if current_count >= window_size { flush_window(&mut temp_envelope, &mut temp_vocal); }
+                           if current_count >= window_size {
+                                let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                temp_envelope.push(rms);
+                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                temp_vocal.push(ratio);
+                                current_sum_sq = 0.0;
+                                current_high_sum_sq = 0.0;
+                                current_count = 0;
+                           }
                        }
                    }
                    AudioBufferRef::S32(buf) => {
@@ -311,7 +290,16 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                            current_sum_sq += val * val;
                            current_high_sum_sq += high * high;
                            current_count += 1;
-                           if current_count >= window_size { flush_window(&mut temp_envelope, &mut temp_vocal); }
+                           if current_count >= window_size {
+                                let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                temp_envelope.push(rms);
+                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                temp_vocal.push(ratio);
+                                current_sum_sq = 0.0;
+                                current_high_sum_sq = 0.0;
+                                current_count = 0;
+                           }
                        }
                    }
                     _ => {}
@@ -319,18 +307,15 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
             }
             Err(_) => break,
         }
-        
-        // Update processed_duration roughly if no time_base
-        if time_base.is_none() {
-            // We can't easily guess packet duration without decoding, 
-            // but we did decode.
-            // Let's just trust time_base exists for most files.
-        }
     }
     
     // Final flush
     if current_count > 0 {
-        flush_window(&mut temp_envelope, &mut temp_vocal);
+        let rms = (current_sum_sq / window_size as f32).sqrt();
+        let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+        temp_envelope.push(rms);
+        let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+        temp_vocal.push(ratio);
     }
     
     // Distribute temp buffer based on phase
