@@ -434,6 +434,16 @@ export abstract class BaseAudioPlayer
     this.effectManager?.setFilterGain(index, value);
   }
 
+  /** 设置高通滤波器频率 */
+  public setHighPassFilter(frequency: number, rampTime: number = 0) {
+    this.effectManager?.setHighPassFilter(frequency, rampTime);
+  }
+
+  /** 设置低通滤波器频率 */
+  public setLowPassFilter(frequency: number, rampTime: number = 0) {
+    this.effectManager?.setLowPassFilter(frequency, rampTime);
+  }
+
   /** 获取滤波器增益 */
   public getFilterGains(): number[] {
     return this.effectManager ? this.effectManager.getFilterGains() : [];

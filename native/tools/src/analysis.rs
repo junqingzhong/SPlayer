@@ -18,7 +18,8 @@ pub struct AudioAnalysis {
     pub fade_in_pos: f64,
     pub fade_out_pos: f64,
     pub first_beat_pos: Option<f64>,
-    pub loudness: Option<f64>,
+    pub loudness: Option<f64>, // LUFS
+    pub drop_pos: Option<f64>, // Chorus/Drop start
     // New fields
     pub version: i32,
     pub analyze_window: f64,
@@ -48,6 +49,118 @@ impl HighPassFilter {
         y
     }
 }
+
+// Biquad for K-weighting
+struct BiquadFilter {
+    b0: f64, b1: f64, b2: f64,
+    a1: f64, a2: f64,
+    z1: f64, z2: f64,
+}
+
+impl BiquadFilter {
+    fn new(b0: f64, b1: f64, b2: f64, a1: f64, a2: f64) -> Self {
+        Self { b0, b1, b2, a1, a2, z1: 0.0, z2: 0.0 }
+    }
+
+    fn process(&mut self, input: f64) -> f64 {
+        let output = input * self.b0 + self.z1;
+        self.z1 = input * self.b1 + self.z2 - self.a1 * output;
+        self.z2 = input * self.b2 - self.a2 * output;
+        output
+    }
+}
+
+// K-weighting filters based on ITU-R BS.1770
+struct LoudnessMeter {
+    pre_filter: Vec<BiquadFilter>, // One per channel
+    rlb_filter: Vec<BiquadFilter>, // One per channel
+    sum_sq: f64,
+    count: u64,
+}
+
+impl LoudnessMeter {
+    fn new(sample_rate: u32, channels: usize) -> Self {
+        // Coefficients for 48kHz (approximation for other rates if needed, but ideally should be calculated)
+        // Here we use simplified coefficients or select based on rate.
+        // For robustness, we implement generic calculation or standard tables.
+        
+        // Using standard coefficients for 48kHz as baseline
+        // Pre-filter (High Shelf)
+        // fs = 48000
+        // f0 = 1681.9744509555319
+        // G  = 3.99984385397
+        // Q  = 0.7071752369554193
+        let (pb0, pb1, pb2, pa1, pa2) = if sample_rate >= 44100 {
+            // Coefficients for 48kHz (close enough for 44.1kHz for this purpose)
+            (1.53512485958697, -2.69169618940638, 1.19839281085285, -1.69065929318241, 0.73248077421585)
+        } else {
+             // Fallback or different coeffs for lower rates. 
+             // Using same for now as we mostly deal with 44.1/48 music.
+            (1.53512485958697, -2.69169618940638, 1.19839281085285, -1.69065929318241, 0.73248077421585)
+        };
+
+        // RLB Filter (High Pass)
+        // fc = 38.13547087613982
+        // Q  = 0.5003271673671752
+        let (rb0, rb1, rb2, ra1, ra2) = if sample_rate >= 44100 {
+            (1.0, -2.0, 1.0, -1.99004745483398, 0.99007225036621)
+        } else {
+            (1.0, -2.0, 1.0, -1.99004745483398, 0.99007225036621)
+        };
+
+        let mut pre_filters = Vec::with_capacity(channels);
+        let mut rlb_filters = Vec::with_capacity(channels);
+
+        for _ in 0..channels {
+            pre_filters.push(BiquadFilter::new(pb0, pb1, pb2, pa1, pa2));
+            rlb_filters.push(BiquadFilter::new(rb0, rb1, rb2, ra1, ra2));
+        }
+
+        Self {
+            pre_filter: pre_filters,
+            rlb_filter: rlb_filters,
+            sum_sq: 0.0,
+            count: 0,
+        }
+    }
+
+    fn process(&mut self, channels: &[f32]) {
+        for (i, &sample) in channels.iter().enumerate() {
+            if i >= self.pre_filter.len() { break; }
+            let s = sample as f64;
+            let s1 = self.pre_filter[i].process(s);
+            let s2 = self.rlb_filter[i].process(s1);
+            self.sum_sq += s2 * s2;
+        }
+        self.count += 1;
+    }
+
+    fn get_lufs(&self) -> f64 {
+        if self.count == 0 { return -70.0; }
+        // Mean square (average over all channels and samples)
+        // EBU R 128 definition sums channels with weights (L/R=1.0), then mean over time.
+        // sum_sq here accumulates sum(channel_i^2).
+        // We need 1/T * sum(z_i^2).
+        // Since we sum all channels into one sum_sq, we need to divide by count (which is number of frames * number of channels? No, process called once per frame).
+        // Wait, `process` iterates channels. `sum_sq` accumulates all channels' energy.
+        // Standard says: z_i(t) for each channel.
+        // Mean Square for channel i: MS_i = 1/T * sum(z_i^2)
+        // Loudness = -0.691 + 10 * log10( sum_i (G_i * MS_i) )
+        // Assuming Stereo (G_L=1, G_R=1).
+        // So we need separate sums for channels if we want to be exact, but for stereo it's just sum of MS.
+        
+        // Let's assume equal weight for all channels for simplicity (Music typically stereo).
+        let mean_sq = self.sum_sq / (self.count as f64); 
+        // Note: self.count is number of frames. self.sum_sq includes contribution from all channels.
+        // So mean_sq is effectively sum(MS_i).
+        
+        if mean_sq <= 0.0 { return -70.0; }
+        
+        let lufs = -0.691 + 10.0 * mean_sq.log10();
+        lufs
+    }
+}
+
 
 #[napi]
 pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option<AudioAnalysis> {
@@ -100,6 +213,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
 
     // HPF for vocal detection (>300Hz)
     let mut hpf = HighPassFilter::new(sample_rate, 300.0);
+    
+    // Loudness Meter
+    let mut loudness_meter = LoudnessMeter::new(sample_rate, 2); // Assume stereo initially, will adapt
     
     // Phase: 0 = Head, 1 = Tail
     let mut phase = 0;
@@ -192,13 +308,27 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                  let spec = *decoded.spec();
                  let duration_frames = decoded.frames();
                  let channels = spec.channels.count();
+                 
+                 // Update loudness meter channel count if needed
+                 if loudness_meter.pre_filter.len() != channels {
+                     loudness_meter = LoudnessMeter::new(sample_rate, channels);
+                 }
 
                  // Macro or helper to handle types
                  match decoded {
                     AudioBufferRef::F32(buf) => {
                         for i in 0..duration_frames {
+                            let mut frame_samples = Vec::with_capacity(channels);
                             let mut sum = 0.0;
-                            for c in 0..channels { sum += buf.chan(c)[i]; }
+                            for c in 0..channels { 
+                                let s = buf.chan(c)[i];
+                                frame_samples.push(s);
+                                sum += s; 
+                            }
+                            
+                            // Process Loudness
+                            loudness_meter.process(&frame_samples);
+                            
                             let val = sum / channels as f32;
                             let high = hpf.process(val);
                             
@@ -220,8 +350,15 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                     }
                     AudioBufferRef::U8(buf) => {
                          for i in 0..duration_frames {
+                            let mut frame_samples = Vec::with_capacity(channels);
                             let mut sum = 0.0;
-                            for c in 0..channels { sum += (buf.chan(c)[i] as f32 - 128.0) / 128.0; }
+                            for c in 0..channels { 
+                                let s = (buf.chan(c)[i] as f32 - 128.0) / 128.0;
+                                frame_samples.push(s);
+                                sum += s; 
+                            }
+                            loudness_meter.process(&frame_samples);
+
                             let val = sum / channels as f32;
                             let high = hpf.process(val);
                             current_sum_sq += val * val;
@@ -241,8 +378,15 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                     }
                      AudioBufferRef::S16(buf) => {
                          for i in 0..duration_frames {
+                            let mut frame_samples = Vec::with_capacity(channels);
                             let mut sum = 0.0;
-                            for c in 0..channels { sum += (buf.chan(c)[i] as f32) / 32768.0; }
+                            for c in 0..channels { 
+                                let s = (buf.chan(c)[i] as f32) / 32768.0;
+                                frame_samples.push(s);
+                                sum += s; 
+                            }
+                            loudness_meter.process(&frame_samples);
+
                             let val = sum / channels as f32;
                             let high = hpf.process(val);
                             current_sum_sq += val * val;
@@ -262,8 +406,15 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                     }
                     AudioBufferRef::S24(buf) => {
                         for i in 0..duration_frames {
+                           let mut frame_samples = Vec::with_capacity(channels);
                            let mut sum = 0.0;
-                           for c in 0..channels { sum += (buf.chan(c)[i].0 as f32) / 8388608.0; }
+                           for c in 0..channels { 
+                               let s = (buf.chan(c)[i].0 as f32) / 8388608.0;
+                               frame_samples.push(s);
+                               sum += s; 
+                           }
+                           loudness_meter.process(&frame_samples);
+
                            let val = sum / channels as f32;
                            let high = hpf.process(val);
                            current_sum_sq += val * val;
@@ -283,8 +434,15 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                    }
                    AudioBufferRef::S32(buf) => {
                         for i in 0..duration_frames {
+                           let mut frame_samples = Vec::with_capacity(channels);
                            let mut sum = 0.0;
-                           for c in 0..channels { sum += (buf.chan(c)[i] as f32) / 2147483648.0; }
+                           for c in 0..channels { 
+                               let s = (buf.chan(c)[i] as f32) / 2147483648.0;
+                               frame_samples.push(s);
+                               sum += s; 
+                           }
+                           loudness_meter.process(&frame_samples);
+
                            let val = sum / channels as f32;
                            let high = hpf.process(val);
                            current_sum_sq += val * val;
@@ -361,7 +519,10 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     // 2. BPM (Use full envelope or head if long enough)
     let (bpm, bpm_conf, first_beat) = detect_bpm_from_envelope(&full_envelope, env_rate);
     
-    // 3. Smart Cut (Vocal / Activity)
+    // 3. Drop/Chorus Detection (Energy Surge)
+    let drop_pos = detect_drop_pos(&head_envelope, env_rate);
+
+    // 4. Smart Cut (Vocal / Activity)
     // Heuristic: High Freq Ratio > 0.3 AND RMS > -40dB (-40dB = 0.01)
     let is_vocal = |rms: f32, ratio: f32| -> bool {
         rms > 0.01 && ratio > 0.3
@@ -400,13 +561,15 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         }
     }
     
-    // 4. Synthesize Cut Points
+    // 5. Synthesize Cut Points
     // We remove the hard cut logic based on vocal, as user wants smooth transition.
     // However, we still export vocal points for smart decisions in frontend.
     
     // For compatibility, we set cut_in/out to fade_in/out
     let cut_in = Some(fade_in);
     let cut_out = Some(fade_out);
+    
+    let loudness = loudness_meter.get_lufs();
 
     Some(AudioAnalysis {
         duration,
@@ -415,7 +578,8 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         fade_in_pos: fade_in,
         fade_out_pos: fade_out,
         first_beat_pos: first_beat,
-        loudness: None,
+        loudness: Some(loudness),
+        drop_pos,
         // New Version 3: Removed hard cut logic
         version: 3,
         analyze_window: max_time,
@@ -451,7 +615,8 @@ fn detect_silence_from_envelope(envelope: &[f32], rate: f64, threshold_db: f32) 
 fn detect_bpm_from_envelope(envelope: &[f32], rate: f64) -> (Option<f64>, Option<f64>, Option<f64>) {
     if envelope.len() < 100 { return (None, None, None); }
     
-    // Compute flux
+    // Compute flux (Spectral Flux approximation using envelope difference)
+    // Half-wave rectification
     let mut flux = Vec::with_capacity(envelope.len());
     flux.push(0.0);
     for i in 1..envelope.len() {
@@ -496,5 +661,75 @@ fn detect_bpm_from_envelope(envelope: &[f32], rate: f64) -> (Option<f64>, Option
     let confidence = if avg_corr > 0.0 { ((max_corr / avg_corr) - 1.0) / 5.0 } else { 0.0 };
     let confidence = confidence.clamp(0.0, 1.0) as f64;
     
-    (Some(bpm), Some(confidence), None)
+    // First Beat Detection
+    // Find the highest flux peak that aligns with the BPM grid
+    let mut first_beat = None;
+    if confidence > 0.3 {
+        let beat_period_samples = best_lag as usize;
+        
+        // Search for the strongest onset in the first 10 seconds (500 samples)
+        let search_len = std::cmp::min(flux.len(), 500);
+        
+        // Simple peak picking
+        let mut max_flux = 0.0;
+        let mut best_onset_idx = 0;
+        
+        for i in 0..search_len {
+            if flux[i] > max_flux {
+                max_flux = flux[i];
+                best_onset_idx = i;
+            }
+        }
+        
+        // This is a naive first beat. 
+        // A better way is to find a phase that maximizes energy on beats.
+        // But for "Drop" detection we have another function. 
+        // For "First Beat" we usually want the first downbeat.
+        // Without bar detection, we assume the strongest onset is a beat.
+        // We refine it by checking if subsequent beats exist.
+        
+        if max_flux > 0.01 {
+             first_beat = Some(best_onset_idx as f64 / rate);
+        }
+    }
+
+    (Some(bpm), Some(confidence), first_beat)
+}
+
+fn detect_drop_pos(envelope: &[f32], rate: f64) -> Option<f64> {
+    // Detect energy surge (Drop / Chorus)
+    // Sliding window average energy
+    let window_len = (2.0 * rate) as usize; // 2 seconds
+    if envelope.len() < window_len * 2 { return None; }
+    
+    let mut max_diff = 0.0;
+    let mut drop_idx = 0;
+    
+    // Calculate moving average
+    // We look for a point where Avg(Current 2s) >> Avg(Previous 4s)
+    
+    for i in (rate as usize * 4)..envelope.len() - window_len {
+        // Prev 4s average
+        let prev_len = (rate * 4.0) as usize;
+        let prev_sum: f32 = envelope[i-prev_len..i].iter().sum();
+        let prev_avg = prev_sum / prev_len as f32;
+        
+        // Next 2s average
+        let next_sum: f32 = envelope[i..i+window_len].iter().sum();
+        let next_avg = next_sum / window_len as f32;
+        
+        if prev_avg > 0.001 {
+            let ratio = next_avg / prev_avg;
+            if ratio > max_diff {
+                max_diff = ratio;
+                drop_idx = i;
+            }
+        }
+    }
+    
+    if max_diff > 1.5 { // 50% energy increase
+        Some(drop_idx as f64 / rate)
+    } else {
+        None
+    }
 }

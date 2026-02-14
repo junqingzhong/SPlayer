@@ -146,6 +146,20 @@ export interface IPlaybackEngine {
   getFilterGains?(): number[];
 
   /**
+   * 设置高通滤波器频率
+   * @param frequency 截止频率 (Hz)
+   * @param rampTime 渐变时间 (s)
+   */
+  setHighPassFilter?(frequency: number, rampTime?: number): void;
+
+  /**
+   * 设置低通滤波器频率
+   * @param frequency 截止频率 (Hz)
+   * @param rampTime 渐变时间 (s)
+   */
+  setLowPassFilter?(frequency: number, rampTime?: number): void;
+
+  /**
    * 获取频谱数据
    */
   getFrequencyData?(): Uint8Array;

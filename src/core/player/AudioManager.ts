@@ -327,6 +327,20 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   }
 
   /**
+   * 设置高通滤波器频率
+   */
+  public setHighPassFilter(frequency: number, rampTime: number = 0): void {
+    this.engine.setHighPassFilter?.(frequency, rampTime);
+  }
+
+  /**
+   * 设置低通滤波器频率
+   */
+  public setLowPassFilter(frequency: number, rampTime: number = 0): void {
+    this.engine.setLowPassFilter?.(frequency, rampTime);
+  }
+
+  /**
    * 设置均衡器增益
    */
   public setFilterGain(index: number, value: number): void {

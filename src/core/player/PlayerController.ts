@@ -28,6 +28,7 @@ interface AudioAnalysis {
   fade_out_pos: number;
   first_beat_pos?: number;
   loudness?: number;
+  drop_pos?: number;
   version?: number;
   analyze_window?: number;
   cut_in_pos?: number;
