@@ -31,15 +31,6 @@
               </div>
               <n-switch v-model:value="enableExcludeLocalLyrics" class="set" :round="false" />
             </n-card>
-            <n-card class="set-item">
-              <div class="label">
-                <n-text class="name">歌曲名排除</n-text>
-                <n-text class="tip" :depth="3">
-                  去除首行包含歌曲名的歌词
-                </n-text>
-              </div>
-              <n-switch v-model:value="enableExcludeTitle" class="set" :round="false" />
-            </n-card>
           </div>
         </n-tab-pane>
 
@@ -126,7 +117,6 @@ const settingStore = useSettingStore();
 const enableExcludeLyrics = ref(settingStore.enableExcludeLyrics);
 const enableExcludeTTML = ref(settingStore.enableExcludeLyricsTTML);
 const enableExcludeLocalLyrics = ref(settingStore.enableExcludeLyricsLocal);
-const enableExcludeTitle = ref(settingStore.enableExcludeLyricsTitle);
 
 const filterKeywords = ref<string[]>([]);
 const filterRegexes = ref<string[]>([]);
@@ -193,11 +183,10 @@ const importFilters = () => {
 };
 
 // 保存过滤
-const saveFilter = () => {// 保存设置
+const saveFilter = () => {
   settingStore.enableExcludeLyrics = enableExcludeLyrics.value;
   settingStore.enableExcludeLyricsTTML = enableExcludeTTML.value;
   settingStore.enableExcludeLyricsLocal = enableExcludeLocalLyrics.value;
-  settingStore.enableExcludeLyricsTitle = enableExcludeTitle.value;
   settingStore.excludeLyricsUserKeywords = filterKeywords.value;
   settingStore.excludeLyricsUserRegexes = filterRegexes.value;
   window.$message.success("设置已保存");

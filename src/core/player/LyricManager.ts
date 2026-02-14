@@ -14,10 +14,10 @@ import {
   parseSmartLrc,
 } from "@/utils/lyric/lyricParser";
 import { stripLyricMetadata } from "@/utils/lyric/lyricStripper";
-import { getConverter } from "@/utils/opencc";
 import { parseLrc } from "@/utils/lyric/parseLrc";
+import { getConverter } from "@/utils/opencc";
 import { type LyricLine, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
-import { cloneDeep, escapeRegExp, isEmpty } from "lodash-es";
+import { cloneDeep, isEmpty } from "lodash-es";
 
 interface LyricFetchResult {
   data: SongLyric;
@@ -663,22 +663,17 @@ class LyricManager {
 
     const song = targetSong || musicStore.playSong;
     const { name, artists } = song;
-    const songMetadataRegexes: string[] = [];
 
-    // 例如第一行就是 `歌手 - 歌曲名` 这样的格式，或者只有歌曲名
-    if (name && name !== "未播放歌曲") {
-      songMetadataRegexes.push(escapeRegExp(name));
-    }
-
+    const artistNames: string[] = [];
     if (artists) {
       if (typeof artists === "string") {
         if (artists !== "未知歌手") {
-          songMetadataRegexes.push(escapeRegExp(artists));
+          artistNames.push(artists);
         }
       } else if (Array.isArray(artists)) {
         artists.forEach((artist) => {
           if (artist.name) {
-            songMetadataRegexes.push(escapeRegExp(artist.name));
+            artistNames.push(artist.name);
           }
         });
       }
@@ -687,10 +682,13 @@ class LyricManager {
     const options = {
       keywords: mergedKeywords,
       regexPatterns: mergedRegexes,
-      softMatchRegexes: songMetadataRegexes,
+      matchMetadata: {
+        title: name !== "未播放歌曲" ? name : undefined,
+        artists: artistNames,
+      },
     };
 
-    let lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
+    const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
     let yrcData = lyricData.yrcData || [];
 
     // usingTTMLLyric 未传入时从 lyricData 推断（预加载场景）
@@ -698,25 +696,6 @@ class LyricManager {
     if (!isTTML || settingStore.enableExcludeLyricsTTML) {
       yrcData = stripLyricMetadata(yrcData, options);
     }
-
-    // 额外排除规则处理
-    const processExtraRules = (lines: LyricLine[]) => {
-      if (lines.length === 0) return lines;
-
-      // 规则：去除第一行包含歌曲名 (需开启开关且匹配开头)
-      if (settingStore.enableExcludeLyricsTitle && name && name !== "未播放歌曲") {
-        const firstLine = lines[0].words.map((w) => w.word).join("");
-        // 检查第一行是否以歌曲名开头
-        if (firstLine.startsWith(name)) {
-          lines.shift();
-        }
-      }
-
-      return lines;
-    };
-
-    lrcData = processExtraRules(lrcData);
-    yrcData = processExtraRules(yrcData);
 
     return {
       lrcData,
