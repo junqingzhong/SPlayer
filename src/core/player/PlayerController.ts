@@ -806,6 +806,7 @@ class PlayerController {
             let crossfadeDuration = 8;
             let initialRate = 1.0;
             let startSeek = 0;
+            let uiSwitchDelay = 0;
 
             // 如果有下一首分析数据，进行智能计算
             if (this.nextAnalysis) {
@@ -825,8 +826,21 @@ class PlayerController {
                   // Duration = 32 * (60 / BPM)
                   const beatDuration = 60 / this.currentAnalysis.bpm;
                   crossfadeDuration = Math.min(beatDuration * 32, 15);
+
+                  // 尝试在 Downbeat 处切换 UI
+                  if (this.nextAnalysis.first_beat_pos) {
+                    const firstBeat = this.nextAnalysis.first_beat_pos;
+                    const startSec = startSeek / 1000;
+                    if (firstBeat > startSec) {
+                      const timeToBeat = (firstBeat - startSec) / initialRate;
+                      if (timeToBeat > 0 && timeToBeat < crossfadeDuration) {
+                        uiSwitchDelay = timeToBeat;
+                      }
+                    }
+                  }
+
                   console.log(
-                    `✨ [Automix] BPM Match: ${this.currentAnalysis.bpm.toFixed(1)} -> ${this.nextAnalysis.bpm.toFixed(1)}, Duration: ${crossfadeDuration.toFixed(2)}s`,
+                    `✨ [Automix] BPM Match: ${this.currentAnalysis.bpm.toFixed(1)} -> ${this.nextAnalysis.bpm.toFixed(1)}, Duration: ${crossfadeDuration.toFixed(2)}s, UI Switch: ${uiSwitchDelay > 0 ? uiSwitchDelay.toFixed(2) : "Center"}s`,
                   );
                 }
               }
@@ -848,6 +862,11 @@ class PlayerController {
             // 最小 4s，最大 15s
             crossfadeDuration = Math.max(4, Math.min(crossfadeDuration, 15));
 
+            // 如果没有计算出特定的 UI 切换点，则使用 50%
+            if (uiSwitchDelay === 0 || uiSwitchDelay > crossfadeDuration) {
+              uiSwitchDelay = crossfadeDuration * 0.5;
+            }
+
             // 触发点：fade_out - crossfadeDuration
             const triggerTime = fadeOut - crossfadeDuration;
 
@@ -861,6 +880,7 @@ class PlayerController {
                 crossfadeDuration,
                 startSeek,
                 initialRate,
+                uiSwitchDelay,
               }).catch((e) => {
                 console.error("❌ [Automix] Failed:", e);
                 this.isTransitioning = false;
@@ -1113,7 +1133,6 @@ class PlayerController {
     const dataStore = useDataStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();
-    const settingStore = useSettingStore();
 
     // 先暂停当前播放
     const audioManager = useAudioManager();
@@ -1185,6 +1204,7 @@ class PlayerController {
       crossfadeDuration: number;
       startSeek: number;
       initialRate: number;
+      uiSwitchDelay?: number;
     },
   ) {
     const statusStore = useStatusStore();
@@ -1207,7 +1227,14 @@ class PlayerController {
       this.isFetchingNextAnalysis = false;
 
       // 2. 启动 Crossfade
-      const uiSwitchDelay = options.crossfadeDuration * 0.5;
+      const uiSwitchDelay =
+        options.uiSwitchDelay ?? options.crossfadeDuration * 0.5;
+
+      // 提示用户
+      const nextTitle = targetSong.name || "Unknown";
+      window.$message.info(`🔀 AutoMIX: ${nextTitle}`, {
+        duration: 3000,
+      });
 
       await this.loadAndPlay(
         audioSource.url,
