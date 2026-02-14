@@ -99,12 +99,15 @@ export class AudioEffectManager {
     if (!this.highPassFilter) return;
     const currentTime = this.audioCtx.currentTime;
     this.highPassFilter.frequency.cancelScheduledValues(currentTime);
-    
+
     // 避免 0Hz 导致的计算错误，设置一个极小值
     const targetFreq = Math.max(10, Math.min(22000, frequency));
-    
+
     if (rampTime > 0) {
-      this.highPassFilter.frequency.exponentialRampToValueAtTime(targetFreq, currentTime + rampTime);
+      this.highPassFilter.frequency.exponentialRampToValueAtTime(
+        targetFreq,
+        currentTime + rampTime,
+      );
     } else {
       this.highPassFilter.frequency.setValueAtTime(targetFreq, currentTime);
     }

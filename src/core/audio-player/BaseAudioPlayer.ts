@@ -230,11 +230,7 @@ export abstract class BaseAudioPlayer
     const performPause = async () => {
       await this.doPause();
 
-      if (
-        this.audioCtx &&
-        this.audioCtx.state === "running" &&
-        !options.keepContextRunning
-      ) {
+      if (this.audioCtx && this.audioCtx.state === "running" && !options.keepContextRunning) {
         try {
           await this.audioCtx.suspend();
         } catch (e) {

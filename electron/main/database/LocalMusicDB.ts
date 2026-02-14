@@ -142,7 +142,6 @@ export class LocalMusicDB {
       .run(path, data, mtime, size);
   }
 
-
   /** 自动同步表结构 - 检测并添加缺失的列 */
   private syncSchema() {
     if (!this.db) return;

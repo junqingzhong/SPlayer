@@ -27,6 +27,9 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   /** 用于清理当前引擎的事件监听器 */
   private cleanupListeners: (() => void) | null = null;
 
+  /** 主音量 (用于 Crossfade 初始化) */
+  private _masterVolume: number = 1.0;
+
   /** 当前引擎类型：element | ffmpeg | mpv */
   public readonly engineType: "element" | "ffmpeg" | "mpv";
 
@@ -142,7 +145,9 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       return;
     }
 
-    console.log(`🔀 [AudioManager] Starting Crossfade (duration: ${options.duration}s, type: ${options.mixType})`);
+    console.log(
+      `🔀 [AudioManager] Starting Crossfade (duration: ${options.duration}s, type: ${options.mixType})`,
+    );
 
     // 清理之前的 pending
     this.clearPendingSwitch();
@@ -159,11 +164,11 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     this.pendingEngine = newEngine;
 
     // 2. 预设状态
-    newEngine.setVolume(this.getVolume());
+    newEngine.setVolume(this._masterVolume);
     if (this.engine.capabilities.supportsRate) {
       newEngine.setRate(options.rate ?? this.getRate());
     }
-    
+
     // Apply ReplayGain to new engine
     if (options.replayGain !== undefined) {
       newEngine.setReplayGain?.(options.replayGain);
@@ -175,7 +180,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     // Bass Swap Filter Setup
     if (options.mixType === "bassSwap") {
       // New engine starts with Bass Cut (HPF at 400Hz), then ramps down to 0
-      newEngine.setHighPassFilter?.(400, 0); 
+      newEngine.setHighPassFilter?.(400, 0);
     }
 
     // 3. 启动新引擎 (Fade In, Equal Power)
@@ -228,10 +233,10 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       // 触发一次 update 以刷新 UI
       this.dispatch(AUDIO_EVENTS.TIME_UPDATE, undefined);
       this.dispatch(AUDIO_EVENTS.PLAY, undefined);
-      
+
       // Reset filters on the new engine (just in case) if not bass swapped, or ensure 0
       if (options.mixType === "bassSwap") {
-         this.engine.setHighPassFilter?.(0, 0);
+        this.engine.setHighPassFilter?.(0, 0);
       }
     };
 
@@ -247,9 +252,12 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     }
 
     // 销毁旧引擎
-    setTimeout(() => {
-      oldEngine.destroy();
-    }, options.duration * 1000 + 1000);
+    setTimeout(
+      () => {
+        oldEngine.destroy();
+      },
+      options.duration * 1000 + 1000,
+    );
   }
 
   /**
@@ -311,6 +319,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
    * @param value 音量值 (0.0 - 1.0)
    */
   public setVolume(value: number): void {
+    this._masterVolume = value;
     this.engine.setVolume(value);
   }
 
