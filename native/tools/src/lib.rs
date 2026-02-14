@@ -7,8 +7,10 @@
 
 mod download;
 mod scanner;
+mod analysis;
 
 pub use download::*;
+pub use analysis::*;
 use napi_derive::napi;
 pub use scanner::scan_music_library;
 #[cfg(target_os = "windows")]

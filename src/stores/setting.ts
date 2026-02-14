@@ -469,6 +469,10 @@ export interface SettingState {
   disableAiAudio: boolean;
   /** Fuck DJ: 开启后自动跳过 DJ 歌曲 */
   disableDjMode: boolean;
+  /** 启用自动混音 */
+  enableAutomix: boolean;
+  /** 自动混音过渡时间 (秒) */
+  automixCrossfadeDuration: number;
   /** 启用全局错误弹窗 */
   enableGlobalErrorDialog: boolean;
   /** macOS 专属设置 */
@@ -741,6 +745,8 @@ export const useSettingStore = defineStore("setting", {
     streamingEnabled: false,
     disableAiAudio: false,
     disableDjMode: false,
+    enableAutomix: false,
+    automixCrossfadeDuration: 10,
     enableGlobalErrorDialog: true,
     macos: {
       statusBarLyric: {

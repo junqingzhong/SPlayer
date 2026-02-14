@@ -1,6 +1,7 @@
 import { TypedEventTarget } from "@/utils/TypedEventTarget";
 import { AudioEffectManager } from "./AudioEffectManager";
 import type { EngineCapabilities, IPlaybackEngine } from "./IPlaybackEngine";
+import { getSharedAudioContext } from "./SharedAudioContext";
 
 /** 扩充 AudioContext 接口以支持 setSinkId (实验性 API) */
 export interface IExtendedAudioContext extends AudioContext {
@@ -92,7 +93,7 @@ export abstract class BaseAudioPlayer
     if (this.isInitialized) return;
 
     try {
-      this.audioCtx = new AudioContext() as IExtendedAudioContext;
+      this.audioCtx = getSharedAudioContext();
 
       if (this.audioCtx.state === "running") {
         this.audioCtx.suspend().catch(console.warn);
@@ -128,12 +129,23 @@ export abstract class BaseAudioPlayer
    */
   public destroy(): void {
     if (this.audioCtx) {
-      this.audioCtx.close().catch(console.warn);
+      // 共享 Context，不要关闭
+      // this.audioCtx.close().catch(console.warn);
       this.audioCtx = null;
     }
-    this.gainNode = null;
-    this.inputNode = null;
-    this.effectManager = null;
+    // 断开节点连接
+    if (this.gainNode) {
+      this.gainNode.disconnect();
+      this.gainNode = null;
+    }
+    if (this.inputNode) {
+      this.inputNode.disconnect();
+      this.inputNode = null;
+    }
+    if (this.effectManager) {
+      this.effectManager.disconnect();
+      this.effectManager = null;
+    }
     this.isInitialized = false;
   }
 
@@ -173,6 +185,12 @@ export abstract class BaseAudioPlayer
     }
 
     const duration = options.fadeIn ? (options.fadeDuration ?? 0.5) : 0;
+
+    // 修复：如果是渐入，强制从 0 开始
+    if (duration > 0 && this.gainNode && this.audioCtx) {
+      this.gainNode.gain.setValueAtTime(0, this.audioCtx.currentTime);
+    }
+
     this.applyFadeTo(this.volume, duration);
 
     try {

@@ -35,6 +35,8 @@ class PlayerController {
   private currentRequestToken = 0;
   /** 连续跳过计数 */
   private failSkipCount = 0;
+  /** 是否正在进行 Automix 过渡 */
+  private isTransitioning = false;
   /** 负责管理播放模式相关的逻辑 */
   private playModeManager = new PlayModeManager();
 
@@ -124,13 +126,21 @@ class PlayerController {
    * @param options.seek 初始播放进度（毫秒）
    */
   public async playSong(
-    options: { autoPlay?: boolean; seek?: number } = { autoPlay: true, seek: 0 },
+    options: {
+      autoPlay?: boolean;
+      seek?: number;
+      crossfade?: boolean;
+      crossfadeDuration?: number;
+    } = { autoPlay: true, seek: 0 },
   ) {
     const musicStore = useMusicStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();
     const audioManager = useAudioManager();
     const lyricManager = useLyricManager();
+
+    // 重置过渡状态
+    this.isTransitioning = false;
 
     // 生成新的请求标识
     this.currentRequestToken++;
@@ -155,8 +165,11 @@ class PlayerController {
     }
 
     try {
-      // 立即停止当前播放
-      audioManager.stop();
+      // 立即停止当前播放 (除非是 Crossfade)
+      if (!options.crossfade) {
+        audioManager.stop();
+      }
+
       statusStore.playLoading = true;
       const audioSource = await songManager.getAudioSource(playSongData);
       // 检查请求是否过期
@@ -166,7 +179,31 @@ class PlayerController {
       }
       if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
       musicStore.playSong = playSongData;
-      statusStore.currentTime = options.seek ?? 0;
+
+      // Automix 分析
+      let startSeek = seek ?? 0;
+      if (
+        options.crossfade &&
+        isElectron &&
+        playSongData.path &&
+        playSongData.type !== "streaming"
+      ) {
+        try {
+          console.log(`🔍 [Automix] Analysing: ${playSongData.path}`);
+          const analysis = await window.electron.ipcRenderer.invoke(
+            "analyze-audio",
+            playSongData.path,
+          );
+          if (analysis && analysis.fade_in_pos) {
+            startSeek = Math.max(startSeek, analysis.fade_in_pos * 1000); // ms
+            console.log(`✨ [Automix] Detected fade_in_pos: ${analysis.fade_in_pos}s`);
+          }
+        } catch (e) {
+          console.warn("[Automix] Analysis failed", e);
+        }
+      }
+
+      statusStore.currentTime = startSeek;
       // 重置进度
       statusStore.progress = 0;
       statusStore.lyricIndex = -1;
@@ -201,7 +238,12 @@ class PlayerController {
       statusStore.songQuality = audioSource.quality;
       statusStore.audioSource = audioSource.source;
       // 执行底层播放
-      await this.loadAndPlay(audioSource.url, autoPlay, seek);
+      await this.loadAndPlay(
+        audioSource.url,
+        autoPlay,
+        startSeek,
+        options.crossfade ? { duration: options.crossfadeDuration ?? 5 } : undefined,
+      );
       if (requestToken !== this.currentRequestToken) return;
       // 后置处理
       await this.afterPlaySetup(playSongData);
@@ -297,7 +339,12 @@ class PlayerController {
   /**
    * 加载音频流并播放
    */
-  private async loadAndPlay(url: string, autoPlay: boolean, seek: number) {
+  private async loadAndPlay(
+    url: string,
+    autoPlay: boolean,
+    seek: number,
+    crossfadeOptions?: { duration: number },
+  ) {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     const audioManager = useAudioManager();
@@ -324,14 +371,22 @@ class PlayerController {
         audioManager.setPendingSeek(seek / 1000);
       }
 
-      // 计算渐入时间
-      const fadeTime = settingStore.getFadeTime ? settingStore.getFadeTime / 1000 : 0;
-      await audioManager.play(url, {
-        fadeIn: !!fadeTime,
-        fadeDuration: fadeTime,
-        autoPlay,
-        seek: seek / 1000,
-      });
+      if (crossfadeOptions) {
+        await audioManager.crossfadeTo(url, {
+          duration: crossfadeOptions.duration,
+          seek: seek / 1000,
+          autoPlay,
+        });
+      } else {
+        // 计算渐入时间
+        const fadeTime = settingStore.getFadeTime ? settingStore.getFadeTime / 1000 : 0;
+        await audioManager.play(url, {
+          fadeIn: !!fadeTime,
+          fadeDuration: fadeTime,
+          autoPlay,
+          seek: seek / 1000,
+        });
+      }
 
       // 更新进度到状态
       statusStore.currentTime = seek;
@@ -545,6 +600,28 @@ class PlayerController {
       const rawTime = audioManager.currentTime;
       const currentTime = Math.floor(rawTime * 1000);
       const duration = Math.floor(audioManager.duration * 1000) || statusStore.duration;
+
+      // Automix 逻辑
+      if (
+        settingStore.enableAutomix &&
+        !this.isTransitioning &&
+        duration > 0 &&
+        !statusStore.personalFmMode && // 私人FM 暂不支持 (逻辑复杂)
+        statusStore.playStatus // 必须是播放状态
+      ) {
+        const remaining = duration / 1000 - rawTime;
+        const crossfadeDuration = settingStore.automixCrossfadeDuration || 10;
+
+        if (remaining <= crossfadeDuration && remaining > 0.5) {
+          console.log(`🔀 [Automix] Triggering crossfade (remaining: ${remaining.toFixed(2)}s)`);
+          this.isTransitioning = true;
+          this.nextOrPrev("next", true, true, true).catch((e) => {
+            console.error("❌ [Automix] Failed:", e);
+            this.isTransitioning = false;
+          });
+        }
+      }
+
       // 计算歌词索引
       const songId = musicStore.playSong?.id;
       const offset = statusStore.getSongOffset(songId);
@@ -784,14 +861,18 @@ class PlayerController {
     type: "next" | "prev" = "next",
     play: boolean = true,
     autoEnd: boolean = false,
+    isAutomix: boolean = false,
   ) {
     const dataStore = useDataStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();
+    const settingStore = useSettingStore();
 
-    // 先暂停当前播放
+    // 先暂停当前播放 (除非是 Automix)
     const audioManager = useAudioManager();
-    audioManager.stop();
+    if (!isAutomix) {
+      audioManager.stop();
+    }
 
     // 私人FM
     if (statusStore.personalFmMode) {
@@ -809,7 +890,9 @@ class PlayerController {
 
     // 单曲循环
     // 如果是自动结束触发的单曲循环，则重播当前歌曲
-    if (statusStore.repeatMode === "one" && autoEnd) {
+    // Automix 模式下不支持单曲循环（没有意义 Crossfade 自己），或者可以？
+    // 假设 Automix 忽略单曲循环逻辑，直接切下一首 (TODO: check logic)
+    if (statusStore.repeatMode === "one" && autoEnd && !isAutomix) {
       await this.playSong({ autoPlay: play, seek: 0 });
       return;
     }
@@ -836,14 +919,24 @@ class PlayerController {
 
     if (attempts >= maxAttempts) {
       window.$message.warning("播放列表中没有可播放的歌曲 (Fuck DJ Mode)");
-      audioManager.stop();
-      statusStore.playStatus = false;
+      if (!isAutomix) {
+        audioManager.stop();
+        statusStore.playStatus = false;
+      }
       return;
     }
 
     // 更新状态并播放
     statusStore.playIndex = nextIndex;
-    await this.playSong({ autoPlay: play });
+    if (isAutomix) {
+      await this.playSong({
+        autoPlay: play,
+        crossfade: true,
+        crossfadeDuration: settingStore.automixCrossfadeDuration,
+      });
+    } else {
+      await this.playSong({ autoPlay: play });
+    }
   }
 
   /** 获取总时长 (ms) */

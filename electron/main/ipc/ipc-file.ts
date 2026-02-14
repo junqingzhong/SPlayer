@@ -8,6 +8,8 @@ import { MusicMetadataService } from "../services/MusicMetadataService";
 import { useStore } from "../store";
 import { chunkArray } from "../utils/helper";
 import { processMusicList } from "../utils/format";
+// @ts-ignore
+import { analyze_audio_file } from "../../../native/tools";
 
 /** 本地音乐服务 */
 const localMusicService = new LocalMusicService();
@@ -246,6 +248,16 @@ const initFileIpc = (): void => {
       const relativePath = relative(existingPath, resolvedSelectedDir);
       return relativePath && !relativePath.startsWith("..") && !isAbsolute(relativePath);
     });
+  });
+
+  // 音频分析
+  ipcMain.handle("analyze-audio", async (_, filePath: string) => {
+    try {
+      return analyze_audio_file(filePath);
+    } catch (err) {
+      console.error("Audio analysis failed:", err);
+      return null;
+    }
   });
 };
 

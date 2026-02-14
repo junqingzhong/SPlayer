@@ -107,6 +107,74 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   }
 
   /**
+   * 交叉淡入淡出到下一首
+   * @param url 下一首歌曲 URL
+   * @param options 配置
+   */
+  public async crossfadeTo(
+    url: string,
+    options: {
+      duration: number;
+      seek?: number;
+      autoPlay?: boolean;
+    },
+  ): Promise<void> {
+    // MPV 不支持 Web Audio API 级别的 Crossfade，回退到普通播放
+    if (this.engineType === "mpv") {
+      this.stop();
+      await this.play(url, {
+        autoPlay: options.autoPlay ?? true,
+        seek: options.seek,
+        fadeIn: true,
+        fadeDuration: options.duration,
+      });
+      return;
+    }
+
+    console.log(`🔀 [AudioManager] Starting Crossfade (duration: ${options.duration}s)`);
+
+    // 1. 创建新引擎 (保持同类型)
+    let newEngine: IPlaybackEngine;
+    if (this.engineType === "ffmpeg") {
+      newEngine = new FFmpegAudioPlayer();
+    } else {
+      newEngine = new AudioElementPlayer();
+    }
+
+    newEngine.init();
+
+    // 2. 预设状态
+    newEngine.setVolume(this.getVolume());
+    if (this.engine.capabilities.supportsRate) {
+      newEngine.setRate(this.getRate());
+    }
+
+    // 3. 启动新引擎 (Fade In)
+    await newEngine.play(url, {
+      autoPlay: true,
+      seek: options.seek,
+      fadeIn: true,
+      fadeDuration: options.duration,
+    });
+
+    // 4. 旧引擎淡出
+    const oldEngine = this.engine;
+    if (this.cleanupListeners) {
+      this.cleanupListeners();
+      this.cleanupListeners = null;
+    }
+
+    this.engine = newEngine;
+    this.bindEngineEvents();
+
+    oldEngine.pause({ fadeOut: true, fadeDuration: options.duration });
+
+    setTimeout(() => {
+      oldEngine.destroy();
+    }, options.duration * 1000 + 1000);
+  }
+
+  /**
    * 恢复播放
    */
   public async resume(options?: { fadeIn?: boolean; fadeDuration?: number }): Promise<void> {
