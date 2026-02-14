@@ -8,8 +8,7 @@ import { MusicMetadataService } from "../services/MusicMetadataService";
 import { useStore } from "../store";
 import { chunkArray } from "../utils/helper";
 import { processMusicList } from "../utils/format";
-// @ts-ignore
-import { analyze_audio_file } from "../../../native/tools";
+import { analyzeAudioFile } from "tools";
 
 /** 本地音乐服务 */
 const localMusicService = new LocalMusicService();
@@ -253,7 +252,7 @@ const initFileIpc = (): void => {
   // 音频分析
   ipcMain.handle("analyze-audio", async (_, filePath: string) => {
     try {
-      return analyze_audio_file(filePath);
+      return analyzeAudioFile(filePath);
     } catch (err) {
       console.error("Audio analysis failed:", err);
       return null;
