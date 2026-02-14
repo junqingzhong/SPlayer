@@ -6,7 +6,7 @@ export declare class DownloadTask {
   download(url: string, filePath: string, metadata: SongMetadata | undefined | null, threadCount: number, referer: string | undefined | null, onProgress: ((err: Error | null, arg: DownloadProgress) => any), enableHttp2: boolean): Promise<void>
 }
 
-export declare function analyzeAudioFile(path: string): AudioAnalysis | null
+export declare function analyzeAudioFile(path: string, maxAnalyzeTime?: number | undefined | null): AudioAnalysis | null
 
 export interface AudioAnalysis {
   duration: number
@@ -16,6 +16,12 @@ export interface AudioAnalysis {
   fadeOutPos: number
   firstBeatPos?: number
   loudness?: number
+  version: number
+  analyzeWindow: number
+  cutInPos?: number
+  cutOutPos?: number
+  vocalInPos?: number
+  vocalOutPos?: number
 }
 
 export interface DownloadProgress {

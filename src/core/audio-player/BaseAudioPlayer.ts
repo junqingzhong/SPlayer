@@ -1,6 +1,6 @@
 import { TypedEventTarget } from "@/utils/TypedEventTarget";
 import { AudioEffectManager } from "./AudioEffectManager";
-import type { EngineCapabilities, IPlaybackEngine } from "./IPlaybackEngine";
+import type { EngineCapabilities, IPlaybackEngine, FadeCurve } from "./IPlaybackEngine";
 import { getSharedAudioContext } from "./SharedAudioContext";
 
 /** 扩充 AudioContext 接口以支持 setSinkId (实验性 API) */
@@ -162,7 +162,13 @@ export abstract class BaseAudioPlayer
    */
   public async play(
     url?: string,
-    options: { fadeIn?: boolean; fadeDuration?: number; autoPlay?: boolean; seek?: number } = {},
+    options: {
+      fadeIn?: boolean;
+      fadeDuration?: number;
+      fadeCurve?: FadeCurve;
+      autoPlay?: boolean;
+      seek?: number;
+    } = {},
   ) {
     this.cancelPendingPause();
     const shouldPlay = options.autoPlay ?? true;
@@ -191,7 +197,7 @@ export abstract class BaseAudioPlayer
       this.gainNode.gain.setValueAtTime(0, this.audioCtx.currentTime);
     }
 
-    this.applyFadeTo(this.volume, duration);
+    this.applyFadeTo(this.volume, duration, options.fadeCurve);
 
     try {
       await this.doPlay();
@@ -201,11 +207,22 @@ export abstract class BaseAudioPlayer
     }
   }
 
-  public async resume(options?: { fadeIn?: boolean; fadeDuration?: number }): Promise<void> {
+  public async resume(options?: {
+    fadeIn?: boolean;
+    fadeDuration?: number;
+    fadeCurve?: FadeCurve;
+  }): Promise<void> {
     await this.play(undefined, options);
   }
 
-  public async pause(options: { fadeOut?: boolean; fadeDuration?: number } = {}) {
+  public async pause(
+    options: {
+      fadeOut?: boolean;
+      fadeDuration?: number;
+      fadeCurve?: FadeCurve;
+      keepContextRunning?: boolean;
+    } = {},
+  ) {
     this.cancelPendingPause();
 
     const duration = options.fadeOut ? (options.fadeDuration ?? 0.5) : 0;
@@ -213,7 +230,11 @@ export abstract class BaseAudioPlayer
     const performPause = async () => {
       await this.doPause();
 
-      if (this.audioCtx && this.audioCtx.state === "running") {
+      if (
+        this.audioCtx &&
+        this.audioCtx.state === "running" &&
+        !options.keepContextRunning
+      ) {
         try {
           await this.audioCtx.suspend();
         } catch (e) {
@@ -225,7 +246,7 @@ export abstract class BaseAudioPlayer
     };
 
     if (duration > 0) {
-      this.applyFadeTo(0, duration);
+      this.applyFadeTo(0, duration, options.fadeCurve);
 
       this.fadeTimer = setTimeout(() => {
         performPause();
@@ -303,19 +324,66 @@ export abstract class BaseAudioPlayer
    * 应用音量渐变
    * @param targetValue 目标音量
    * @param duration 持续时间 (秒)
+   * @param curve 渐变曲线
    */
-  protected applyFadeTo(targetValue: number, duration: number) {
+  protected applyFadeTo(targetValue: number, duration: number, curve: FadeCurve = "linear") {
     if (!this.gainNode || !this.audioCtx) return;
 
     const currentTime = this.audioCtx.currentTime;
     // 取消之前计划的音量变化
     this.gainNode.gain.cancelScheduledValues(currentTime);
     // 设定当前值为起点 ，防止爆音
-    this.gainNode.gain.setValueAtTime(this.gainNode.gain.value, currentTime);
+    const currentValue = this.gainNode.gain.value;
+    this.gainNode.gain.setValueAtTime(currentValue, currentTime);
 
     if (duration > 0) {
-      // 线性渐变到目标值
-      this.gainNode.gain.linearRampToValueAtTime(targetValue, currentTime + duration);
+      if (curve === "equalPower") {
+        // Equal Power Crossfade implementation
+        // Fade In: target * sin(t * PI/2)
+        // Fade Out: start * cos(t * PI/2)
+        const steps = Math.max(2, Math.floor(duration * 60)); // 60Hz resolution
+        const curveData = new Float32Array(steps);
+
+        for (let i = 0; i < steps; i++) {
+          const t = i / (steps - 1); // 0 to 1
+          let val = 0;
+
+          if (targetValue > currentValue) {
+            // Fade In (assuming from ~0)
+            const factor = Math.sin((t * Math.PI) / 2);
+            // Linear interpolate start to target but apply sin curve shape?
+            // Standard Equal Power is 0->1.
+            // If we start from 0.5 to 1.0, we should map that segment?
+            // For simplicity in this context (Crossfade):
+            // We assume FadeIn starts near 0, FadeOut ends near 0.
+            val = currentValue + (targetValue - currentValue) * factor;
+          } else {
+            // Fade Out (assuming to ~0)
+            const factor = Math.cos((t * Math.PI) / 2);
+            val = targetValue + (currentValue - targetValue) * factor;
+          }
+          curveData[i] = val;
+        }
+        this.gainNode.gain.setValueCurveAtTime(curveData, currentTime, duration);
+      } else if (curve === "exponential") {
+        // Exponential ramp requires positive values
+        let safeTarget = targetValue;
+        if (safeTarget <= 0.001) safeTarget = 0.001;
+
+        // If current is too small, start with linear ramp to avoid errors
+        if (currentValue < 0.001) {
+          this.gainNode.gain.linearRampToValueAtTime(targetValue, currentTime + duration);
+        } else {
+          this.gainNode.gain.exponentialRampToValueAtTime(safeTarget, currentTime + duration);
+          // If target is 0, snap to 0 at end
+          if (targetValue === 0) {
+            this.gainNode.gain.setValueAtTime(0, currentTime + duration);
+          }
+        }
+      } else {
+        // 线性渐变到目标值
+        this.gainNode.gain.linearRampToValueAtTime(targetValue, currentTime + duration);
+      }
     } else {
       // 立即设置
       this.gainNode.gain.setValueAtTime(targetValue, currentTime);

@@ -473,6 +473,8 @@ export interface SettingState {
   enableAutomix: boolean;
   /** 自动混音过渡时间 (秒) */
   automixCrossfadeDuration: number;
+  /** 自动混音最大分析时间 (秒) */
+  automixMaxAnalyzeTime: number;
   /** 启用全局错误弹窗 */
   enableGlobalErrorDialog: boolean;
   /** macOS 专属设置 */
@@ -747,6 +749,7 @@ export const useSettingStore = defineStore("setting", {
     disableDjMode: false,
     enableAutomix: false,
     automixCrossfadeDuration: 10,
+    automixMaxAnalyzeTime: 60,
     enableGlobalErrorDialog: true,
     macos: {
       statusBarLyric: {

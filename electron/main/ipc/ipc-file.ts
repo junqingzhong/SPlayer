@@ -255,41 +255,62 @@ const initFileIpc = (): void => {
   });
 
   // 音频分析
-  ipcMain.handle("analyze-audio", async (_, filePath: string) => {
-    try {
-      if (!analyzeAudioFile) {
-        throw new Error("Native tools module not loaded");
-      }
-
-      const fileStat = await stat(filePath).catch(() => null);
-      if (!fileStat) return null;
-
-      // 1. Check Cache
-      const cached = await localMusicService.getAnalysis(filePath);
-      if (cached && cached.mtime === fileStat.mtimeMs && cached.size === fileStat.size) {
-        try {
-          return JSON.parse(cached.data);
-        } catch {
-          // ignore
+  ipcMain.handle(
+    "analyze-audio",
+    async (_, filePath: string, options?: { maxAnalyzeTimeSec?: number }) => {
+      try {
+        if (!analyzeAudioFile) {
+          throw new Error("Native tools module not loaded");
         }
-      }
 
-      // 2. Analyze
-      // WARNING: This is a synchronous blocking call. It may freeze the UI for large files.
-      // TODO: Move to Worker Thread or use Async NAPI Task in future phases.
-      const result = analyzeAudioFile(filePath);
-      
-      if (result) {
-        // 3. Save Cache
-        await localMusicService.saveAnalysis(filePath, JSON.stringify(result), fileStat.mtimeMs, fileStat.size);
+        const fileStat = await stat(filePath).catch(() => null);
+        if (!fileStat) return null;
+
+        const maxTime = options?.maxAnalyzeTimeSec ?? 60;
+        const CURRENT_VERSION = 2; // Sync with Rust
+
+        // 1. Check Cache
+        const cached = await localMusicService.getAnalysis(filePath);
+        if (cached && cached.mtime === fileStat.mtimeMs && cached.size === fileStat.size) {
+          try {
+            const data = JSON.parse(cached.data);
+            // Check version and window params
+            // Old cache might not have version/analyzeWindow fields, so we check existence
+            // If data.version is undefined (old cache), it won't match CURRENT_VERSION (2)
+            if (
+              data.version === CURRENT_VERSION &&
+              data.analyze_window &&
+              Math.abs(data.analyze_window - maxTime) < 1.0
+            ) {
+              return data;
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        // 2. Analyze
+        // WARNING: This is a synchronous blocking call. It may freeze the UI for large files.
+        // TODO: Move to Worker Thread or use Async NAPI Task in future phases.
+        const result = analyzeAudioFile(filePath, maxTime);
+
+        if (result) {
+          // 3. Save Cache
+          await localMusicService.saveAnalysis(
+            filePath,
+            JSON.stringify(result),
+            fileStat.mtimeMs,
+            fileStat.size,
+          );
+        }
+
+        return result;
+      } catch (err) {
+        console.error("Audio analysis failed:", err);
+        return null;
       }
-      
-      return result;
-    } catch (err) {
-      console.error("Audio analysis failed:", err);
-      return null;
-    }
-  });
+    },
+  );
 };
 
 export default initFileIpc;

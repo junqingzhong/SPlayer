@@ -28,6 +28,12 @@ interface AudioAnalysis {
   fade_out_pos: number;
   first_beat_pos?: number;
   loudness?: number;
+  version?: number;
+  analyze_window?: number;
+  cut_in_pos?: number;
+  cut_out_pos?: number;
+  vocal_in_pos?: number;
+  vocal_out_pos?: number;
 }
 
 /**
@@ -136,6 +142,95 @@ class PlayerController {
   }
 
   /**
+   * 准备音频源与分析数据
+   */
+  private async prepareAudioSource(
+    song: SongType,
+    requestToken: number,
+  ): Promise<{
+    audioSource: { url: string; quality: string; source: string };
+    analysis: AudioAnalysis | null;
+  }> {
+    const songManager = useSongManager();
+    const settingStore = useSettingStore();
+
+    const audioSource = await songManager.getAudioSource(song);
+    // 检查请求是否过期
+    if (requestToken !== this.currentRequestToken) {
+      throw new Error("EXPIRED");
+    }
+    if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
+
+    let analysis: AudioAnalysis | null = null;
+    if (
+      isElectron &&
+      song.path &&
+      song.type !== "streaming" &&
+      settingStore.enableAutomix
+    ) {
+      try {
+        console.log(`🔍 [Automix] Analysing: ${song.path}`);
+        analysis = await window.electron.ipcRenderer.invoke("analyze-audio", song.path, {
+          maxAnalyzeTimeSec: settingStore.automixMaxAnalyzeTime,
+        });
+      } catch (e) {
+        console.warn("[Automix] Analysis failed", e);
+      }
+    }
+    return { audioSource, analysis };
+  }
+
+  /**
+   * 设置歌曲 UI 状态 (不含播放)
+   */
+  private setupSongUI(
+    song: SongType,
+    audioSource: { url: string; quality: string; source: string },
+    startSeek: number,
+  ) {
+    const musicStore = useMusicStore();
+    const statusStore = useStatusStore();
+    const lyricManager = useLyricManager();
+
+    musicStore.playSong = song;
+    statusStore.currentTime = startSeek;
+    // 重置进度
+    statusStore.progress = 0;
+    statusStore.lyricIndex = -1;
+    // 重置重试计数
+    const sid = song.type === "radio" ? song.dj?.id : song.id;
+    if (this.retryInfo.songId !== sid) {
+      this.retryInfo = { songId: sid || 0, count: 0 };
+    }
+    statusStore.lyricLoading = true;
+    // 重置 AB 循环
+    statusStore.abLoop.enable = false;
+    statusStore.abLoop.pointA = null;
+    statusStore.abLoop.pointB = null;
+    // 通知桌面歌词
+    if (isElectron) {
+      window.electron.ipcRenderer.send("desktop-lyric:update-data", {
+        lyricLoading: true,
+      });
+    }
+    // 更新任务栏歌词窗口的元数据
+    // 注意：getPlayerInfoObj 内部读取 musicStore.playSong，所以上面必须先赋值
+    const { name, artist } = getPlayerInfoObj() || {};
+    const coverUrl = song.coverSize?.s || song.cover || "";
+    playerIpc.sendTaskbarMetadata({
+      title: name || "",
+      artist: artist || "",
+      cover: coverUrl,
+    });
+    // 获取歌词
+    lyricManager.handleLyric(song);
+    console.log(`🎧 [${song.id}] 最终播放信息:`, audioSource);
+    // 更新音质和解锁状态
+    statusStore.songQuality = audioSource.quality;
+    statusStore.audioSource = audioSource.source;
+  }
+
+  /**
    * 初始化并播放歌曲
    * @param options 配置
    * @param options.autoPlay 是否自动播放
@@ -147,14 +242,11 @@ class PlayerController {
       seek?: number;
       crossfade?: boolean;
       crossfadeDuration?: number;
+      song?: SongType;
     } = { autoPlay: true, seek: 0 },
   ) {
-    const musicStore = useMusicStore();
     const statusStore = useStatusStore();
-    const songManager = useSongManager();
     const audioManager = useAudioManager();
-    const lyricManager = useLyricManager();
-    const settingStore = useSettingStore();
 
     // 重置过渡状态
     this.isTransitioning = false;
@@ -165,7 +257,7 @@ class PlayerController {
 
     const { autoPlay = true, seek = 0 } = options;
     // 要播放的歌曲对象
-    const playSongData = getPlaySongData();
+    const playSongData = options.song || getPlaySongData();
     if (!playSongData) {
       statusStore.playLoading = false;
       // 初始化或无歌曲时
@@ -188,103 +280,49 @@ class PlayerController {
       }
 
       statusStore.playLoading = true;
-      const audioSource = await songManager.getAudioSource(playSongData);
-      // 检查请求是否过期
-      if (requestToken !== this.currentRequestToken) {
-        console.log(`🚫 [${playSongData.id}] 请求已过期，舍弃`);
-        return;
-      }
-      if (!audioSource.url) throw new Error("AUDIO_SOURCE_EMPTY");
-      musicStore.playSong = playSongData;
+      
+      const { audioSource, analysis } = await this.prepareAudioSource(
+        playSongData,
+        requestToken,
+      );
 
-      // Automix 分析
+      // Automix 分析应用
       let startSeek = seek ?? 0;
       const lastAnalysis = this.currentAnalysis;
-      this.currentAnalysis = null;
+      this.currentAnalysis = analysis;
       let initialRate = 1.0;
 
-      if (
-        isElectron &&
-        playSongData.path &&
-        playSongData.type !== "streaming" &&
-        settingStore.enableAutomix
-      ) {
-        try {
-          console.log(`🔍 [Automix] Analysing: ${playSongData.path}`);
-          const analysis: AudioAnalysis = await window.electron.ipcRenderer.invoke(
-            "analyze-audio",
-            playSongData.path,
-          );
-          this.currentAnalysis = analysis;
+      if (analysis) {
+        // Smart Cut: Skip silence at start
+        if (analysis.fade_in_pos && startSeek === 0) {
+          // 如果有 cut_in_pos，优先使用
+          const cutIn = analysis.cut_in_pos ?? analysis.fade_in_pos;
+          startSeek = Math.max(startSeek, cutIn * 1000);
+          console.log(`✨ [Automix] Smart Cut Start: ${cutIn.toFixed(2)}s`);
+        }
 
-          if (analysis) {
-            // Smart Cut: Skip silence at start
-            if (analysis.fade_in_pos && startSeek === 0) {
-              startSeek = Math.max(startSeek, analysis.fade_in_pos * 1000);
-              console.log(`✨ [Automix] Smart Cut Start: ${analysis.fade_in_pos}s`);
-            }
+        // BPM Alignment
+        if (options.crossfade && lastAnalysis && lastAnalysis.bpm && analysis.bpm) {
+          const bpmA = lastAnalysis.bpm;
+          const bpmB = analysis.bpm;
+          const confidenceA = lastAnalysis.bpm_confidence ?? 0;
+          const confidenceB = analysis.bpm_confidence ?? 0;
 
-            // BPM Alignment
-            if (options.crossfade && lastAnalysis && lastAnalysis.bpm && analysis.bpm) {
-              const bpmA = lastAnalysis.bpm;
-              const bpmB = analysis.bpm;
-              const confidenceA = lastAnalysis.bpm_confidence ?? 0;
-              const confidenceB = analysis.bpm_confidence ?? 0;
-
-              if (confidenceA > 0.4 && confidenceB > 0.4) {
-                const ratio = bpmA / bpmB;
-                if (ratio >= 0.97 && ratio <= 1.03) {
-                  initialRate = ratio;
-                  console.log(
-                    `✨ [Automix] BPM Align: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
-                  );
-                } else {
-                  console.log(
-                    `⚠️ [Automix] BPM diff too large: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)}`,
-                  );
-                }
-              }
+          if (confidenceA > 0.4 && confidenceB > 0.4) {
+            const ratio = bpmA / bpmB;
+            if (ratio >= 0.97 && ratio <= 1.03) {
+              initialRate = ratio;
+              console.log(
+                `✨ [Automix] BPM Align: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
+              );
             }
           }
-        } catch (e) {
-          console.warn("[Automix] Analysis failed", e);
         }
       }
 
-      statusStore.currentTime = startSeek;
-      // 重置进度
-      statusStore.progress = 0;
-      statusStore.lyricIndex = -1;
-      // 重置重试计数
-      const sid = playSongData.type === "radio" ? playSongData.dj?.id : playSongData.id;
-      if (this.retryInfo.songId !== sid) {
-        this.retryInfo = { songId: sid || 0, count: 0 };
-      }
-      statusStore.lyricLoading = true;
-      // 重置 AB 循环
-      statusStore.abLoop.enable = false;
-      statusStore.abLoop.pointA = null;
-      statusStore.abLoop.pointB = null;
-      // 通知桌面歌词
-      if (isElectron) {
-        window.electron.ipcRenderer.send("desktop-lyric:update-data", {
-          lyricLoading: true,
-        });
-      }
-      // 更新任务栏歌词窗口的元数据
-      const { name, artist } = getPlayerInfoObj() || {};
-      const coverUrl = playSongData.coverSize?.s || playSongData.cover || "";
-      playerIpc.sendTaskbarMetadata({
-        title: name || "",
-        artist: artist || "",
-        cover: coverUrl,
-      });
-      // 获取歌词
-      lyricManager.handleLyric(playSongData);
-      console.log(`🎧 [${playSongData.id}] 最终播放信息:`, audioSource);
-      // 更新音质和解锁状态
-      statusStore.songQuality = audioSource.quality;
-      statusStore.audioSource = audioSource.source;
+      // 设置 UI 状态
+      this.setupSongUI(playSongData, audioSource, startSeek);
+
       // 执行底层播放
       await this.loadAndPlay(
         audioSource.url,
@@ -392,7 +430,7 @@ class PlayerController {
     url: string,
     autoPlay: boolean,
     seek: number,
-    crossfadeOptions?: { duration: number },
+    crossfadeOptions?: { duration: number; uiSwitchDelay?: number; onSwitch?: () => void },
     initialRate: number = 1.0,
   ) {
     const statusStore = useStatusStore();
@@ -445,6 +483,8 @@ class PlayerController {
           duration: crossfadeOptions.duration,
           seek: seek / 1000,
           autoPlay,
+          uiSwitchDelay: crossfadeOptions.uiSwitchDelay,
+          onSwitch: crossfadeOptions.onSwitch,
         });
       } else {
         // 计算渐入时间
@@ -608,6 +648,23 @@ class PlayerController {
     // 加载状态
     audioManager.addEventListener("loadstart", () => {
       statusStore.playLoading = true;
+      // Watchdog: 如果 10秒后仍未 canplay/playing/error，强制取消 loading
+      const token = this.currentRequestToken;
+      setTimeout(() => {
+        if (
+          statusStore.playLoading &&
+          token === this.currentRequestToken &&
+          !statusStore.playStatus
+        ) {
+          console.warn("⚠️ [Watchdog] Loading timeout, resetting state");
+          statusStore.playLoading = false;
+        }
+      }, 10000);
+    });
+
+    // 播放中 (兜底)
+    audioManager.addEventListener("playing", () => {
+      if (statusStore.playLoading) statusStore.playLoading = false;
     });
 
     // 加载完成
@@ -708,13 +765,17 @@ class PlayerController {
         let trigger = false;
 
         // Smart Cut Trigger
-        if (this.currentAnalysis && this.currentAnalysis.fade_out_pos > 0) {
-          const triggerTime = this.currentAnalysis.fade_out_pos - crossfadeDuration;
-          if (rawTime >= triggerTime) {
-            console.log(
-              `🔀 [Automix] Smart Cut Trigger (Time: ${rawTime.toFixed(2)}s, Trigger: ${triggerTime.toFixed(2)}s)`,
-            );
-            trigger = true;
+        if (this.currentAnalysis) {
+          const cutOut =
+            this.currentAnalysis.cut_out_pos ?? this.currentAnalysis.fade_out_pos;
+          if (cutOut > 0) {
+            const triggerTime = cutOut - crossfadeDuration;
+            if (rawTime >= triggerTime) {
+              console.log(
+                `🔀 [Automix] Smart Cut Trigger (Time: ${rawTime.toFixed(2)}s, Trigger: ${triggerTime.toFixed(2)}s)`,
+              );
+              trigger = true;
+            }
           }
         } else {
           // Fallback
@@ -1040,15 +1101,98 @@ class PlayerController {
     }
 
     // 更新状态并播放
-    statusStore.playIndex = nextIndex;
     if (isAutomix) {
-      await this.playSong({
+      await this.automixPlay(dataStore.playList[nextIndex], nextIndex, {
         autoPlay: play,
-        crossfade: true,
         crossfadeDuration: settingStore.automixCrossfadeDuration,
       });
     } else {
+      statusStore.playIndex = nextIndex;
       await this.playSong({ autoPlay: play });
+    }
+  }
+
+  /**
+   * Automix 智能切歌逻辑
+   */
+  private async automixPlay(
+    targetSong: SongType,
+    targetIndex: number,
+    options: {
+      autoPlay?: boolean;
+      crossfadeDuration: number;
+    },
+  ) {
+    const statusStore = useStatusStore();
+
+    // 生成新的 requestToken
+    this.currentRequestToken++;
+    const requestToken = this.currentRequestToken;
+
+    try {
+      // 1. 准备数据
+      const { audioSource, analysis } = await this.prepareAudioSource(
+        targetSong,
+        requestToken,
+      );
+
+      // 2. 计算参数
+      let startSeek = 0;
+      let cutIn = 0;
+
+      if (analysis) {
+        cutIn = analysis.cut_in_pos ?? analysis.fade_in_pos ?? 0;
+        startSeek = cutIn * 1000;
+        console.log(`✨ [Automix] Smart Cut Start: ${cutIn.toFixed(2)}s`);
+      }
+
+      // BPM Align
+      let initialRate = 1.0;
+      const lastAnalysis = this.currentAnalysis;
+      this.currentAnalysis = analysis;
+
+      if (lastAnalysis && lastAnalysis.bpm && analysis?.bpm) {
+        const bpmA = lastAnalysis.bpm;
+        const bpmB = analysis.bpm;
+        const confidenceA = lastAnalysis.bpm_confidence ?? 0;
+        const confidenceB = analysis.bpm_confidence ?? 0;
+        if (confidenceA > 0.4 && confidenceB > 0.4) {
+          const ratio = bpmA / bpmB;
+          if (ratio >= 0.97 && ratio <= 1.03) {
+            initialRate = ratio;
+            console.log(
+              `✨ [Automix] BPM Align: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
+            );
+          }
+        }
+      }
+
+      const uiSwitchDelay = options.crossfadeDuration * 0.5;
+
+      // 3. 启动 Crossfade
+      await this.loadAndPlay(
+        audioSource.url,
+        options.autoPlay ?? true,
+        startSeek,
+        {
+          duration: options.crossfadeDuration,
+          uiSwitchDelay,
+          onSwitch: () => {
+            console.log("🔀 [Automix] Switching UI to new song");
+            // 提交状态切换
+            statusStore.playIndex = targetIndex;
+            this.setupSongUI(targetSong, audioSource, startSeek);
+            this.afterPlaySetup(targetSong);
+          },
+        },
+        initialRate,
+      );
+    } catch (e) {
+      console.error("Automix failed, fallback to normal play", e);
+      if (requestToken === this.currentRequestToken) {
+        statusStore.playIndex = targetIndex;
+        this.playSong({ autoPlay: true });
+      }
     }
   }
 

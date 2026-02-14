@@ -20,6 +20,10 @@ import { MpvPlayer, useMpvPlayer } from "../audio-player/MpvPlayer";
 class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackEngine {
   /** 当前活动的播放引擎 */
   private engine: IPlaybackEngine;
+  /** 待切换的播放引擎 (Crossfade 期间) */
+  private pendingEngine: IPlaybackEngine | null = null;
+  /** 切换引擎的定时器 */
+  private pendingSwitchTimer: ReturnType<typeof setTimeout> | null = null;
   /** 用于清理当前引擎的事件监听器 */
   private cleanupListeners: (() => void) | null = null;
 
@@ -92,6 +96,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
    * 销毁引擎
    */
   public destroy(): void {
+    this.clearPendingSwitch();
     if (this.cleanupListeners) {
       this.cleanupListeners();
       this.cleanupListeners = null;
@@ -117,11 +122,14 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       duration: number;
       seek?: number;
       autoPlay?: boolean;
+      uiSwitchDelay?: number;
+      onSwitch?: () => void;
     },
   ): Promise<void> {
     // MPV 不支持 Web Audio API 级别的 Crossfade，回退到普通播放
     if (this.engineType === "mpv") {
       this.stop();
+      if (options.onSwitch) options.onSwitch();
       await this.play(url, {
         autoPlay: options.autoPlay ?? true,
         seek: options.seek,
@@ -133,6 +141,9 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
     console.log(`🔀 [AudioManager] Starting Crossfade (duration: ${options.duration}s)`);
 
+    // 清理之前的 pending
+    this.clearPendingSwitch();
+
     // 1. 创建新引擎 (保持同类型)
     let newEngine: IPlaybackEngine;
     if (this.engineType === "ffmpeg") {
@@ -142,6 +153,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     }
 
     newEngine.init();
+    this.pendingEngine = newEngine;
 
     // 2. 预设状态
     newEngine.setVolume(this.getVolume());
@@ -149,26 +161,61 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       newEngine.setRate(this.getRate());
     }
 
-    // 3. 启动新引擎 (Fade In)
+    // 3. 启动新引擎 (Fade In, Equal Power)
     await newEngine.play(url, {
       autoPlay: true,
       seek: options.seek,
       fadeIn: true,
       fadeDuration: options.duration,
+      fadeCurve: "equalPower",
     });
 
-    // 4. 旧引擎淡出
+    // 4. 旧引擎淡出 (Fade Out, Equal Power, Keep Context)
     const oldEngine = this.engine;
-    if (this.cleanupListeners) {
-      this.cleanupListeners();
-      this.cleanupListeners = null;
+    oldEngine.pause({
+      fadeOut: true,
+      fadeDuration: options.duration,
+      fadeCurve: "equalPower",
+      keepContextRunning: true,
+    });
+
+    const commitSwitch = () => {
+      console.log("🔀 [AudioManager] Committing Crossfade Switch");
+      if (this.cleanupListeners) {
+        this.cleanupListeners();
+        this.cleanupListeners = null;
+      }
+
+      this.engine = newEngine;
+      this.pendingEngine = null; // Cleared from pending, now active
+      this.bindEngineEvents();
+
+      // 触发 UI 切换回调
+      if (options.onSwitch) {
+        try {
+          options.onSwitch();
+        } catch {
+          // ignore
+        }
+      }
+
+      // 触发一次 update 以刷新 UI
+      this.dispatch(AUDIO_EVENTS.TIME_UPDATE, undefined);
+      this.dispatch(AUDIO_EVENTS.PLAY, undefined);
+    };
+
+    const switchDelay = options.uiSwitchDelay ?? 0;
+
+    if (switchDelay > 0) {
+      this.pendingSwitchTimer = setTimeout(() => {
+        this.pendingSwitchTimer = null;
+        commitSwitch();
+      }, switchDelay * 1000);
+    } else {
+      commitSwitch();
     }
 
-    this.engine = newEngine;
-    this.bindEngineEvents();
-
-    oldEngine.pause({ fadeOut: true, fadeDuration: options.duration });
-
+    // 销毁旧引擎
     setTimeout(() => {
       oldEngine.destroy();
     }, options.duration * 1000 + 1000);
@@ -192,7 +239,24 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
    * 停止播放并将时间重置为 0
    */
   public stop(): void {
+    this.clearPendingSwitch();
     this.engine.stop();
+  }
+
+  private clearPendingSwitch() {
+    if (this.pendingSwitchTimer) {
+      clearTimeout(this.pendingSwitchTimer);
+      this.pendingSwitchTimer = null;
+    }
+    if (this.pendingEngine) {
+      // 如果有待切换引擎，销毁它
+      try {
+        this.pendingEngine.destroy();
+      } catch {
+        // ignore
+      }
+      this.pendingEngine = null;
+    }
   }
 
   /**

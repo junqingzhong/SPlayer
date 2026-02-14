@@ -21,6 +21,8 @@ export interface AudioErrorDetail {
   message?: string;
 }
 
+export type FadeCurve = "linear" | "exponential" | "equalPower";
+
 /**
  * 播放选项
  */
@@ -31,6 +33,8 @@ export interface PlayOptions {
   fadeIn?: boolean;
   /** 渐入时长（秒） */
   fadeDuration?: number;
+  /** 淡入曲线类型 */
+  fadeCurve?: FadeCurve;
   /** 初始播放位置（秒） */
   seek?: number;
 }
@@ -43,6 +47,10 @@ export interface PauseOptions {
   fadeOut?: boolean;
   /** 渐出时长（秒） */
   fadeDuration?: number;
+  /** 淡出曲线类型 */
+  fadeCurve?: FadeCurve;
+  /** 是否保持 Context 运行（用于 Crossfade） */
+  keepContextRunning?: boolean;
 }
 
 /**
