@@ -23,6 +23,7 @@ export interface AudioAnalysis {
   cut_out_pos?: number
   vocal_in_pos?: number
   vocal_out_pos?: number
+  vocal_last_in_pos?: number
 }
 
 export interface DownloadProgress {
