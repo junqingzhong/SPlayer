@@ -642,6 +642,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         cut_out_pos: cut_out,
         vocal_in_pos: vocal_in,
         vocal_out_pos: vocal_out,
+        vocal_last_in_pos: vocal_last_in,
     })
 }
 
