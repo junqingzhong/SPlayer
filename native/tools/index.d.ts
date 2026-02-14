@@ -11,18 +11,18 @@ export declare function analyzeAudioFile(path: string, maxAnalyzeTime?: number |
 export interface AudioAnalysis {
   duration: number
   bpm?: number
-  bpmConfidence?: number
-  fadeInPos: number
-  fadeOutPos: number
-  firstBeatPos?: number
+  bpm_confidence?: number
+  fade_in_pos: number
+  fade_out_pos: number
+  first_beat_pos?: number
   loudness?: number
-  dropPos?: number
+  drop_pos?: number
   version: number
-  analyzeWindow: number
-  cutInPos?: number
-  cutOutPos?: number
-  vocalInPos?: number
-  vocalOutPos?: number
+  analyze_window: number
+  cut_in_pos?: number
+  cut_out_pos?: number
+  vocal_in_pos?: number
+  vocal_out_pos?: number
 }
 
 export interface DownloadProgress {

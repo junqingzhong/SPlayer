@@ -14,18 +14,27 @@ use symphonia::core::units::Time;
 pub struct AudioAnalysis {
     pub duration: f64,
     pub bpm: Option<f64>,
+    #[napi(js_name = "bpm_confidence")]
     pub bpm_confidence: Option<f64>,
+    #[napi(js_name = "fade_in_pos")]
     pub fade_in_pos: f64,
+    #[napi(js_name = "fade_out_pos")]
     pub fade_out_pos: f64,
+    #[napi(js_name = "first_beat_pos")]
     pub first_beat_pos: Option<f64>,
     pub loudness: Option<f64>, // LUFS
+    #[napi(js_name = "drop_pos")]
     pub drop_pos: Option<f64>, // Chorus/Drop start
-    // New fields
     pub version: i32,
+    #[napi(js_name = "analyze_window")]
     pub analyze_window: f64,
+    #[napi(js_name = "cut_in_pos")]
     pub cut_in_pos: Option<f64>,
+    #[napi(js_name = "cut_out_pos")]
     pub cut_out_pos: Option<f64>,
+    #[napi(js_name = "vocal_in_pos")]
     pub vocal_in_pos: Option<f64>,
+    #[napi(js_name = "vocal_out_pos")]
     pub vocal_out_pos: Option<f64>,
 }
 
@@ -665,7 +674,7 @@ fn detect_bpm_from_envelope(envelope: &[f32], rate: f64) -> (Option<f64>, Option
     // Find the highest flux peak that aligns with the BPM grid
     let mut first_beat = None;
     if confidence > 0.3 {
-        let beat_period_samples = best_lag as usize;
+        let _beat_period_samples = best_lag as usize;
         
         // Search for the strongest onset in the first 10 seconds (500 samples)
         let search_len = std::cmp::min(flux.len(), 500);
