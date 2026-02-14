@@ -178,7 +178,7 @@ class SongDownloadStrategy implements DownloadStrategy {
       );
       if (result && window.electron?.ipcRenderer) {
         await window.electron.ipcRenderer.invoke("save-file", {
-          path: `${targetPath}\\${fileName}.${result.ext}`,
+          path: `${targetPath}/${fileName}.${result.ext}`,
           content: result.content,
           encoding: result.encoding,
         });
