@@ -274,8 +274,16 @@ class SongManager {
       // 预加载歌词
       lyricManager.prefetchLyric(nextSong);
 
-      // 本地歌曲跳过
-      if (nextSong.path) return;
+      // 本地歌曲
+      if (nextSong.path) {
+        // 预分析音频 (Automix)
+        if (isElectron && settingStore.enableAutomix) {
+          window.electron.ipcRenderer.invoke("analyze-audio", nextSong.path).catch((e) => {
+            console.warn("[Prefetch] Analysis failed:", e);
+          });
+        }
+        return;
+      }
 
       // 流媒体歌曲
       if (nextSong.type === "streaming" && nextSong.streamUrl) {

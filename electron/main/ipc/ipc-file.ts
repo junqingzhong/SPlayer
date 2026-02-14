@@ -1,5 +1,5 @@
 import { app, dialog, ipcMain, shell } from "electron";
-import { access, mkdir, unlink, writeFile } from "node:fs/promises";
+import { access, mkdir, unlink, writeFile, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { ipcLog } from "../logger";
 import { LocalMusicService } from "../services/LocalMusicService";
@@ -260,7 +260,31 @@ const initFileIpc = (): void => {
       if (!analyzeAudioFile) {
         throw new Error("Native tools module not loaded");
       }
-      return analyzeAudioFile(filePath);
+
+      const fileStat = await stat(filePath).catch(() => null);
+      if (!fileStat) return null;
+
+      // 1. Check Cache
+      const cached = await localMusicService.getAnalysis(filePath);
+      if (cached && cached.mtime === fileStat.mtimeMs && cached.size === fileStat.size) {
+        try {
+          return JSON.parse(cached.data);
+        } catch {
+          // ignore
+        }
+      }
+
+      // 2. Analyze
+      // WARNING: This is a synchronous blocking call. It may freeze the UI for large files.
+      // TODO: Move to Worker Thread or use Async NAPI Task in future phases.
+      const result = analyzeAudioFile(filePath);
+      
+      if (result) {
+        // 3. Save Cache
+        await localMusicService.saveAnalysis(filePath, JSON.stringify(result), fileStat.mtimeMs, fileStat.size);
+      }
+      
+      return result;
     } catch (err) {
       console.error("Audio analysis failed:", err);
       return null;

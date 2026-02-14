@@ -20,6 +20,16 @@ import * as playerIpc from "./PlayerIpc";
 import { PlayModeManager } from "./PlayModeManager";
 import { useSongManager } from "./SongManager";
 
+interface AudioAnalysis {
+  duration: number;
+  bpm?: number;
+  bpm_confidence?: number;
+  fade_in_pos: number;
+  fade_out_pos: number;
+  first_beat_pos?: number;
+  loudness?: number;
+}
+
 /**
  * 播放器核心类
  * 职责：负责音频生命周期管理、与 AudioManager 交互、调度 Store
@@ -43,6 +53,12 @@ class PlayerController {
   private onTimeUpdate: DebouncedFunc<() => void> | null = null;
   /** 上次错误处理时间 */
   private lastErrorTime = 0;
+  /** 当前歌曲分析结果 */
+  private currentAnalysis: AudioAnalysis | null = null;
+  /** 速率重置定时器 */
+  private rateResetTimer: ReturnType<typeof setTimeout> | undefined;
+  /** 速率渐变动画帧 */
+  private rateRampFrame: number | undefined;
 
   constructor() {
     // 初始化 AudioManager（会根据设置自动选择引擎）
@@ -182,21 +198,52 @@ class PlayerController {
 
       // Automix 分析
       let startSeek = seek ?? 0;
+      const lastAnalysis = this.currentAnalysis;
+      this.currentAnalysis = null;
+      let initialRate = 1.0;
+
       if (
-        options.crossfade &&
         isElectron &&
         playSongData.path &&
-        playSongData.type !== "streaming"
+        playSongData.type !== "streaming" &&
+        settingStore.enableAutomix
       ) {
         try {
           console.log(`🔍 [Automix] Analysing: ${playSongData.path}`);
-          const analysis = await window.electron.ipcRenderer.invoke(
+          const analysis: AudioAnalysis = await window.electron.ipcRenderer.invoke(
             "analyze-audio",
             playSongData.path,
           );
-          if (analysis && analysis.fade_in_pos) {
-            startSeek = Math.max(startSeek, analysis.fade_in_pos * 1000); // ms
-            console.log(`✨ [Automix] Detected fade_in_pos: ${analysis.fade_in_pos}s`);
+          this.currentAnalysis = analysis;
+
+          if (analysis) {
+            // Smart Cut: Skip silence at start
+            if (analysis.fade_in_pos && startSeek === 0) {
+              startSeek = Math.max(startSeek, analysis.fade_in_pos * 1000);
+              console.log(`✨ [Automix] Smart Cut Start: ${analysis.fade_in_pos}s`);
+            }
+
+            // BPM Alignment
+            if (options.crossfade && lastAnalysis && lastAnalysis.bpm && analysis.bpm) {
+              const bpmA = lastAnalysis.bpm;
+              const bpmB = analysis.bpm;
+              const confidenceA = lastAnalysis.bpm_confidence ?? 0;
+              const confidenceB = analysis.bpm_confidence ?? 0;
+
+              if (confidenceA > 0.4 && confidenceB > 0.4) {
+                const ratio = bpmA / bpmB;
+                if (ratio >= 0.97 && ratio <= 1.03) {
+                  initialRate = ratio;
+                  console.log(
+                    `✨ [Automix] BPM Align: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
+                  );
+                } else {
+                  console.log(
+                    `⚠️ [Automix] BPM diff too large: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)}`,
+                  );
+                }
+              }
+            }
           }
         } catch (e) {
           console.warn("[Automix] Analysis failed", e);
@@ -243,6 +290,7 @@ class PlayerController {
         autoPlay,
         startSeek,
         options.crossfade ? { duration: options.crossfadeDuration ?? 5 } : undefined,
+        initialRate,
       );
       if (requestToken !== this.currentRequestToken) return;
       // 后置处理
@@ -344,16 +392,36 @@ class PlayerController {
     autoPlay: boolean,
     seek: number,
     crossfadeOptions?: { duration: number },
+    initialRate: number = 1.0,
   ) {
     const statusStore = useStatusStore();
     const settingStore = useSettingStore();
     const audioManager = useAudioManager();
 
+    // Reset rate timer
+    if (this.rateResetTimer) {
+      clearTimeout(this.rateResetTimer);
+      this.rateResetTimer = undefined;
+    }
+    if (this.rateRampFrame) {
+      cancelAnimationFrame(this.rateRampFrame);
+      this.rateRampFrame = undefined;
+    }
+
     // 设置基础参数
     audioManager.setVolume(statusStore.playVolume);
     // 仅当引擎支持倍速时设置
     if (audioManager.capabilities.supportsRate) {
-      audioManager.setRate(statusStore.playRate);
+      // 叠加 Automix Rate
+      const baseRate = statusStore.playRate;
+      audioManager.setRate(baseRate * initialRate);
+
+      // Schedule reset
+      if (initialRate !== 1.0 && crossfadeOptions) {
+        this.rateResetTimer = setTimeout(() => {
+          this.rampRateTo(baseRate, 2000);
+        }, crossfadeOptions.duration * 1000);
+      }
     }
 
     // 应用 ReplayGain
@@ -413,6 +481,30 @@ class PlayerController {
       console.error("❌ 音频播放失败:", error);
       throw error;
     }
+  }
+
+  /**
+   * 平滑过渡播放速率
+   */
+  private rampRateTo(targetRate: number, duration: number) {
+    const audioManager = useAudioManager();
+    const startRate = audioManager.getRate();
+    const startTime = Date.now();
+
+    const tick = () => {
+      const now = Date.now();
+      const progress = Math.min((now - startTime) / duration, 1.0);
+      const current = startRate + (targetRate - startRate) * progress;
+      audioManager.setRate(current);
+
+      if (progress < 1.0) {
+        this.rateRampFrame = requestAnimationFrame(tick);
+      } else {
+        this.rateRampFrame = undefined;
+        this.rateResetTimer = undefined;
+      }
+    };
+    this.rateRampFrame = requestAnimationFrame(tick);
   }
 
   /**
@@ -612,8 +704,28 @@ class PlayerController {
         const remaining = duration / 1000 - rawTime;
         const crossfadeDuration = settingStore.automixCrossfadeDuration || 10;
 
-        if (remaining <= crossfadeDuration && remaining > 0.5) {
-          console.log(`🔀 [Automix] Triggering crossfade (remaining: ${remaining.toFixed(2)}s)`);
+        let trigger = false;
+
+        // Smart Cut Trigger
+        if (this.currentAnalysis && this.currentAnalysis.fade_out_pos > 0) {
+          const triggerTime = this.currentAnalysis.fade_out_pos - crossfadeDuration;
+          if (rawTime >= triggerTime) {
+            console.log(
+              `🔀 [Automix] Smart Cut Trigger (Time: ${rawTime.toFixed(2)}s, Trigger: ${triggerTime.toFixed(2)}s)`,
+            );
+            trigger = true;
+          }
+        } else {
+          // Fallback
+          if (remaining <= crossfadeDuration && remaining > 0.5) {
+            console.log(
+              `🔀 [Automix] Fallback Trigger (Remaining: ${remaining.toFixed(2)}s)`,
+            );
+            trigger = true;
+          }
+        }
+
+        if (trigger) {
           this.isTransitioning = true;
           this.nextOrPrev("next", true, true, true).catch((e) => {
             console.error("❌ [Automix] Failed:", e);
