@@ -8,7 +8,12 @@ import { MusicMetadataService } from "../services/MusicMetadataService";
 import { useStore } from "../store";
 import { chunkArray } from "../utils/helper";
 import { processMusicList } from "../utils/format";
-import { analyzeAudioFile } from "tools";
+// import { analyzeAudioFile } from "tools";
+import { loadNativeModule } from "../utils/native-loader";
+
+// 加载原生模块
+const tools = loadNativeModule("tools.node", "tools");
+const analyzeAudioFile = tools?.analyzeAudioFile;
 
 /** 本地音乐服务 */
 const localMusicService = new LocalMusicService();
@@ -252,6 +257,9 @@ const initFileIpc = (): void => {
   // 音频分析
   ipcMain.handle("analyze-audio", async (_, filePath: string) => {
     try {
+      if (!analyzeAudioFile) {
+        throw new Error("Native tools module not loaded");
+      }
       return analyzeAudioFile(filePath);
     } catch (err) {
       console.error("Audio analysis failed:", err);
