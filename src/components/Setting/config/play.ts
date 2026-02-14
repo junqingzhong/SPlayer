@@ -413,19 +413,6 @@ export const usePlaySettings = (): SettingConfig => {
             }),
             children: [
               {
-                key: "automixCrossfadeDuration",
-                label: "自动混音过渡时间",
-                type: "input-number",
-                description: "单位秒，最小 1，最大 60",
-                min: 1,
-                max: 60,
-                suffix: "s",
-                value: computed({
-                  get: () => settingStore.automixCrossfadeDuration,
-                  set: (v) => (settingStore.automixCrossfadeDuration = v),
-                }),
-              },
-              {
                 key: "automixMaxAnalyzeTime",
                 label: "最大分析时间",
                 type: "input-number",

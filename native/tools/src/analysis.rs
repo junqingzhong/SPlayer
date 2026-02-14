@@ -401,20 +401,12 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     }
     
     // 4. Synthesize Cut Points
-    let preroll = 0.1;
-    let postroll = 0.2;
+    // We remove the hard cut logic based on vocal, as user wants smooth transition.
+    // However, we still export vocal points for smart decisions in frontend.
     
-    let cut_in = if let Some(v_in) = vocal_in {
-        Some((v_in - preroll).max(fade_in))
-    } else {
-        Some(fade_in)
-    };
-    
-    let cut_out = if let Some(v_out) = vocal_out {
-        Some((v_out + postroll).min(fade_out))
-    } else {
-        Some(fade_out)
-    };
+    // For compatibility, we set cut_in/out to fade_in/out
+    let cut_in = Some(fade_in);
+    let cut_out = Some(fade_out);
 
     Some(AudioAnalysis {
         duration,
@@ -424,8 +416,8 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         fade_out_pos: fade_out,
         first_beat_pos: first_beat,
         loudness: None,
-        // New
-        version: 2,
+        // New Version 3: Removed hard cut logic
+        version: 3,
         analyze_window: max_time,
         cut_in_pos: cut_in,
         cut_out_pos: cut_out,

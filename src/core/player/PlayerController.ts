@@ -66,6 +66,11 @@ class PlayerController {
   /** 速率渐变动画帧 */
   private rateRampFrame: number | undefined;
 
+  /** 下一首歌分析结果 (AutoMIX Cache) */
+  private nextAnalysis: AudioAnalysis | null = null;
+  /** 是否正在获取下一首歌分析 */
+  private isFetchingNextAnalysis = false;
+
   constructor() {
     // 初始化 AudioManager（会根据设置自动选择引擎）
     const audioManager = useAudioManager();
@@ -258,6 +263,8 @@ class PlayerController {
 
     // 重置过渡状态
     this.isTransitioning = false;
+    this.nextAnalysis = null;
+    this.isFetchingNextAnalysis = false;
 
     // 生成新的请求标识
     this.currentRequestToken++;
@@ -768,39 +775,98 @@ class PlayerController {
         statusStore.playStatus // 必须是播放状态
       ) {
         const remaining = duration / 1000 - rawTime;
-        const crossfadeDuration = settingStore.automixCrossfadeDuration || 10;
 
-        let trigger = false;
+        // 提前预判窗口 (30s)
+        if (remaining < 30) {
+          // 1. 获取下一首歌
+          const nextInfo = this.getNextSongForAutomix();
+          if (nextInfo) {
+            // 2. 尝试获取下一首歌的分析 (如果还没获取)
+            if (!this.nextAnalysis && !this.isFetchingNextAnalysis) {
+              this.isFetchingNextAnalysis = true;
+              window.electron.ipcRenderer
+                .invoke("analyze-audio", nextInfo.song.path, {
+                  maxAnalyzeTimeSec: settingStore.automixMaxAnalyzeTime,
+                })
+                .then((res) => {
+                  this.nextAnalysis = res;
+                  this.isFetchingNextAnalysis = false;
+                })
+                .catch(() => {
+                  this.isFetchingNextAnalysis = false;
+                });
+            }
 
-        // Smart Cut Trigger
-        if (this.currentAnalysis) {
-          const cutOut =
-            this.currentAnalysis.cut_out_pos ?? this.currentAnalysis.fade_out_pos;
-          if (cutOut > 0) {
-            const triggerTime = cutOut - crossfadeDuration;
+            // 3. 计算触发参数
+            // 当前淡出点 (优先使用 fade_out_pos，否则 duration)
+            const fadeOut =
+              this.currentAnalysis?.fade_out_pos || duration / 1000;
+
+            // 默认混音时长 8s
+            let crossfadeDuration = 8;
+            let initialRate = 1.0;
+            let startSeek = 0;
+
+            // 如果有下一首分析数据，进行智能计算
+            if (this.nextAnalysis) {
+              startSeek = (this.nextAnalysis.fade_in_pos || 0) * 1000;
+
+              // BPM 对齐
+              if (
+                this.currentAnalysis?.bpm &&
+                this.nextAnalysis.bpm &&
+                (this.currentAnalysis.bpm_confidence ?? 0) > 0.4 &&
+                (this.nextAnalysis.bpm_confidence ?? 0) > 0.4
+              ) {
+                const ratio = this.currentAnalysis.bpm / this.nextAnalysis.bpm;
+                if (ratio >= 0.97 && ratio <= 1.03) {
+                  initialRate = ratio;
+                  // 对齐到 32 拍 (约 10-15s)
+                  // Duration = 32 * (60 / BPM)
+                  const beatDuration = 60 / this.currentAnalysis.bpm;
+                  crossfadeDuration = Math.min(beatDuration * 32, 15);
+                  console.log(
+                    `✨ [Automix] BPM Match: ${this.currentAnalysis.bpm.toFixed(1)} -> ${this.nextAnalysis.bpm.toFixed(1)}, Duration: ${crossfadeDuration.toFixed(2)}s`,
+                  );
+                }
+              }
+            }
+
+            // 约束：时长不能超过两首歌的有效长度的一半
+            // 当前剩余有效长度
+            const currentFadeIn = this.currentAnalysis?.fade_in_pos || 0;
+            const currentValid = fadeOut - currentFadeIn;
+            // 下一首有效长度 (估算)
+            const nextDuration =
+              (this.nextAnalysis?.duration || 180) - startSeek / 1000;
+
+            crossfadeDuration = Math.min(
+              crossfadeDuration,
+              currentValid / 2,
+              nextDuration / 2,
+            );
+            // 最小 4s，最大 15s
+            crossfadeDuration = Math.max(4, Math.min(crossfadeDuration, 15));
+
+            // 触发点：fade_out - crossfadeDuration
+            const triggerTime = fadeOut - crossfadeDuration;
+
             if (rawTime >= triggerTime) {
               console.log(
-                `🔀 [Automix] Smart Cut Trigger (Time: ${rawTime.toFixed(2)}s, Trigger: ${triggerTime.toFixed(2)}s)`,
+                `🔀 [Automix] Triggered at ${rawTime.toFixed(2)}s (Target: ${triggerTime.toFixed(2)}s)`,
               );
-              trigger = true;
+              this.isTransitioning = true;
+              this.automixPlay(nextInfo.song, nextInfo.index, {
+                autoPlay: true,
+                crossfadeDuration,
+                startSeek,
+                initialRate,
+              }).catch((e) => {
+                console.error("❌ [Automix] Failed:", e);
+                this.isTransitioning = false;
+              });
             }
           }
-        } else {
-          // Fallback
-          if (remaining <= crossfadeDuration && remaining > 0.5) {
-            console.log(
-              `🔀 [Automix] Fallback Trigger (Remaining: ${remaining.toFixed(2)}s)`,
-            );
-            trigger = true;
-          }
-        }
-
-        if (trigger) {
-          this.isTransitioning = true;
-          this.nextOrPrev("next", true, true, true).catch((e) => {
-            console.error("❌ [Automix] Failed:", e);
-            this.isTransitioning = false;
-          });
         }
       }
 
@@ -1043,18 +1109,15 @@ class PlayerController {
     type: "next" | "prev" = "next",
     play: boolean = true,
     autoEnd: boolean = false,
-    isAutomix: boolean = false,
   ) {
     const dataStore = useDataStore();
     const statusStore = useStatusStore();
     const songManager = useSongManager();
     const settingStore = useSettingStore();
 
-    // 先暂停当前播放 (除非是 Automix)
+    // 先暂停当前播放
     const audioManager = useAudioManager();
-    if (!isAutomix) {
-      audioManager.stop();
-    }
+    audioManager.stop();
 
     // 私人FM
     if (statusStore.personalFmMode) {
@@ -1074,7 +1137,7 @@ class PlayerController {
     // 如果是自动结束触发的单曲循环，则重播当前歌曲
     // Automix 模式下不支持单曲循环（没有意义 Crossfade 自己），或者可以？
     // 假设 Automix 忽略单曲循环逻辑，直接切下一首 (TODO: check logic)
-    if (statusStore.repeatMode === "one" && autoEnd && !isAutomix) {
+    if (statusStore.repeatMode === "one" && autoEnd) {
       await this.playSong({ autoPlay: play, seek: 0 });
       return;
     }
@@ -1101,23 +1164,14 @@ class PlayerController {
 
     if (attempts >= maxAttempts) {
       window.$message.warning("播放列表中没有可播放的歌曲 (Fuck DJ Mode)");
-      if (!isAutomix) {
-        audioManager.stop();
-        statusStore.playStatus = false;
-      }
+      audioManager.stop();
+      statusStore.playStatus = false;
       return;
     }
 
     // 更新状态并播放
-    if (isAutomix) {
-      await this.automixPlay(dataStore.playList[nextIndex], nextIndex, {
-        autoPlay: play,
-        crossfadeDuration: settingStore.automixCrossfadeDuration,
-      });
-    } else {
-      statusStore.playIndex = nextIndex;
-      await this.playSong({ autoPlay: play });
-    }
+    statusStore.playIndex = nextIndex;
+    await this.playSong({ autoPlay: play });
   }
 
   /**
@@ -1129,6 +1183,8 @@ class PlayerController {
     options: {
       autoPlay?: boolean;
       crossfadeDuration: number;
+      startSeek: number;
+      initialRate: number;
     },
   ) {
     const statusStore = useStatusStore();
@@ -1144,44 +1200,19 @@ class PlayerController {
         requestToken,
       );
 
-      // 2. 计算参数
-      let startSeek = 0;
-      let cutIn = 0;
-
-      if (analysis) {
-        cutIn = analysis.cut_in_pos ?? analysis.fade_in_pos ?? 0;
-        startSeek = cutIn * 1000;
-        console.log(`✨ [Automix] Smart Cut Start: ${cutIn.toFixed(2)}s`);
-      }
-
-      // BPM Align
-      let initialRate = 1.0;
-      const lastAnalysis = this.currentAnalysis;
+      // 更新当前分析结果
       this.currentAnalysis = analysis;
+      // 重置下一首分析缓存
+      this.nextAnalysis = null;
+      this.isFetchingNextAnalysis = false;
 
-      if (lastAnalysis && lastAnalysis.bpm && analysis?.bpm) {
-        const bpmA = lastAnalysis.bpm;
-        const bpmB = analysis.bpm;
-        const confidenceA = lastAnalysis.bpm_confidence ?? 0;
-        const confidenceB = analysis.bpm_confidence ?? 0;
-        if (confidenceA > 0.4 && confidenceB > 0.4) {
-          const ratio = bpmA / bpmB;
-          if (ratio >= 0.97 && ratio <= 1.03) {
-            initialRate = ratio;
-            console.log(
-              `✨ [Automix] BPM Align: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
-            );
-          }
-        }
-      }
-
+      // 2. 启动 Crossfade
       const uiSwitchDelay = options.crossfadeDuration * 0.5;
 
-      // 3. 启动 Crossfade
       await this.loadAndPlay(
         audioSource.url,
         options.autoPlay ?? true,
-        startSeek,
+        options.startSeek,
         {
           duration: options.crossfadeDuration,
           uiSwitchDelay,
@@ -1189,11 +1220,11 @@ class PlayerController {
             console.log("🔀 [Automix] Switching UI to new song");
             // 提交状态切换
             statusStore.playIndex = targetIndex;
-            this.setupSongUI(targetSong, audioSource, startSeek);
+            this.setupSongUI(targetSong, audioSource, options.startSeek);
             this.afterPlaySetup(targetSong);
           },
         },
-        initialRate,
+        options.initialRate,
       );
     } catch (e) {
       console.error("Automix failed, fallback to normal play", e);
@@ -1220,6 +1251,32 @@ class PlayerController {
     // MPV 引擎 currentTime 在 statusStore 中（通过事件更新），Web Audio 从 audioManager 获取
     const currentTime = audioManager.currentTime;
     return currentTime > 0 ? Math.floor(currentTime * 1000) : statusStore.currentTime;
+  }
+
+  /**
+   * 获取下一首要播放的歌曲 (用于 Automix 预判)
+   */
+  private getNextSongForAutomix(): { song: SongType; index: number } | null {
+    const dataStore = useDataStore();
+    const statusStore = useStatusStore();
+
+    if (dataStore.playList.length <= 1) return null;
+
+    let nextIndex = statusStore.playIndex;
+    let attempts = 0;
+    const maxAttempts = dataStore.playList.length;
+
+    while (attempts < maxAttempts) {
+      nextIndex++;
+      if (nextIndex >= dataStore.playList.length) nextIndex = 0;
+
+      const nextSong = dataStore.playList[nextIndex];
+      if (!this.shouldSkipSong(nextSong)) {
+        return { song: nextSong, index: nextIndex };
+      }
+      attempts++;
+    }
+    return null;
   }
 
   /**
