@@ -332,9 +332,14 @@ export abstract class BaseAudioPlayer
     const currentTime = this.audioCtx.currentTime;
     // 取消之前计划的音量变化
     this.gainNode.gain.cancelScheduledValues(currentTime);
+
     // 设定当前值为起点 ，防止爆音
     const currentValue = this.gainNode.gain.value;
     this.gainNode.gain.setValueAtTime(currentValue, currentTime);
+
+    // 稍微延后一点点开始 Ramp，给 AudioContext 内部队列一点喘息时间
+    const safeStartTime = currentTime + 0.02;
+    this.gainNode.gain.setValueAtTime(currentValue, safeStartTime);
 
     if (duration > 0) {
       if (curve === "equalPower") {
@@ -364,7 +369,7 @@ export abstract class BaseAudioPlayer
           }
           curveData[i] = val;
         }
-        this.gainNode.gain.setValueCurveAtTime(curveData, currentTime, duration);
+        this.gainNode.gain.setValueCurveAtTime(curveData, safeStartTime, duration);
       } else if (curve === "exponential") {
         // Exponential ramp requires positive values
         let safeTarget = targetValue;
@@ -372,17 +377,17 @@ export abstract class BaseAudioPlayer
 
         // If current is too small, start with linear ramp to avoid errors
         if (currentValue < 0.001) {
-          this.gainNode.gain.linearRampToValueAtTime(targetValue, currentTime + duration);
+          this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime + duration);
         } else {
-          this.gainNode.gain.exponentialRampToValueAtTime(safeTarget, currentTime + duration);
+          this.gainNode.gain.exponentialRampToValueAtTime(safeTarget, safeStartTime + duration);
           // If target is 0, snap to 0 at end
           if (targetValue === 0) {
-            this.gainNode.gain.setValueAtTime(0, currentTime + duration);
+            this.gainNode.gain.setValueAtTime(0, safeStartTime + duration);
           }
         }
       } else {
         // 线性渐变到目标值
-        this.gainNode.gain.linearRampToValueAtTime(targetValue, currentTime + duration);
+        this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime + duration);
       }
     } else {
       // 立即设置

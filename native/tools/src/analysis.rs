@@ -36,6 +36,8 @@ pub struct AudioAnalysis {
     pub vocal_in_pos: Option<f64>,
     #[napi(js_name = "vocal_out_pos")]
     pub vocal_out_pos: Option<f64>,
+    #[napi(js_name = "vocal_last_in_pos")]
+    pub vocal_last_in_pos: Option<f64>,
 }
 
 struct HighPassFilter {
@@ -550,23 +552,67 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         }
     }
     
-    // Detect Vocal Out (in Tail or Head)
+    // Detect Vocal Out & Last Vocal In (in Tail or Head)
     let mut vocal_out = None;
+    let mut vocal_last_in = None;
     let target_env = if !tail_envelope.is_empty() { &tail_envelope } else { &head_envelope };
     let target_ratio = if !tail_vocal_ratio.is_empty() { &tail_vocal_ratio } else { &head_vocal_ratio };
     
-    for (i, (&rms, &ratio)) in target_env.iter().zip(target_ratio.iter()).enumerate().rev() {
-        if is_vocal(rms, ratio) {
-             let start = i.saturating_sub(5);
-             if (start..=i).all(|j| is_vocal(target_env[j], target_ratio[j])) {
-                 let local_time = i as f64 / env_rate;
-                 if !tail_envelope.is_empty() {
-                      vocal_out = Some(duration - (tail_envelope.len() as f64 / env_rate - local_time));
-                 } else {
-                      vocal_out = Some(local_time);
+    // Scan backwards for the last significant vocal segment (> 2s)
+    let min_vocal_frames = 100; // 2s * 50Hz
+    let mut i = target_env.len().saturating_sub(1);
+    
+    while i > 0 {
+        if is_vocal(target_env[i], target_ratio[i]) {
+            let end_idx = i;
+            let mut start_idx = i;
+            // Trace back to find start of this segment
+            while start_idx > 0 && is_vocal(target_env[start_idx], target_ratio[start_idx]) {
+                start_idx -= 1;
+            }
+            
+            // Check length
+            if end_idx - start_idx >= min_vocal_frames {
+                // Found valid segment
+                let out_time = end_idx as f64 / env_rate;
+                let in_time = start_idx as f64 / env_rate;
+                
+                if !tail_envelope.is_empty() {
+                    let tail_len_sec = tail_envelope.len() as f64 / env_rate;
+                    vocal_out = Some(duration - (tail_len_sec - out_time));
+                    vocal_last_in = Some(duration - (tail_len_sec - in_time));
+                } else {
+                    vocal_out = Some(out_time);
+                    vocal_last_in = Some(in_time);
+                }
+                break;
+            } else {
+                // Too short (ad-lib/noise), skip this segment
+                i = start_idx;
+                if i > 0 { i -= 1; }
+                continue;
+            }
+        }
+        if i == 0 { break; }
+        i -= 1;
+    }
+    
+    // Fallback: if no long segment found, use original logic to just find "last vocal point"
+    if vocal_out.is_none() {
+         for (idx, (&rms, &ratio)) in target_env.iter().zip(target_ratio.iter()).enumerate().rev() {
+            if is_vocal(rms, ratio) {
+                 let start = idx.saturating_sub(5);
+                 if (start..=idx).all(|j| is_vocal(target_env[j], target_ratio[j])) {
+                     let local_time = idx as f64 / env_rate;
+                     if !tail_envelope.is_empty() {
+                          vocal_out = Some(duration - (tail_envelope.len() as f64 / env_rate - local_time));
+                     } else {
+                          vocal_out = Some(local_time);
+                     }
+                     // No vocal_last_in in fallback
+                     break;
                  }
-                 break;
-             }
+            }
         }
     }
     
@@ -590,7 +636,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         loudness: Some(loudness),
         drop_pos,
         // New Version 3: Removed hard cut logic
-        version: 3,
+        version: 4,
         analyze_window: max_time,
         cut_in_pos: cut_in,
         cut_out_pos: cut_out,

@@ -35,6 +35,7 @@ interface AudioAnalysis {
   cut_out_pos?: number;
   vocal_in_pos?: number;
   vocal_out_pos?: number;
+  vocal_last_in_pos?: number;
 }
 
 /**
@@ -822,31 +823,34 @@ class PlayerController {
             }
 
             // 3. 计算触发参数
-            // 当前淡出点 (优先使用 fade_out_pos，否则 duration)
-            const fadeOut =
-              this.currentAnalysis?.fade_out_pos || duration / 1000;
+            const currentAnalysis = this.currentAnalysis;
+            const nextAnalysis = this.nextAnalysis;
 
+            // 基础锚点：fade_out_pos 或 duration
+            const fadeOut = currentAnalysis?.fade_out_pos || duration / 1000;
+            
             // 默认混音时长 8s
             let crossfadeDuration = 8;
             let initialRate = 1.0;
             let startSeek = 0;
             let uiSwitchDelay = 0;
             let mixType: "default" | "bassSwap" = "default";
+            const preRoll = 2.0; // 提前量
 
             // 如果有下一首分析数据，进行智能计算
-            if (this.nextAnalysis) {
-              const fadeIn = (this.nextAnalysis.fade_in_pos || 0) * 1000;
+            if (nextAnalysis) {
+              const fadeIn = (nextAnalysis.fade_in_pos || 0) * 1000;
               startSeek = fadeIn;
 
               // BPM Alignment
               if (
-                this.currentAnalysis?.bpm &&
-                this.nextAnalysis.bpm &&
-                (this.currentAnalysis.bpm_confidence ?? 0) > 0.4 &&
-                (this.nextAnalysis.bpm_confidence ?? 0) > 0.4
+                currentAnalysis?.bpm &&
+                nextAnalysis.bpm &&
+                (currentAnalysis.bpm_confidence ?? 0) > 0.4 &&
+                (nextAnalysis.bpm_confidence ?? 0) > 0.4
               ) {
-                const bpmA = this.currentAnalysis.bpm;
-                const bpmB = this.nextAnalysis.bpm;
+                const bpmA = currentAnalysis.bpm;
+                const bpmB = nextAnalysis.bpm;
                 const ratio = bpmA / bpmB;
 
                 // 允许 6% 的误差进行 Beat Match
@@ -858,31 +862,41 @@ class PlayerController {
                   const beatDuration = 60 / bpmA;
                   crossfadeDuration = Math.max(8, Math.min(beatDuration * 32, 25));
 
-                  // Smart Start Position
-                  // 策略 1: Drop Align (优先) - 让 Crossfade 结束在 Drop 点
-                  if (
-                    this.nextAnalysis.drop_pos &&
-                    this.nextAnalysis.drop_pos * 1000 > fadeIn + 5000
-                  ) {
-                    const dropTime = this.nextAnalysis.drop_pos * 1000;
-                    const calculatedStart = dropTime - crossfadeDuration * 1000;
+                  // Smart Start Position (Next Song)
+                  // 优先对齐：Vocal In > Drop > First Beat
+                  let targetEndInNext = 0;
+                  if (nextAnalysis.vocal_in_pos) {
+                     // 稍微延后一点点，让过渡结束时人声刚好出来
+                     targetEndInNext = nextAnalysis.vocal_in_pos * 1000 + 500;
+                  } else if (nextAnalysis.drop_pos) {
+                     targetEndInNext = nextAnalysis.drop_pos * 1000;
+                  } else if (nextAnalysis.first_beat_pos) {
+                     targetEndInNext = (nextAnalysis.first_beat_pos + beatDuration * 16) * 1000;
+                  } else {
+                     targetEndInNext = fadeIn + crossfadeDuration * 1000;
+                  }
 
-                    if (calculatedStart >= fadeIn) {
-                      startSeek = calculatedStart;
-                      // 在 Drop 前夕切换 UI
-                      uiSwitchDelay = crossfadeDuration * 0.9;
-                      console.log(
-                        `✨ [Automix] Drop Align: Target Drop at ${this.nextAnalysis.drop_pos.toFixed(2)}s`,
-                      );
-                    }
+                  let calculatedStart = targetEndInNext - crossfadeDuration * 1000;
+
+                  // Bar Alignment (Next Song) - 确保 startSeek 在小节第一拍
+                  if (nextAnalysis.first_beat_pos !== undefined) {
+                     const firstBeatMs = nextAnalysis.first_beat_pos * 1000;
+                     const beatDurationMs = beatDuration * 1000;
+                     const barDurationMs = beatDurationMs * 4; // 假设 4/4 拍
+
+                     const relStart = calculatedStart - firstBeatMs;
+                     const bars = Math.round(relStart / barDurationMs);
+                     calculatedStart = firstBeatMs + bars * barDurationMs;
                   }
-                  // 策略 2: First Beat Align - 从第一个重拍开始混音
-                  else if (this.nextAnalysis.first_beat_pos) {
-                    const firstBeat = this.nextAnalysis.first_beat_pos * 1000;
-                    if (firstBeat >= fadeIn) {
-                      startSeek = firstBeat;
-                    }
+
+                  if (calculatedStart >= fadeIn) {
+                    startSeek = calculatedStart;
+                  } else {
+                    startSeek = Math.max(fadeIn, calculatedStart);
                   }
+                  
+                  // UI 切换通常在过渡的一半
+                  uiSwitchDelay = crossfadeDuration * 0.5;
 
                   console.log(
                     `✨ [Automix] BPM Match: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
@@ -892,12 +906,9 @@ class PlayerController {
             }
 
             // 约束：时长不能超过两首歌的有效长度的一半
-            // 当前剩余有效长度
-            const currentFadeIn = this.currentAnalysis?.fade_in_pos || 0;
+            const currentFadeIn = currentAnalysis?.fade_in_pos || 0;
             const currentValid = fadeOut - currentFadeIn;
-            // 下一首有效长度 (估算)
-            const nextDuration =
-              (this.nextAnalysis?.duration || 180) - startSeek / 1000;
+            const nextDuration = (nextAnalysis?.duration || 180) - startSeek / 1000;
 
             crossfadeDuration = Math.min(
               crossfadeDuration,
@@ -907,13 +918,44 @@ class PlayerController {
             // 最小 4s，最大 15s
             crossfadeDuration = Math.max(4, Math.min(crossfadeDuration, 15));
 
-            // 如果没有计算出特定的 UI 切换点，则使用 50%
             if (uiSwitchDelay === 0 || uiSwitchDelay > crossfadeDuration) {
               uiSwitchDelay = crossfadeDuration * 0.5;
             }
 
-            // 触发点：fade_out - crossfadeDuration
-            const triggerTime = fadeOut - crossfadeDuration;
+            // 计算触发时间
+            // 1. 基于 fadeOut (旧逻辑作为底线)
+            let triggerTime = fadeOut - crossfadeDuration;
+            
+            // 2. 尝试使用 vocal_last_in_pos 提前触发
+            if (currentAnalysis?.vocal_last_in_pos) {
+                // 希望在最后一句开始前就启动过渡
+                const vocalTrigger = currentAnalysis.vocal_last_in_pos - preRoll;
+                if (vocalTrigger < triggerTime) {
+                    triggerTime = vocalTrigger;
+                    console.log(`✨ [Automix] Smart Trigger: Aligning to Vocal Last In (${currentAnalysis.vocal_last_in_pos.toFixed(2)}s)`);
+                }
+            } else if (currentAnalysis?.vocal_out_pos) {
+                 // 或者是最后一句结束前
+                 const vocalOutTrigger = currentAnalysis.vocal_out_pos - crossfadeDuration - preRoll;
+                 if (vocalOutTrigger < triggerTime && vocalOutTrigger > currentFadeIn) {
+                      triggerTime = vocalOutTrigger;
+                 }
+            }
+
+            // 3. Bar Alignment (Current Song) - 确保触发点在小节第一拍
+            if (mixType === "bassSwap" && currentAnalysis?.bpm && currentAnalysis.first_beat_pos !== undefined) {
+                 const spb = 60 / currentAnalysis.bpm;
+                 const firstBeat = currentAnalysis.first_beat_pos;
+                 
+                 const relTime = triggerTime - firstBeat;
+                 const barIndex = Math.round(relTime / (spb * 4));
+                 const alignedTrigger = firstBeat + barIndex * (spb * 4);
+                 
+                 // 只有在误差允许范围内才吸附 (比如 2s 内)，避免过度偏离意图
+                 if (Math.abs(alignedTrigger - triggerTime) < 2.0) {
+                      triggerTime = alignedTrigger;
+                 }
+            }
 
             if (rawTime >= triggerTime) {
               console.log(
