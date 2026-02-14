@@ -660,8 +660,6 @@ class LyricManager {
     // 合并默认规则和用户自定义规则
     const mergedKeywords = [...new Set([...defaultKeywords, ...(excludeLyricsUserKeywords ?? [])])];
     const mergedRegexes = [...new Set([...defaultRegexes, ...(excludeLyricsUserRegexes ?? [])])];
-    // 额外规则：匹配 * 计划
-    mergedRegexes.push(".*计划.*");
 
     const song = targetSong || musicStore.playSong;
     const { name, artists } = song;
@@ -705,17 +703,13 @@ class LyricManager {
     const processExtraRules = (lines: LyricLine[]) => {
       if (lines.length === 0) return lines;
 
-      // 规则：去除第一行包含歌曲名
-      if (name && name !== "未播放歌曲") {
+      // 规则：去除第一行包含歌曲名 (需开启开关且匹配开头)
+      if (settingStore.enableExcludeLyricsTitle && name && name !== "未播放歌曲") {
         const firstLine = lines[0].words.map((w) => w.word).join("");
-        if (firstLine.includes(name)) {
+        // 检查第一行是否以歌曲名开头
+        if (firstLine.startsWith(name)) {
           lines.shift();
         }
-      }
-
-      // 规则：去除只有一行歌词的歌词
-      if (lines.length === 1) {
-        return [];
       }
 
       return lines;

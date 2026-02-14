@@ -312,6 +312,8 @@ export interface SettingState {
   enableExcludeLyricsTTML: boolean;
   /** 「排除歌词」是否适用于本地歌词 */
   enableExcludeLyricsLocal: boolean;
+  /** 「排除歌词」去除首行包含歌名 */
+  enableExcludeLyricsTitle: boolean;
   /** 用户自定义的排除歌词关键字 */
   excludeLyricsUserKeywords: string[];
   /** 用户自定义的排除歌词正则表达式 */
@@ -589,6 +591,7 @@ export const useSettingStore = defineStore("setting", {
     enableExcludeLyrics: true,
     enableExcludeLyricsTTML: false,
     enableExcludeLyricsLocal: false,
+    enableExcludeLyricsTitle: false,
     excludeLyricsUserKeywords: [],
     excludeLyricsUserRegexes: [],
     enableExcludeComments: false,
