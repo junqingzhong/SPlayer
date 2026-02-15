@@ -1816,10 +1816,10 @@ class PlayerController {
       const replayGain = this.applyReplayGain(targetSong, false);
 
       // 提示用户
-      const nextTitle = targetSong.name || "Unknown";
-      window.$message.info(`🔀 AutoMIX: ${nextTitle}`, {
-        duration: 3000,
-      });
+      // const nextTitle = targetSong.name || "Unknown";
+      // window.$message.info(`🔀 AutoMIX: ${nextTitle}`, {
+      //   duration: 3000,
+      // });
 
       await this.loadAndPlay(
         audioSource.url,
