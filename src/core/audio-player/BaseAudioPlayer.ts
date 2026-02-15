@@ -1,7 +1,7 @@
 import { TypedEventTarget } from "@/utils/TypedEventTarget";
 import { AudioEffectManager } from "./AudioEffectManager";
 import type { EngineCapabilities, IPlaybackEngine, FadeCurve } from "./IPlaybackEngine";
-import { getSharedAudioContext } from "./SharedAudioContext";
+import { getSharedAudioContext, getSharedMasterInput } from "./SharedAudioContext";
 
 /** 扩充 AudioContext 接口以支持 setSinkId (实验性 API) */
 export interface IExtendedAudioContext extends AudioContext {
@@ -113,7 +113,7 @@ export abstract class BaseAudioPlayer
       // AudioEffectManager.connect 接受输入节点，内部串联后返回输出节点
       const processedNode = this.effectManager.connect(this.inputNode);
       processedNode.connect(this.gainNode);
-      this.gainNode.connect(this.audioCtx.destination);
+      this.gainNode.connect(getSharedMasterInput());
 
       // 应用初始音量
       this.gainNode.gain.value = this.volume;

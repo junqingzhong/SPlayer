@@ -6,6 +6,7 @@ import { AUDIO_EVENTS, type AudioEventMap } from "../audio-player/BaseAudioPlaye
 import { FFmpegAudioPlayer } from "../audio-player/ffmpeg-engine/FFmpegAudioPlayer";
 import type {
   EngineCapabilities,
+  FadeCurve,
   IPlaybackEngine,
   PauseOptions,
   PlayOptions,
@@ -131,6 +132,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       mixType?: "default" | "bassSwap";
       rate?: number;
       replayGain?: number;
+      fadeCurve?: FadeCurve;
     },
   ): Promise<void> {
     // MPV 不支持 Web Audio API 级别的 Crossfade，回退到普通播放
@@ -185,13 +187,15 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       newEngine.setHighPassFilter?.(400, 0);
     }
 
-    // 3. 启动新引擎 (Fade In, Equal Power)
+    const fadeCurve = options.fadeCurve ?? "equalPower";
+
+    // 3. 启动新引擎 (Fade In)
     await newEngine.play(url, {
       autoPlay: true,
       seek: options.seek,
       fadeIn: true,
       fadeDuration: options.duration,
-      fadeCurve: "equalPower",
+      fadeCurve,
     });
 
     if (options.mixType === "bassSwap") {
@@ -230,7 +234,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     oldEngine.pause({
       fadeOut: true,
       fadeDuration: options.duration,
-      fadeCurve: "equalPower",
+      fadeCurve,
       keepContextRunning: true,
     });
 
