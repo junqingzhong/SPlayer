@@ -1,6 +1,7 @@
 import { app, dialog, ipcMain, shell } from "electron";
 import { access, mkdir, unlink, writeFile, stat } from "node:fs/promises";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { Worker } from "node:worker_threads";
 import { ipcLog } from "../logger";
 import { LocalMusicService } from "../services/LocalMusicService";
 import { DownloadService } from "../services/DownloadService";
@@ -8,12 +9,6 @@ import { MusicMetadataService } from "../services/MusicMetadataService";
 import { useStore } from "../store";
 import { chunkArray } from "../utils/helper";
 import { processMusicList } from "../utils/format";
-// import { analyzeAudioFile } from "tools";
-import { loadNativeModule } from "../utils/native-loader";
-
-// 加载原生模块
-const tools = loadNativeModule("tools.node", "tools");
-const analyzeAudioFile = tools?.analyzeAudioFile;
 
 /** 本地音乐服务 */
 const localMusicService = new LocalMusicService();
@@ -21,6 +16,65 @@ const localMusicService = new LocalMusicService();
 const downloadService = new DownloadService();
 /** 音乐元数据服务 */
 const musicMetadataService = new MusicMetadataService();
+
+const analysisInFlight = new Map<string, Promise<unknown | null>>();
+
+const normalizeAnalysisKey = (filePath: string) => {
+  const p = normalize(resolve(filePath));
+  return process.platform === "win32" ? p.toLowerCase() : p;
+};
+
+const resolveToolsNativeModulePath = () => {
+  if (app.isPackaged) {
+    return join(process.resourcesPath, "native", "tools.node");
+  }
+  return join(process.cwd(), "native", "tools", "tools.node");
+};
+
+const runAnalysisInWorker = async (filePath: string, maxTime: number) => {
+  const worker = new Worker(new URL("../workers/audio-analysis.worker.js", import.meta.url), {
+  });
+
+  try {
+    const nativeModulePath = resolveToolsNativeModulePath();
+    const result = await new Promise<unknown | null>((resolvePromise) => {
+      const cleanup = () => {
+        worker.removeAllListeners("message");
+        worker.removeAllListeners("error");
+        worker.removeAllListeners("exit");
+        worker.terminate().catch(() => {});
+      };
+
+      worker.once("message", (resp: { ok: boolean; result?: unknown } | { ok: false }) => {
+        cleanup();
+        if (resp && resp.ok) {
+          resolvePromise(resp.result ?? null);
+          return;
+        }
+        resolvePromise(null);
+      });
+
+      worker.once("error", () => {
+        cleanup();
+        resolvePromise(null);
+      });
+
+      worker.once("exit", (code) => {
+        if (code !== 0) {
+          cleanup();
+          resolvePromise(null);
+        }
+      });
+
+      worker.postMessage({ filePath, maxTime, nativeModulePath });
+    });
+
+    return result;
+  } catch {
+    worker.terminate().catch(() => {});
+    return null;
+  }
+};
 
 /** 获取封面目录路径 */
 const getCoverDir = (): string => {
@@ -259,52 +313,71 @@ const initFileIpc = (): void => {
     "analyze-audio",
     async (_, filePath: string, options?: { maxAnalyzeTimeSec?: number }) => {
       try {
-        if (!analyzeAudioFile) {
-          throw new Error("Native tools module not loaded");
-        }
-
         const fileStat = await stat(filePath).catch(() => null);
         if (!fileStat) return null;
 
         const maxTime = options?.maxAnalyzeTimeSec ?? 60;
         const CURRENT_VERSION = 10; // 与 Rust 保持一致
+        const fileKey = normalizeAnalysisKey(filePath);
 
         // 1. Check Cache
-        const cached = await localMusicService.getAnalysis(filePath);
-        if (cached && cached.mtime === fileStat.mtimeMs && cached.size === fileStat.size) {
+        const candidateKeys = new Set<string>([fileKey, filePath]);
+        if (process.platform === "win32") {
+          candidateKeys.add(filePath.replaceAll("/", "\\").toLowerCase());
+          candidateKeys.add(filePath.replaceAll("\\", "/").toLowerCase());
+        }
+
+        for (const key of candidateKeys) {
+          const cached = await localMusicService.getAnalysis(key);
+          if (!cached || cached.mtime !== fileStat.mtimeMs || cached.size !== fileStat.size) continue;
           try {
             const data = JSON.parse(cached.data);
-            // Check version and window params
-            // Old cache might not have version/analyzeWindow fields, so we check existence
-            // If data.version is undefined (old cache), it won't match CURRENT_VERSION (2)
             if (
+              data &&
               data.version === CURRENT_VERSION &&
               data.analyze_window &&
               Math.abs(data.analyze_window - maxTime) < 1.0
             ) {
+              if (key !== fileKey) {
+                await localMusicService.saveAnalysis(
+                  fileKey,
+                  cached.data,
+                  fileStat.mtimeMs,
+                  fileStat.size,
+                );
+              }
               return data;
             }
-          } catch {
-            // ignore
+          } catch (e) {
+            void e;
           }
         }
 
         // 2. Analyze
-        // WARNING: This is a synchronous blocking call. It may freeze the UI for large files.
-        // TODO: Move to Worker Thread or use Async NAPI Task in future phases.
-        const result = analyzeAudioFile(filePath, maxTime);
+        const requestKey = `${fileKey}|${maxTime}`;
+        const inFlight = analysisInFlight.get(requestKey);
+        if (inFlight) return await inFlight;
 
-        if (result) {
-          // 3. Save Cache
-          await localMusicService.saveAnalysis(
-            filePath,
-            JSON.stringify(result),
-            fileStat.mtimeMs,
-            fileStat.size,
-          );
-        }
+        const promise = (async () => {
+          const result = await runAnalysisInWorker(filePath, maxTime);
+          if (!result) return null;
+          try {
+            await localMusicService.saveAnalysis(
+              fileKey,
+              JSON.stringify(result),
+              fileStat.mtimeMs,
+              fileStat.size,
+            );
+          } catch (e) {
+            void e;
+          }
+          return result;
+        })().finally(() => {
+          analysisInFlight.delete(requestKey);
+        });
 
-        return result;
+        analysisInFlight.set(requestKey, promise);
+        return await promise;
       } catch (err) {
         console.error("Audio analysis failed:", err);
         return null;
