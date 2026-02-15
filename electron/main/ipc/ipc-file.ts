@@ -1,6 +1,6 @@
 import { app, dialog, ipcMain, shell } from "electron";
 import { access, mkdir, unlink, writeFile, stat } from "node:fs/promises";
-import { dirname, isAbsolute, join, normalize, relative, resolve } from "node:path";
+import { isAbsolute, join, normalize, relative, resolve } from "node:path";
 import { Worker } from "node:worker_threads";
 import { ipcLog } from "../logger";
 import { LocalMusicService } from "../services/LocalMusicService";
