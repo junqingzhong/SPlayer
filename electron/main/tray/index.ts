@@ -28,9 +28,6 @@ let likeSong: boolean = false;
 let desktopLyricShow: boolean = false;
 let desktopLyricLock: boolean = false;
 let taskbarLyricShow: boolean = false;
-// macOS 状态栏歌词
-let macStatusBarLyricShow: boolean = false;
-let macStatusBarLyricTitle: string = "";
 
 export interface MainTray {
   setTitle(title: string): void;
@@ -41,8 +38,7 @@ export interface MainTray {
   setDesktopLyricShow(show: boolean): void;
   setDesktopLyricLock(lock: boolean): void;
   setTaskbarLyricShow(show: boolean): void;
-  setMacStatusBarLyricShow(show: boolean, songTitle?: string): void;
-  setMacStatusBarLyricTitle(title: string): void;
+  initTrayMenu(): void;
   destroyTray(): void;
 }
 
@@ -107,7 +103,7 @@ const getMenuIcon = (iconName: string): NativeImage | undefined => {
 };
 
 // 托盘菜单
-const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
+const createTrayMenu = (win: BrowserWindow, store: ReturnType<typeof useStore>): MenuItemConstructorOptions[] => {
   /**
    * 获取 {@linkcode RepeatModeType} 对应的显示字符串
    * @param mode 重复模式
@@ -124,6 +120,9 @@ const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
         return "列表循环";
     }
   };
+
+  const isMacosLyricEnabled = store.get("macos.statusBarLyric.enabled") ?? false;
+
   // 菜单
   const menu: MenuItemConstructorOptions[] = [
     {
@@ -226,7 +225,7 @@ const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
     },
     {
       id: "toggle-taskbar-lyric",
-      label: `${(isMac ? macStatusBarLyricShow : taskbarLyricShow) ? "关闭" : "开启"}${isMac ? "状态栏" : "任务栏"}歌词`,
+      label: `${(isMac ? isMacosLyricEnabled : taskbarLyricShow) ? "关闭" : "开启"}${isMac ? "状态栏" : "任务栏"}歌词`,
       icon: getMenuIcon("lyric"),
       visible: isWin || isMac,
       click: () => win.webContents.send("toggle-taskbar-lyric"),
@@ -268,9 +267,11 @@ class CreateTray implements MainTray {
   // 菜单
   private _menu: MenuItemConstructorOptions[];
   private _contextMenu: Menu;
+  private _store: ReturnType<typeof useStore>; // 添加 store 成员变量以访问全局状态
 
   constructor(win: BrowserWindow) {
     this._win = win;
+    this._store = useStore();
 
     if (isWin) {
       const iconPath = join(__dirname, `../../public/icons/tray/tray.ico`);
@@ -289,15 +290,15 @@ class CreateTray implements MainTray {
       this._tray = new Tray(icon);
     }
 
-    this._menu = createTrayMenu(this._win);
+    this._menu = createTrayMenu(this._win, this._store);
     this._contextMenu = Menu.buildFromTemplate(this._menu);
     this.initTrayMenu();
     this.initEvents();
-    this.setTitle(appName);
+    this._tray.setTitle(appName); // 仅设置托盘标题，不设置窗口标题
   }
   // 托盘菜单
-  private initTrayMenu() {
-    this._menu = createTrayMenu(this._win);
+  public initTrayMenu() {
+    this._menu = createTrayMenu(this._win, this._store);
     this._contextMenu = Menu.buildFromTemplate(this._menu);
     this._tray.setContextMenu(this._contextMenu);
   }
@@ -318,7 +319,6 @@ class CreateTray implements MainTray {
    * @param title 标题
    */
   setTitle(title: string) {
-    this._win.setTitle(title);
     this._tray.setTitle(title);
     this._tray.setToolTip(title);
   }
@@ -383,25 +383,10 @@ class CreateTray implements MainTray {
 
   setTaskbarLyricShow(show: boolean) {
     taskbarLyricShow = show;
+    // 更新菜单
     this.initTrayMenu();
   }
 
-  setMacStatusBarLyricShow(show: boolean, songTitle?: string) {
-    macStatusBarLyricShow = show;
-    this.initTrayMenu();
-    if (show && macStatusBarLyricTitle) {
-      this._tray.setTitle(macStatusBarLyricTitle);
-    } else if (!show) {
-      this._tray.setTitle(songTitle ?? appName);
-    }
-  }
-
-  setMacStatusBarLyricTitle(title: string) {
-    macStatusBarLyricTitle = title;
-    if (macStatusBarLyricShow) {
-      this._tray.setTitle(title);
-    }
-  }
   /**
    * 销毁托盘
    */
