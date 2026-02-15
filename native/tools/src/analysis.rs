@@ -1449,8 +1449,8 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
             selected_duration = duration;
             selected_next_in = snapped_next_in;
             selected_cur_out = snapped_cur_start;
-            strategy_name = "Rapid Blend (2 Bars)".to_string();
-            filter_strategy = "Quick Fade".to_string();
+            strategy_name = "Rapid Bass Swap (2 Bars)".to_string();
+            filter_strategy = "Bass Swap / LPF".to_string();
             found_strategy = true;
             break;
         }
@@ -1464,9 +1464,9 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
         let mut aggressive_success = false;
         
         if bpm_compatible {
-             // 尝试列表: 32 -> 16 -> 8 -> 4
-             // 用户要求：直接长 Bass Swap / LPF
-             let candidates = [32.0, 16.0, 8.0, 4.0];
+             // 尝试列表: 32 -> 16 -> 8 -> 4 -> 2
+             // 用户要求：直接长 Bass Swap / LPF，2bar 短混音也用 Bass Swap
+             let candidates = [32.0, 16.0, 8.0, 4.0, 2.0];
              
              for &bars in candidates.iter() {
                   let target_dur = seconds_per_bar_a * bars;
@@ -1480,8 +1480,8 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
                        selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
                        
                        strategy_name = format!("Aggressive Blend ({} Bars)", bars);
-                       // 4 Bar 用 Quick Fade，长得用 Bass Swap
-                       if bars <= 4.0 {
+                       // 4 Bar 用 Quick Fade，长得用 Bass Swap，2 Bar 也用 Bass Swap
+                       if bars == 4.0 {
                            filter_strategy = "Quick Fade".to_string();
                        } else {
                            filter_strategy = "Bass Swap / LPF".to_string();
