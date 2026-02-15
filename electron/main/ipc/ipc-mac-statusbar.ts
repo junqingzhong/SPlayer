@@ -123,8 +123,7 @@ export const initMacStatusBarIpc = () => {
   
   // 根据初始设置状态更新托盘显示
   // 如果禁用，设置回歌曲标题
-  if (isMacosLyricEnabled) {
-  } else {
+  if (!isMacosLyricEnabled) {
     tray?.setTitle(getCurrentSongTitle());
   }
 
@@ -135,7 +134,7 @@ export const initMacStatusBarIpc = () => {
     const mainWin = mainWindow.getWin();
 
     // 强制更新托盘菜单，以响应新的开启/关闭状态
-    (tray as any)?.initTrayMenu();
+    tray?.initTrayMenu();
 
     if (mainWin && !mainWin.isDestroyed()) {
       // 发送更新给渲染进程，同步 Pinia store
