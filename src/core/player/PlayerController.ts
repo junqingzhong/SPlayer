@@ -944,6 +944,10 @@ class PlayerController {
 
     // 2. 尝试获取下一首歌的分析 (如果还没获取)
     if (!this.nextAnalysis && !this.isFetchingNextAnalysis) {
+      if (!nextInfo.song.path) {
+        console.warn("[Automix] 下一首不是本地文件，无法进行分析，将退化为默认混音");
+        return null;
+      }
       this.isFetchingNextAnalysis = true;
       window.electron.ipcRenderer
         .invoke("analyze-audio", nextInfo.song.path, {
@@ -965,10 +969,13 @@ class PlayerController {
                 `[Automix] 已完成分析，分析时长 ${analyzeWindow.toFixed(0)}s，下一首切入 ${secondsToTime(nextCutIn)}`,
               );
             }
+          } else {
+            console.warn("[Automix] 音频分析返回空结果，将退化为默认混音");
           }
         })
-        .catch(() => {
+        .catch((e) => {
           this.isFetchingNextAnalysis = false;
+          console.warn("[Automix] 音频分析失败，将退化为默认混音:", e);
         });
     }
 
