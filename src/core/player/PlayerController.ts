@@ -946,6 +946,8 @@ class PlayerController {
       currentCutOut !== undefined ? currentCutOut - currentCutIn : Number.POSITIVE_INFINITY;
     const cutOutPos = currentCutOut !== undefined && currentEffectiveDuration >= 30 ? currentCutOut : undefined;
     const fadeOut = cutOutPos || currentAnalysis?.fade_out_pos || duration;
+    const exitPoint = cutOutPos || fadeOut;
+    const currentValid = fadeOut - currentFadeIn;
 
     // 默认混音时长 8s (作为最后兜底)
     let crossfadeDuration = 8;
@@ -954,6 +956,8 @@ class PlayerController {
     let uiSwitchDelay = 0;
     let mixType: "default" | "bassSwap" = "default";
     const preRoll = 2.0; // 提前量
+    let phraseBars: number | null = null;
+    let forcedTriggerTime: number | null = null;
 
     const applyStartSeekFallback = () => {
       if (!nextAnalysis) return;
@@ -969,13 +973,47 @@ class PlayerController {
     // 如果有下一首分析数据，进行智能计算
     if (nextAnalysis) {
       const fadeIn = nextAnalysis.fade_in_pos || 0;
+      const cutInB = nextAnalysis.cut_in_pos ?? fadeIn;
+
+      const snapToBar = (
+        time: number,
+        bpm: number,
+        firstBeat: number,
+        confidence: number,
+        mode: "ceil" | "floor",
+      ): number => {
+        if (!Number.isFinite(time) || !Number.isFinite(bpm) || bpm <= 0) return time;
+        if (!Number.isFinite(firstBeat)) return time;
+        if (confidence < 0.4) return time;
+
+        const spb = 60 / bpm;
+        const bar = spb * 4;
+        if (!Number.isFinite(bar) || bar <= 0) return time;
+
+        let rawBars = (time - firstBeat) / bar;
+        const epsBars = 0.05 / bar;
+        if (Number.isFinite(rawBars) && Number.isFinite(epsBars) && epsBars > 0) {
+          const nearest = Math.round(rawBars);
+          if (Math.abs(rawBars - nearest) < epsBars) {
+            rawBars = nearest;
+          }
+        }
+
+        const barsCount = mode === "ceil" ? Math.ceil(rawBars) : Math.floor(rawBars);
+        const snapped = firstBeat + barsCount * bar;
+        return snapped < 0 ? firstBeat : snapped;
+      };
 
       // 1. 确定锚点 (Target Anchor)
       // 优先: Vocal In > Drop > Cut In > Fade In + 15
-      const targetAnchor =
-        nextAnalysis.vocal_in_pos ||
-        nextAnalysis.drop_pos ||
-        (nextAnalysis.cut_in_pos || fadeIn + 15);
+      const targetAnchor = nextAnalysis.vocal_in_pos || nextAnalysis.drop_pos || (cutInB || fadeIn + 15);
+      const anchorSource = nextAnalysis.vocal_in_pos
+        ? "vocal_in"
+        : nextAnalysis.drop_pos
+          ? "drop"
+          : nextAnalysis.cut_in_pos
+            ? "cut_in"
+            : "fade_in+15";
 
       // 2. 计算可用空间 (Available Space)
       // Available Intro: 锚点到开头的距离
@@ -988,29 +1026,131 @@ class PlayerController {
         cutOutPos ||
         (currentAnalysis?.fade_out_pos || duration) - 15;
 
-      const currentFadeOut =
-        cutOutPos || currentAnalysis?.fade_out_pos || duration;
+      const currentFadeOut = cutOutPos || currentAnalysis?.fade_out_pos || duration;
       const availableOutro = Math.max(0, currentFadeOut - currentExit);
 
-      // 3. 动态确定时长 (Dynamic Duration)
-      // 取交集，算多少混多少 (Min of Intro & Outro)
-      const calculatedDuration = Math.min(availableIntro, availableOutro);
+      const canUsePhrase =
+        (anchorSource === "vocal_in" || anchorSource === "drop") &&
+        (nextAnalysis.bpm ?? 0) > 0 &&
+        nextAnalysis.first_beat_pos !== undefined &&
+        (nextAnalysis.bpm_confidence ?? 0) > 0.4;
 
-      // 保护: 最小 2s，防止瞬间切歌
-      crossfadeDuration = Math.max(2, calculatedDuration);
+      const maxDurationByPhysics = Math.max(2, currentValid / 2);
+      const tryBars = [32, 16, 8, 4];
 
-      console.log(
-        `[Automix] Calculated Duration: ${crossfadeDuration.toFixed(2)}s (Intro: ${availableIntro.toFixed(2)}s, Outro: ${availableOutro.toFixed(2)}s)`,
-      );
+      const buildPhraseCandidate = (bars: number) => {
+        const bpm = nextAnalysis.bpm as number;
+        const firstBeat = nextAnalysis.first_beat_pos as number;
+        const conf = nextAnalysis.bpm_confidence ?? 0;
+        const bar = (60 / bpm) * 4;
+        const rawStart = targetAnchor - bars * bar;
+        if (rawStart <= fadeIn + bar) return null;
+        const snappedStart = snapToBar(rawStart, bpm, firstBeat, conf, "floor");
+        if (!Number.isFinite(snappedStart) || snappedStart < fadeIn) return null;
+        const dur = targetAnchor - snappedStart;
+        return { bars, startSec: snappedStart, duration: dur };
+      };
 
-      // 4. 倒推起始点 (Back-Calculation)
-      const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
-      startSeek = Math.max(idealSeek, fadeIn * 1000);
-      applyStartSeekFallback();
+      let selected: { bars: number | null; startSec: number; duration: number } | null = null;
 
-      console.log(
-        `[Automix] Anchor: ${targetAnchor.toFixed(2)}s -> Start: ${(startSeek / 1000).toFixed(2)}s`,
-      );
+      if (canUsePhrase) {
+        for (const bars of tryBars) {
+          const c = buildPhraseCandidate(bars);
+          if (!c) continue;
+          if (c.duration < 2) continue;
+          if (c.duration > availableOutro) continue;
+          if (c.duration > availableIntro) continue;
+          if (c.duration > maxDurationByPhysics) continue;
+          selected = c;
+          break;
+        }
+      }
+
+      if (!selected) {
+        const calculatedDuration = Math.min(availableIntro, availableOutro, maxDurationByPhysics);
+        crossfadeDuration = Math.max(2, calculatedDuration);
+        const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
+        startSeek = Math.max(idealSeek, fadeIn * 1000);
+        applyStartSeekFallback();
+
+        console.log(
+          `[Automix] Duration: ${crossfadeDuration.toFixed(2)}s (Anchor: ${targetAnchor.toFixed(2)}s, Intro: ${availableIntro.toFixed(2)}s, Outro: ${availableOutro.toFixed(2)}s)`,
+        );
+        console.log(
+          `[Automix] Anchor(${anchorSource}): ${targetAnchor.toFixed(2)}s -> Start: ${(startSeek / 1000).toFixed(2)}s`,
+        );
+      } else {
+        phraseBars = selected.bars;
+        crossfadeDuration = selected.duration;
+        startSeek = selected.startSec * 1000;
+
+        console.log(
+          `✨ [Automix] Phrase Pick: ${selected.bars} bars, duration ${selected.duration.toFixed(2)}s (Anchor(${anchorSource}): ${targetAnchor.toFixed(2)}s, CutIn: ${selected.startSec.toFixed(2)}s)`,
+        );
+
+        const bpmA = currentAnalysis?.bpm;
+        const bpmB = nextAnalysis.bpm;
+        const confA = currentAnalysis?.bpm_confidence ?? 0;
+        const confB = nextAnalysis.bpm_confidence ?? 0;
+        const beatAlignOk =
+          bpmA !== undefined &&
+          bpmB !== undefined &&
+          currentAnalysis?.first_beat_pos !== undefined &&
+          nextAnalysis.first_beat_pos !== undefined &&
+          confA > 0.4 &&
+          confB > 0.4;
+
+        if (beatAlignOk) {
+          const ratio = bpmA / bpmB;
+          const SAFE_RANGE = 0.1;
+          const nearHalfDouble = Math.abs(ratio - 0.5) < 0.05 || Math.abs(ratio - 2.0) < 0.1;
+          const ratioOk = ratio >= 1 - SAFE_RANGE && ratio <= 1 + SAFE_RANGE;
+
+          if (!nearHalfDouble && ratioOk) {
+            const spbA = 60 / bpmA;
+            const barA = spbA * 4;
+            const firstBeatA = currentAnalysis.first_beat_pos as number;
+            const baseTrigger = exitPoint - crossfadeDuration;
+            const rawBarsA = (baseTrigger - firstBeatA) / barA;
+            const alignedBarsA = Math.ceil(rawBarsA);
+            const alignedTrigger = firstBeatA + alignedBarsA * barA;
+            const safeAligned = Math.max(currentExit, Math.min(alignedTrigger, exitPoint));
+            const delta = safeAligned - baseTrigger;
+            const tolerance = Math.min(2, barA * 0.9);
+
+            if (Number.isFinite(barA) && barA > 0 && delta >= 0 && delta <= tolerance) {
+              const startSecRaw = startSeek / 1000 + delta;
+              const startSecAligned = snapToBar(
+                startSecRaw,
+                bpmB,
+                nextAnalysis.first_beat_pos as number,
+                confB,
+                "ceil",
+              );
+
+              const shift = startSecAligned - startSecRaw;
+              const shiftTol = Math.min(0.2, ((60 / bpmB) * 4) * 0.25);
+
+              if (
+                Number.isFinite(startSecAligned) &&
+                Math.abs(shift) <= shiftTol &&
+                startSecAligned >= fadeIn &&
+                startSecAligned < targetAnchor
+              ) {
+                console.log(
+                  `✨ [Automix] Phase Lock: trigger ${baseTrigger.toFixed(2)} -> ${safeAligned.toFixed(2)} (Δ${delta.toFixed(2)}s), seek ${ (startSeek / 1000).toFixed(2)} -> ${startSecAligned.toFixed(2)}`,
+                );
+                startSeek = startSecAligned * 1000;
+                forcedTriggerTime = safeAligned;
+              } else {
+                console.log(
+                  `✨ [Automix] Phase Lock Skip: seek snap too large (Δ${delta.toFixed(2)}s, snapShift ${shift.toFixed(2)}s)`,
+                );
+              }
+            }
+          }
+        }
+      }
 
       // BPM Alignment & Bass Swap
       if (
@@ -1077,7 +1217,7 @@ class PlayerController {
           currentAnalysis.bpm_confidence ?? 0,
           nextAnalysis.bpm_confidence ?? 0,
         );
-        if (pairConf <= 0.8) {
+        if (pairConf <= 0.8 && phraseBars === null) {
           const spb = 60 / currentAnalysis.bpm;
           const maxByBeats = spb * 16;
           const maxBySeconds = 8;
@@ -1097,14 +1237,11 @@ class PlayerController {
       }
     }
 
-    // 约束：时长不能超过两首歌的有效长度的一半
-    const currentValid = fadeOut - currentFadeIn;
-
     // 物理极限保护
     if (crossfadeDuration > currentValid / 2) {
       crossfadeDuration = Math.max(2, currentValid / 2);
       // 如果时长因保护而改变，重新计算 startSeek
-      if (nextAnalysis) {
+      if (nextAnalysis && phraseBars === null) {
         const fadeIn = nextAnalysis.fade_in_pos || 0;
         const targetAnchor =
           nextAnalysis.vocal_in_pos ||
@@ -1123,11 +1260,10 @@ class PlayerController {
     // 计算触发时间
     // 1. 基于 cut_out_pos (优先) 或 fadeOut
     // cut_out_pos 也是 Rust 计算好的吸附点
-    const exitPoint = cutOutPos || fadeOut;
-    let triggerTime = exitPoint - crossfadeDuration;
+    let triggerTime = forcedTriggerTime ?? (exitPoint - crossfadeDuration);
 
     // 2. 尝试使用 vocal_last_in_pos 提前触发
-    if (currentAnalysis?.vocal_last_in_pos) {
+    if (forcedTriggerTime === null && currentAnalysis?.vocal_last_in_pos) {
       const vocalTrigger = currentAnalysis.vocal_last_in_pos - preRoll;
       if (vocalTrigger < triggerTime) {
         triggerTime = vocalTrigger;
@@ -1135,7 +1271,7 @@ class PlayerController {
           `✨ [Automix] Smart Trigger: Aligning to Vocal Last In (${currentAnalysis.vocal_last_in_pos.toFixed(2)}s)`,
         );
       }
-    } else if (currentAnalysis?.vocal_out_pos) {
+    } else if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos) {
       const vocalOutTrigger =
         currentAnalysis.vocal_out_pos - crossfadeDuration - preRoll;
       if (vocalOutTrigger < triggerTime && vocalOutTrigger > currentFadeIn) {
@@ -1145,6 +1281,7 @@ class PlayerController {
 
     // 3. Bar Alignment (Current Song) - 确保触发点在小节第一拍
     if (
+      forcedTriggerTime === null &&
       mixType === "bassSwap" &&
       currentAnalysis?.bpm &&
       currentAnalysis.first_beat_pos !== undefined
