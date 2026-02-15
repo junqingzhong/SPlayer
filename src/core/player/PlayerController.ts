@@ -1109,7 +1109,8 @@ class PlayerController {
     const currentVocalOut = currentAnalysis?.vocal_out_pos;
     if (cutOutPos !== undefined && currentVocalOut !== undefined) {
       const bpm = currentAnalysis?.bpm;
-      const minBreathingRoom = bpm ? Math.max(2.0, (60 / bpm) * 4) : 3.0;
+      // [优化] 将 minBreathingRoom 从 4 拍/3.0s 降至 1 拍/0.5s，避免误杀紧凑的 Outro
+      const minBreathingRoom = bpm ? Math.max(0.5, 60 / bpm) : 0.5;
       if (cutOutPos < currentVocalOut + minBreathingRoom) {
         this.automixLog(
           "warn",
