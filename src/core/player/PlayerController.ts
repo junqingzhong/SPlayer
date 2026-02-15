@@ -11,7 +11,7 @@ import { getPlayerInfoObj, getPlaySongData } from "@/utils/format";
 import { handleSongQuality, shuffleArray, sleep } from "@/utils/helper";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { DJ_MODE_KEYWORDS } from "@/utils/meta";
-import { calculateProgress } from "@/utils/time";
+import { calculateProgress, secondsToTime } from "@/utils/time";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { type DebouncedFunc, throttle } from "lodash-es";
 import { useBlobURLManager } from "../resource/BlobURLManager";
@@ -952,6 +952,20 @@ class PlayerController {
         .then((res) => {
           this.nextAnalysis = res;
           this.isFetchingNextAnalysis = false;
+          if (res) {
+            const analyzeWindow = res.analyze_window ?? 0;
+            const currentCutOut = this.currentAnalysis?.cut_out_pos;
+            const nextCutIn = res.cut_in_pos ?? res.fade_in_pos;
+            if (currentCutOut !== undefined) {
+              console.log(
+                `[Automix] 已完成分析，分析时长 ${analyzeWindow.toFixed(0)}s，切出 ${secondsToTime(currentCutOut)} -> 下一首切入 ${secondsToTime(nextCutIn)}`,
+              );
+            } else {
+              console.log(
+                `[Automix] 已完成分析，分析时长 ${analyzeWindow.toFixed(0)}s，下一首切入 ${secondsToTime(nextCutIn)}`,
+              );
+            }
+          }
         })
         .catch(() => {
           this.isFetchingNextAnalysis = false;
