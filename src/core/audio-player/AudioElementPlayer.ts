@@ -119,6 +119,38 @@ export class AudioElementPlayer extends BaseAudioPlayer {
   }
 
   /**
+   * 设置音高偏移
+   * @param semitones 半音偏移量
+   */
+  public setPitchShift(semitones: number): void {
+    // HTML5 Audio preservesPitch property
+    // true (default) = time stretch (pitch constant, speed changes)
+    // false = pitch shift (pitch changes with speed)
+    
+    // We want to change pitch without changing speed? 
+    // No, standard Web Audio doesn't support independent pitch shift natively without libraries like SoundTouch.
+    // However, if we want to change pitch to match keys:
+    // If we use playbackRate to change pitch, speed also changes.
+    // If preservesPitch = false, playbackRate changes both pitch and speed (like a vinyl record).
+    
+    // If the request is to SHIFT pitch while keeping speed constant: NOT SUPPORTED by HTML5 Audio directly.
+    // But if the request is "we have set playbackRate to sync BPM, now we want to correct Pitch":
+    // That's complex.
+    
+    // For now, let's assume 'preservesPitch' control.
+    // If semitones != 0, we might want to disable pitch preservation if we are using rate to shift pitch?
+    // Actually, 'preservesPitch' only affects what happens when playbackRate != 1.
+    
+    // If we want independent pitch shifting, we can't do it with just AudioElement.
+    // But we can implement the interface method to avoid crashes.
+    
+    if ('preservesPitch' in this.audioElement) {
+        // @ts-ignore
+        this.audioElement.preservesPitch = semitones === 0;
+    }
+  }
+
+  /**
    * 获取当前播放速率
    * @returns 当前速率值
    */

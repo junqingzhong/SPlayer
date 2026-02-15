@@ -194,6 +194,12 @@ export interface IPlaybackEngine {
   setReplayGain?(gain: number): void;
 
   /**
+   * 设置音高偏移
+   * @param semitones 半音偏移量
+   */
+  setPitchShift?(semitones: number): void;
+
+  /**
    * 获取最后一次错误码
    */
   getErrorCode(): number;
