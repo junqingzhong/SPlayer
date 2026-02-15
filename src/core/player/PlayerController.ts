@@ -49,6 +49,16 @@ interface AudioAnalysis {
   camelot_key?: string;
 }
 
+interface TransitionProposal {
+  duration: number;
+  current_track_mix_out: number;
+  next_track_mix_in: number;
+  mix_type: string;
+  compatibility_score: number;
+  key_compatible: boolean;
+  bpm_compatible: boolean;
+}
+
 type AutomixState = "IDLE" | "MONITORING" | "SCHEDULED" | "TRANSITIONING" | "COOLDOWN";
 
 type AutomixPlan = {
@@ -61,6 +71,30 @@ type AutomixPlan = {
   initialRate: number;
   uiSwitchDelay: number;
   mixType: "default" | "bassSwap";
+};
+
+const isAudioAnalysis = (value: unknown): value is AudioAnalysis => {
+  if (!value || typeof value !== "object") return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.duration === "number" &&
+    typeof obj.fade_in_pos === "number" &&
+    typeof obj.fade_out_pos === "number"
+  );
+};
+
+const isTransitionProposal = (value: unknown): value is TransitionProposal => {
+  if (!value || typeof value !== "object") return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.duration === "number" &&
+    typeof obj.current_track_mix_out === "number" &&
+    typeof obj.next_track_mix_in === "number" &&
+    typeof obj.mix_type === "string" &&
+    typeof obj.compatibility_score === "number" &&
+    typeof obj.key_compatible === "boolean" &&
+    typeof obj.bpm_compatible === "boolean"
+  );
 };
 
 /**
@@ -95,6 +129,11 @@ class PlayerController {
 
   /** 下一首歌分析结果 (AutoMIX Cache) */
   private nextAnalysis: AudioAnalysis | null = null;
+  private nextAnalysisKey: string | null = null;
+  private nextAnalysisInFlight: Promise<void> | null = null;
+  private nextTransitionKey: string | null = null;
+  private nextTransitionInFlight: Promise<void> | null = null;
+  private nextTransitionProposal: TransitionProposal | null = null;
   /** Automix 增益调整 (LUFS Normalization) */
   private automixGain = 1.0;
   private automixState: AutomixState = "IDLE";
@@ -228,6 +267,7 @@ class PlayerController {
     analysis: AudioAnalysis | null;
   }> {
     const songManager = useSongManager();
+    const settingStore = useSettingStore();
 
     const audioSource = await songManager.getAudioSource(song);
     // 检查请求是否过期
@@ -244,7 +284,20 @@ class PlayerController {
       source: audioSource.source,
     };
 
-    const analysis: AudioAnalysis | null = null;
+    let analysis: AudioAnalysis | null = null;
+    if (isElectron && settingStore.enableAutomix && song.path) {
+      try {
+        const raw = await window.electron.ipcRenderer.invoke("analyze-audio", song.path);
+        if (requestToken !== this.currentRequestToken) {
+          throw new Error("EXPIRED");
+        }
+        if (isAudioAnalysis(raw)) {
+          analysis = raw;
+        }
+      } catch (e) {
+        console.warn("[Automix] 分析失败:", e);
+      }
+    }
     return { audioSource: safeAudioSource, analysis };
   }
 
@@ -323,6 +376,11 @@ class PlayerController {
     // 重置过渡状态
     this.isTransitioning = false;
     this.nextAnalysis = null;
+    this.nextAnalysisKey = null;
+    this.nextAnalysisInFlight = null;
+    this.nextTransitionKey = null;
+    this.nextTransitionInFlight = null;
+    this.nextTransitionProposal = null;
     this.automixLogTimestamps.clear();
 
     // 生成新的请求标识
@@ -960,6 +1018,70 @@ class PlayerController {
   //   return Math.max(beatTime * 4, beatTime * targetBeats);
   // }
 
+  private prefetchAutomixNextData(nextSong: SongType) {
+    const settingStore = useSettingStore();
+    const musicStore = useMusicStore();
+    if (!isElectron || !settingStore.enableAutomix) return;
+    if (!nextSong.path) return;
+
+    const nextKey = nextSong.path;
+    if (this.nextAnalysisKey !== nextKey) {
+      this.nextAnalysisKey = nextKey;
+      this.nextAnalysis = null;
+      this.nextAnalysisInFlight = null;
+    }
+
+    if (!this.nextAnalysis && !this.nextAnalysisInFlight) {
+      this.nextAnalysisInFlight = window.electron.ipcRenderer
+        .invoke("analyze-audio-head", nextKey)
+        .then((raw) => {
+          if (this.nextAnalysisKey !== nextKey) return;
+          if (isAudioAnalysis(raw)) {
+            this.nextAnalysis = raw;
+          }
+        })
+        .catch((e) => {
+          if (this.nextAnalysisKey !== nextKey) return;
+          console.warn("[Automix] 下一首分析失败:", e);
+        })
+        .finally(() => {
+          if (this.nextAnalysisKey === nextKey) {
+            this.nextAnalysisInFlight = null;
+          }
+        });
+    }
+
+    const currentPath = musicStore.playSong?.path;
+    if (!currentPath) return;
+
+    const transitionKey = `${currentPath}>>${nextKey}`;
+    if (this.nextTransitionKey !== transitionKey) {
+      this.nextTransitionKey = transitionKey;
+      this.nextTransitionProposal = null;
+      this.nextTransitionInFlight = null;
+    }
+
+    if (!this.nextTransitionProposal && !this.nextTransitionInFlight) {
+      this.nextTransitionInFlight = window.electron.ipcRenderer
+        .invoke("suggest-transition", currentPath, nextKey)
+        .then((raw) => {
+          if (this.nextTransitionKey !== transitionKey) return;
+          if (isTransitionProposal(raw)) {
+            this.nextTransitionProposal = raw;
+          }
+        })
+        .catch((e) => {
+          if (this.nextTransitionKey !== transitionKey) return;
+          console.warn("[Automix] 原生过渡建议失败:", e);
+        })
+        .finally(() => {
+          if (this.nextTransitionKey === transitionKey) {
+            this.nextTransitionInFlight = null;
+          }
+        });
+    }
+  }
+
   /**
    * 核心 Automix 触发检测逻辑 (每帧运行)
    */
@@ -967,6 +1089,7 @@ class PlayerController {
     // 1. 获取下一首歌
     const nextInfo = this.getNextSongForAutomix();
     if (!nextInfo) return null;
+    this.prefetchAutomixNextData(nextInfo.song);
 
     const currentAnalysis = this.currentAnalysis;
     const nextAnalysis = this.nextAnalysis;
@@ -1024,6 +1147,46 @@ class PlayerController {
     // const _preRoll = 2.0; // 提前量
     let phraseBars: number | null = null;
     let forcedTriggerTime: number | null = null;
+    let useNativeProposal = false;
+
+    const musicStore = useMusicStore();
+    const currentPath = musicStore.playSong?.path;
+    const nextPath = nextInfo.song.path;
+    const transitionKey = currentPath && nextPath ? `${currentPath}>>${nextPath}` : null;
+    const transition =
+      transitionKey && this.nextTransitionKey === transitionKey ? this.nextTransitionProposal : null;
+
+    if (transition) {
+      const proposedDuration = transition.duration;
+      const proposedTrigger = transition.current_track_mix_out;
+      const proposedSeek = transition.next_track_mix_in * 1000;
+      if (
+        Number.isFinite(proposedDuration) &&
+        Number.isFinite(proposedTrigger) &&
+        Number.isFinite(proposedSeek) &&
+        proposedDuration > 0.5 &&
+        proposedSeek >= 0
+      ) {
+        let safeTrigger = proposedTrigger;
+        if (safeTrigger > exitPoint - 0.5) {
+          safeTrigger = exitPoint - 0.5;
+        }
+        safeTrigger = Math.max(currentFadeIn, safeTrigger);
+
+        let safeDuration = proposedDuration;
+        if (safeTrigger + safeDuration > exitPoint) {
+          safeDuration = Math.max(0.5, exitPoint - safeTrigger);
+        }
+
+        forcedTriggerTime = safeTrigger;
+        crossfadeDuration = safeDuration;
+        startSeek = proposedSeek;
+        uiSwitchDelay = crossfadeDuration * 0.5;
+        mixType = "default";
+        initialRate = 1.0;
+        useNativeProposal = true;
+      }
+    }
 
     const applyStartSeekFallback = () => {
       if (!nextAnalysis) return;
@@ -1037,7 +1200,7 @@ class PlayerController {
     };
 
     // 如果有下一首分析数据，进行智能计算
-    if (nextAnalysis) {
+    if (nextAnalysis && !useNativeProposal) {
       const fadeIn = nextAnalysis.fade_in_pos || 0;
       const cutInB = nextAnalysis.cut_in_pos ?? fadeIn;
 

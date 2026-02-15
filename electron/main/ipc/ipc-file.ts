@@ -31,7 +31,7 @@ const resolveToolsNativeModulePath = () => {
   return join(process.cwd(), "native", "tools", "tools.node");
 };
 
-const runAnalysisInWorker = async (filePath: string, maxTime: number) => {
+const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
   const worker = new Worker(new URL("../workers/audio-analysis.worker.js", import.meta.url), {
   });
 
@@ -79,7 +79,7 @@ const runAnalysisInWorker = async (filePath: string, maxTime: number) => {
         resolvePromise(null);
       });
 
-      worker.postMessage({ filePath, maxTime, nativeModulePath });
+      worker.postMessage({ ...payload, nativeModulePath });
     });
 
     return result;
@@ -89,6 +89,18 @@ const runAnalysisInWorker = async (filePath: string, maxTime: number) => {
     worker.terminate().catch(() => {});
     return null;
   }
+};
+
+const runAnalysisInWorker = async (filePath: string, maxTime: number) => {
+  return await runToolsJobInWorker({ type: "analyze", filePath, maxTime });
+};
+
+const runHeadAnalysisInWorker = async (filePath: string, maxTime: number) => {
+  return await runToolsJobInWorker({ type: "analyzeHead", filePath, maxTime });
+};
+
+const runSuggestTransitionInWorker = async (currentPath: string, nextPath: string) => {
+  return await runToolsJobInWorker({ type: "suggestTransition", currentPath, nextPath });
 };
 
 /** 获取封面目录路径 */
@@ -399,6 +411,74 @@ const initFileIpc = (): void => {
       }
     },
   );
+
+  ipcMain.handle(
+    "analyze-audio-head",
+    async (_, filePath: string, options?: { maxAnalyzeTimeSec?: number }) => {
+      try {
+        const fileStat = await stat(filePath).catch(() => null);
+        if (!fileStat) return null;
+
+        const maxTime = options?.maxAnalyzeTimeSec ?? 60;
+        const CURRENT_VERSION = 11;
+        const fileKey = normalizeAnalysisKey(filePath);
+        const headKey = `${fileKey}|head|${maxTime}`;
+
+        const cached = await localMusicService.getAnalysis(headKey);
+        if (cached && cached.mtime === fileStat.mtimeMs && cached.size === fileStat.size) {
+          try {
+            const data = JSON.parse(cached.data);
+            if (data && data.version === CURRENT_VERSION && data.analyze_window) {
+              return data;
+            }
+          } catch (e) {
+            void e;
+          }
+        }
+
+        const requestKey = `${headKey}|request`;
+        const inFlight = analysisInFlight.get(requestKey);
+        if (inFlight) return await inFlight;
+
+        const promise = (async () => {
+          const result = await runHeadAnalysisInWorker(filePath, maxTime);
+          if (!result) return null;
+          try {
+            await localMusicService.saveAnalysis(
+              headKey,
+              JSON.stringify(result),
+              fileStat.mtimeMs,
+              fileStat.size,
+            );
+          } catch (e) {
+            void e;
+          }
+          return result;
+        })().finally(() => {
+          analysisInFlight.delete(requestKey);
+        });
+
+        analysisInFlight.set(requestKey, promise);
+        return await promise;
+      } catch (err) {
+        console.error("Audio head analysis failed:", err);
+        return null;
+      }
+    },
+  );
+
+  ipcMain.handle("suggest-transition", async (_, currentPath: string, nextPath: string) => {
+    try {
+      const a = await stat(currentPath).catch(() => null);
+      if (!a) return null;
+      const b = await stat(nextPath).catch(() => null);
+      if (!b) return null;
+      return await runSuggestTransitionInWorker(currentPath, nextPath);
+    } catch (err) {
+      console.error("Suggest transition failed:", err);
+      return null;
+    }
+  });
 };
 
 export default initFileIpc;

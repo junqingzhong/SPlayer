@@ -8,6 +8,10 @@ export declare class DownloadTask {
 
 export declare function analyzeAudioFile(path: string, maxAnalyzeTime?: number | undefined | null): AudioAnalysis | null
 
+export declare function analyzeAudioFileHead(path: string, maxAnalyzeTime?: number | undefined | null): AudioAnalysis | null
+
+export declare function suggestTransition(currentPath: string, nextPath: string): TransitionProposal | null
+
 export interface AudioAnalysis {
   duration: number
   bpm?: number
@@ -33,6 +37,16 @@ export interface AudioAnalysis {
   key_mode?: number
   key_confidence?: number
   camelot_key?: string
+}
+
+export interface TransitionProposal {
+  duration: number
+  current_track_mix_out: number
+  next_track_mix_in: number
+  mix_type: string
+  compatibility_score: number
+  key_compatible: boolean
+  bpm_compatible: boolean
 }
 
 export interface DownloadProgress {

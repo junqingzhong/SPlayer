@@ -278,7 +278,7 @@ class SongManager {
       if (nextSong.path) {
         // 预分析音频 (Automix)
         if (isElectron && settingStore.enableAutomix) {
-          window.electron.ipcRenderer.invoke("analyze-audio", nextSong.path).catch((e) => {
+          window.electron.ipcRenderer.invoke("analyze-audio-head", nextSong.path).catch((e) => {
             console.warn("[Prefetch] Analysis failed:", e);
           });
         }
