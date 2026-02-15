@@ -969,7 +969,8 @@ class PlayerController {
     const currentCutOut = currentAnalysis?.cut_out_pos;
     const currentEffectiveDuration =
       currentCutOut !== undefined ? currentCutOut - currentCutIn : Number.POSITIVE_INFINITY;
-    const cutOutPos = currentCutOut !== undefined && currentEffectiveDuration >= 30 ? currentCutOut : undefined;
+    const cutOutPos =
+      currentCutOut !== undefined && currentEffectiveDuration >= 30 ? currentCutOut : undefined;
     const fadeOut = cutOutPos || currentAnalysis?.fade_out_pos || duration;
     const exitPoint = cutOutPos || fadeOut;
     const currentValid = fadeOut - currentFadeIn;
@@ -1031,7 +1032,8 @@ class PlayerController {
 
       // 1. 确定锚点 (Target Anchor)
       // 优先: Vocal In > Drop > Cut In > Fade In + 15
-      const targetAnchor = nextAnalysis.vocal_in_pos || nextAnalysis.drop_pos || (cutInB || fadeIn + 15);
+      const targetAnchor =
+        nextAnalysis.vocal_in_pos || nextAnalysis.drop_pos || cutInB || fadeIn + 15;
       const anchorSource = nextAnalysis.vocal_in_pos
         ? "vocal_in"
         : nextAnalysis.drop_pos
@@ -1154,7 +1156,7 @@ class PlayerController {
               );
 
               const shift = startSecAligned - startSecRaw;
-              const shiftTol = Math.min(0.2, ((60 / bpmB) * 4) * 0.25);
+              const shiftTol = Math.min(0.2, (60 / bpmB) * 4 * 0.25);
 
               if (
                 Number.isFinite(startSecAligned) &&
@@ -1163,7 +1165,7 @@ class PlayerController {
                 startSecAligned < targetAnchor
               ) {
                 console.log(
-                  `✨ [Automix] Phase Lock: trigger ${baseTrigger.toFixed(2)} -> ${safeAligned.toFixed(2)} (Δ${delta.toFixed(2)}s), seek ${ (startSeek / 1000).toFixed(2)} -> ${startSecAligned.toFixed(2)}`,
+                  `✨ [Automix] Phase Lock: trigger ${baseTrigger.toFixed(2)} -> ${safeAligned.toFixed(2)} (Δ${delta.toFixed(2)}s), seek ${(startSeek / 1000).toFixed(2)} -> ${startSecAligned.toFixed(2)}`,
                 );
                 startSeek = startSecAligned * 1000;
                 forcedTriggerTime = safeAligned;
@@ -1209,9 +1211,9 @@ class PlayerController {
           ) {
             const deltaSemitones = 12 * Math.log2(ratio);
             const shift = Math.round(deltaSemitones);
-            const effectiveKeyB = ((keyB + shift) % 12 + 12) % 12;
+            const effectiveKeyB = (((keyB + shift) % 12) + 12) % 12;
 
-            const diff = ((effectiveKeyB - keyA) % 12 + 12) % 12;
+            const diff = (((effectiveKeyB - keyA) % 12) + 12) % 12;
             const dist = Math.min(diff, 12 - diff);
             harmonicOk = dist !== 1 && dist !== 6;
           }
@@ -1271,7 +1273,8 @@ class PlayerController {
         const targetAnchor =
           nextAnalysis.vocal_in_pos ||
           nextAnalysis.drop_pos ||
-          (nextAnalysis.cut_in_pos || fadeIn + 15);
+          nextAnalysis.cut_in_pos ||
+          fadeIn + 15;
         const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
         startSeek = Math.max(idealSeek, fadeIn * 1000);
         applyStartSeekFallback();
@@ -1285,7 +1288,7 @@ class PlayerController {
     // 计算触发时间
     // 1. 基于 cut_out_pos (优先) 或 fadeOut
     // cut_out_pos 也是 Rust 计算好的吸附点
-    let triggerTime = forcedTriggerTime ?? (exitPoint - crossfadeDuration);
+    let triggerTime = forcedTriggerTime ?? exitPoint - crossfadeDuration;
 
     // 2. 尝试使用 vocal_last_in_pos 提前触发
     if (forcedTriggerTime === null && currentAnalysis?.vocal_last_in_pos) {
@@ -1297,8 +1300,7 @@ class PlayerController {
         );
       }
     } else if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos) {
-      const vocalOutTrigger =
-        currentAnalysis.vocal_out_pos - crossfadeDuration - preRoll;
+      const vocalOutTrigger = currentAnalysis.vocal_out_pos - crossfadeDuration - preRoll;
       if (vocalOutTrigger < triggerTime && vocalOutTrigger > currentFadeIn) {
         triggerTime = vocalOutTrigger;
       }

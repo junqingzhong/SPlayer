@@ -122,8 +122,7 @@ export class AudioEffectManager {
   public setHighPassFilterAt(frequency: number, when: number) {
     if (!this.highPassFilter) return;
     const time = Math.max(when, this.audioCtx.currentTime);
-    const targetFreq =
-      frequency <= 0 ? 10 : Math.max(10, Math.min(22000, frequency));
+    const targetFreq = frequency <= 0 ? 10 : Math.max(10, Math.min(22000, frequency));
 
     this.highPassFilter.type = "highpass";
     this.highPassFilter.frequency.cancelScheduledValues(time);
@@ -133,8 +132,7 @@ export class AudioEffectManager {
   public rampHighPassFilterToAt(frequency: number, when: number) {
     if (!this.highPassFilter) return;
     const time = Math.max(when, this.audioCtx.currentTime);
-    const targetFreq =
-      frequency <= 0 ? 10 : Math.max(10, Math.min(22000, frequency));
+    const targetFreq = frequency <= 0 ? 10 : Math.max(10, Math.min(22000, frequency));
 
     this.highPassFilter.type = "highpass";
     this.highPassFilter.frequency.exponentialRampToValueAtTime(targetFreq, time);

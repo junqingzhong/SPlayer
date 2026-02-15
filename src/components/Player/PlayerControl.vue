@@ -114,7 +114,10 @@
             </template>
           </div>
           <!-- 进度条 -->
-          <div :class="['slider', { 'automix-active': showAutomixFx }]" @animationend="onFxAnimationEnd">
+          <div
+            :class="['slider', { 'automix-active': showAutomixFx }]"
+            @animationend="onFxAnimationEnd"
+          >
             <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
             <PlayerSlider :show-tooltip="false" />
             <div class="time-container">
@@ -155,45 +158,45 @@ const player = usePlayerController();
 const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 
 const showAutomixFx = ref(false);
-  let automixFxTimer: number | null = null;
-  const showAutomixLabel = ref(false);
-  
-  const triggerAutomixFx = async () => {
-    if (automixFxTimer !== null) {
-      window.clearTimeout(automixFxTimer);
-      automixFxTimer = null;
+let automixFxTimer: number | null = null;
+const showAutomixLabel = ref(false);
+
+const triggerAutomixFx = async () => {
+  if (automixFxTimer !== null) {
+    window.clearTimeout(automixFxTimer);
+    automixFxTimer = null;
+  }
+  showAutomixFx.value = false;
+  await nextTick();
+  showAutomixFx.value = true;
+  showAutomixLabel.value = true;
+  // 移除辉光自动关闭逻辑，现在跟随 showAutomixLabel
+};
+
+watch(
+  () => statusStore.automixFxSeq,
+  (seq, prev) => {
+    if (!seq || seq === prev) return;
+    void triggerAutomixFx();
+  },
+);
+
+// 监听歌曲变化，延迟关闭混音显示和辉光
+watch(
+  () => musicStore.playSong?.id,
+  (_newId, _oldId) => {
+    if (showAutomixLabel.value) {
+      setTimeout(() => {
+        showAutomixLabel.value = false;
+        showAutomixFx.value = false;
+      }, 2000); // 切歌后保留 2 秒再淡出
     }
-    showAutomixFx.value = false;
-    await nextTick();
-    showAutomixFx.value = true;
-    showAutomixLabel.value = true;
-    // 移除辉光自动关闭逻辑，现在跟随 showAutomixLabel
-  };
-  
-  watch(
-    () => statusStore.automixFxSeq,
-    (seq, prev) => {
-      if (!seq || seq === prev) return;
-      void triggerAutomixFx();
-    },
-  );
-  
-  // 监听歌曲变化，延迟关闭混音显示和辉光
-  watch(
-    () => musicStore.playSong?.id,
-    (_newId, _oldId) => {
-      if (showAutomixLabel.value) {
-        setTimeout(() => {
-          showAutomixLabel.value = false;
-          showAutomixFx.value = false;
-        }, 2000); // 切歌后保留 2 秒再淡出
-      }
-    },
-  );
-  
-  const onFxAnimationEnd = () => {
-    // 移除之前的单次动画结束逻辑，因为现在是 infinite 循环，直到 showAutomixFx 为 false
-  };
+  },
+);
+
+const onFxAnimationEnd = () => {
+  // 移除之前的单次动画结束逻辑，因为现在是 infinite 循环，直到 showAutomixFx 为 false
+};
 
 onBeforeUnmount(() => {
   if (automixFxTimer !== null) {
