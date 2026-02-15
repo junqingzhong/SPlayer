@@ -54,6 +54,7 @@ interface TransitionProposal {
   current_track_mix_out: number;
   next_track_mix_in: number;
   mix_type: string;
+  filter_strategy: string;
   compatibility_score: number;
   key_compatible: boolean;
   bpm_compatible: boolean;
@@ -91,6 +92,7 @@ const isTransitionProposal = (value: unknown): value is TransitionProposal => {
     typeof obj.current_track_mix_out === "number" &&
     typeof obj.next_track_mix_in === "number" &&
     typeof obj.mix_type === "string" &&
+    typeof obj.filter_strategy === "string" &&
     typeof obj.compatibility_score === "number" &&
     typeof obj.key_compatible === "boolean" &&
     typeof obj.bpm_compatible === "boolean"
@@ -1182,9 +1184,16 @@ class PlayerController {
         crossfadeDuration = safeDuration;
         startSeek = proposedSeek;
         uiSwitchDelay = crossfadeDuration * 0.5;
-        mixType = "default";
+        mixType = transition.filter_strategy.includes("Bass Swap") ? "bassSwap" : "default";
         initialRate = 1.0;
         useNativeProposal = true;
+
+        this.automixLog(
+          "log",
+          `native_proposal:${Math.round(crossfadeDuration * 10)}:${mixType}`,
+          `[Automix] 原生建议：${transition.mix_type} / ${transition.filter_strategy}，Fade=${crossfadeDuration.toFixed(1)}s`,
+          15000,
+        );
       }
     }
 

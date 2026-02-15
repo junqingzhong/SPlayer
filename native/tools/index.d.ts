@@ -94,6 +94,7 @@ export interface TransitionProposal {
   current_track_mix_out: number
   next_track_mix_in: number
   mix_type: string
+  filter_strategy: string
   compatibility_score: number
   key_compatible: boolean
   bpm_compatible: boolean

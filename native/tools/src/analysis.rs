@@ -69,12 +69,35 @@ pub struct TransitionProposal {
     pub next_track_mix_in: f64,
     #[napi(js_name = "mix_type")]
     pub mix_type: String,
+    #[napi(js_name = "filter_strategy")]
+    pub filter_strategy: String,
     #[napi(js_name = "compatibility_score")]
     pub compatibility_score: f64,
     #[napi(js_name = "key_compatible")]
     pub key_compatible: bool,
     #[napi(js_name = "bpm_compatible")]
     pub bpm_compatible: bool,
+}
+
+fn get_avg_energy(profile: &[f64], start_sec: f64, duration_sec: f64, rate: f64) -> f64 {
+    if profile.is_empty() || !rate.is_finite() || rate <= 0.0 {
+        return 0.0;
+    }
+    if !start_sec.is_finite() || !duration_sec.is_finite() {
+        return 0.0;
+    }
+    let start_sec = start_sec.max(0.0);
+    let duration_sec = duration_sec.max(0.0);
+    let start_idx = (start_sec * rate) as usize;
+    let end_idx = ((start_sec + duration_sec) * rate) as usize;
+    if start_idx >= profile.len() || start_idx >= end_idx {
+        return 0.0;
+    }
+    let slice = &profile[start_idx..end_idx.min(profile.len())];
+    if slice.is_empty() {
+        return 0.0;
+    }
+    slice.iter().sum::<f64>() / slice.len() as f64
 }
 
 fn get_camelot_key(root: i32, mode: i32) -> Option<String> {
@@ -1318,51 +1341,87 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
     let bpm_a = current.bpm.unwrap_or(128.0).max(1.0);
     let bpm_b = next.bpm.unwrap_or(128.0).max(1.0);
     let bpm_diff_pct = (bpm_a - bpm_b).abs() / bpm_a;
-    let bpm_compatible = bpm_diff_pct < 0.04;
+    let bpm_compatible = bpm_diff_pct < 0.05;
 
     let key_compatible = match (current.camelot_key.as_deref(), next.camelot_key.as_deref()) {
         (Some(a), Some(b)) => is_camelot_compatible(a, b),
         _ => false,
     };
 
-    let exit_point = current
+    let cur_fade_out = current.fade_out_pos.max(0.0);
+    let cur_vocal_out = current
         .vocal_out_pos
-        .unwrap_or((current.fade_out_pos - 15.0).max(0.0));
-    let entry_point = next.first_beat_pos.unwrap_or(0.0).max(0.0);
-    let next_vocal_start = next.vocal_in_pos.unwrap_or(30.0).max(entry_point);
+        .unwrap_or((cur_fade_out - 20.0).max(0.0))
+        .max(0.0);
+    let cur_first_beat = current.first_beat_pos.unwrap_or(0.0).max(0.0);
+    let conf_a = current.bpm_confidence.unwrap_or(0.0);
 
-    let available_intro_len = (next_vocal_start - entry_point).max(0.0);
-    let available_outro_len = (current.duration - exit_point).max(0.0);
+    let next_first_beat = next.first_beat_pos.unwrap_or(0.0).max(0.0);
+    let next_vocal_in = next
+        .vocal_in_pos
+        .unwrap_or(30.0)
+        .max(next_first_beat)
+        .max(0.0);
+    let _next_drop = next.drop_pos;
 
-    let seconds_per_bar = 240.0 / bpm_a;
+    let energy_rate = 10.0;
+    let next_intro_energy = get_avg_energy(&next.energy_profile, next_first_beat, 8.0, energy_rate);
+    let cur_outro_energy = get_avg_energy(&current.energy_profile, cur_vocal_out, 8.0, energy_rate);
+    let is_hard_intro = next_intro_energy > (cur_outro_energy * 1.5) && next_intro_energy > 0.1;
 
-    let mut start_pos = exit_point;
+    let next_safe_intro_len = (next_vocal_in - next_first_beat).max(0.0);
 
-    let (mix_duration, mix_type) = if bpm_compatible && key_compatible {
-        let target_len = seconds_per_bar * 16.0;
-        if available_intro_len >= target_len && available_outro_len >= target_len {
-            (target_len, "Long Blend (16 Bars)".to_string())
-        } else {
-            let fallback = seconds_per_bar * 8.0;
+    let seconds_per_bar = (240.0 / bpm_a).max(0.1);
+
+    let next_in_start = next_first_beat;
+
+    let (mut mix_duration, mut mix_out_start, mut mix_type, mut filter_strategy) = if is_hard_intro {
+        (
+            seconds_per_bar * 2.0,
+            snap_to_phrase_floor(cur_vocal_out + 4.0, bpm_a, cur_first_beat, conf_a, 16.0),
+            "Power Cut / Drop Swap".to_string(),
+            "None".to_string(),
+        )
+    } else if bpm_compatible && key_compatible && next_safe_intro_len > seconds_per_bar * 16.0 {
+        let raw_target = cur_vocal_out + 1.0;
+        let mut out_start = snap_to_phrase_floor(raw_target, bpm_a, cur_first_beat, conf_a, 64.0);
+        if out_start < cur_vocal_out {
+            out_start += seconds_per_bar * 16.0;
+        }
+        (
+            seconds_per_bar * 16.0,
+            out_start,
+            "Harmonic Long Blend (16 Bars)".to_string(),
+            "Bass Swap".to_string(),
+        )
+    } else if bpm_compatible {
+        if next_safe_intro_len >= seconds_per_bar * 8.0 {
+            let raw_target = cur_vocal_out + 1.0;
+            let mut out_start =
+                snap_to_phrase_floor(raw_target, bpm_a, cur_first_beat, conf_a, 32.0);
+            if out_start < cur_vocal_out {
+                out_start += seconds_per_bar * 8.0;
+            }
             (
-                fallback.min(available_intro_len).min(available_outro_len),
-                "Harmonic Blend (8 Bars)".to_string(),
+                seconds_per_bar * 8.0,
+                out_start,
+                "Standard Blend (8 Bars)".to_string(),
+                "High Pass Out".to_string(),
+            )
+        } else {
+            (
+                seconds_per_bar * 4.0,
+                snap_to_bar_floor(cur_vocal_out + 1.0, bpm_a, cur_first_beat, conf_a),
+                "Short Transition (4 Bars)".to_string(),
+                "Quick Fade".to_string(),
             )
         }
-    } else if bpm_compatible {
-        let mut target = seconds_per_bar * 8.0;
-        if available_intro_len < target || available_outro_len < target {
-            target = seconds_per_bar * 4.0;
-        }
-        (
-            target.min(available_intro_len).min(available_outro_len),
-            "Percussive Mix".to_string(),
-        )
     } else {
-        let target = seconds_per_bar * 2.0;
         (
-            target.min(available_outro_len).max(0.5),
-            "Echo Out / Cut".to_string(),
+            seconds_per_bar * 1.0,
+            snap_to_bar_floor(cur_vocal_out, bpm_a, cur_first_beat, conf_a),
+            "Echo Out".to_string(),
+            "Echo Freeze".to_string(),
         )
     };
 
@@ -1370,27 +1429,56 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
         return None;
     }
 
-    if start_pos + mix_duration > current.duration {
-        start_pos = current.duration - mix_duration;
+    mix_out_start = mix_out_start.max(0.0);
+    if mix_out_start > current.duration {
+        mix_out_start = current.duration;
     }
-    start_pos = start_pos.max(0.0);
 
-    let next_in = next.first_beat_pos.unwrap_or(0.0).max(0.0);
+    if mix_out_start + mix_duration > current.duration {
+        let available = (current.duration - mix_out_start).max(0.0);
+        if available > seconds_per_bar * 4.0 {
+            mix_duration = available;
+        } else {
+            let max_start = (current.duration - mix_duration).max(0.0);
+            mix_out_start = mix_out_start.min(max_start);
+        }
+    }
 
-    let compatibility_score = if bpm_compatible && key_compatible {
-        1.0
-    } else if bpm_compatible {
-        0.7
-    } else {
-        0.4
-    };
+    if next_in_start + mix_duration > next_vocal_in {
+        let safe_dur = (next_vocal_in - next_in_start).max(0.0);
+        if safe_dur > seconds_per_bar * 4.0 {
+            mix_duration = safe_dur;
+            mix_type = "Shortened Blend (Vocal Avoidance)".to_string();
+        } else {
+            mix_duration = (seconds_per_bar * 1.0).max(0.5);
+            mix_type = "Hard Cut (Vocal Clash)".to_string();
+            filter_strategy = "None".to_string();
+        }
+    }
+
+    if !mix_duration.is_finite() || mix_duration <= 0.0 {
+        return None;
+    }
+
+    let mut score: f64 = 0.5;
+    if bpm_compatible {
+        score += 0.3;
+    }
+    if key_compatible {
+        score += 0.2;
+    }
+    if mix_type.contains("Cut") || mix_type.contains("Short") {
+        score -= 0.1;
+    }
+    score = score.clamp(0.0, 1.0);
 
     Some(TransitionProposal {
         duration: mix_duration,
-        current_track_mix_out: start_pos,
-        next_track_mix_in: next_in,
+        current_track_mix_out: mix_out_start,
+        next_track_mix_in: next_in_start,
         mix_type,
-        compatibility_score,
+        filter_strategy,
+        compatibility_score: score,
         key_compatible,
         bpm_compatible,
     })

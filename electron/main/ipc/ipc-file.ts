@@ -36,11 +36,15 @@ const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
   });
 
   try {
+    const jobType = typeof payload.type === "string" ? payload.type : "unknown";
     const nativeModulePath = resolveToolsNativeModulePath();
     await access(nativeModulePath).catch(() => {
       ipcLog.warn(`[AudioAnalysis] tools.node 不存在: ${nativeModulePath}`);
       throw new Error("TOOLS_NATIVE_MODULE_MISSING");
     });
+    if (jobType === "analyzeHead" || jobType === "suggestTransition") {
+      ipcLog.info(`[AudioAnalysis] Worker 启动: ${jobType}`);
+    }
     const result = await new Promise<unknown | null>((resolvePromise) => {
       const cleanup = () => {
         worker.removeAllListeners("message");
@@ -82,6 +86,9 @@ const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
       worker.postMessage({ ...payload, nativeModulePath });
     });
 
+    if (jobType === "analyzeHead" || jobType === "suggestTransition") {
+      ipcLog.info(`[AudioAnalysis] Worker 完成: ${jobType} (${result ? "ok" : "null"})`);
+    }
     return result;
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -429,6 +436,7 @@ const initFileIpc = (): void => {
           try {
             const data = JSON.parse(cached.data);
             if (data && data.version === CURRENT_VERSION && data.analyze_window) {
+              ipcLog.info(`[AudioAnalysis] Head 命中缓存: ${headKey}`);
               return data;
             }
           } catch (e) {
@@ -441,6 +449,7 @@ const initFileIpc = (): void => {
         if (inFlight) return await inFlight;
 
         const promise = (async () => {
+          ipcLog.info(`[AudioAnalysis] Head 开始分析: ${headKey}`);
           const result = await runHeadAnalysisInWorker(filePath, maxTime);
           if (!result) return null;
           try {
@@ -473,6 +482,7 @@ const initFileIpc = (): void => {
       if (!a) return null;
       const b = await stat(nextPath).catch(() => null);
       if (!b) return null;
+      ipcLog.info(`[AudioAnalysis] SuggestTransition: ${currentPath} -> ${nextPath}`);
       return await runSuggestTransitionInWorker(currentPath, nextPath);
     } catch (err) {
       console.error("Suggest transition failed:", err);
