@@ -1336,33 +1336,35 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
 
     let seconds_per_bar = 240.0 / bpm_a;
 
-    let mut mix_duration = 0.0;
-    let mut mix_type = String::from("Standard");
     let mut start_pos = exit_point;
 
-    if bpm_compatible && key_compatible {
+    let (mix_duration, mix_type) = if bpm_compatible && key_compatible {
         let target_len = seconds_per_bar * 16.0;
         if available_intro_len >= target_len && available_outro_len >= target_len {
-            mix_duration = target_len;
-            mix_type = "Long Blend (16 Bars)".to_string();
-            start_pos = exit_point;
+            (target_len, "Long Blend (16 Bars)".to_string())
         } else {
             let fallback = seconds_per_bar * 8.0;
-            mix_duration = fallback.min(available_intro_len).min(available_outro_len);
-            mix_type = "Harmonic Blend (8 Bars)".to_string();
+            (
+                fallback.min(available_intro_len).min(available_outro_len),
+                "Harmonic Blend (8 Bars)".to_string(),
+            )
         }
     } else if bpm_compatible {
         let mut target = seconds_per_bar * 8.0;
         if available_intro_len < target || available_outro_len < target {
             target = seconds_per_bar * 4.0;
         }
-        mix_duration = target.min(available_intro_len).min(available_outro_len);
-        mix_type = "Percussive Mix".to_string();
+        (
+            target.min(available_intro_len).min(available_outro_len),
+            "Percussive Mix".to_string(),
+        )
     } else {
         let target = seconds_per_bar * 2.0;
-        mix_duration = target.min(available_outro_len).max(0.5);
-        mix_type = "Echo Out / Cut".to_string();
-    }
+        (
+            target.min(available_outro_len).max(0.5),
+            "Echo Out / Cut".to_string(),
+        )
+    };
 
     if !mix_duration.is_finite() || mix_duration <= 0.0 {
         return None;
