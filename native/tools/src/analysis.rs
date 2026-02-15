@@ -1336,12 +1336,12 @@ pub fn analyze_audio_file_head(path: String, max_analyze_time: Option<f64>) -> O
 #[napi]
 pub fn suggest_transition(current_path: String, next_path: String) -> Option<TransitionProposal> {
     let current = internal_analyze_impl(&current_path, None, true)?;
-    let next = internal_analyze_impl(&next_path, Some(60.0), false)?;
+    let next = internal_analyze_impl(&next_path, Some(120.0), false)?;
 
     let bpm_a = current.bpm.unwrap_or(128.0).max(1.0);
     let bpm_b = next.bpm.unwrap_or(128.0).max(1.0);
     let bpm_diff_pct = (bpm_a - bpm_b).abs() / bpm_a;
-    let bpm_compatible = bpm_diff_pct < 0.05;
+    let bpm_compatible = bpm_diff_pct < 0.06;
 
     let key_compatible = match (current.camelot_key.as_deref(), next.camelot_key.as_deref()) {
         (Some(a), Some(b)) => is_camelot_compatible(a, b),
@@ -1349,114 +1349,146 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
     };
 
     let cur_fade_out = current.fade_out_pos.max(0.0);
-    let cur_vocal_out = current
-        .vocal_out_pos
-        .unwrap_or((cur_fade_out - 20.0).max(0.0))
-        .max(0.0);
+    let cur_ideal_out = current.cut_out_pos.unwrap_or(cur_fade_out).max(0.0);
     let cur_first_beat = current.first_beat_pos.unwrap_or(0.0).max(0.0);
     let conf_a = current.bpm_confidence.unwrap_or(0.0);
 
     let next_first_beat = next.first_beat_pos.unwrap_or(0.0).max(0.0);
     let next_vocal_in = next
         .vocal_in_pos
-        .unwrap_or(30.0)
-        .max(next_first_beat)
-        .max(0.0);
-    let _next_drop = next.drop_pos;
+        .unwrap_or(next.drop_pos.unwrap_or(30.0 + next_first_beat));
+    let next_landing_point = next_vocal_in.max(next_first_beat + 2.0);
 
-    let energy_rate = 10.0;
-    let next_intro_energy = get_avg_energy(&next.energy_profile, next_first_beat, 8.0, energy_rate);
-    let cur_outro_energy = get_avg_energy(&current.energy_profile, cur_vocal_out, 8.0, energy_rate);
-    let is_hard_intro = next_intro_energy > (cur_outro_energy * 1.5) && next_intro_energy > 0.1;
+    let seconds_per_bar_a = (240.0 / bpm_a).max(0.1);
+    let seconds_per_bar_b = (240.0 / bpm_b).max(0.1);
 
-    let next_safe_intro_len = (next_vocal_in - next_first_beat).max(0.0);
+    let candidate_bars = [32.0, 16.0, 8.0, 4.0];
 
-    let seconds_per_bar = (240.0 / bpm_a).max(0.1);
+    let mut selected_duration = 0.0;
+    let mut selected_next_in = 0.0;
+    let mut selected_cur_out = 0.0;
+    let mut strategy_name = String::new();
+    let mut filter_strategy = String::new();
+    let mut found_strategy = false;
 
-    let next_in_start = next_first_beat;
+    for &bars in candidate_bars.iter() {
+        let duration = bars * seconds_per_bar_a;
 
-    let (mut mix_duration, mut mix_out_start, mut mix_type, mut filter_strategy) = if is_hard_intro {
-        (
-            seconds_per_bar * 2.0,
-            snap_to_phrase_floor(cur_vocal_out + 4.0, bpm_a, cur_first_beat, conf_a, 16.0),
-            "Power Cut / Drop Swap".to_string(),
-            "None".to_string(),
-        )
-    } else if bpm_compatible && key_compatible && next_safe_intro_len > seconds_per_bar * 16.0 {
-        let raw_target = cur_vocal_out + 1.0;
-        let mut out_start = snap_to_phrase_floor(raw_target, bpm_a, cur_first_beat, conf_a, 64.0);
-        if out_start < cur_vocal_out {
-            out_start += seconds_per_bar * 16.0;
+        let raw_next_in = next_landing_point - duration;
+        if raw_next_in < (next_first_beat - seconds_per_bar_b * 0.25) {
+            continue;
         }
-        (
-            seconds_per_bar * 16.0,
-            out_start,
-            "Harmonic Long Blend (16 Bars)".to_string(),
-            "Bass Swap".to_string(),
-        )
-    } else if bpm_compatible {
-        if next_safe_intro_len >= seconds_per_bar * 8.0 {
-            let raw_target = cur_vocal_out + 1.0;
-            let mut out_start =
-                snap_to_phrase_floor(raw_target, bpm_a, cur_first_beat, conf_a, 32.0);
-            if out_start < cur_vocal_out {
-                out_start += seconds_per_bar * 8.0;
+
+        let snapped_next_in = snap_to_bar_floor(
+            raw_next_in,
+            bpm_b,
+            next_first_beat,
+            next.bpm_confidence.unwrap_or(0.0),
+        );
+        if snapped_next_in < next_first_beat - 0.1 {
+            continue;
+        }
+
+        let snapped_cur_start =
+            snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 64.0);
+        let remaining_len = current.duration - snapped_cur_start;
+        if remaining_len < duration * 0.8 {
+            continue;
+        }
+
+        if bars == 32.0 {
+            if bpm_compatible && key_compatible {
+                selected_duration = duration;
+                selected_next_in = snapped_next_in;
+                selected_cur_out = snapped_cur_start;
+                strategy_name = "Harmonic Deep Blend (32 Bars)".to_string();
+                filter_strategy = "Eq Swap (Bass/Mid)".to_string();
+                found_strategy = true;
+                break;
             }
-            (
-                seconds_per_bar * 8.0,
-                out_start,
-                "Standard Blend (8 Bars)".to_string(),
-                "High Pass Out".to_string(),
-            )
-        } else {
-            (
-                seconds_per_bar * 4.0,
-                snap_to_bar_floor(cur_vocal_out + 1.0, bpm_a, cur_first_beat, conf_a),
-                "Short Transition (4 Bars)".to_string(),
-                "Quick Fade".to_string(),
-            )
+            if bpm_compatible {
+                selected_duration = duration;
+                selected_next_in = snapped_next_in;
+                selected_cur_out = snapped_cur_start;
+                strategy_name = "Long Filter Blend (32 Bars)".to_string();
+                filter_strategy = "Bass Swap / LPF".to_string();
+                found_strategy = true;
+                break;
+            }
         }
-    } else {
-        (
-            seconds_per_bar * 1.0,
-            snap_to_bar_floor(cur_vocal_out, bpm_a, cur_first_beat, conf_a),
-            "Echo Out".to_string(),
-            "Echo Freeze".to_string(),
-        )
-    };
 
-    if !mix_duration.is_finite() || mix_duration <= 0.0 {
+        if bars == 16.0 && bpm_compatible {
+            selected_duration = duration;
+            selected_next_in = snapped_next_in;
+            selected_cur_out = snapped_cur_start;
+            strategy_name = if key_compatible {
+                "Standard Blend (16 Bars)".to_string()
+            } else {
+                "Filter Blend (16 Bars)".to_string()
+            };
+            filter_strategy = if key_compatible {
+                "Eq Mixing".to_string()
+            } else {
+                "Bass Cut Out".to_string()
+            };
+            found_strategy = true;
+            break;
+        }
+
+        if bars == 8.0 {
+            selected_duration = duration;
+            selected_next_in = snapped_next_in;
+            selected_cur_out = snapped_cur_start;
+            strategy_name = "Short Blend (8 Bars)".to_string();
+            filter_strategy = "Wash Out / Echo".to_string();
+            found_strategy = true;
+            break;
+        }
+
+        if bars == 4.0 {
+            selected_duration = duration;
+            selected_next_in = snapped_next_in;
+            selected_cur_out = snapped_cur_start;
+            strategy_name = "Quick Cut (4 Bars)".to_string();
+            filter_strategy = "Hard Swap".to_string();
+            found_strategy = true;
+            break;
+        }
+    }
+
+    if !found_strategy {
+        let next_safe_intro_len = next_landing_point - next_first_beat;
+        if next_safe_intro_len < seconds_per_bar_b * 2.0 {
+            selected_next_in = next_first_beat;
+            selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
+            selected_duration = seconds_per_bar_a * 1.0;
+            strategy_name = "Hard Cut (Short Intro)".to_string();
+            filter_strategy = "None".to_string();
+        } else {
+            selected_next_in = next_first_beat;
+            selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
+            selected_duration = next_safe_intro_len.min(seconds_per_bar_a * 4.0);
+            strategy_name = "Echo Out Transition".to_string();
+            filter_strategy = "Echo Freeze".to_string();
+        }
+    }
+
+    if !selected_duration.is_finite() || selected_duration <= 0.0 {
         return None;
     }
 
-    mix_out_start = mix_out_start.max(0.0);
-    if mix_out_start > current.duration {
-        mix_out_start = current.duration;
+    selected_next_in = selected_next_in.max(0.0);
+    let next_max_start = (next.duration - 5.0).max(0.0);
+    if selected_next_in > next_max_start {
+        selected_next_in = next.first_beat_pos.unwrap_or(0.0).max(0.0);
     }
 
-    if mix_out_start + mix_duration > current.duration {
-        let available = (current.duration - mix_out_start).max(0.0);
-        if available > seconds_per_bar * 4.0 {
-            mix_duration = available;
-        } else {
-            let max_start = (current.duration - mix_duration).max(0.0);
-            mix_out_start = mix_out_start.min(max_start);
-        }
-    }
+    selected_cur_out = selected_cur_out.max(0.0).min((current.duration - 1.0).max(0.0));
 
-    if next_in_start + mix_duration > next_vocal_in {
-        let safe_dur = (next_vocal_in - next_in_start).max(0.0);
-        if safe_dur > seconds_per_bar * 4.0 {
-            mix_duration = safe_dur;
-            mix_type = "Shortened Blend (Vocal Avoidance)".to_string();
-        } else {
-            mix_duration = (seconds_per_bar * 1.0).max(0.5);
-            mix_type = "Hard Cut (Vocal Clash)".to_string();
-            filter_strategy = "None".to_string();
-        }
-    }
-
-    if !mix_duration.is_finite() || mix_duration <= 0.0 {
+    let cur_avail = (current.duration - selected_cur_out).max(0.0);
+    let next_avail = (next.duration - selected_next_in).max(0.0);
+    selected_duration = selected_duration.min(cur_avail).min(next_avail);
+    if !selected_duration.is_finite() || selected_duration <= 0.0 {
         return None;
     }
 
@@ -1465,18 +1497,21 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
         score += 0.3;
     }
     if key_compatible {
-        score += 0.2;
+        score += 0.1;
     }
-    if mix_type.contains("Cut") || mix_type.contains("Short") {
-        score -= 0.1;
+    if selected_duration >= 10.0 {
+        score += 0.1;
+    }
+    if strategy_name.contains("Hard Cut") {
+        score -= 0.2;
     }
     score = score.clamp(0.0, 1.0);
 
     Some(TransitionProposal {
-        duration: mix_duration,
-        current_track_mix_out: mix_out_start,
-        next_track_mix_in: next_in_start,
-        mix_type,
+        duration: selected_duration,
+        current_track_mix_out: selected_cur_out,
+        next_track_mix_in: selected_next_in,
+        mix_type: strategy_name,
         filter_strategy,
         compatibility_score: score,
         key_compatible,
