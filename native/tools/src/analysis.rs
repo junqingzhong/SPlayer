@@ -38,6 +38,21 @@ pub struct AudioAnalysis {
     pub vocal_out_pos: Option<f64>,
     #[napi(js_name = "vocal_last_in_pos")]
     pub vocal_last_in_pos: Option<f64>,
+    #[napi(js_name = "outro_energy_level")]
+    pub outro_energy_level: Option<f64>,
+}
+
+fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64) -> f64 {
+    if bpm <= 0.0 || confidence < 0.4 { return time; }
+    
+    let seconds_per_beat = 60.0 / bpm;
+    let seconds_per_bar = seconds_per_beat * 4.0; // Assume 4/4
+    
+    // Calculate how many bars from first_beat
+    let bars_count = ((time - first_beat) / seconds_per_bar).round();
+    
+    // Return snapped time
+    first_beat + (bars_count * seconds_per_bar)
 }
 
 struct HighPassFilter {
@@ -616,14 +631,61 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         }
     }
     
-    // 5. Synthesize Cut Points
-    // We remove the hard cut logic based on vocal, as user wants smooth transition.
-    // However, we still export vocal points for smart decisions in frontend.
+    // 5. Outro Energy
+    let outro_energy_level = if !tail_envelope.is_empty() {
+        let sum_sq: f32 = tail_envelope.iter().map(|&x| x * x).sum();
+        let mean_sq = sum_sq / tail_envelope.len() as f32;
+        if mean_sq > 0.0 {
+            Some((20.0 * mean_sq.sqrt().log10()) as f64)
+        } else {
+            Some(-70.0)
+        }
+    } else {
+        None
+    };
+
+    // 6. Synthesize Smart Cut Points
     
-    // For compatibility, we set cut_in/out to fade_in/out
-    let cut_in = Some(fade_in);
-    let cut_out = Some(fade_out);
+    // Cut Out Logic
+    let mut smart_cut_out = None;
+    if let (Some(v_out), Some(bpm_val), Some(f_beat)) = (vocal_out, bpm, first_beat) {
+        // Strategy: Vocal Out + Buffer (e.g. 2 bars) -> Snap to Bar
+        let beat_len = 60.0 / bpm_val;
+        let buffer_beats = 8.0; // 2 bars (assuming 4/4)
+        let potential_cut = v_out + (beat_len * buffer_beats);
+        
+        let confidence = bpm_conf.unwrap_or(0.0);
+        let quantized_cut = snap_to_bar(potential_cut, bpm_val, f_beat, confidence);
+        
+        // Ensure within valid range (before fade_out)
+        // Give 1s buffer before fade out starts to avoid silence
+        if quantized_cut < (fade_out - 1.0) {
+            smart_cut_out = Some(quantized_cut);
+        } else {
+             // Fallback: 5s before fade out
+             smart_cut_out = Some((fade_out - 5.0).max(0.0));
+        }
+    } else {
+        // No vocal or no BPM, fallback to fade_out - N sec or duration based
+        // If we have duration, use it.
+        // fade_out is calculated from envelope end.
+        smart_cut_out = Some((fade_out - 5.0).max(0.0));
+    }
     
+    // Cut In Logic
+    let mut smart_cut_in = None;
+    if let (Some(f_beat), Some(_bpm_val)) = (first_beat, bpm) {
+         let confidence = bpm_conf.unwrap_or(0.0);
+         if confidence > 0.4 {
+             // Use first beat
+             smart_cut_in = Some(f_beat);
+         } else {
+             smart_cut_in = Some(fade_in);
+         }
+    } else {
+        smart_cut_in = Some(fade_in);
+    }
+
     let loudness = loudness_meter.get_lufs();
 
     Some(AudioAnalysis {
@@ -635,14 +697,14 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         first_beat_pos: first_beat,
         loudness: Some(loudness),
         drop_pos,
-        // New Version 3: Removed hard cut logic
-        version: 4,
+        version: 5,
         analyze_window: max_time,
-        cut_in_pos: cut_in,
-        cut_out_pos: cut_out,
+        cut_in_pos: smart_cut_in,
+        cut_out_pos: smart_cut_out,
         vocal_in_pos: vocal_in,
         vocal_out_pos: vocal_out,
         vocal_last_in_pos: vocal_last_in,
+        outro_energy_level,
     })
 }
 

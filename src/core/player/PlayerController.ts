@@ -36,6 +36,7 @@ interface AudioAnalysis {
   vocal_in_pos?: number;
   vocal_out_pos?: number;
   vocal_last_in_pos?: number;
+  outro_energy_level?: number;
 }
 
 /**
@@ -831,6 +832,16 @@ class PlayerController {
 
             // 如果有下一首分析数据，进行智能计算
             if (nextAnalysis) {
+              // 0. Energy Flow (Adjust duration based on energy gap)
+              if (currentAnalysis?.outro_energy_level && nextAnalysis.loudness) {
+                const diff = Math.abs(currentAnalysis.outro_energy_level - nextAnalysis.loudness);
+                if (diff > 6.0) {
+                  crossfadeDuration = 4; // Fast mix for energy clash
+                } else if (diff < 3.0) {
+                  crossfadeDuration = 12; // Smooth mix for similar energy
+                }
+              }
+
               const fadeIn = (nextAnalysis.fade_in_pos || 0) * 1000;
               // 优先使用 cut_in_pos (跳过前奏)
               const cutIn = (nextAnalysis.cut_in_pos || 0) * 1000;
@@ -913,8 +924,9 @@ class PlayerController {
             }
 
             // 计算触发时间
-            // 1. 基于 fadeOut (旧逻辑作为底线)
-            let triggerTime = fadeOut - crossfadeDuration;
+            // 1. 基于 cut_out_pos (优先) 或 fadeOut
+            const exitPoint = currentAnalysis?.cut_out_pos || fadeOut;
+            let triggerTime = exitPoint - crossfadeDuration;
 
             // 2. 尝试使用 vocal_last_in_pos 提前触发
             if (currentAnalysis?.vocal_last_in_pos) {

@@ -24,6 +24,7 @@ export interface AudioAnalysis {
   vocal_in_pos?: number
   vocal_out_pos?: number
   vocal_last_in_pos?: number
+  outro_energy_level?: number
 }
 
 export interface DownloadProgress {
