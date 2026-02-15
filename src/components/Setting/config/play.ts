@@ -415,7 +415,7 @@ export const usePlaySettings = (): SettingConfig => {
                   window.$dialog.warning({
                     title: "启用自动混音 (Beta)",
                     content:
-                      "可能出现兼容性问题，该功能在早期测试，遇到问题请反馈issue，不保证可以及时处理。",
+                      "可能出现兼容性问题，该功能在早期测试，遇到问题请反馈issue，不保证可以及时处理。该功能仅支持本地分析，在线歌曲只会固定8s过渡。等待后续支持。",
                     positiveText: "开启",
                     negativeText: "取消",
                     onPositiveClick: () => {
