@@ -910,7 +910,7 @@ class PlayerController {
   /**
    * 核心 Automix 触发检测逻辑 (每帧运行)
    */
-  private computeAutomixPlan(rawTime: number): AutomixPlan | null {
+  private computeAutomixPlan(_rawTime: number): AutomixPlan | null {
     const settingStore = useSettingStore();
 
     // 1. 获取下一首歌

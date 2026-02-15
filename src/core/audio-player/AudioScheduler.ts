@@ -75,7 +75,9 @@ export class AudioScheduler {
     if (this.worker) {
       try {
         this.worker.postMessage({ type: "STOP" });
-      } catch {}
+      } catch (e) {
+        void e;
+      }
       this.worker.terminate();
       this.worker = null;
     }
@@ -148,7 +150,9 @@ export class AudioScheduler {
       job.cancelled = true;
       try {
         job.cleanup?.();
-      } catch {}
+      } catch (e) {
+        void e;
+      }
       this.jobs.delete(job.id);
     }
   }
@@ -158,7 +162,9 @@ export class AudioScheduler {
       job.cancelled = true;
       try {
         job.cleanup?.();
-      } catch {}
+      } catch (e) {
+        void e;
+      }
     }
     this.jobs.clear();
   }
