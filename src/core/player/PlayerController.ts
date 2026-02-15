@@ -1365,20 +1365,24 @@ class PlayerController {
     // cut_out_pos 也是 Rust 计算好的吸附点
     let triggerTime = forcedTriggerTime ?? exitPoint - crossfadeDuration;
 
-    // 长尾奏激进模式：当人声结束到退出点间隔过长时，提前触发混音
+    // 超激进模式：紧贴人声结束点，按“拍”切入
     if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos !== undefined) {
       const vocalOut = currentAnalysis.vocal_out_pos;
-      const originalExit = exitPoint;
-      const tailLength = originalExit - vocalOut;
+      const actualEnd = cutOutPos ?? currentAnalysis.fade_out_pos ?? duration;
+      const tailLength = actualEnd - vocalOut;
 
-      if (Number.isFinite(tailLength) && tailLength > 12.0) {
+      if (Number.isFinite(tailLength) && tailLength > 8.0) {
         const bpm = currentAnalysis.bpm;
         const firstBeat = currentAnalysis.first_beat_pos;
         const bpmConf = currentAnalysis.bpm_confidence ?? 0;
 
-        const breathingRoom = bpm && Number.isFinite(bpm) && bpm > 0 ? (60 / bpm) * 4 : 3.0;
-        const idealStart = vocalOut + breathingRoom;
-        let aggressiveTrigger = idealStart;
+        const outroEnergy = currentAnalysis.outro_energy_level ?? -70;
+        const isHighEnergyOutro = outroEnergy > -12.0;
+
+        const beatsToWait = isHighEnergyOutro ? 8 : 1;
+        const minSecondsToWait = isHighEnergyOutro ? 4.0 : 0.5;
+
+        let aggressiveTrigger = triggerTime;
 
         if (
           bpm &&
@@ -1386,29 +1390,54 @@ class PlayerController {
           bpm > 0 &&
           firstBeat !== undefined &&
           Number.isFinite(firstBeat) &&
-          bpmConf >= 0.4 &&
-          idealStart < originalExit
+          bpmConf > 0.4
         ) {
           const spb = 60 / bpm;
-          const barDuration = spb * 4;
-          if (Number.isFinite(barDuration) && barDuration > 0) {
-            const relTime = idealStart - firstBeat;
-            const nextBarIndex = Math.ceil(relTime / barDuration);
-            aggressiveTrigger = firstBeat + nextBarIndex * barDuration;
+          if (Number.isFinite(spb) && spb > 0) {
+            const relVocal = vocalOut - firstBeat;
+            const currentBeatIndex = Math.floor(relVocal / spb);
+            let targetBeatIndex = currentBeatIndex + beatsToWait;
+
+            if (relVocal % spb > spb * 0.9) {
+              targetBeatIndex += 1;
+            }
+
+            if (isHighEnergyOutro) {
+              targetBeatIndex = Math.ceil(targetBeatIndex / 4) * 4;
+            }
+
+            const snappedStart = firstBeat + targetBeatIndex * spb;
+            aggressiveTrigger = Math.max(firstBeat, snappedStart);
           }
+        } else {
+          aggressiveTrigger = vocalOut + minSecondsToWait;
         }
 
-        const originalTrigger = triggerTime;
         if (
           Number.isFinite(aggressiveTrigger) &&
-          aggressiveTrigger < originalTrigger &&
-          aggressiveTrigger + crossfadeDuration < duration
+          aggressiveTrigger < triggerTime &&
+          aggressiveTrigger < actualEnd - 1.0
         ) {
+          const maxFade = isHighEnergyOutro ? 8.0 : 5.0;
+          let adjustedFade = Math.min(crossfadeDuration, maxFade);
+
+          const remaining = duration - aggressiveTrigger - 0.5;
+          if (Number.isFinite(remaining) && remaining > 0) {
+            adjustedFade = Math.min(adjustedFade, Math.max(2, remaining));
+          }
+
+          if (aggressiveTrigger + adjustedFade > duration) {
+            adjustedFade = Math.max(0.5, duration - aggressiveTrigger);
+          }
+
+          const originalTrigger = triggerTime;
           triggerTime = aggressiveTrigger;
+          crossfadeDuration = adjustedFade;
+
           this.automixLog(
             "log",
-            "long_outro_aggressive",
-            `[Automix] 长尾奏(${tailLength.toFixed(1)}s)，触发点提前：${this.formatAutomixTime(originalTrigger)} -> ${this.formatAutomixTime(aggressiveTrigger)} (vocal_out=${this.formatAutomixTime(vocalOut)})`,
+            `ultra_aggressive_mix:${Math.round(tailLength)}`,
+            `[Automix] 超激进切歌(${isHighEnergyOutro ? "高能" : "低能"}尾奏)：尾长 ${tailLength.toFixed(1)}s，触发点 ${this.formatAutomixTime(originalTrigger)} -> ${this.formatAutomixTime(aggressiveTrigger)}，Fade=${adjustedFade.toFixed(1)}s`,
             15000,
           );
         }
