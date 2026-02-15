@@ -267,7 +267,7 @@ const initFileIpc = (): void => {
         if (!fileStat) return null;
 
         const maxTime = options?.maxAnalyzeTimeSec ?? 60;
-        const CURRENT_VERSION = 7; // Sync with Rust
+        const CURRENT_VERSION = 8; // Sync with Rust
 
         // 1. Check Cache
         const cached = await localMusicService.getAnalysis(filePath);

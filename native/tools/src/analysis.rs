@@ -92,6 +92,25 @@ impl HighPassFilter {
     }
 }
 
+struct LowPassFilter {
+    prev_y: f32,
+    alpha: f32,
+}
+
+impl LowPassFilter {
+    fn new(sample_rate: u32, cutoff: f32) -> Self {
+        let dt = 1.0 / sample_rate as f32;
+        let rc = 1.0 / (2.0 * std::f32::consts::PI * cutoff);
+        let alpha = dt / (rc + dt);
+        Self { prev_y: 0.0, alpha }
+    }
+    fn process(&mut self, x: f32) -> f32 {
+        let y = self.prev_y + self.alpha * (x - self.prev_y);
+        self.prev_y = y;
+        y
+    }
+}
+
 // Biquad for K-weighting
 struct BiquadFilter {
     b0: f64, b1: f64, b2: f64,
@@ -245,19 +264,24 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
 
     // State
     let mut full_envelope: Vec<f32> = Vec::new(); // For BPM (head only or full if short)
+    let mut full_low_envelope: Vec<f32> = Vec::new();
     let mut head_envelope: Vec<f32> = Vec::new();
+    let mut head_low_envelope: Vec<f32> = Vec::new();
     let mut head_vocal_ratio: Vec<f32> = Vec::new();
     let mut head_pcm: Vec<f32> = Vec::new();
     let mut tail_envelope: Vec<f32> = Vec::new();
+    let mut tail_low_envelope: Vec<f32> = Vec::new();
     let mut tail_vocal_ratio: Vec<f32> = Vec::new();
     
     let mut current_sum_sq = 0.0;
+    let mut current_low_sum_sq = 0.0;
     let mut current_high_sum_sq = 0.0;
     let mut current_count = 0;
     let mut duration = 0.0;
 
     // HPF for vocal detection (>300Hz)
     let mut hpf = HighPassFilter::new(sample_rate, 300.0);
+    let mut lpf = LowPassFilter::new(sample_rate, 150.0);
     
     // Loudness Meter
     let mut loudness_meter = LoudnessMeter::new(sample_rate, 2); // Assume stereo initially, will adapt
@@ -268,6 +292,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     
     // We will collect data into temporary buffer then decide where to put it
     let mut temp_envelope = Vec::new();
+    let mut temp_low_envelope = Vec::new();
     let mut temp_vocal = Vec::new();
 
     let processed_duration = 0.0;
@@ -300,10 +325,12 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                 // Head limit reached.
                 // Save temp to head
                 head_envelope.append(&mut temp_envelope);
+                head_low_envelope.append(&mut temp_low_envelope);
                 head_vocal_ratio.append(&mut temp_vocal);
                 
                 // Copy head for BPM (use at most max_time)
                 full_envelope = head_envelope.clone();
+                full_low_envelope = head_low_envelope.clone();
 
                 let mut total_duration = None;
                 if let Some(n) = n_frames {
@@ -325,8 +352,11 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                                 _seek_done = true;
                                 // Reset filters/state
                                 current_sum_sq = 0.0;
+                                current_low_sum_sq = 0.0;
                                 current_high_sum_sq = 0.0;
                                 current_count = 0;
+                                hpf = HighPassFilter::new(sample_rate, 300.0);
+                                lpf = LowPassFilter::new(sample_rate, 150.0);
                                 continue; // Next packet will be from seek point
                             }
                             Err(_) => {
@@ -379,18 +409,23 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                                 head_pcm.push(val);
                             }
                             let high = hpf.process(val);
+                            let low = lpf.process(val);
                             
                             current_sum_sq += val * val;
+                            current_low_sum_sq += low * low;
                             current_high_sum_sq += high * high;
                             current_count += 1;
                             
                             if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
                                 let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
+                                temp_low_envelope.push(rms_low);
                                 let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
+                                current_low_sum_sq = 0.0;
                                 current_high_sum_sq = 0.0;
                                 current_count = 0;
                             }
@@ -413,15 +448,20 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             }
                             let high = hpf.process(val);
                             current_sum_sq += val * val;
+                            let low = lpf.process(val);
+                            current_low_sum_sq += low * low;
                             current_high_sum_sq += high * high;
                             current_count += 1;
                             if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
                                 let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
+                                temp_low_envelope.push(rms_low);
                                 let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
+                                current_low_sum_sq = 0.0;
                                 current_high_sum_sq = 0.0;
                                 current_count = 0;
                             }
@@ -444,15 +484,20 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             }
                             let high = hpf.process(val);
                             current_sum_sq += val * val;
+                            let low = lpf.process(val);
+                            current_low_sum_sq += low * low;
                             current_high_sum_sq += high * high;
                             current_count += 1;
                             if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
                                 let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
+                                temp_low_envelope.push(rms_low);
                                 let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
+                                current_low_sum_sq = 0.0;
                                 current_high_sum_sq = 0.0;
                                 current_count = 0;
                             }
@@ -475,15 +520,20 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                            }
                            let high = hpf.process(val);
                            current_sum_sq += val * val;
+                           let low = lpf.process(val);
+                           current_low_sum_sq += low * low;
                            current_high_sum_sq += high * high;
                            current_count += 1;
                            if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
                                 let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
+                                temp_low_envelope.push(rms_low);
                                 let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
+                                current_low_sum_sq = 0.0;
                                 current_high_sum_sq = 0.0;
                                 current_count = 0;
                            }
@@ -506,15 +556,20 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                            }
                            let high = hpf.process(val);
                            current_sum_sq += val * val;
+                           let low = lpf.process(val);
+                           current_low_sum_sq += low * low;
                            current_high_sum_sq += high * high;
                            current_count += 1;
                            if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
+                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
                                 let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
+                                temp_low_envelope.push(rms_low);
                                 let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
+                                current_low_sum_sq = 0.0;
                                 current_high_sum_sq = 0.0;
                                 current_count = 0;
                            }
@@ -530,8 +585,10 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     // Final flush
     if current_count > 0 {
         let rms = (current_sum_sq / window_size as f32).sqrt();
+        let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
         let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
         temp_envelope.push(rms);
+        temp_low_envelope.push(rms_low);
         let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
         temp_vocal.push(ratio);
     }
@@ -539,13 +596,16 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     // Distribute temp buffer based on phase
     if phase == 0 {
         head_envelope.append(&mut temp_envelope);
+        head_low_envelope.append(&mut temp_low_envelope);
         head_vocal_ratio.append(&mut temp_vocal);
         // If we never seeked, head is full
         if full_envelope.is_empty() {
             full_envelope = head_envelope.clone();
+            full_low_envelope = head_low_envelope.clone();
         }
     } else {
         tail_envelope.append(&mut temp_envelope);
+        tail_low_envelope.append(&mut temp_low_envelope);
         tail_vocal_ratio.append(&mut temp_vocal);
     }
     
@@ -577,7 +637,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     };
     
     // 2. BPM (Use full envelope or head if long enough)
-    let (bpm, bpm_conf, first_beat) = detect_bpm_from_envelope(&full_envelope, env_rate);
+    let (bpm, bpm_conf, first_beat) = detect_bpm_from_envelope(&full_envelope, &full_low_envelope, env_rate);
     
     // 3. Drop/Chorus Detection (Energy Surge)
     let drop_pos = detect_drop_pos(&head_envelope, env_rate);
@@ -771,7 +831,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         first_beat_pos: first_beat,
         loudness: Some(loudness),
         drop_pos,
-        version: 7,
+        version: 8,
         analyze_window: max_time,
         cut_in_pos: smart_cut_in,
         cut_out_pos: smart_cut_out,
@@ -807,16 +867,21 @@ fn detect_silence_from_envelope(envelope: &[f32], rate: f64, threshold_db: f32) 
     (fade_in, fade_out)
 }
 
-fn detect_bpm_from_envelope(envelope: &[f32], rate: f64) -> (Option<f64>, Option<f64>, Option<f64>) {
-    if envelope.len() < 100 { return (None, None, None); }
+fn detect_bpm_from_envelope(envelope: &[f32], low_envelope: &[f32], rate: f64) -> (Option<f64>, Option<f64>, Option<f64>) {
+    let len = envelope.len().min(low_envelope.len());
+    if len < 100 { return (None, None, None); }
     
     // Compute flux (Spectral Flux approximation using envelope difference)
     // Half-wave rectification
-    let mut flux = Vec::with_capacity(envelope.len());
-    flux.push(0.0);
-    for i in 1..envelope.len() {
-        let diff = envelope[i] - envelope[i-1];
-        flux.push(if diff > 0.0 { diff } else { 0.0 });
+    let mut flux_full = Vec::with_capacity(len);
+    let mut flux_low = Vec::with_capacity(len);
+    flux_full.push(0.0);
+    flux_low.push(0.0);
+    for i in 1..len {
+        let diff_full = envelope[i] - envelope[i-1];
+        flux_full.push(if diff_full > 0.0 { diff_full } else { 0.0 });
+        let diff_low = low_envelope[i] - low_envelope[i-1];
+        flux_low.push(if diff_low > 0.0 { diff_low } else { 0.0 });
     }
     
     // Autocorrelation
@@ -826,17 +891,17 @@ fn detect_bpm_from_envelope(envelope: &[f32], rate: f64) -> (Option<f64>, Option
     let min_lag = 15;
     let max_lag = 55;
     
-    if flux.len() < max_lag * 2 { return (None, None, None); }
+    if flux_full.len() < max_lag * 2 { return (None, None, None); }
     
     let mut correlations = Vec::new();
     
     for lag in min_lag..=max_lag {
         let mut corr = 0.0;
         let start_idx = 0;
-        let end_idx = flux.len() - lag;
+        let end_idx = flux_full.len() - lag;
         // Step by 1 for better accuracy on envelope
         for i in start_idx..end_idx { 
-            corr += flux[i] * flux[i+lag];
+            corr += flux_full[i] * flux_full[i+lag];
         }
         correlations.push((lag, corr));
     }
@@ -857,34 +922,69 @@ fn detect_bpm_from_envelope(envelope: &[f32], rate: f64) -> (Option<f64>, Option
     let confidence = confidence.clamp(0.0, 1.0) as f64;
     
     // First Beat Detection
-    // Find the highest flux peak that aligns with the BPM grid
+    // Find a phase that maximizes energy on the BPM (and 4-beat) grid
     let mut first_beat = None;
-    if confidence > 0.3 {
-        let _beat_period_samples = best_lag as usize;
-        
-        // Search for the strongest onset in the first 10 seconds (500 samples)
-        let search_len = std::cmp::min(flux.len(), 500);
-        
-        // Simple peak picking
-        let mut max_flux = 0.0;
-        let mut best_onset_idx = 0;
-        
-        for i in 0..search_len {
-            if flux[i] > max_flux {
-                max_flux = flux[i];
-                best_onset_idx = i;
+    if confidence > 0.2 {
+        let lag = best_lag as usize;
+        let search_len = ((10.0 * rate) as usize).min(flux_full.len());
+        if lag > 0 && search_len > lag {
+            let mut best_phase_bar = 0usize;
+            let mut best_energy_bar = -1.0f32;
+            let mut sum_energy_bar = 0.0f32;
+            let bar_stride = lag.saturating_mul(4);
+            if bar_stride > 0 && search_len > bar_stride {
+                for phase in 0..lag {
+                    let mut energy = 0.0f32;
+                    let mut idx = phase;
+                    while idx < search_len {
+                        energy += flux_low[idx];
+                        match idx.checked_add(bar_stride) {
+                            Some(next) => idx = next,
+                            None => break,
+                        }
+                    }
+                    sum_energy_bar += energy;
+                    if energy > best_energy_bar {
+                        best_energy_bar = energy;
+                        best_phase_bar = phase;
+                    }
+                }
             }
-        }
-        
-        // This is a naive first beat. 
-        // A better way is to find a phase that maximizes energy on beats.
-        // But for "Drop" detection we have another function. 
-        // For "First Beat" we usually want the first downbeat.
-        // Without bar detection, we assume the strongest onset is a beat.
-        // We refine it by checking if subsequent beats exist.
-        
-        if max_flux > 0.01 {
-             first_beat = Some(best_onset_idx as f64 / rate);
+
+            let mut best_phase_beat = 0usize;
+            let mut best_energy_beat = -1.0f32;
+            let mut sum_energy_beat = 0.0f32;
+            for phase in 0..lag {
+                let mut energy = 0.0f32;
+                let mut idx = phase;
+                while idx < search_len {
+                    energy += flux_full[idx];
+                    match idx.checked_add(lag) {
+                        Some(next) => idx = next,
+                        None => break,
+                    }
+                }
+                sum_energy_beat += energy;
+                if energy > best_energy_beat {
+                    best_energy_beat = energy;
+                    best_phase_beat = phase;
+                }
+            }
+
+            let avg_energy_beat = sum_energy_beat / lag as f32;
+            let beat_ok = best_energy_beat > 0.02 && best_energy_beat >= avg_energy_beat * 1.15;
+
+            let bar_ok = if bar_stride > 0 && search_len > bar_stride {
+                let avg_energy_bar = sum_energy_bar / lag as f32;
+                best_energy_bar > 0.02 && best_energy_bar >= avg_energy_bar * 1.15
+            } else {
+                false
+            };
+
+            let best_phase = if bar_ok { best_phase_bar } else { best_phase_beat };
+            if bar_ok || beat_ok {
+                first_beat = Some(best_phase as f64 / rate);
+            }
         }
     }
 
