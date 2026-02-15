@@ -317,7 +317,7 @@ const initFileIpc = (): void => {
         if (!fileStat) return null;
 
         const maxTime = options?.maxAnalyzeTimeSec ?? 60;
-        const CURRENT_VERSION = 10; // 与 Rust 保持一致
+        const CURRENT_VERSION = 11; // 与 Rust 保持一致
         const fileKey = normalizeAnalysisKey(filePath);
 
         // 1. Check Cache

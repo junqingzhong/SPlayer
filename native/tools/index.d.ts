@@ -21,6 +21,10 @@ export interface AudioAnalysis {
   analyze_window: number
   cut_in_pos?: number
   cut_out_pos?: number
+  mix_center_pos: number
+  mix_start_pos: number
+  mix_end_pos: number
+  energy_profile: Float32Array | Array<number>
   vocal_in_pos?: number
   vocal_out_pos?: number
   vocal_last_in_pos?: number
@@ -28,6 +32,7 @@ export interface AudioAnalysis {
   key_root?: number
   key_mode?: number
   key_confidence?: number
+  camelot_key?: string
 }
 
 export interface DownloadProgress {
