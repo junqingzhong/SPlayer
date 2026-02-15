@@ -835,15 +835,15 @@ class PlayerController {
       if (
         currentAnalysis?.bpm &&
         nextAnalysis.bpm &&
-        (currentAnalysis.bpm_confidence ?? 0) > 0.4 &&
-        (nextAnalysis.bpm_confidence ?? 0) > 0.4
+        (currentAnalysis.bpm_confidence ?? 0) > 0.25 &&
+        (nextAnalysis.bpm_confidence ?? 0) > 0.25
       ) {
         const bpmA = currentAnalysis.bpm;
         const bpmB = nextAnalysis.bpm;
         const ratio = bpmA / bpmB;
 
         // 收紧 BPM 匹配范围: +/- 6%
-        const SAFE_RANGE = 0.06;
+        const SAFE_RANGE = 0.1;
         if (ratio >= 1 - SAFE_RANGE && ratio <= 1 + SAFE_RANGE) {
           let harmonicOk = true;
           const keyA = currentAnalysis.key_root;
@@ -858,12 +858,16 @@ class PlayerController {
             keyB !== undefined &&
             modeA !== undefined &&
             modeB !== undefined &&
-            confA >= 0.15 &&
-            confB >= 0.15
+            confA >= 0.25 &&
+            confB >= 0.25
           ) {
-            const diff = ((keyB - keyA) % 12 + 12) % 12;
+            const deltaSemitones = 12 * Math.log2(ratio);
+            const shift = Math.round(deltaSemitones);
+            const effectiveKeyB = ((keyB + shift) % 12 + 12) % 12;
+
+            const diff = ((effectiveKeyB - keyA) % 12 + 12) % 12;
             const dist = Math.min(diff, 12 - diff);
-            harmonicOk = dist === 0 || dist === 5 || dist === 7 || (modeA !== modeB && dist === 3);
+            harmonicOk = dist !== 1 && dist !== 6;
           }
 
           if (!harmonicOk) {
@@ -884,6 +888,29 @@ class PlayerController {
           // BPM 差距大，放弃 Beat Match
           initialRate = 1.0;
           mixType = "default";
+        }
+      }
+
+      if (mixType === "bassSwap" && currentAnalysis?.bpm) {
+        const pairConf = Math.min(
+          currentAnalysis.bpm_confidence ?? 0,
+          nextAnalysis.bpm_confidence ?? 0,
+        );
+        if (pairConf <= 0.8) {
+          const spb = 60 / currentAnalysis.bpm;
+          const maxByBeats = spb * 16;
+          const maxBySeconds = 8;
+          let capped = Math.min(crossfadeDuration, maxByBeats, maxBySeconds);
+          if (spb > 0) {
+            const bar = spb * 4;
+            if (capped >= bar) {
+              capped = Math.floor(capped / bar) * bar;
+            }
+          }
+          crossfadeDuration = Math.max(2, capped);
+
+          const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
+          startSeek = Math.max(idealSeek, fadeIn * 1000);
         }
       }
     }
@@ -950,8 +977,12 @@ class PlayerController {
       const alignedTrigger = firstBeat + barIndex * barDuration;
 
       // 只有在误差允许范围内才吸附 (比如 2s 内)
-      if (Math.abs(alignedTrigger - triggerTime) < 2.0) {
-        triggerTime = alignedTrigger;
+      if (Number.isFinite(barDuration) && barDuration > 0) {
+        const tolerance = barDuration * 0.6;
+        const safeAligned = Math.max(currentFadeIn, Math.min(alignedTrigger, exitPoint));
+        if (Math.abs(safeAligned - triggerTime) < tolerance) {
+          triggerTime = safeAligned;
+        }
       }
     }
 

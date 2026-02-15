@@ -24,6 +24,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   private pendingEngine: IPlaybackEngine | null = null;
   /** 切换引擎的定时器 */
   private pendingSwitchTimer: ReturnType<typeof setTimeout> | null = null;
+  private pendingBassSwapTimers: ReturnType<typeof setTimeout>[] = [];
   /** 用于清理当前引擎的事件监听器 */
   private cleanupListeners: (() => void) | null = null;
 
@@ -179,7 +180,6 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
     // Bass Swap Filter Setup
     if (options.mixType === "bassSwap") {
-      // New engine starts with Bass Cut (HPF at 400Hz), then ramps down to 0
       newEngine.setHighPassFilter?.(400, 0);
     }
 
@@ -194,11 +194,22 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
     // Apply Bass Swap Ramps
     if (options.mixType === "bassSwap") {
-      // Old Engine: Bass Fade Out (HPF 0 -> 400Hz)
-      this.engine.setHighPassFilter?.(400, options.duration);
-      // New Engine: Bass Fade In (HPF 400 -> 0Hz)
-      // Note: We already set it to 400 above. Now ramp to 0.
-      newEngine.setHighPassFilter?.(0, options.duration);
+      const mid = options.duration * 0.5;
+      const release = Math.min(0.6, options.duration * 0.25);
+
+      this.engine.setHighPassFilter?.(400, mid);
+
+      this.pendingBassSwapTimers.push(
+        setTimeout(() => {
+          newEngine.setHighPassFilter?.(0, release);
+        }, mid * 1000),
+      );
+
+      this.pendingBassSwapTimers.push(
+        setTimeout(() => {
+          newEngine.setHighPassFilter?.(0, 0);
+        }, options.duration * 1000 + 50),
+      );
     }
 
     // 4. 旧引擎淡出 (Fade Out, Equal Power, Keep Context)
@@ -234,8 +245,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       this.dispatch(AUDIO_EVENTS.TIME_UPDATE, undefined);
       this.dispatch(AUDIO_EVENTS.PLAY, undefined);
 
-      // Reset filters on the new engine (just in case) if not bass swapped, or ensure 0
-      if (options.mixType === "bassSwap") {
+      if (options.mixType !== "bassSwap") {
         this.engine.setHighPassFilter?.(0, 0);
       }
     };
@@ -286,6 +296,10 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     if (this.pendingSwitchTimer) {
       clearTimeout(this.pendingSwitchTimer);
       this.pendingSwitchTimer = null;
+    }
+    if (this.pendingBassSwapTimers.length > 0) {
+      this.pendingBassSwapTimers.forEach((t) => clearTimeout(t));
+      this.pendingBassSwapTimers = [];
     }
     if (this.pendingEngine) {
       // 如果有待切换引擎，销毁它
