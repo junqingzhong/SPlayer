@@ -939,7 +939,13 @@ class PlayerController {
     // 基础锚点：fade_out_pos 或 duration
     // 优先使用 smart cut_out_pos (Rust 侧计算好的吸附点)
     const duration = this.getDuration() / 1000;
-    const fadeOut = currentAnalysis?.cut_out_pos || currentAnalysis?.fade_out_pos || duration;
+    const currentFadeIn = currentAnalysis?.fade_in_pos || 0;
+    const currentCutIn = currentAnalysis?.cut_in_pos ?? currentFadeIn;
+    const currentCutOut = currentAnalysis?.cut_out_pos;
+    const currentEffectiveDuration =
+      currentCutOut !== undefined ? currentCutOut - currentCutIn : Number.POSITIVE_INFINITY;
+    const cutOutPos = currentCutOut !== undefined && currentEffectiveDuration >= 30 ? currentCutOut : undefined;
+    const fadeOut = cutOutPos || currentAnalysis?.fade_out_pos || duration;
 
     // 默认混音时长 8s (作为最后兜底)
     let crossfadeDuration = 8;
@@ -948,6 +954,17 @@ class PlayerController {
     let uiSwitchDelay = 0;
     let mixType: "default" | "bassSwap" = "default";
     const preRoll = 2.0; // 提前量
+
+    const applyStartSeekFallback = () => {
+      if (!nextAnalysis) return;
+      const fadeIn = nextAnalysis.fade_in_pos || 0;
+      const vocalIn = nextAnalysis.vocal_in_pos;
+      if (!vocalIn) return;
+      if (startSeek >= 1000) return;
+      const buffer = 2;
+      if (vocalIn - fadeIn < crossfadeDuration + buffer) return;
+      startSeek = Math.max((vocalIn - crossfadeDuration - buffer) * 1000, fadeIn * 1000);
+    };
 
     // 如果有下一首分析数据，进行智能计算
     if (nextAnalysis) {
@@ -968,11 +985,11 @@ class PlayerController {
       // Exit Point: Vocal Out > Cut Out > Fade Out - 15
       const currentExit =
         currentAnalysis?.vocal_out_pos ||
-        currentAnalysis?.cut_out_pos ||
+        cutOutPos ||
         (currentAnalysis?.fade_out_pos || duration) - 15;
 
       const currentFadeOut =
-        currentAnalysis?.cut_out_pos || currentAnalysis?.fade_out_pos || duration;
+        cutOutPos || currentAnalysis?.fade_out_pos || duration;
       const availableOutro = Math.max(0, currentFadeOut - currentExit);
 
       // 3. 动态确定时长 (Dynamic Duration)
@@ -989,6 +1006,7 @@ class PlayerController {
       // 4. 倒推起始点 (Back-Calculation)
       const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
       startSeek = Math.max(idealSeek, fadeIn * 1000);
+      applyStartSeekFallback();
 
       console.log(
         `[Automix] Anchor: ${targetAnchor.toFixed(2)}s -> Start: ${(startSeek / 1000).toFixed(2)}s`,
@@ -1074,12 +1092,12 @@ class PlayerController {
 
           const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
           startSeek = Math.max(idealSeek, fadeIn * 1000);
+          applyStartSeekFallback();
         }
       }
     }
 
     // 约束：时长不能超过两首歌的有效长度的一半
-    const currentFadeIn = currentAnalysis?.fade_in_pos || 0;
     const currentValid = fadeOut - currentFadeIn;
 
     // 物理极限保护
@@ -1094,6 +1112,7 @@ class PlayerController {
           (nextAnalysis.cut_in_pos || fadeIn + 15);
         const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
         startSeek = Math.max(idealSeek, fadeIn * 1000);
+        applyStartSeekFallback();
       }
     }
 
@@ -1104,7 +1123,7 @@ class PlayerController {
     // 计算触发时间
     // 1. 基于 cut_out_pos (优先) 或 fadeOut
     // cut_out_pos 也是 Rust 计算好的吸附点
-    const exitPoint = currentAnalysis?.cut_out_pos || fadeOut;
+    const exitPoint = cutOutPos || fadeOut;
     let triggerTime = exitPoint - crossfadeDuration;
 
     // 2. 尝试使用 vocal_last_in_pos 提前触发
