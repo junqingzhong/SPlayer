@@ -103,7 +103,8 @@ const getMenuIcon = (iconName: string): NativeImage | undefined => {
 };
 
 // 托盘菜单
-const createTrayMenu = (win: BrowserWindow, store: ReturnType<typeof useStore>): MenuItemConstructorOptions[] => {
+const createTrayMenu = (win: BrowserWindow): MenuItemConstructorOptions[] => {
+  const store = useStore();
   /**
    * 获取 {@linkcode RepeatModeType} 对应的显示字符串
    * @param mode 重复模式
@@ -267,11 +268,9 @@ class CreateTray implements MainTray {
   // 菜单
   private _menu: MenuItemConstructorOptions[];
   private _contextMenu: Menu;
-  private _store: ReturnType<typeof useStore>; // 添加 store 成员变量以访问全局状态
 
   constructor(win: BrowserWindow) {
     this._win = win;
-    this._store = useStore();
 
     if (isWin) {
       const iconPath = join(__dirname, `../../public/icons/tray/tray.ico`);
@@ -290,7 +289,7 @@ class CreateTray implements MainTray {
       this._tray = new Tray(icon);
     }
 
-    this._menu = createTrayMenu(this._win, this._store);
+    this._menu = createTrayMenu(this._win);
     this._contextMenu = Menu.buildFromTemplate(this._menu);
     this.initTrayMenu();
     this.initEvents();
@@ -298,7 +297,7 @@ class CreateTray implements MainTray {
   }
   // 托盘菜单
   public initTrayMenu() {
-    this._menu = createTrayMenu(this._win, this._store);
+    this._menu = createTrayMenu(this._win);
     this._contextMenu = Menu.buildFromTemplate(this._menu);
     this._tray.setContextMenu(this._contextMenu);
   }

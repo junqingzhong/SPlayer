@@ -4,7 +4,8 @@ import { ipcMain } from "electron";
 import { useStore } from "../store";
 import { getMainTray } from "../tray";
 import mainWindow from "../windows/main-window";
-import { getCurrentSongTitle } from "./ipc-tray"; // 本地导入，用于关闭时恢复标题
+import { getCurrentSongTitle } from "./ipc-tray";
+
 let macLyricLines: LyricLine[] = [];
 let macCurrentTime = 0;
 let macOffset = 0;
@@ -29,7 +30,7 @@ const stopInterpolation = () => {
 /**
  * 启动插值计时器
  */
-const startInterpolation = (store: ReturnType<typeof useStore>) => {
+const startInterpolation = () => {
   stopInterpolation(); // 先停止任何已存在的计时器
   macLastUpdateTime = Date.now(); // 在启动新的插值计时器时，重置 macLastUpdateTime
   interpolationTimer = setInterval(() => {
@@ -37,7 +38,7 @@ const startInterpolation = (store: ReturnType<typeof useStore>) => {
     const elapsedTime = now - macLastUpdateTime;
     macCurrentTime += elapsedTime;
     macLastUpdateTime = now;
-    updateMacStatusBarLyric(store);
+    updateMacStatusBarLyric();
   }, LYRIC_UPDATE_INTERVAL);
 };
 
@@ -65,13 +66,12 @@ const findCurrentLyricIndex = (
 
 /**
  * 更新 macOS 状态栏歌词（只在新行时才更新）
- * @param store Pinia store 实例
  * @param forceUpdate 是否强制更新，即便歌词行索引未变化
  */
 const updateMacStatusBarLyric = (
-  store: ReturnType<typeof useStore>,
   forceUpdate: boolean = false,
 ) => {
+  const store = useStore();
   const tray = getMainTray();
   if (!tray) return;
 
@@ -167,7 +167,7 @@ export const initMacStatusBarIpc = () => {
         // 不在这里直接更新歌词，依赖 SYNC_TICK 来驱动
         if (!macIsPlaying) { // 如果是暂停状态，则停止插值器并进行一次最终更新
           stopInterpolation();
-          updateMacStatusBarLyric(store);
+          updateMacStatusBarLyric();
         }
         break;
 
@@ -209,9 +209,9 @@ export const initMacStatusBarIpc = () => {
     }
     // 收到精确进度或误差较大同步后，立即更新一次歌词显示
     // 如果此时是播放状态，确保插值器运行
-    updateMacStatusBarLyric(store, true);
+    updateMacStatusBarLyric(true);
     if (macIsPlaying) {
-      startInterpolation(store);
+      startInterpolation();
     }
   });
 
