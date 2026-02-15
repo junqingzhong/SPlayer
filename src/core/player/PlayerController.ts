@@ -985,18 +985,42 @@ class PlayerController {
     const currentAnalysis = this.currentAnalysis;
     const nextAnalysis = this.nextAnalysis;
 
-    // 基础锚点：fade_out_pos 或 duration
-    // 优先使用 smart cut_out_pos (Rust 侧计算好的吸附点)
     const duration = this.getDuration() / 1000;
     const currentFadeIn = currentAnalysis?.fade_in_pos || 0;
     const currentCutIn = currentAnalysis?.cut_in_pos ?? currentFadeIn;
     const currentCutOut = currentAnalysis?.cut_out_pos;
     const currentEffectiveDuration =
       currentCutOut !== undefined ? currentCutOut - currentCutIn : Number.POSITIVE_INFINITY;
-    const cutOutPos =
+    const rawFadeOut = currentAnalysis?.fade_out_pos || duration;
+    let cutOutPos =
       currentCutOut !== undefined && currentEffectiveDuration >= 30 ? currentCutOut : undefined;
-    const fadeOut = cutOutPos || currentAnalysis?.fade_out_pos || duration;
-    const exitPoint = cutOutPos || fadeOut;
+
+    const currentVocalOut = currentAnalysis?.vocal_out_pos;
+    if (cutOutPos !== undefined && currentVocalOut !== undefined) {
+      const bpm = currentAnalysis?.bpm;
+      const minBreathingRoom = bpm ? Math.max(2.0, (60 / bpm) * 4) : 3.0;
+      if (cutOutPos < currentVocalOut + minBreathingRoom) {
+        console.warn(
+          `[Automix] cut_out 过近，将回退到 fade_out：cut_out=${cutOutPos.toFixed(2)}s vocal_out=${currentVocalOut.toFixed(2)}s gap=${minBreathingRoom.toFixed(2)}s`,
+        );
+        cutOutPos = undefined;
+      }
+    }
+
+    if (cutOutPos !== undefined) {
+      const remainingAfterCut = rawFadeOut - cutOutPos;
+      const vocalEndedLongAgo =
+        currentVocalOut !== undefined ? cutOutPos - currentVocalOut > 30 : false;
+      if (remainingAfterCut > 45 && !vocalEndedLongAgo) {
+        console.warn(
+          `[Automix] cut_out 过早，将回退到 fade_out：cut_out=${cutOutPos.toFixed(2)}s 剩余=${remainingAfterCut.toFixed(0)}s`,
+        );
+        cutOutPos = undefined;
+      }
+    }
+
+    const fadeOut = cutOutPos ?? rawFadeOut;
+    const exitPoint = fadeOut;
     const currentValid = fadeOut - currentFadeIn;
 
     // 默认混音时长 8s (作为最后兜底)
