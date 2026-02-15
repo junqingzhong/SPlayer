@@ -2021,6 +2021,10 @@ class PlayerController {
     return audioManager.getLowFrequencyVolume();
   }
 
+  public getCurrentAnalysis(): AudioAnalysis | null {
+    return this.currentAnalysis;
+  }
+
   /**
    * 更新均衡器
    * @param options 均衡器选项
