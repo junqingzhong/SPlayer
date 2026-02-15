@@ -1026,7 +1026,7 @@ class PlayerController {
       pitchShift: plan.pitchShift,
       playbackRate: plan.playbackRate,
       automationCurrent: plan.automationCurrent,
-      automationNext: plan.automationNext
+      automationNext: plan.automationNext,
     });
   }
 
@@ -1115,10 +1115,14 @@ class PlayerController {
       this.nextTransitionInFlight = null;
     }
 
-    if (!this.nextTransitionProposal && !this.nextAdvancedTransition && !this.nextTransitionInFlight) {
+    if (
+      !this.nextTransitionProposal &&
+      !this.nextAdvancedTransition &&
+      !this.nextTransitionInFlight
+    ) {
       this.nextTransitionInFlight = Promise.all([
         window.electron.ipcRenderer.invoke("suggest-transition", currentPath, nextKey),
-        window.electron.ipcRenderer.invoke("suggest-long-mix", currentPath, nextKey)
+        window.electron.ipcRenderer.invoke("suggest-long-mix", currentPath, nextKey),
       ])
         .then(([raw, rawLong]) => {
           if (this.nextTransitionKey !== transitionKey) return;
@@ -1217,55 +1221,59 @@ class PlayerController {
     const nextPath = nextInfo.song.path;
     const transitionKey = currentPath && nextPath ? `${currentPath}>>${nextPath}` : null;
     const transition =
-      transitionKey && this.nextTransitionKey === transitionKey ? this.nextTransitionProposal : null;
+      transitionKey && this.nextTransitionKey === transitionKey
+        ? this.nextTransitionProposal
+        : null;
     const advancedTransition =
-      transitionKey && this.nextTransitionKey === transitionKey ? this.nextAdvancedTransition : null;
+      transitionKey && this.nextTransitionKey === transitionKey
+        ? this.nextAdvancedTransition
+        : null;
 
     // 优先使用 Advanced Transition (Mashup Mode)
     if (advancedTransition) {
-        // Advanced Transition 的逻辑非常明确，直接使用
-        const triggerTime = advancedTransition.start_time_current;
-        crossfadeDuration = advancedTransition.duration;
-        startSeek = advancedTransition.start_time_next * 1000;
-        pitchShift = advancedTransition.pitch_shift_semitones;
-        playbackRate = advancedTransition.playback_rate;
-        automationCurrent = advancedTransition.automation_current;
-        automationNext = advancedTransition.automation_next;
-        mixType = advancedTransition.strategy.includes("Bass Swap") ? "bassSwap" : "default";
-        
-        // 修正 initialRate 用于 UI 显示和后续 audioManager.setRate
-        initialRate = playbackRate;
+      // Advanced Transition 的逻辑非常明确，直接使用
+      const triggerTime = advancedTransition.start_time_current;
+      crossfadeDuration = advancedTransition.duration;
+      startSeek = advancedTransition.start_time_next * 1000;
+      pitchShift = advancedTransition.pitch_shift_semitones;
+      playbackRate = advancedTransition.playback_rate;
+      automationCurrent = advancedTransition.automation_current;
+      automationNext = advancedTransition.automation_next;
+      mixType = advancedTransition.strategy.includes("Bass Swap") ? "bassSwap" : "default";
 
-        // 设置 UI 切换延迟为一半时长
-        uiSwitchDelay = crossfadeDuration * 0.5;
+      // 修正 initialRate 用于 UI 显示和后续 audioManager.setRate
+      initialRate = playbackRate;
 
-        this.automixLog(
-            "log",
-            `mashup_proposal:${Math.round(crossfadeDuration * 10)}:${mixType}`,
-            `[Automix Mashup] 混音策略：${advancedTransition.strategy}
+      // 设置 UI 切换延迟为一半时长
+      uiSwitchDelay = crossfadeDuration * 0.5;
+
+      this.automixLog(
+        "log",
+        `mashup_proposal:${Math.round(crossfadeDuration * 10)}:${mixType}`,
+        `[Automix Mashup] 混音策略：${advancedTransition.strategy}
              触发时间：${this.formatAutomixTime(triggerTime)}
              切入点：${this.formatAutomixTime(startSeek / 1000)}
              时长：${crossfadeDuration.toFixed(1)}s
              变速：${playbackRate.toFixed(4)}
              变调：${pitchShift} Semitones`,
-            15000
-        );
+        15000,
+      );
 
-        return {
-            token: this.currentRequestToken,
-            nextSong: nextInfo.song,
-            nextIndex: nextInfo.index,
-            triggerTime,
-            crossfadeDuration,
-            startSeek,
-            initialRate,
-            uiSwitchDelay,
-            mixType,
-            pitchShift,
-            playbackRate,
-            automationCurrent,
-            automationNext
-        };
+      return {
+        token: this.currentRequestToken,
+        nextSong: nextInfo.song,
+        nextIndex: nextInfo.index,
+        triggerTime,
+        crossfadeDuration,
+        startSeek,
+        initialRate,
+        uiSwitchDelay,
+        mixType,
+        pitchShift,
+        playbackRate,
+        automationCurrent,
+        automationNext,
+      };
     }
 
     if (transition) {
@@ -1732,7 +1740,7 @@ class PlayerController {
       pitchShift,
       playbackRate,
       automationCurrent,
-      automationNext
+      automationNext,
     };
   }
 

@@ -29,23 +29,23 @@ type SuggestLongMixRequest = {
   nativeModulePath: string;
 };
 
-type WorkerRequest = AnalyzeRequest | AnalyzeHeadRequest | SuggestTransitionRequest | SuggestLongMixRequest;
+type WorkerRequest =
+  | AnalyzeRequest
+  | AnalyzeHeadRequest
+  | SuggestTransitionRequest
+  | SuggestLongMixRequest;
 
-type AnalyzeResponse =
-  | { ok: true; result: unknown }
-  | { ok: false; error: string };
+type AnalyzeResponse = { ok: true; result: unknown } | { ok: false; error: string };
 
 const requireNative = createRequire(import.meta.url);
 
 let cachedNativeModulePath: string | null = null;
-let cachedTools:
-  | {
-      analyzeAudioFile?: (filePath: string, maxTime: number) => unknown;
-      analyzeAudioFileHead?: (filePath: string, maxTime: number) => unknown;
-      suggestTransition?: (currentPath: string, nextPath: string) => unknown;
-      suggestLongMix?: (currentPath: string, nextPath: string) => unknown;
-    }
-  | null = null;
+let cachedTools: {
+  analyzeAudioFile?: (filePath: string, maxTime: number) => unknown;
+  analyzeAudioFileHead?: (filePath: string, maxTime: number) => unknown;
+  suggestTransition?: (currentPath: string, nextPath: string) => unknown;
+  suggestLongMix?: (currentPath: string, nextPath: string) => unknown;
+} | null = null;
 let cachedToolsError: string | null = null;
 
 const getTools = (nativeModulePath: string) => {

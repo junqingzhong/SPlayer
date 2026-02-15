@@ -32,8 +32,7 @@ const resolveToolsNativeModulePath = () => {
 };
 
 const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
-  const worker = new Worker(new URL("./workers/audio-analysis.worker.js", import.meta.url), {
-  });
+  const worker = new Worker(new URL("./workers/audio-analysis.worker.js", import.meta.url), {});
 
   try {
     const jobType = typeof payload.type === "string" ? payload.type : "unknown";
@@ -42,7 +41,11 @@ const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
       ipcLog.warn(`[AudioAnalysis] tools.node 不存在: ${nativeModulePath}`);
       throw new Error("TOOLS_NATIVE_MODULE_MISSING");
     });
-    if (jobType === "analyzeHead" || jobType === "suggestTransition" || jobType === "suggestLongMix") {
+    if (
+      jobType === "analyzeHead" ||
+      jobType === "suggestTransition" ||
+      jobType === "suggestLongMix"
+    ) {
       ipcLog.info(`[AudioAnalysis] Worker 启动: ${jobType}`);
     }
     const result = await new Promise<unknown | null>((resolvePromise) => {
@@ -56,16 +59,16 @@ const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
       worker.once(
         "message",
         (resp: { ok: true; result?: unknown } | { ok: false; error?: string }) => {
-        cleanup();
-        if (resp && resp.ok) {
-          resolvePromise(resp.result ?? null);
-          return;
-        }
-        if (resp && !resp.ok && resp.error) {
-          ipcLog.warn(`[AudioAnalysis] Worker 分析失败: ${resp.error}`);
-        }
-        resolvePromise(null);
-      },
+          cleanup();
+          if (resp && resp.ok) {
+            resolvePromise(resp.result ?? null);
+            return;
+          }
+          if (resp && !resp.ok && resp.error) {
+            ipcLog.warn(`[AudioAnalysis] Worker 分析失败: ${resp.error}`);
+          }
+          resolvePromise(null);
+        },
       );
 
       worker.once("error", (err) => {
@@ -86,7 +89,11 @@ const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
       worker.postMessage({ ...payload, nativeModulePath });
     });
 
-    if (jobType === "analyzeHead" || jobType === "suggestTransition" || jobType === "suggestLongMix") {
+    if (
+      jobType === "analyzeHead" ||
+      jobType === "suggestTransition" ||
+      jobType === "suggestLongMix"
+    ) {
       ipcLog.info(`[AudioAnalysis] Worker 完成: ${jobType} (${result ? "ok" : "null"})`);
     }
     return result;
@@ -376,7 +383,8 @@ const initFileIpc = (): void => {
 
         for (const key of candidateKeys) {
           const cached = await localMusicService.getAnalysis(key);
-          if (!cached || cached.mtime !== fileStat.mtimeMs || cached.size !== fileStat.size) continue;
+          if (!cached || cached.mtime !== fileStat.mtimeMs || cached.size !== fileStat.size)
+            continue;
           try {
             const data = JSON.parse(cached.data);
             if (
