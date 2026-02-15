@@ -140,22 +140,17 @@ fn adaptive_snap_cut_out(
     confidence: f64,
     fade_out: f64,
 ) -> f64 {
-    let ideal_phrase_cut = snap_to_phrase(
-        raw_target,
-        bpm,
-        first_beat,
-        confidence,
-        16.0,
-        SnapMode::Ceil,
-    );
+    let safe_max = (fade_out - 0.5).max(0.0);
 
-    let snapped = if ideal_phrase_cut < (fade_out - 1.0) {
-        ideal_phrase_cut
-    } else {
-        snap_to_bar(raw_target, bpm, first_beat, confidence, SnapMode::Ceil)
-    };
+    let phrase_cut = snap_to_phrase(raw_target, bpm, first_beat, confidence, 16.0, SnapMode::Ceil);
+    let bar_cut_ceil = snap_to_bar(raw_target, bpm, first_beat, confidence, SnapMode::Ceil);
 
-    snapped.min(fade_out - 0.5).max(0.0)
+    let mut snapped = if phrase_cut <= safe_max { phrase_cut } else { bar_cut_ceil };
+    if snapped > safe_max {
+        snapped = snap_to_bar(raw_target, bpm, first_beat, confidence, SnapMode::Floor);
+    }
+
+    snapped.min(safe_max).max(0.0)
 }
 
 fn find_best_phrase_start(
@@ -945,94 +940,108 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
 
     // 6. Synthesize Smart Cut Points
 
-    // Cut Out Logic
-    let effective_end = fade_out;
-    let (scan_env, scan_ratio, scan_base_time, scan_search_start) = if !tail_envelope.is_empty()
-        && !tail_vocal_ratio.is_empty()
-    {
-        let tail_len_sec = tail_envelope.len().min(tail_vocal_ratio.len()) as f64 / env_rate;
-        (
-            &tail_envelope,
-            &tail_vocal_ratio,
-            (duration - tail_len_sec).max(0.0),
-            0usize,
-        )
+    let has_tail = !tail_envelope.is_empty() && !tail_vocal_ratio.is_empty();
+    let effective_end = if !has_tail && duration > max_time * 2.0 {
+        duration
     } else {
-        let len = head_envelope.len().min(head_vocal_ratio.len());
-        let start = (len as f64 * 0.7) as usize;
-        (
-            &head_envelope,
-            &head_vocal_ratio,
-            0.0,
-            start.min(len),
-        )
+        fade_out.min(duration).max(0.0)
     };
 
-    let scan_len = scan_env.len().min(scan_ratio.len());
-    let outro_start_time = if scan_len == 0 {
-        fade_in.min(effective_end)
+    let (vocal_check_env, vocal_check_ratio, vocal_check_base_time) = if has_tail {
+        let tail_len_sec = tail_envelope.len().min(tail_vocal_ratio.len()) as f64 / env_rate;
+        (&tail_envelope, &tail_vocal_ratio, (duration - tail_len_sec).max(0.0))
     } else {
-        let outro_window_sec = 8.0;
-        let window_frames = (outro_window_sec * env_rate) as usize;
-        let vocal_ratio_active = 0.12;
-        let vocal_rms_min = 0.008;
+        (&head_envelope, &head_vocal_ratio, 0.0)
+    };
 
-        let mut outro_start_idx = scan_search_start.min(scan_len);
+    let usable_vocal_out = if let (Some(v_out), Some(v_last_in)) = (vocal_out, vocal_last_in) {
+        if !has_tail && duration > max_time * 2.0 {
+            None
+        } else if has_tail && v_out < (duration - max_time - 1.0) {
+            None
+        } else if !(fade_in <= v_last_in && v_last_in <= v_out && v_out <= effective_end) {
+            None
+        } else {
+            let check_end = (v_out + 2.0).min(effective_end);
+            let check_start = v_out.min(check_end);
+            let len = vocal_check_env.len().min(vocal_check_ratio.len()) as isize;
+            let start_idx = (((check_start - vocal_check_base_time) * env_rate).floor() as isize)
+                .clamp(0, len);
+            let end_idx =
+                (((check_end - vocal_check_base_time) * env_rate).ceil() as isize).clamp(0, len);
 
-        if window_frames > 0 && scan_len > window_frames && outro_start_idx < scan_len {
-            let end = scan_len.saturating_sub(window_frames);
-            let search_start = scan_search_start.min(end);
-            for i in (search_start..=end).rev() {
-                let ratio_slice = &scan_ratio[i..i + window_frames];
-                let env_slice = &scan_env[i..i + window_frames];
+            let frames = (end_idx - start_idx).max(0) as usize;
+            let min_frames = (env_rate * 1.0) as usize;
+            if frames < min_frames || frames == 0 {
+                Some(v_out)
+            } else {
+                let mut non_vocal = 0usize;
+                for i in start_idx..end_idx {
+                    let idx = i as usize;
+                    if idx >= vocal_check_env.len() || idx >= vocal_check_ratio.len() {
+                        break;
+                    }
+                    if !is_vocal(vocal_check_env[idx], vocal_check_ratio[idx]) {
+                        non_vocal += 1;
+                    }
+                }
 
-                let avg_ratio =
-                    ratio_slice.iter().sum::<f32>() / window_frames.max(1) as f32;
-                let avg_rms = env_slice.iter().sum::<f32>() / window_frames.max(1) as f32;
-
-                if avg_rms >= vocal_rms_min && avg_ratio >= vocal_ratio_active {
-                    outro_start_idx = (i + window_frames).min(scan_len);
-                    break;
+                if (non_vocal as f64 / frames as f64) >= 0.8 {
+                    Some(v_out)
+                } else {
+                    None
                 }
             }
         }
-
-        (scan_base_time + outro_start_idx as f64 / env_rate)
-            .clamp(fade_in, effective_end.max(fade_in))
+    } else {
+        None
     };
 
-    let outro_duration = (effective_end - outro_start_time).max(0.0);
-
     let smart_cut_out = if let (Some(bpm_val), Some(f_beat)) = (bpm, first_beat) {
-        let beat_len = 60.0 / bpm_val;
-        let bar_len = beat_len * 4.0;
         let confidence = bpm_conf.unwrap_or(0.0);
-
-        let raw_cut = if outro_duration > 20.0 {
-            outro_start_time + (bar_len * 2.0)
-        } else if outro_duration > 10.0 {
-            outro_start_time + bar_len
+        let seconds_per_beat = 60.0 / bpm_val;
+        let seconds_per_bar = seconds_per_beat * 4.0;
+        if !seconds_per_bar.is_finite() || seconds_per_bar <= 0.0 {
+            None
         } else {
-            (effective_end - (bar_len * 2.0)).max(outro_start_time)
-        };
+            let target_outro_sec = 24.0;
+            let mut bars = (target_outro_sec / seconds_per_bar).round();
 
-        let cut = if outro_duration <= 10.0 {
-            snap_to_bar(raw_cut, bpm_val, f_beat, confidence, SnapMode::Floor)
-                .max(outro_start_time)
-                .min(effective_end - 0.5)
-                .max(0.0)
-        } else {
-            adaptive_snap_cut_out(raw_cut, bpm_val, f_beat, confidence, effective_end)
-        };
+            let min_bars_by_time = (15.0 / seconds_per_bar).ceil();
+            let max_bars_by_time = (40.0 / seconds_per_bar).floor();
+            let min_bars = 4.0f64.max(min_bars_by_time);
+            let max_bars = 32.0f64.min(max_bars_by_time);
 
+            if min_bars.is_finite() && max_bars.is_finite() && max_bars >= min_bars {
+                bars = bars.clamp(min_bars, max_bars);
+            } else {
+                bars = bars.clamp(4.0, 32.0);
+            }
+
+            let ideal_outro_len = (bars * seconds_per_bar).clamp(15.0, 40.0);
+
+            let raw_target = if let Some(v_out) = usable_vocal_out {
+                (v_out + ideal_outro_len).min(effective_end - 0.5).max(0.0)
+            } else {
+                let raw = (effective_end - seconds_per_bar * 4.0).max(fade_in + 30.0);
+                raw.min(effective_end - 0.5).max(0.0)
+            };
+
+            let mut cut = adaptive_snap_cut_out(raw_target, bpm_val, f_beat, confidence, effective_end);
+            if let Some(v_out) = usable_vocal_out {
+                cut = cut.max(v_out + 1.0);
+            }
+            Some(cut.min(effective_end).max(0.0))
+        }
+    } else if let Some(v_out) = usable_vocal_out {
+        let cut = (v_out + 20.0)
+            .min(effective_end - 0.5)
+            .max(v_out + 1.0)
+            .min(effective_end)
+            .max(0.0);
         Some(cut)
     } else {
-        let cut = if outro_duration > 15.0 {
-            outro_start_time + 5.0
-        } else {
-            (duration - 10.0).max(0.0)
-        };
-        Some(cut.min(effective_end - 0.5).max(0.0))
+        Some((effective_end - 5.0).max(0.0))
     };
 
     // Cut In Logic (Back-Calculation)
