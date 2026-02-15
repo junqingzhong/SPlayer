@@ -32,7 +32,7 @@ const resolveToolsNativeModulePath = () => {
 };
 
 const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
-  const worker = new Worker(new URL("../workers/audio-analysis.worker.js", import.meta.url), {
+  const worker = new Worker(new URL("./workers/audio-analysis.worker.js", import.meta.url), {
   });
 
   try {
