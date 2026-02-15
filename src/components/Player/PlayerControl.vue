@@ -117,8 +117,14 @@
           <div :class="['slider', { 'automix-active': showAutomixFx }]" @animationend="onFxAnimationEnd">
             <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
             <PlayerSlider :show-tooltip="false" />
-            <span @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
-            <div v-if="showAutomixFx" :key="automixFxKey" class="automix-fx-text">混音</div>
+            <div class="time-container">
+              <Transition name="fade" mode="out-in">
+                <span v-if="!showAutomixLabel" key="time" @click="toggleTimeFormat">{{
+                  timeDisplay[1]
+                }}</span>
+                <span v-else key="automix" class="automix-label">混音</span>
+              </Transition>
+            </div>
           </div>
         </div>
         <n-flex class="right" align="center" justify="end">
@@ -149,8 +155,8 @@ const player = usePlayerController();
 const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 
 const showAutomixFx = ref(false);
-const automixFxKey = ref(0);
 let automixFxTimer: number | null = null;
+const showAutomixLabel = ref(false);
 
 const triggerAutomixFx = async (seq: number) => {
   if (automixFxTimer !== null) {
@@ -158,9 +164,10 @@ const triggerAutomixFx = async (seq: number) => {
     automixFxTimer = null;
   }
   showAutomixFx.value = false;
-  automixFxKey.value = seq;
   await nextTick();
   showAutomixFx.value = true;
+  showAutomixLabel.value = true;
+  // 辉光动画时长 1.4s，但“混音”文字显示要持续到切歌后
   automixFxTimer = window.setTimeout(() => {
     showAutomixFx.value = false;
     automixFxTimer = null;
@@ -172,6 +179,18 @@ watch(
   (seq, prev) => {
     if (!seq || seq === prev) return;
     void triggerAutomixFx(seq);
+  },
+);
+
+// 监听歌曲变化，延迟关闭混音显示
+watch(
+  () => musicStore.playSong?.id,
+  (_newId, _oldId) => {
+    if (showAutomixLabel.value) {
+      setTimeout(() => {
+        showAutomixLabel.value = false;
+      }, 2000); // 切歌后保留 2 秒再淡出
+    }
   },
 );
 
@@ -321,9 +340,29 @@ onBeforeUnmount(() => {
         --n-handle-size: 12px;
         --n-rail-height: 4px;
       }
-      span {
-        opacity: 0.6;
-        cursor: pointer;
+      .time-container {
+        position: relative;
+        min-width: 40px;
+        height: 100%;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+
+        span {
+          position: absolute;
+          right: 0;
+          white-space: nowrap;
+          opacity: 0.6;
+          cursor: pointer;
+        }
+
+        .automix-label {
+          opacity: 1;
+          font-weight: 600;
+          color: rgba(var(--main-cover-color), 0.95);
+          text-shadow: 0 0 10px rgba(var(--main-cover-color), 0.55);
+          animation: text-pulse 2s infinite ease-in-out;
+        }
       }
     }
     .slider.automix-active {
@@ -343,22 +382,6 @@ onBeforeUnmount(() => {
         opacity: 0;
         clip-path: inset(0 100% 0 0);
         animation: automix-rail 1400ms ease-out forwards;
-      }
-      .automix-fx-text {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -160%);
-        text-align: center;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.2em;
-        color: rgba(var(--main-cover-color), 0.95);
-        filter: drop-shadow(0 0 10px rgba(var(--main-cover-color), 0.55));
-        opacity: 0;
-        clip-path: inset(0 100% 0 0);
-        animation: automix-text 1400ms ease-out forwards;
-        pointer-events: none;
       }
     }
   }
@@ -403,6 +426,15 @@ onBeforeUnmount(() => {
   100% {
     opacity: 0;
     clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes text-pulse {
+  0%,
+  100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
   }
 }
 </style>
