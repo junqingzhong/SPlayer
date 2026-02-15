@@ -778,7 +778,7 @@ class PlayerController {
     const duration = this.getDuration() / 1000;
     const fadeOut = currentAnalysis?.cut_out_pos || currentAnalysis?.fade_out_pos || duration;
 
-    // 默认混音时长 8s
+    // 默认混音时长 8s (作为最后兜底)
     let crossfadeDuration = 8;
     let initialRate = 1.0;
     let startSeek = 0;
@@ -788,11 +788,48 @@ class PlayerController {
 
     // 如果有下一首分析数据，进行智能计算
     if (nextAnalysis) {
-      const fadeIn = (nextAnalysis.fade_in_pos || 0) * 1000;
-      // 优先使用 cut_in_pos (跳过前奏)
-      const cutIn = (nextAnalysis.cut_in_pos || 0) * 1000;
-      // 这里的 cut_in_pos 已经是 Rust 根据倒推法计算好的最佳点位
-      startSeek = Math.max(fadeIn, cutIn);
+      const fadeIn = nextAnalysis.fade_in_pos || 0;
+
+      // 1. 确定锚点 (Target Anchor)
+      // 优先: Vocal In > Drop > Cut In > Fade In + 15
+      const targetAnchor =
+        nextAnalysis.vocal_in_pos ||
+        nextAnalysis.drop_pos ||
+        (nextAnalysis.cut_in_pos || fadeIn + 15);
+
+      // 2. 计算可用空间 (Available Space)
+      // Available Intro: 锚点到开头的距离
+      const availableIntro = Math.max(0, targetAnchor - fadeIn);
+
+      // Available Outro (Current Song): 结尾到 Exit 的距离
+      // Exit Point: Vocal Out > Cut Out > Fade Out - 15
+      const currentExit =
+        currentAnalysis?.vocal_out_pos ||
+        currentAnalysis?.cut_out_pos ||
+        (currentAnalysis?.fade_out_pos || duration) - 15;
+
+      const currentFadeOut =
+        currentAnalysis?.cut_out_pos || currentAnalysis?.fade_out_pos || duration;
+      const availableOutro = Math.max(0, currentFadeOut - currentExit);
+
+      // 3. 动态确定时长 (Dynamic Duration)
+      // 取交集，算多少混多少 (Min of Intro & Outro)
+      let calculatedDuration = Math.min(availableIntro, availableOutro);
+
+      // 保护: 最小 2s，防止瞬间切歌
+      crossfadeDuration = Math.max(2, calculatedDuration);
+
+      console.log(
+        `[Automix] Calculated Duration: ${crossfadeDuration.toFixed(2)}s (Intro: ${availableIntro.toFixed(2)}s, Outro: ${availableOutro.toFixed(2)}s)`,
+      );
+
+      // 4. 倒推起始点 (Back-Calculation)
+      const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
+      startSeek = Math.max(idealSeek, fadeIn * 1000);
+
+      console.log(
+        `[Automix] Anchor: ${targetAnchor.toFixed(2)}s -> Start: ${(startSeek / 1000).toFixed(2)}s`,
+      );
 
       // BPM Alignment & Bass Swap
       if (
@@ -832,37 +869,11 @@ class PlayerController {
           if (!harmonicOk) {
             initialRate = 1.0;
             mixType = "default";
-            crossfadeDuration = Math.min(crossfadeDuration, 6);
-            console.log("✨ [Automix] Key Clash: fallback to default mix");
+            // Key Clash: 保持动态时长，但放弃 BassSwap
+            console.log("✨ [Automix] Key Clash: fallback to default mix (duration kept)");
           } else {
             initialRate = ratio;
             mixType = "bassSwap";
-
-            // 计算可用空间
-            // Intro: 从切入点到人声开始/Drop 的距离
-            const nextVocalIn =
-              nextAnalysis.vocal_in_pos || nextAnalysis.drop_pos || cutIn / 1000 + 30;
-            const introLen = Math.max(0, nextVocalIn - cutIn / 1000);
-
-            // Outro: 从 Vocal Out 到 Cut Out 的距离 (近似)
-            const currentOutroStart = currentAnalysis.vocal_out_pos || duration - 30;
-            const outroLen = Math.max(0, fadeOut - currentOutroStart);
-
-            // 能量差异
-            let energyDiff = 0;
-            if (currentAnalysis.outro_energy_level && nextAnalysis.loudness) {
-              energyDiff = Math.abs(currentAnalysis.outro_energy_level - nextAnalysis.loudness);
-            }
-
-            // 智能计算时长 (基于下一首歌的 BPM，因为我们已经 Match 到了它)
-            crossfadeDuration = this.calculateSmartDuration(
-              bpmB,
-              introLen,
-              outroLen,
-              energyDiff,
-            );
-
-            // UI 切换通常在过渡的一半
             uiSwitchDelay = crossfadeDuration * 0.5;
 
             console.log(
@@ -873,32 +884,28 @@ class PlayerController {
           // BPM 差距大，放弃 Beat Match
           initialRate = 1.0;
           mixType = "default";
-          // 缩短混音时长
-          crossfadeDuration = Math.min(crossfadeDuration, 6);
         }
-      }
-
-      // Energy Flow Adjustment (Default Mix)
-      if (
-        mixType === "default" &&
-        currentAnalysis?.outro_energy_level &&
-        nextAnalysis.loudness
-      ) {
-        const diff = Math.abs(currentAnalysis.outro_energy_level - nextAnalysis.loudness);
-        if (diff > 6.0) crossfadeDuration = 4;
-        else if (diff < 3.0) crossfadeDuration = 12;
       }
     }
 
     // 约束：时长不能超过两首歌的有效长度的一半
     const currentFadeIn = currentAnalysis?.fade_in_pos || 0;
     const currentValid = fadeOut - currentFadeIn;
-    const nextDuration = (nextAnalysis?.duration || 180) - startSeek / 1000;
 
-    crossfadeDuration = Math.min(crossfadeDuration, currentValid / 2, nextDuration / 2);
-    // 最小 4s，最大 15s (如果是 bassSwap 可以长一点)
-    const maxDur = mixType === "bassSwap" ? 30 : 15;
-    crossfadeDuration = Math.max(4, Math.min(crossfadeDuration, maxDur));
+    // 物理极限保护
+    if (crossfadeDuration > currentValid / 2) {
+      crossfadeDuration = Math.max(2, currentValid / 2);
+      // 如果时长因保护而改变，重新计算 startSeek
+      if (nextAnalysis) {
+        const fadeIn = nextAnalysis.fade_in_pos || 0;
+        const targetAnchor =
+          nextAnalysis.vocal_in_pos ||
+          nextAnalysis.drop_pos ||
+          (nextAnalysis.cut_in_pos || fadeIn + 15);
+        const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
+        startSeek = Math.max(idealSeek, fadeIn * 1000);
+      }
+    }
 
     if (uiSwitchDelay === 0 || uiSwitchDelay > crossfadeDuration) {
       uiSwitchDelay = crossfadeDuration * 0.5;
