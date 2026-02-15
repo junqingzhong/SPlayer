@@ -822,9 +822,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     // 3. Drop/Chorus Detection (Energy Surge)
     let drop_pos = detect_drop_pos(&head_envelope, env_rate);
 
-    // 4. Smart Cut (Vocal / Activity)
-    // Heuristic: High Freq Ratio > 0.3 AND RMS > -40dB (-40dB = 0.01)
-    let is_vocal = |rms: f32, ratio: f32| -> bool { rms > 0.01 && ratio > 0.3 };
+    // 4. 智能切点（人声/活跃度）
+    // 人声判定：整体电平 + 人声频段占比
+    let is_vocal = |rms: f32, ratio: f32| -> bool { rms > 0.01 && ratio > 0.18 };
 
     // Detect Vocal In (in Head)
     let mut vocal_in = None;
@@ -1069,7 +1069,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         first_beat_pos: first_beat,
         loudness: Some(loudness),
         drop_pos,
-        version: 9,
+        version: 10,
         analyze_window: max_time,
         cut_in_pos: smart_cut_in,
         cut_out_pos: smart_cut_out,
