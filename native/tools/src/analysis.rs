@@ -167,6 +167,25 @@ impl LowPassFilter {
     }
 }
 
+struct VocalFilter {
+    lpf: LowPassFilter,
+    hpf: HighPassFilter,
+}
+
+impl VocalFilter {
+    fn new(sample_rate: u32) -> Self {
+        Self {
+            lpf: LowPassFilter::new(sample_rate, 3000.0),
+            hpf: HighPassFilter::new(sample_rate, 200.0),
+        }
+    }
+
+    fn process(&mut self, x: f32) -> f32 {
+        let low_cut = self.hpf.process(x);
+        self.lpf.process(low_cut)
+    }
+}
+
 // Biquad for K-weighting
 struct BiquadFilter {
     b0: f64,
@@ -362,12 +381,11 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
 
     let mut current_sum_sq = 0.0;
     let mut current_low_sum_sq = 0.0;
-    let mut current_high_sum_sq = 0.0;
+    let mut current_vocal_sum_sq = 0.0;
     let mut current_count = 0;
     let mut duration = 0.0;
 
-    // HPF for vocal detection (>300Hz)
-    let mut hpf = HighPassFilter::new(sample_rate, 300.0);
+    let mut vocal_filter = VocalFilter::new(sample_rate);
     let mut lpf = LowPassFilter::new(sample_rate, 150.0);
 
     // Loudness Meter
@@ -446,9 +464,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                                 // Reset filters/state
                                 current_sum_sq = 0.0;
                                 current_low_sum_sq = 0.0;
-                                current_high_sum_sq = 0.0;
+                                current_vocal_sum_sq = 0.0;
                                 current_count = 0;
-                                hpf = HighPassFilter::new(sample_rate, 300.0);
+                                vocal_filter = VocalFilter::new(sample_rate);
                                 lpf = LowPassFilter::new(sample_rate, 150.0);
                                 continue; // Next packet will be from seek point
                             }
@@ -501,25 +519,25 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             if phase == 0 && head_pcm.len() < key_max_samples {
                                 head_pcm.push(val);
                             }
-                            let high = hpf.process(val);
+                            let vocal = vocal_filter.process(val);
                             let low = lpf.process(val);
 
                             current_sum_sq += val * val;
                             current_low_sum_sq += low * low;
-                            current_high_sum_sq += high * high;
+                            current_vocal_sum_sq += vocal * vocal;
                             current_count += 1;
 
                             if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
                                 let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
                                 temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
                                 current_low_sum_sq = 0.0;
-                                current_high_sum_sq = 0.0;
+                                current_vocal_sum_sq = 0.0;
                                 current_count = 0;
                             }
                         }
@@ -539,23 +557,23 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             if phase == 0 && head_pcm.len() < key_max_samples {
                                 head_pcm.push(val);
                             }
-                            let high = hpf.process(val);
                             current_sum_sq += val * val;
+                            let vocal = vocal_filter.process(val);
                             let low = lpf.process(val);
                             current_low_sum_sq += low * low;
-                            current_high_sum_sq += high * high;
+                            current_vocal_sum_sq += vocal * vocal;
                             current_count += 1;
                             if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
                                 let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
                                 temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
                                 current_low_sum_sq = 0.0;
-                                current_high_sum_sq = 0.0;
+                                current_vocal_sum_sq = 0.0;
                                 current_count = 0;
                             }
                         }
@@ -575,23 +593,23 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             if phase == 0 && head_pcm.len() < key_max_samples {
                                 head_pcm.push(val);
                             }
-                            let high = hpf.process(val);
+                            let vocal = vocal_filter.process(val);
                             current_sum_sq += val * val;
                             let low = lpf.process(val);
                             current_low_sum_sq += low * low;
-                            current_high_sum_sq += high * high;
+                            current_vocal_sum_sq += vocal * vocal;
                             current_count += 1;
                             if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
                                 let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
                                 temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
                                 current_low_sum_sq = 0.0;
-                                current_high_sum_sq = 0.0;
+                                current_vocal_sum_sq = 0.0;
                                 current_count = 0;
                             }
                         }
@@ -611,23 +629,23 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             if phase == 0 && head_pcm.len() < key_max_samples {
                                 head_pcm.push(val);
                             }
-                            let high = hpf.process(val);
+                            let vocal = vocal_filter.process(val);
                             current_sum_sq += val * val;
                             let low = lpf.process(val);
                             current_low_sum_sq += low * low;
-                            current_high_sum_sq += high * high;
+                            current_vocal_sum_sq += vocal * vocal;
                             current_count += 1;
                             if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
                                 let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
                                 temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
                                 current_low_sum_sq = 0.0;
-                                current_high_sum_sq = 0.0;
+                                current_vocal_sum_sq = 0.0;
                                 current_count = 0;
                             }
                         }
@@ -647,23 +665,23 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             if phase == 0 && head_pcm.len() < key_max_samples {
                                 head_pcm.push(val);
                             }
-                            let high = hpf.process(val);
+                            let vocal = vocal_filter.process(val);
                             current_sum_sq += val * val;
                             let low = lpf.process(val);
                             current_low_sum_sq += low * low;
-                            current_high_sum_sq += high * high;
+                            current_vocal_sum_sq += vocal * vocal;
                             current_count += 1;
                             if current_count >= window_size {
                                 let rms = (current_sum_sq / window_size as f32).sqrt();
                                 let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
                                 temp_envelope.push(rms);
                                 temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
                                 temp_vocal.push(ratio);
                                 current_sum_sq = 0.0;
                                 current_low_sum_sq = 0.0;
-                                current_high_sum_sq = 0.0;
+                                current_vocal_sum_sq = 0.0;
                                 current_count = 0;
                             }
                         }
@@ -679,10 +697,10 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     if current_count > 0 {
         let rms = (current_sum_sq / window_size as f32).sqrt();
         let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-        let rms_high = (current_high_sum_sq / window_size as f32).sqrt();
+        let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
         temp_envelope.push(rms);
         temp_low_envelope.push(rms_low);
-        let ratio = if rms > 0.0001 { rms_high / rms } else { 0.0 };
+        let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
         temp_vocal.push(ratio);
     }
 
