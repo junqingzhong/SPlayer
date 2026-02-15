@@ -1061,7 +1061,11 @@ fn internal_analyze_impl(
 
     let (vocal_check_env, vocal_check_ratio, vocal_check_base_time) = if has_tail {
         let tail_len_sec = tail_envelope.len().min(tail_vocal_ratio.len()) as f64 / env_rate;
-        (&tail_envelope, &tail_vocal_ratio, (duration - tail_len_sec).max(0.0))
+        (
+            &tail_envelope,
+            &tail_vocal_ratio,
+            (duration - tail_len_sec).max(0.0),
+        )
     } else {
         (&head_envelope, &head_vocal_ratio, 0.0)
     };
@@ -1077,8 +1081,8 @@ fn internal_analyze_impl(
             let check_end = (v_out + 2.0).min(effective_end);
             let check_start = v_out.min(check_end);
             let len = vocal_check_env.len().min(vocal_check_ratio.len()) as isize;
-            let start_idx = (((check_start - vocal_check_base_time) * env_rate).floor() as isize)
-                .clamp(0, len);
+            let start_idx =
+                (((check_start - vocal_check_base_time) * env_rate).floor() as isize).clamp(0, len);
             let end_idx =
                 (((check_end - vocal_check_base_time) * env_rate).ceil() as isize).clamp(0, len);
 
@@ -1271,7 +1275,11 @@ fn internal_analyze_impl(
     let fade_out_pos = if include_tail { fade_out } else { duration };
     let vocal_out_pos = if include_tail { vocal_out } else { None };
     let vocal_last_in_pos = if include_tail { vocal_last_in } else { None };
-    let outro_energy_level = if include_tail { outro_energy_level } else { None };
+    let outro_energy_level = if include_tail {
+        outro_energy_level
+    } else {
+        None
+    };
     let cut_out_pos = if include_tail { smart_cut_out } else { None };
 
     Some(AudioAnalysis {
@@ -1308,7 +1316,10 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
 }
 
 #[napi]
-pub fn analyze_audio_file_head(path: String, max_analyze_time: Option<f64>) -> Option<AudioAnalysis> {
+pub fn analyze_audio_file_head(
+    path: String,
+    max_analyze_time: Option<f64>,
+) -> Option<AudioAnalysis> {
     internal_analyze_impl(&path, max_analyze_time, false)
 }
 
@@ -1372,9 +1383,10 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
             snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 16.0);
         // 如果 snap 导致时间回退太远 (超过 30s)，则说明 phrase 网格不合适，尝试更细的网格 (4 Bar)
         if cur_ideal_out - snapped_cur_start > 30.0 {
-            snapped_cur_start = snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 16.0);
+            snapped_cur_start =
+                snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 16.0);
             if cur_ideal_out - snapped_cur_start > 15.0 {
-                 snapped_cur_start = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
+                snapped_cur_start = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
             }
         }
         let remaining_len = current.duration - snapped_cur_start;
@@ -1458,43 +1470,44 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
 
     if !found_strategy {
         let next_safe_intro_len = next_landing_point - next_first_beat;
-        
+
         // [Refactor] Echo Out / Hard Cut 降级为最低优先级
         // 只要 BPM 兼容，无条件优先尝试 Aggressive Blend (Bass Swap)
         let mut aggressive_success = false;
-        
+
         if bpm_compatible {
-             // 尝试列表: 32 -> 16 -> 8 -> 4 -> 2
-             // 用户要求：直接长 Bass Swap / LPF，2bar 短混音也用 Bass Swap
-             let candidates = [32.0, 16.0, 8.0, 4.0, 2.0];
-             
-             for &bars in candidates.iter() {
-                  let target_dur = seconds_per_bar_a * bars;
-                  let cur_remaining = (current.duration - cur_ideal_out).max(0.0);
-                  
-                  // 只有当 Current 剩余足够长时才混
-                  // 宽松系数 0.8: 允许 Current 稍微不够一点，靠后续 Clamp
-                  if cur_remaining > target_dur * 0.8 {
-                       selected_duration = target_dur;
-                       selected_next_in = next_first_beat;
-                       selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
-                       
-                       strategy_name = format!("Aggressive Blend ({} Bars)", bars);
-                       // 4 Bar 用 Quick Fade，长得用 Bass Swap，2 Bar 也用 Bass Swap
-                       if bars == 4.0 {
-                           filter_strategy = "Quick Fade".to_string();
-                       } else {
-                           filter_strategy = "Bass Swap / LPF".to_string();
-                       }
-                       aggressive_success = true;
-                       break; 
-                  }
-             }
+            // 尝试列表: 32 -> 16 -> 8 -> 4 -> 2
+            // 用户要求：直接长 Bass Swap / LPF，2bar 短混音也用 Bass Swap
+            let candidates = [32.0, 16.0, 8.0, 4.0, 2.0];
+
+            for &bars in candidates.iter() {
+                let target_dur = seconds_per_bar_a * bars;
+                let cur_remaining = (current.duration - cur_ideal_out).max(0.0);
+
+                // 只有当 Current 剩余足够长时才混
+                // 宽松系数 0.8: 允许 Current 稍微不够一点，靠后续 Clamp
+                if cur_remaining > target_dur * 0.8 {
+                    selected_duration = target_dur;
+                    selected_next_in = next_first_beat;
+                    selected_cur_out =
+                        snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
+
+                    strategy_name = format!("Aggressive Blend ({} Bars)", bars);
+                    // 4 Bar 用 Quick Fade，长得用 Bass Swap，2 Bar 也用 Bass Swap
+                    if bars == 4.0 {
+                        filter_strategy = "Quick Fade".to_string();
+                    } else {
+                        filter_strategy = "Bass Swap / LPF".to_string();
+                    }
+                    aggressive_success = true;
+                    break;
+                }
+            }
         }
 
         if !aggressive_success {
             // Fallback 区域：BPM 不兼容 或 Current 实在太短
-            
+
             // 只有当 Intro 极短 (< 1 Beat) 时才 Hard Cut
             if next_safe_intro_len < seconds_per_bar_b * 0.25 {
                 selected_next_in = next_first_beat;
@@ -1505,29 +1518,31 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
             } else {
                 // Echo Out Logic (Lowest Priority Fallback)
                 selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
-                
+
                 // [优化] Echo Out 时长策略：
                 // 1. 如果有空间，尽量给足 4 小节 (Echo Out 需要时间衰减)
                 // 2. 至少给 1 小节，避免太快
                 // 3. 取 next_safe_intro_len 的限制
                 // 4. [Fix] 还要受限于 Current Track 剩余时长，避免被后续逻辑截断导致 Voice 不对齐
                 let ideal_echo_len = seconds_per_bar_a * 4.0;
-                
+
                 let cur_tail_len = (current.duration - selected_cur_out).max(0.0);
                 // 允许稍微超出一点 (1.5倍)，后续逻辑会处理宽松度，但这里先给一个合理的上限
-                let effective_max_len = next_safe_intro_len.min(cur_tail_len * 1.5); 
-                
-                selected_duration = effective_max_len.min(ideal_echo_len).max(seconds_per_bar_a * 1.0);
-                
+                let effective_max_len = next_safe_intro_len.min(cur_tail_len * 1.5);
+
+                selected_duration = effective_max_len
+                    .min(ideal_echo_len)
+                    .max(seconds_per_bar_a * 1.0);
+
                 // 安全检查：如果 next_safe_intro_len 真的很短
                 if selected_duration > next_safe_intro_len {
                     selected_duration = next_safe_intro_len;
                 }
-                
+
                 // [Fix] 智能对齐：让过渡结束点对齐 Voice Start
                 // 默认从头开始
                 selected_next_in = next_first_beat;
-                
+
                 // 如果 Intro 很长 (比如 7s) 但过渡很短 (比如 2.2s)，则跳过前段 Intro
                 // 使得 selected_next_in + selected_duration ≈ next_landing_point
                 if next_safe_intro_len > selected_duration + 0.5 {
@@ -1535,27 +1550,28 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
                     // 对齐到最近的 Beat
                     let sec_per_beat = 60.0 / bpm_b;
                     let beats = (ideal_start - next_first_beat) / sec_per_beat;
-                    
+
                     // [Fix] 使用 round() 找最近的 Beat，而不是 floor()，减少时间误差
                     // 并重新计算 duration 以精确对齐 Vocal
                     let snapped_beats = beats.round();
                     let aligned_start = next_first_beat + (snapped_beats * sec_per_beat);
-                    
+
                     selected_next_in = aligned_start.max(next_first_beat);
 
                     // [Fix] 重新计算 duration，以确保结束点精确对齐 Vocal (Fill the gap)
                     let new_duration = next_landing_point - selected_next_in;
-                    
+
                     // 安全检查：时长必须合理
                     let min_dur = seconds_per_bar_a * 0.5; // 至少半小节
-                    // 上限：允许稍微超过 ideal_echo_len，也允许稍微超过 cur_tail
-                    let max_dur = (ideal_echo_len + seconds_per_bar_a).min(cur_tail_len * 2.0 + 5.0); 
+                                                           // 上限：允许稍微超过 ideal_echo_len，也允许稍微超过 cur_tail
+                    let max_dur =
+                        (ideal_echo_len + seconds_per_bar_a).min(cur_tail_len * 2.0 + 5.0);
 
                     if new_duration >= min_dur && new_duration <= max_dur {
-                         selected_duration = new_duration;
+                        selected_duration = new_duration;
                     }
                 }
-                
+
                 strategy_name = "Echo Out Transition".to_string();
                 filter_strategy = "Echo Freeze".to_string();
             }
@@ -1573,11 +1589,13 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
         selected_next_in = next.first_beat_pos.unwrap_or(0.0).max(0.0);
     }
 
-    selected_cur_out = selected_cur_out.max(0.0).min((current.duration - 1.0).max(0.0));
+    selected_cur_out = selected_cur_out
+        .max(0.0)
+        .min((current.duration - 1.0).max(0.0));
 
     let cur_avail = (current.duration - selected_cur_out).max(0.0);
     let next_avail = (next.duration - selected_next_in).max(0.0);
-    
+
     // [优化] 如果空间不够，优先保持 selected_duration，哪怕稍微超出一点点 next_avail
     // 只有当超出很多时才裁剪
     if selected_duration > next_avail {
@@ -1586,19 +1604,19 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
             // Keep duration, but clamp next_in if possible? No, we need duration.
             // Do nothing, trust selected_duration.
         } else {
-             selected_duration = next_avail;
+            selected_duration = next_avail;
         }
     }
-    
+
     // 同理，如果 current 剩余时间不够，但差的不多，也允许混完
     if selected_duration > cur_avail {
-         if cur_avail > selected_duration * 0.6 {
-             // Keep
-         } else {
-             selected_duration = cur_avail;
-         }
+        if cur_avail > selected_duration * 0.6 {
+            // Keep
+        } else {
+            selected_duration = cur_avail;
+        }
     }
-    
+
     if !selected_duration.is_finite() || selected_duration <= 0.0 {
         return None;
     }
@@ -1984,19 +2002,19 @@ pub struct AdvancedTransition {
     pub start_time_current: f64,
     pub start_time_next: f64,
     pub duration: f64,
-    
+
     #[napi(js_name = "pitch_shift_semitones")]
     pub pitch_shift_semitones: i32,
-    
+
     #[napi(js_name = "playback_rate")]
     pub playback_rate: f64,
-    
+
     #[napi(js_name = "automation_current")]
     pub automation_current: Vec<AutomationPoint>,
-    
+
     #[napi(js_name = "automation_next")]
     pub automation_next: Vec<AutomationPoint>,
-    
+
     pub strategy: String,
 }
 
@@ -2018,7 +2036,7 @@ fn camelot_to_semitone(num: i32, mode: char) -> i32 {
         7 => 5,
         _ => 0, // Fallback
     };
-    
+
     if mode == 'A' {
         (base + 9) % 12
     } else {
@@ -2027,56 +2045,117 @@ fn camelot_to_semitone(num: i32, mode: char) -> i32 {
 }
 
 fn calc_key_distance(key_a: Option<&str>, key_b: Option<&str>) -> (i32, i32) {
-    let (Some(ka), Some(kb)) = (key_a, key_b) else { return (100, 0); }; 
-    let (Some((root_a, mode_a)), Some((root_b, mode_b))) = (parse_camelot(ka), parse_camelot(kb)) else { return (100, 0); }; 
+    let (Some(ka), Some(kb)) = (key_a, key_b) else {
+        return (100, 0);
+    };
+    let (Some((root_a, mode_a)), Some((root_b, mode_b))) = (parse_camelot(ka), parse_camelot(kb))
+    else {
+        return (100, 0);
+    };
 
-    if root_a == root_b && mode_a == mode_b { return (0, 0); } 
+    if root_a == root_b && mode_a == mode_b {
+        return (0, 0);
+    }
 
-    let diff = (root_a - root_b).abs(); 
-    let circle_dist = diff.min(12 - diff); 
-    
-    if circle_dist <= 1 && mode_a == mode_b { 
+    let diff = (root_a - root_b).abs();
+    let circle_dist = diff.min(12 - diff);
+
+    if circle_dist <= 1 && mode_a == mode_b {
         return (1, 0); // Neighbor
-    } 
-    
+    }
+
     // Calculate semitone shift
     let semi_a = camelot_to_semitone(root_a, mode_a);
     let semi_b = camelot_to_semitone(root_b, mode_b);
-    
+
     let mut shift = semi_a - semi_b;
-    
+
     // Normalize to -6 to +6
-    while shift > 6 { shift -= 12; }
-    while shift < -6 { shift += 12; }
-    
+    while shift > 6 {
+        shift -= 12;
+    }
+    while shift < -6 {
+        shift += 12;
+    }
+
     (circle_dist, shift)
 }
 
 fn generate_bass_swap_automation(duration: f64) -> (Vec<AutomationPoint>, Vec<AutomationPoint>) {
     let mut auto_a = Vec::new();
     let mut auto_b = Vec::new();
-    
+
     let mid_point = duration / 2.0;
-    
+
     // Start: A Full, B No Bass/Low Vol
-    auto_a.push(AutomationPoint { time_offset: 0.0, volume: 1.0, low_cut: 0.0, high_cut: 0.0 });
-    auto_b.push(AutomationPoint { time_offset: 0.0, volume: 0.8, low_cut: 1.0, high_cut: 0.0 });
+    auto_a.push(AutomationPoint {
+        time_offset: 0.0,
+        volume: 1.0,
+        low_cut: 0.0,
+        high_cut: 0.0,
+    });
+    auto_b.push(AutomationPoint {
+        time_offset: 0.0,
+        volume: 0.8,
+        low_cut: 1.0,
+        high_cut: 0.0,
+    });
 
     // Pre-Swap
-    auto_a.push(AutomationPoint { time_offset: mid_point - 2.0, volume: 1.0, low_cut: 0.0, high_cut: 0.0 });
-    auto_b.push(AutomationPoint { time_offset: mid_point - 2.0, volume: 1.0, low_cut: 1.0, high_cut: 0.0 });
+    auto_a.push(AutomationPoint {
+        time_offset: mid_point - 2.0,
+        volume: 1.0,
+        low_cut: 0.0,
+        high_cut: 0.0,
+    });
+    auto_b.push(AutomationPoint {
+        time_offset: mid_point - 2.0,
+        volume: 1.0,
+        low_cut: 1.0,
+        high_cut: 0.0,
+    });
 
     // Swap Point (X-Fade Bass)
-    auto_a.push(AutomationPoint { time_offset: mid_point, volume: 0.9, low_cut: 0.5, high_cut: 0.0 });
-    auto_b.push(AutomationPoint { time_offset: mid_point, volume: 0.9, low_cut: 0.5, high_cut: 0.0 });
+    auto_a.push(AutomationPoint {
+        time_offset: mid_point,
+        volume: 0.9,
+        low_cut: 0.5,
+        high_cut: 0.0,
+    });
+    auto_b.push(AutomationPoint {
+        time_offset: mid_point,
+        volume: 0.9,
+        low_cut: 0.5,
+        high_cut: 0.0,
+    });
 
     // Post-Swap
-    auto_a.push(AutomationPoint { time_offset: mid_point + 2.0, volume: 0.8, low_cut: 1.0, high_cut: 0.1 });
-    auto_b.push(AutomationPoint { time_offset: mid_point + 2.0, volume: 1.0, low_cut: 0.0, high_cut: 0.0 });
+    auto_a.push(AutomationPoint {
+        time_offset: mid_point + 2.0,
+        volume: 0.8,
+        low_cut: 1.0,
+        high_cut: 0.1,
+    });
+    auto_b.push(AutomationPoint {
+        time_offset: mid_point + 2.0,
+        volume: 1.0,
+        low_cut: 0.0,
+        high_cut: 0.0,
+    });
 
     // End
-    auto_a.push(AutomationPoint { time_offset: duration, volume: 0.0, low_cut: 1.0, high_cut: 1.0 });
-    auto_b.push(AutomationPoint { time_offset: duration, volume: 1.0, low_cut: 0.0, high_cut: 0.0 });
+    auto_a.push(AutomationPoint {
+        time_offset: duration,
+        volume: 0.0,
+        low_cut: 1.0,
+        high_cut: 1.0,
+    });
+    auto_b.push(AutomationPoint {
+        time_offset: duration,
+        volume: 1.0,
+        low_cut: 0.0,
+        high_cut: 0.0,
+    });
 
     (auto_a, auto_b)
 }
@@ -2096,7 +2175,7 @@ pub fn suggest_long_mix(current_path: String, next_path: String) -> Option<Advan
 
     // 3. 寻找长混音区间 (Long Blend)
     // 目标：至少 32 Bar (约 1 分钟 @ 128BPM)，甚至 64 Bar
-    
+
     let sec_per_bar = 240.0 / bpm_a;
     let target_bars = 32.0;
     let mix_duration = target_bars * sec_per_bar;
@@ -2105,14 +2184,20 @@ pub fn suggest_long_mix(current_path: String, next_path: String) -> Option<Advan
     // 我们希望 Current 播放到尽量后面，但在结束前留出 mix_duration
     let cur_end_anchor = current.duration - 5.0;
     // 对齐到 Bar
-    let cur_mix_end = snap_to_bar_floor(cur_end_anchor, bpm_a, current.first_beat_pos.unwrap_or(0.0), 0.8);
+    let cur_mix_end = snap_to_bar_floor(
+        cur_end_anchor,
+        bpm_a,
+        current.first_beat_pos.unwrap_or(0.0),
+        0.8,
+    );
     let cur_mix_start = cur_mix_end - mix_duration;
 
     // 锚点 B: Next 的 "Drop" 或 "Vocal In" 作为混音的结束点 (Energy Point)
     // 我们让 Current 的 Bass 在 Next 的 Drop 处彻底消失
     let next_anchor = next.drop_pos.or(next.vocal_in_pos).unwrap_or(30.0);
     // 对齐到 Bar
-    let next_mix_end = snap_to_bar_floor(next_anchor, bpm_b, next.first_beat_pos.unwrap_or(0.0), 0.8);
+    let next_mix_end =
+        snap_to_bar_floor(next_anchor, bpm_b, next.first_beat_pos.unwrap_or(0.0), 0.8);
     let next_mix_start = next_mix_end - (mix_duration / playback_rate); // 考虑变速后的时长
 
     // 如果 Next 的开头不够长 (Intro 短于 32 Bar)，我们必须切入更早
@@ -2123,7 +2208,7 @@ pub fn suggest_long_mix(current_path: String, next_path: String) -> Option<Advan
     } else {
         next_mix_start
     };
-    
+
     // 重新计算实际可能的混音时长
     let actual_duration = if next_mix_start < 0.0 {
         next_mix_end - final_next_start
