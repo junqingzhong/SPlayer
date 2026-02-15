@@ -296,7 +296,8 @@ class PlayerController {
         if (isAudioAnalysis(raw)) {
           analysis = raw;
         }
-      } catch (e) {
+      } catch (e: any) {
+        if (e.message === "EXPIRED") throw e;
         console.warn("[Automix] 分析失败:", e);
       }
     }
