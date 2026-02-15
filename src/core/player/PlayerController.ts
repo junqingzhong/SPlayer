@@ -1,4 +1,6 @@
 import { AudioErrorCode } from "@/core/audio-player/BaseAudioPlayer";
+import { AudioScheduler } from "@/core/audio-player/AudioScheduler";
+import { getSharedAudioContext } from "@/core/audio-player/SharedAudioContext";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import type { SongType } from "@/types/main";
 import type { RepeatModeType, ShuffleModeType } from "@/types/shared/play-mode";
@@ -42,6 +44,20 @@ interface AudioAnalysis {
   key_confidence?: number;
 }
 
+type AutomixState = "IDLE" | "MONITORING" | "SCHEDULED" | "TRANSITIONING" | "COOLDOWN";
+
+type AutomixPlan = {
+  token: number;
+  nextSong: SongType;
+  nextIndex: number;
+  triggerTime: number;
+  crossfadeDuration: number;
+  startSeek: number;
+  initialRate: number;
+  uiSwitchDelay: number;
+  mixType: "default" | "bassSwap";
+};
+
 /**
  * 播放器核心类
  * 职责：负责音频生命周期管理、与 AudioManager 交互、调度 Store
@@ -71,8 +87,6 @@ class PlayerController {
   private rateResetTimer: ReturnType<typeof setTimeout> | undefined;
   /** 速率渐变动画帧 */
   private rateRampFrame: number | undefined;
-  /** Automix 高频检测动画帧 */
-  private preciseCheckFrame: number | undefined;
 
   /** 下一首歌分析结果 (AutoMIX Cache) */
   private nextAnalysis: AudioAnalysis | null = null;
@@ -80,6 +94,12 @@ class PlayerController {
   private isFetchingNextAnalysis = false;
   /** Automix 增益调整 (LUFS Normalization) */
   private automixGain = 1.0;
+  private automixState: AutomixState = "IDLE";
+  private automixScheduler: AudioScheduler | null = null;
+  private automixScheduleGroupId: string | null = null;
+  private automixScheduledCtxTime: number | null = null;
+  private automixScheduledToken: number | null = null;
+  private automixScheduledNextId: number | string | null = null;
 
   constructor() {
     // 初始化 AudioManager（会根据设置自动选择引擎）
@@ -673,34 +693,177 @@ class PlayerController {
   }
 
   /**
-   * 启动 Automix 高频检测循环
+   * Automix 调度状态更新（非时间敏感）
    */
-  private startPreciseCheckLoop() {
-    const loop = () => {
-      const statusStore = useStatusStore();
-      const settingStore = useSettingStore();
-      const audioManager = useAudioManager();
+  private updateAutomixMonitoring(): void {
+    const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    const audioManager = useAudioManager();
 
-      // 停止条件
-      if (
-        this.isTransitioning ||
-        !statusStore.playStatus ||
-        !settingStore.enableAutomix ||
-        statusStore.personalFmMode
-      ) {
-        if (this.preciseCheckFrame) {
-          cancelAnimationFrame(this.preciseCheckFrame);
-          this.preciseCheckFrame = undefined;
-        }
-        return;
+    const shouldMonitor =
+      settingStore.enableAutomix &&
+      !statusStore.personalFmMode &&
+      statusStore.playStatus &&
+      !this.isTransitioning &&
+      audioManager.engineType !== "mpv";
+
+    if (!shouldMonitor) {
+      this.resetAutomixScheduling("IDLE");
+      this.stopAutomixScheduler();
+      return;
+    }
+
+    this.ensureAutomixScheduler();
+    if (this.automixState === "IDLE") {
+      this.automixState = "MONITORING";
+    }
+  }
+
+  private ensureAutomixScheduler(): void {
+    if (this.automixScheduler) return;
+    const audioContext = getSharedAudioContext();
+    this.automixScheduler = new AudioScheduler(audioContext);
+    this.automixScheduler.setTickHandler(() => this.onAutomixSchedulerTick());
+    this.automixScheduler.start();
+  }
+
+  private stopAutomixScheduler(): void {
+    if (!this.automixScheduler) return;
+    this.automixScheduler.setTickHandler(null);
+    this.automixScheduler.stop();
+    this.automixScheduler = null;
+  }
+
+  private resetAutomixScheduling(state: AutomixState): void {
+    if (this.automixScheduler && this.automixScheduleGroupId) {
+      this.automixScheduler.clearGroup(this.automixScheduleGroupId);
+    }
+    this.automixScheduleGroupId = null;
+    this.automixScheduledCtxTime = null;
+    this.automixScheduledToken = null;
+    this.automixScheduledNextId = null;
+    this.automixState = state;
+  }
+
+  private onAutomixSchedulerTick(): void {
+    if (!this.automixScheduler) return;
+
+    const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    const audioManager = useAudioManager();
+
+    if (
+      this.isTransitioning ||
+      !statusStore.playStatus ||
+      !settingStore.enableAutomix ||
+      statusStore.personalFmMode ||
+      audioManager.engineType === "mpv"
+    ) {
+      if (this.automixState !== "IDLE") {
+        this.resetAutomixScheduling("IDLE");
       }
+      return;
+    }
 
-      const rawTime = audioManager.currentTime;
-      this.checkAutomixTrigger(rawTime);
+    const duration = audioManager.duration;
+    if (!(duration > 0)) return;
 
-      this.preciseCheckFrame = requestAnimationFrame(loop);
-    };
-    this.preciseCheckFrame = requestAnimationFrame(loop);
+    const rawTime = audioManager.currentTime;
+    const remaining = duration - rawTime;
+
+    if (remaining > 30) {
+      if (this.automixState === "SCHEDULED") {
+        this.resetAutomixScheduling("MONITORING");
+      } else if (this.automixState === "IDLE") {
+        this.automixState = "MONITORING";
+      }
+      return;
+    }
+
+    if (this.automixState === "COOLDOWN") return;
+
+    this.maybeScheduleAutomix(rawTime);
+  }
+
+  private maybeScheduleAutomix(rawTime: number): void {
+    const scheduler = this.automixScheduler;
+    if (!scheduler) return;
+
+    const plan = this.computeAutomixPlan(rawTime);
+    if (!plan) return;
+
+    if (plan.triggerTime <= rawTime) {
+      this.beginAutomix(plan);
+      return;
+    }
+
+    const audioContext = getSharedAudioContext();
+    const ctxTriggerTime = audioContext.currentTime + (plan.triggerTime - rawTime);
+
+    if (
+      this.automixState === "SCHEDULED" &&
+      this.automixScheduledCtxTime !== null &&
+      this.automixScheduledToken === plan.token &&
+      this.automixScheduledNextId === plan.nextSong.id &&
+      Math.abs(this.automixScheduledCtxTime - ctxTriggerTime) < 0.1
+    ) {
+      return;
+    }
+
+    if (this.automixScheduleGroupId) {
+      scheduler.clearGroup(this.automixScheduleGroupId);
+    }
+
+    const groupId = scheduler.createGroupId("automix");
+    this.automixScheduleGroupId = groupId;
+    this.automixScheduledCtxTime = ctxTriggerTime;
+    this.automixScheduledToken = plan.token;
+    this.automixScheduledNextId = plan.nextSong.id;
+    this.automixState = "SCHEDULED";
+
+    scheduler.runAt(groupId, ctxTriggerTime, () => this.beginAutomix(plan));
+  }
+
+  private beginAutomix(plan: AutomixPlan): void {
+    const statusStore = useStatusStore();
+    const settingStore = useSettingStore();
+    const audioManager = useAudioManager();
+
+    if (
+      this.isTransitioning ||
+      !statusStore.playStatus ||
+      !settingStore.enableAutomix ||
+      statusStore.personalFmMode ||
+      audioManager.engineType === "mpv"
+    ) {
+      this.resetAutomixScheduling("IDLE");
+      return;
+    }
+
+    if (plan.token !== this.currentRequestToken) {
+      this.resetAutomixScheduling("MONITORING");
+      return;
+    }
+
+    if (this.automixScheduleGroupId && this.automixScheduler) {
+      this.automixScheduler.clearGroup(this.automixScheduleGroupId);
+    }
+    this.automixScheduleGroupId = null;
+    this.automixScheduledCtxTime = null;
+    this.automixScheduledToken = null;
+    this.automixScheduledNextId = null;
+
+    this.isTransitioning = true;
+    this.automixState = "TRANSITIONING";
+
+    void this.automixPlay(plan.nextSong, plan.nextIndex, {
+      autoPlay: true,
+      crossfadeDuration: plan.crossfadeDuration,
+      startSeek: plan.startSeek,
+      initialRate: plan.initialRate,
+      uiSwitchDelay: plan.uiSwitchDelay,
+      mixType: plan.mixType,
+    });
   }
 
   /**
@@ -747,12 +910,12 @@ class PlayerController {
   /**
    * 核心 Automix 触发检测逻辑 (每帧运行)
    */
-  private checkAutomixTrigger(rawTime: number) {
+  private computeAutomixPlan(rawTime: number): AutomixPlan | null {
     const settingStore = useSettingStore();
 
     // 1. 获取下一首歌
     const nextInfo = this.getNextSongForAutomix();
-    if (!nextInfo) return;
+    if (!nextInfo) return null;
 
     // 2. 尝试获取下一首歌的分析 (如果还没获取)
     if (!this.nextAnalysis && !this.isFetchingNextAnalysis) {
@@ -986,23 +1149,17 @@ class PlayerController {
       }
     }
 
-    if (rawTime >= triggerTime) {
-      console.log(
-        `🔀 [Automix] Triggered at ${rawTime.toFixed(2)}s (Target: ${triggerTime.toFixed(2)}s)`,
-      );
-      this.isTransitioning = true;
-      this.automixPlay(nextInfo.song, nextInfo.index, {
-        autoPlay: true,
-        crossfadeDuration,
-        startSeek,
-        initialRate,
-        uiSwitchDelay,
-        mixType,
-      }).catch((e) => {
-        console.error("❌ [Automix] Failed:", e);
-        this.isTransitioning = false;
-      });
-    }
+    return {
+      token: this.currentRequestToken,
+      nextSong: nextInfo.song,
+      nextIndex: nextInfo.index,
+      triggerTime,
+      crossfadeDuration,
+      startSeek,
+      initialRate,
+      uiSwitchDelay,
+      mixType,
+    };
   }
 
   /**
@@ -1087,6 +1244,7 @@ class PlayerController {
     // 暂停
     audioManager.addEventListener("pause", () => {
       statusStore.playStatus = false;
+      this.resetAutomixScheduling("IDLE");
       playerIpc.sendMediaPlayState("Paused");
       mediaSessionManager.updatePlaybackStatus(false);
       if (!isElectron) window.document.title = "SPlayer";
@@ -1098,8 +1256,13 @@ class PlayerController {
       console.log(`⏸️ [${musicStore.playSong?.id}] 歌曲暂停`);
     });
 
+    audioManager.addEventListener("seeking", () => {
+      this.resetAutomixScheduling("MONITORING");
+    });
+
     // 播放结束
     audioManager.addEventListener("ended", () => {
+      this.resetAutomixScheduling("IDLE");
       console.log(`⏹️ [${musicStore.playSong?.id}] 歌曲结束`);
       lastfmScrobbler.stop();
       // 检查定时关闭
@@ -1122,33 +1285,7 @@ class PlayerController {
       const currentTime = Math.floor(rawTime * 1000);
       const duration = Math.floor(audioManager.duration * 1000) || statusStore.duration;
 
-      // Automix 逻辑 (仅启动/停止高频检测)
-      if (
-        settingStore.enableAutomix &&
-        !this.isTransitioning &&
-        duration > 0 &&
-        !statusStore.personalFmMode &&
-        statusStore.playStatus
-      ) {
-        const remaining = duration / 1000 - rawTime;
-
-        // 提前预判窗口 (30s)
-        if (remaining < 30) {
-          if (!this.preciseCheckFrame) {
-            this.startPreciseCheckLoop();
-          }
-        } else {
-          if (this.preciseCheckFrame) {
-            cancelAnimationFrame(this.preciseCheckFrame);
-            this.preciseCheckFrame = undefined;
-          }
-        }
-      } else {
-        if (this.preciseCheckFrame) {
-          cancelAnimationFrame(this.preciseCheckFrame);
-          this.preciseCheckFrame = undefined;
-        }
-      }
+      this.updateAutomixMonitoring();
 
       // 计算歌词索引
       const songId = musicStore.playSong?.id;
@@ -1522,6 +1659,8 @@ class PlayerController {
           replayGain,
           onSwitch: () => {
             console.log("🔀 [Automix] Switching UI to new song");
+            this.isTransitioning = false;
+            this.automixState = "MONITORING";
             // 提交状态切换
             statusStore.playIndex = targetIndex;
             this.setupSongUI(targetSong, audioSource, options.startSeek);
@@ -1533,6 +1672,8 @@ class PlayerController {
     } catch (e) {
       console.error("Automix failed, fallback to normal play", e);
       if (requestToken === this.currentRequestToken) {
+        this.isTransitioning = false;
+        this.resetAutomixScheduling("IDLE");
         statusStore.playIndex = targetIndex;
         this.playSong({ autoPlay: true });
       }

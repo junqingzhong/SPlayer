@@ -9,13 +9,15 @@ export type AudioSchedulerOptions = {
   scheduleHorizonSec?: number;
 };
 
+type ScheduledJobKind = "schedule" | "run";
+
 type ScheduledJob = {
   id: string;
   groupId: string;
   time: number;
-  scheduled: boolean;
+  kind: ScheduledJobKind;
   cancelled: boolean;
-  schedule: (when: number) => void;
+  action: (when: number) => void;
   cleanup?: () => void;
 };
 
@@ -30,6 +32,7 @@ export class AudioScheduler {
   private idCounter = 0;
   private groupCounter = 0;
   private readonly jobs = new Map<string, ScheduledJob>();
+  private tickHandler: (() => void) | null = null;
 
   public constructor(
     private readonly audioContext: IExtendedAudioContext,
@@ -41,6 +44,10 @@ export class AudioScheduler {
 
   public getClockSource(): AudioSchedulerClockSource {
     return this.clockSource;
+  }
+
+  public setTickHandler(handler: (() => void) | null): void {
+    this.tickHandler = handler;
   }
 
   public start(): void {
@@ -87,7 +94,7 @@ export class AudioScheduler {
   public scheduleAt(
     groupId: string,
     time: number,
-    schedule: (when: number) => void,
+    action: (when: number) => void,
     cleanup?: () => void,
   ): string {
     this.idCounter += 1;
@@ -96,9 +103,29 @@ export class AudioScheduler {
       id,
       groupId,
       time,
-      schedule,
+      kind: "schedule",
+      action,
       cleanup,
-      scheduled: false,
+      cancelled: false,
+    });
+    return id;
+  }
+
+  public runAt(
+    groupId: string,
+    time: number,
+    action: (when: number) => void,
+    cleanup?: () => void,
+  ): string {
+    this.idCounter += 1;
+    const id = `${groupId}-${this.idCounter}`;
+    this.jobs.set(id, {
+      id,
+      groupId,
+      time,
+      kind: "run",
+      action,
+      cleanup,
       cancelled: false,
     });
     return id;
@@ -137,23 +164,31 @@ export class AudioScheduler {
   }
 
   private tick(): void {
+    this.tickHandler?.();
     const now = this.audioContext.currentTime;
     const horizon = now + this.scheduleHorizonSec;
 
     for (const job of this.jobs.values()) {
-      if (job.cancelled || job.scheduled) continue;
-      if (job.time > horizon) continue;
-
-      job.scheduled = true;
-      try {
-        job.schedule(job.time);
-      } catch {
-        this.cancelJob(job.id);
-        continue;
+      if (job.cancelled) continue;
+      if (job.kind === "schedule") {
+        if (job.time > horizon) continue;
+        try {
+          job.action(job.time);
+        } catch {
+          this.cancelJob(job.id);
+          continue;
+        }
+        this.jobs.delete(job.id);
+      } else if (job.kind === "run") {
+        if (job.time > now) continue;
+        try {
+          job.action(job.time);
+        } catch {
+          this.cancelJob(job.id);
+          continue;
+        }
+        this.jobs.delete(job.id);
       }
-
-      this.jobs.delete(job.id);
     }
   }
 }
-
