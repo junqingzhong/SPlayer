@@ -153,6 +153,27 @@ fn adaptive_snap_cut_out(
     snapped.min(safe_max).max(0.0)
 }
 
+fn snap_cut_out_floor(
+    raw_target: f64,
+    bpm: f64,
+    first_beat: f64,
+    confidence: f64,
+    max_pos: f64,
+) -> f64 {
+    let phrase_cut = snap_to_phrase(raw_target, bpm, first_beat, confidence, 16.0, SnapMode::Floor);
+    let mut snapped = if phrase_cut.is_finite() && phrase_cut <= max_pos {
+        phrase_cut
+    } else {
+        snap_to_bar(raw_target, bpm, first_beat, confidence, SnapMode::Floor)
+    };
+
+    if !snapped.is_finite() {
+        snapped = raw_target;
+    }
+
+    snapped.min(max_pos).max(0.0)
+}
+
 fn find_best_phrase_start(
     anchor: f64,
     bpm: f64,
@@ -997,51 +1018,61 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         None
     };
 
+    let vocal_guard_sec = 2.0;
+    let max_outro_keep_sec = 40.0;
+
+    let mut search_end = (effective_end - 0.5).max(0.0);
+    if let Some(v_out) = usable_vocal_out {
+        search_end = search_end.min(v_out + max_outro_keep_sec);
+    }
+
+    let search_start = if let Some(v_out) = usable_vocal_out {
+        (v_out + vocal_guard_sec).min(search_end)
+    } else {
+        (fade_in + 30.0).min(search_end)
+    };
+
     let smart_cut_out = if let (Some(bpm_val), Some(f_beat)) = (bpm, first_beat) {
         let confidence = bpm_conf.unwrap_or(0.0);
-        let seconds_per_beat = 60.0 / bpm_val;
-        let seconds_per_bar = seconds_per_beat * 4.0;
+        let seconds_per_bar = (60.0 / bpm_val) * 4.0;
         if !seconds_per_bar.is_finite() || seconds_per_bar <= 0.0 {
-            None
+            Some(search_end)
         } else {
-            let target_outro_sec = 24.0;
-            let mut bars = (target_outro_sec / seconds_per_bar).round();
+            let mut t = search_end;
+            let mut best = None;
+            for _ in 0..512 {
+                let cand = snap_cut_out_floor(t, bpm_val, f_beat, confidence, search_end);
+                if cand < search_start {
+                    break;
+                }
+                best = Some(cand);
 
-            let min_bars_by_time = (15.0 / seconds_per_bar).ceil();
-            let max_bars_by_time = (40.0 / seconds_per_bar).floor();
-            let min_bars = 4.0f64.max(min_bars_by_time);
-            let max_bars = 32.0f64.min(max_bars_by_time);
-
-            if min_bars.is_finite() && max_bars.is_finite() && max_bars >= min_bars {
-                bars = bars.clamp(min_bars, max_bars);
-            } else {
-                bars = bars.clamp(4.0, 32.0);
+                let step = seconds_per_bar * 0.25;
+                if !step.is_finite() || step <= 0.0 || cand <= 0.0 {
+                    break;
+                }
+                t = cand - step;
+                if t < 0.0 {
+                    break;
+                }
             }
 
-            let ideal_outro_len = (bars * seconds_per_bar).clamp(15.0, 40.0);
-
-            let raw_target = if let Some(v_out) = usable_vocal_out {
-                (v_out + ideal_outro_len).min(effective_end - 0.5).max(0.0)
-            } else {
-                let raw = (effective_end - seconds_per_bar * 4.0).max(fade_in + 30.0);
-                raw.min(effective_end - 0.5).max(0.0)
-            };
-
-            let mut cut = adaptive_snap_cut_out(raw_target, bpm_val, f_beat, confidence, effective_end);
+            let mut cut = best.unwrap_or(search_end);
             if let Some(v_out) = usable_vocal_out {
-                cut = cut.max(v_out + 1.0);
+                cut = cut.max(v_out + vocal_guard_sec);
             }
-            Some(cut.min(effective_end).max(0.0))
+            Some(cut.min(search_end).max(0.0))
         }
     } else if let Some(v_out) = usable_vocal_out {
-        let cut = (v_out + 20.0)
-            .min(effective_end - 0.5)
-            .max(v_out + 1.0)
-            .min(effective_end)
-            .max(0.0);
-        Some(cut)
+        Some(
+            (v_out + 20.0)
+                .min(search_end)
+                .max(v_out + vocal_guard_sec)
+                .min(search_end)
+                .max(0.0),
+        )
     } else {
-        Some((effective_end - 5.0).max(0.0))
+        Some(search_end)
     };
 
     // Cut In Logic (Back-Calculation)

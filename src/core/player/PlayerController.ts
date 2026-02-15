@@ -1338,19 +1338,18 @@ class PlayerController {
     // cut_out_pos 也是 Rust 计算好的吸附点
     let triggerTime = forcedTriggerTime ?? exitPoint - crossfadeDuration;
 
-    // 2. 尝试使用 vocal_last_in_pos 提前触发
-    if (forcedTriggerTime === null && currentAnalysis?.vocal_last_in_pos) {
-      const vocalTrigger = currentAnalysis.vocal_last_in_pos - preRoll;
-      if (vocalTrigger < triggerTime) {
-        triggerTime = vocalTrigger;
-        console.log(
-          `✨ [Automix] Smart Trigger: Aligning to Vocal Last In (${currentAnalysis.vocal_last_in_pos.toFixed(2)}s)`,
-        );
+    if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos !== undefined) {
+      const bpm = currentAnalysis?.bpm;
+      const vocalGuardSec = bpm ? Math.max(3.0, (60 / bpm) * 4) : 3.0;
+      const minTrigger = Math.min(
+        exitPoint - 2,
+        Math.max(currentFadeIn, currentAnalysis.vocal_out_pos + vocalGuardSec),
+      );
+      if (Number.isFinite(minTrigger) && triggerTime < minTrigger) {
+        triggerTime = minTrigger;
       }
-    } else if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos) {
-      const vocalOutTrigger = currentAnalysis.vocal_out_pos - crossfadeDuration - preRoll;
-      if (vocalOutTrigger < triggerTime && vocalOutTrigger > currentFadeIn) {
-        triggerTime = vocalOutTrigger;
+      if (triggerTime + crossfadeDuration > exitPoint) {
+        crossfadeDuration = Math.max(2, exitPoint - triggerTime);
       }
     }
 
