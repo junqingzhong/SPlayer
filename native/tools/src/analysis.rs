@@ -1462,7 +1462,18 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
             // Intro 在 1 Beat ~ 2 Bars 之间，尽量做 Echo Out 或 1 Bar 混音
             selected_next_in = next_first_beat;
             selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
-            selected_duration = next_safe_intro_len.min(seconds_per_bar_a * 4.0);
+            // [优化] Echo Out 时长策略：
+            // 1. 如果有空间，尽量给足 4 小节 (Echo Out 需要时间衰减)
+            // 2. 至少给 1 小节，避免太快
+            // 3. 取 next_safe_intro_len 的限制
+            let ideal_echo_len = seconds_per_bar_a * 4.0;
+            selected_duration = next_safe_intro_len.min(ideal_echo_len).max(seconds_per_bar_a * 1.0);
+            
+            // 安全检查：如果 next_safe_intro_len 真的很短，那也没办法
+            if selected_duration > next_safe_intro_len {
+                selected_duration = next_safe_intro_len;
+            }
+            
             strategy_name = "Echo Out Transition".to_string();
             filter_strategy = "Echo Freeze".to_string();
         }
