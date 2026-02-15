@@ -31,7 +31,7 @@
           <!-- 菜单 -->
           <PlayerMenu @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
           <!-- 全屏封面 -->
-          <PlayerCover v-if="settingStore.playerType === 'fullscreen' && !pureLyricMode" />
+          <PlayerCover v-if="showFullScreenCover" />
           <!-- 主内容 -->
           <Transition name="zoom" mode="out-in">
             <div
@@ -123,6 +123,11 @@ const noLrc = computed<boolean>(() => {
 /** 是否处于纯净模式 */
 const pureLyricMode = computed<boolean>(
   () => (statusStore.pureLyricMode && musicStore.isHasLrc) || musicStore.playSong.type === "radio",
+);
+
+/* 是否显示全屏封面 */
+const showFullScreenCover = computed<boolean>(
+  () => settingStore.playerType === "fullscreen" && !pureLyricMode.value && !isShowComment.value,
 );
 
 // 主内容 key
