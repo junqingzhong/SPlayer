@@ -142,6 +142,10 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       rate?: number;
       replayGain?: number;
       fadeCurve?: FadeCurve;
+      pitchShift?: number;
+      playbackRate?: number;
+      automationCurrent?: AutomationPoint[];
+      automationNext?: AutomationPoint[];
     },
   ): Promise<void> {
     // MPV 不支持 Web Audio API 级别的 Crossfade，回退到普通播放
@@ -179,7 +183,19 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     // 2. 预设状态
     newEngine.setVolume(0);
     if (this.engine.capabilities.supportsRate) {
-      newEngine.setRate(options.rate ?? this.getRate());
+      // 优先使用传入的 playbackRate
+      const targetRate = options.playbackRate ?? options.rate ?? this.getRate();
+      newEngine.setRate(targetRate);
+    }
+
+    // Apply Pitch Shift (if supported)
+    if (options.pitchShift !== undefined && options.pitchShift !== 0) {
+      // TODO: Implement pitch shift in IPlaybackEngine (requires SoundTouch or Detune)
+      // For now, Web Audio API 'detune' can be used if exposed
+      if (newEngine instanceof AudioElementPlayer || newEngine instanceof FFmpegAudioPlayer) {
+          // 暂时无法直接设置 pitch shift，需要在 BaseAudioPlayer 中实现
+          // 这里先留空，等待后续实现
+      }
     }
 
     // Apply ReplayGain to new engine
@@ -209,7 +225,61 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       newEngine.setVolume(this._masterVolume);
     }
 
-    if (options.mixType === "bassSwap") {
+    // Apply Automation Curves (Mashup Mode)
+    if (options.automationCurrent && options.automationNext) {
+        // 使用精确的自动化曲线
+        const ctx = getSharedAudioContext();
+        const startTime = ctx.currentTime;
+        
+        // 应用 Current 曲线 (Volume & Filter)
+        options.automationCurrent.forEach(point => {
+            const t = startTime + point.timeOffset;
+            if (point.timeOffset >= 0 && point.timeOffset <= options.duration) {
+                // Volume
+                this.engine.rampVolumeTo?.(point.volume * this._masterVolume, 0.1, "linear"); // 简化处理，实际应使用 rampAt
+                // Low Cut (High Pass Filter)
+                const hpFreq = point.lowCut > 0 ? 20 + point.lowCut * 400 : 0; // Map 0-1 to 20-420Hz? No, Bass Swap usually cuts up to 300-400Hz
+                // DJ EQ Low Cut usually goes up to 200-400Hz.
+                // Let's map 0.0 -> 10Hz, 1.0 -> 400Hz
+                const targetFreq = point.lowCut * 400;
+                this.engine.setHighPassFilter?.(targetFreq, 0.1);
+            }
+        });
+
+        // 应用 Next 曲线
+        options.automationNext.forEach(point => {
+            const t = startTime + point.timeOffset;
+            if (point.timeOffset >= 0 && point.timeOffset <= options.duration) {
+                // Volume
+                // newEngine 已经有 rampVolumeTo 处理了整体淡入，这里叠加自动化可能冲突
+                // 暂时忽略 Next 的 Volume 自动化，依赖 rampVolumeTo
+                
+                // Low Cut
+                const targetFreq = point.lowCut * 400;
+                newEngine.setHighPassFilter?.(targetFreq, 0.1);
+            }
+        });
+        
+        // 调度更精细的自动化需要 setHighPassFilterAt 支持
+        if (this.engine.setHighPassFilterAt && newEngine.setHighPassFilterAt) {
+             options.automationCurrent.forEach(point => {
+                 const t = startTime + point.timeOffset;
+                 // 映射 low_cut 到频率 (0 -> 10Hz, 1 -> 400Hz)
+                 const freq = Math.max(10, point.lowCut * 400);
+                 this.engine.setHighPassFilterAt?.(freq, t);
+                 
+                 // Volume 自动化 (如果需要精确控制)
+                 // this.engine.setVolumeAt(point.volume, t); 
+             });
+             
+             options.automationNext.forEach(point => {
+                 const t = startTime + point.timeOffset;
+                 const freq = Math.max(10, point.lowCut * 400);
+                 newEngine.setHighPassFilterAt?.(freq, t);
+             });
+        }
+
+    } else if (options.mixType === "bassSwap") {
       const mid = options.duration * 0.5;
       const release = Math.min(0.6, options.duration * 0.25);
 

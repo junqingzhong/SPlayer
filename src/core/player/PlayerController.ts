@@ -60,6 +60,32 @@ interface TransitionProposal {
   bpm_compatible: boolean;
 }
 
+interface AdvancedTransition {
+  start_time_current: number;
+  start_time_next: number;
+  duration: number;
+  pitch_shift_semitones: number;
+  playback_rate: number;
+  automation_current: AutomationPoint[];
+  automation_next: AutomationPoint[];
+  strategy: string;
+}
+
+const isAdvancedTransition = (value: unknown): value is AdvancedTransition => {
+  if (!value || typeof value !== "object") return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    typeof obj.start_time_current === "number" &&
+    typeof obj.start_time_next === "number" &&
+    typeof obj.duration === "number" &&
+    typeof obj.pitch_shift_semitones === "number" &&
+    typeof obj.playback_rate === "number" &&
+    Array.isArray(obj.automation_current) &&
+    Array.isArray(obj.automation_next) &&
+    typeof obj.strategy === "string"
+  );
+};
+
 type AutomixState = "IDLE" | "MONITORING" | "SCHEDULED" | "TRANSITIONING" | "COOLDOWN";
 
 type AutomixPlan = {
@@ -72,7 +98,18 @@ type AutomixPlan = {
   initialRate: number;
   uiSwitchDelay: number;
   mixType: "default" | "bassSwap";
+  pitchShift: number;
+  playbackRate: number;
+  automationCurrent: AutomationPoint[];
+  automationNext: AutomationPoint[];
 };
+
+interface AutomationPoint {
+  timeOffset: number;
+  volume: number;
+  lowCut: number;
+  highCut: number;
+}
 
 const isAudioAnalysis = (value: unknown): value is AudioAnalysis => {
   if (!value || typeof value !== "object") return false;
@@ -136,6 +173,7 @@ class PlayerController {
   private nextTransitionKey: string | null = null;
   private nextTransitionInFlight: Promise<void> | null = null;
   private nextTransitionProposal: TransitionProposal | null = null;
+  private nextAdvancedTransition: AdvancedTransition | null = null;
   /** Automix 增益调整 (LUFS Normalization) */
   private automixGain = 1.0;
   private automixState: AutomixState = "IDLE";
@@ -568,6 +606,10 @@ class PlayerController {
       onSwitch?: () => void;
       deferStateSync?: boolean;
       mixType?: "default" | "bassSwap";
+      pitchShift?: number;
+      playbackRate?: number;
+      automationCurrent?: AutomationPoint[];
+      automationNext?: AutomationPoint[];
       replayGain?: number;
     },
     initialRate: number = 1.0,
@@ -648,6 +690,10 @@ class PlayerController {
           uiSwitchDelay: crossfadeOptions.uiSwitchDelay,
           onSwitch: wrappedOnSwitch,
           mixType: crossfadeOptions.mixType,
+          pitchShift: crossfadeOptions.pitchShift,
+          playbackRate: crossfadeOptions.playbackRate,
+          automationCurrent: crossfadeOptions.automationCurrent,
+          automationNext: crossfadeOptions.automationNext,
           rate: audioManager.capabilities.supportsRate
             ? statusStore.playRate * initialRate
             : undefined,
@@ -977,6 +1023,10 @@ class PlayerController {
       initialRate: plan.initialRate,
       uiSwitchDelay: plan.uiSwitchDelay,
       mixType: plan.mixType,
+      pitchShift: plan.pitchShift,
+      playbackRate: plan.playbackRate,
+      automationCurrent: plan.automationCurrent,
+      automationNext: plan.automationNext
     });
   }
 
@@ -1061,16 +1111,22 @@ class PlayerController {
     if (this.nextTransitionKey !== transitionKey) {
       this.nextTransitionKey = transitionKey;
       this.nextTransitionProposal = null;
+      this.nextAdvancedTransition = null;
       this.nextTransitionInFlight = null;
     }
 
-    if (!this.nextTransitionProposal && !this.nextTransitionInFlight) {
-      this.nextTransitionInFlight = window.electron.ipcRenderer
-        .invoke("suggest-transition", currentPath, nextKey)
-        .then((raw) => {
+    if (!this.nextTransitionProposal && !this.nextAdvancedTransition && !this.nextTransitionInFlight) {
+      this.nextTransitionInFlight = Promise.all([
+        window.electron.ipcRenderer.invoke("suggest-transition", currentPath, nextKey),
+        window.electron.ipcRenderer.invoke("suggest-long-mix", currentPath, nextKey)
+      ])
+        .then(([raw, rawLong]) => {
           if (this.nextTransitionKey !== transitionKey) return;
           if (isTransitionProposal(raw)) {
             this.nextTransitionProposal = raw;
+          }
+          if (isAdvancedTransition(rawLong)) {
+            this.nextAdvancedTransition = rawLong;
           }
         })
         .catch((e) => {
@@ -1147,6 +1203,10 @@ class PlayerController {
     let startSeek = 0;
     let uiSwitchDelay = 0;
     let mixType: "default" | "bassSwap" = "default";
+    let pitchShift = 0;
+    let playbackRate = 1.0;
+    let automationCurrent: AutomationPoint[] = [];
+    let automationNext: AutomationPoint[] = [];
     // const _preRoll = 2.0; // 提前量
     let phraseBars: number | null = null;
     let forcedTriggerTime: number | null = null;
@@ -1158,6 +1218,55 @@ class PlayerController {
     const transitionKey = currentPath && nextPath ? `${currentPath}>>${nextPath}` : null;
     const transition =
       transitionKey && this.nextTransitionKey === transitionKey ? this.nextTransitionProposal : null;
+    const advancedTransition =
+      transitionKey && this.nextTransitionKey === transitionKey ? this.nextAdvancedTransition : null;
+
+    // 优先使用 Advanced Transition (Mashup Mode)
+    if (advancedTransition) {
+        // Advanced Transition 的逻辑非常明确，直接使用
+        const triggerTime = advancedTransition.start_time_current;
+        crossfadeDuration = advancedTransition.duration;
+        startSeek = advancedTransition.start_time_next * 1000;
+        pitchShift = advancedTransition.pitch_shift_semitones;
+        playbackRate = advancedTransition.playback_rate;
+        automationCurrent = advancedTransition.automation_current;
+        automationNext = advancedTransition.automation_next;
+        mixType = advancedTransition.strategy.includes("Bass Swap") ? "bassSwap" : "default";
+        
+        // 修正 initialRate 用于 UI 显示和后续 audioManager.setRate
+        initialRate = playbackRate;
+
+        // 设置 UI 切换延迟为一半时长
+        uiSwitchDelay = crossfadeDuration * 0.5;
+
+        this.automixLog(
+            "log",
+            `mashup_proposal:${Math.round(crossfadeDuration * 10)}:${mixType}`,
+            `[Automix Mashup] 混音策略：${advancedTransition.strategy}
+             触发时间：${this.formatAutomixTime(triggerTime)}
+             切入点：${this.formatAutomixTime(startSeek / 1000)}
+             时长：${crossfadeDuration.toFixed(1)}s
+             变速：${playbackRate.toFixed(4)}
+             变调：${pitchShift} Semitones`,
+            15000
+        );
+
+        return {
+            token: this.currentRequestToken,
+            nextSong: nextInfo.song,
+            nextIndex: nextInfo.index,
+            triggerTime,
+            crossfadeDuration,
+            startSeek,
+            initialRate,
+            uiSwitchDelay,
+            mixType,
+            pitchShift,
+            playbackRate,
+            automationCurrent,
+            automationNext
+        };
+    }
 
     if (transition) {
       const proposedDuration = transition.duration;
@@ -1620,6 +1729,10 @@ class PlayerController {
       initialRate,
       uiSwitchDelay,
       mixType,
+      pitchShift,
+      playbackRate,
+      automationCurrent,
+      automationNext
     };
   }
 
@@ -2064,6 +2177,10 @@ class PlayerController {
       initialRate: number;
       uiSwitchDelay?: number;
       mixType?: "default" | "bassSwap";
+      pitchShift?: number;
+      playbackRate?: number;
+      automationCurrent?: AutomationPoint[];
+      automationNext?: AutomationPoint[];
     },
   ) {
     const statusStore = useStatusStore();
@@ -2117,6 +2234,10 @@ class PlayerController {
           duration: options.crossfadeDuration,
           uiSwitchDelay,
           mixType: options.mixType,
+          pitchShift: options.pitchShift,
+          playbackRate: options.playbackRate,
+          automationCurrent: options.automationCurrent,
+          automationNext: options.automationNext,
           replayGain,
           deferStateSync: true,
           onSwitch: () => {
