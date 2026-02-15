@@ -840,6 +840,17 @@ export const useLyricSettings = (): SettingConfig => {
             suffix: "%",
           },
           {
+            key: "taskbarLyricMinWidth",
+            label: "最小宽度",
+            type: "slider",
+            description: "任务栏歌词可用空间低于此比例时自动隐藏",
+            min: 0,
+            max: 50,
+            step: 1,
+            value: toRef(settingStore, "taskbarLyricMinWidth"),
+            suffix: "%",
+          },
+          {
             key: "taskbarLyricMargin",
             label: "歌词边距",
             type: "input-number",

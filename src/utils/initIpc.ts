@@ -99,6 +99,7 @@ const initIpc = () => {
         position: settingStore.taskbarLyricPosition,
         autoShrink: settingStore.taskbarLyricAutoShrink,
         margin: settingStore.taskbarLyricMargin,
+        minWidth: settingStore.taskbarLyricMinWidth,
 
         // 行为
         enabled: statusStore.showTaskbarLyric,

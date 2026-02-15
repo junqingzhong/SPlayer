@@ -265,7 +265,10 @@ class TaskbarLyricWindow {
       const MAX_WIDTH_PHYSICAL = autoShrink
         ? Math.min(maxWidthSetting, this.contentWidth) * scaleFactor
         : maxWidthSetting * scaleFactor;
-      const MIN_WIDTH_PHYSICAL = 50 * scaleFactor;
+      const minWidthPercent = Math.min(Math.max(store.get("taskbar.minWidth", 5), 0), 50);
+      const MIN_WIDTH_PHYSICAL = Math.round(
+        (primaryDisplay.workAreaSize.width * minWidthPercent) / 100,
+      ) * scaleFactor;
 
       let targetBounds: Electron.Rectangle = {
         x: 0,
@@ -337,7 +340,7 @@ class TaskbarLyricWindow {
 
         // processLog.info(finalPhysicalWidth, finalPhysicalX);
 
-        if (finalPhysicalWidth < MIN_WIDTH_PHYSICAL) {
+        if (finalPhysicalWidth <= 0) {
           processLog.warn("[TaskbarLyric] 无可用空间");
           this.win.hide();
           return;
@@ -361,6 +364,11 @@ class TaskbarLyricWindow {
       };
 
       // processLog.info(JSON.stringify(finalBounds));
+
+      // 空间恢复后自动重新显示
+      if (this.shouldBeVisible && !this.win.isVisible()) {
+        this.win.show();
+      }
 
       if (this.useAnimation) {
         this.animateToBounds(finalBounds);

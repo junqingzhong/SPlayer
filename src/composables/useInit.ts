@@ -86,6 +86,7 @@ export const useInit = () => {
           settingStore.taskbarLyricPosition,
           settingStore.taskbarLyricAutoShrink,
           settingStore.taskbarLyricMargin,
+          settingStore.taskbarLyricMinWidth,
         ],
         () => {
           updateTaskbarConfig({
@@ -93,6 +94,7 @@ export const useInit = () => {
             position: settingStore.taskbarLyricPosition,
             autoShrink: settingStore.taskbarLyricAutoShrink,
             margin: settingStore.taskbarLyricMargin,
+            minWidth: settingStore.taskbarLyricMinWidth,
           });
         },
       );
