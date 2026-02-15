@@ -869,6 +869,7 @@ class PlayerController {
     this.automixScheduledToken = null;
     this.automixScheduledNextId = null;
 
+    statusStore.triggerAutomixFx();
     this.isTransitioning = true;
     this.automixState = "TRANSITIONING";
 

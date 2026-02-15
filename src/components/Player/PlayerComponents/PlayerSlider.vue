@@ -1,17 +1,27 @@
 <template>
-  <n-slider
-    v-model:value="sliderProgress"
-    :key="musicStore.playSong?.id"
-    :step="0.01"
-    :min="0"
-    :max="statusStore.duration"
-    :keyboard="false"
-    :format-tooltip="formatTooltip"
-    :tooltip="settingStore.progressTooltipShow && showTooltip"
-    :class="['player-slider', { drag: isDragging }]"
-    @dragstart="startDrag"
-    @dragend="endDrag"
-  />
+  <div class="player-slider-container">
+    <n-slider
+      v-model:value="sliderProgress"
+      :key="musicStore.playSong?.id"
+      :step="0.01"
+      :min="0"
+      :max="statusStore.duration"
+      :keyboard="false"
+      :format-tooltip="formatTooltip"
+      :tooltip="settingStore.progressTooltipShow && props.showTooltip"
+      :class="['player-slider', { drag: isDragging }]"
+      @dragstart="startDrag"
+      @dragend="endDrag"
+    />
+    <div v-if="showAutomixFx" :key="automixFxKey" class="automix-fx-layer">
+      <div class="automix-fx-bar">
+        <div class="automix-fx-bar__fill"></div>
+      </div>
+      <div v-if="props.automixFxText" class="automix-fx-text">
+        {{ props.automixFxText }}
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -20,13 +30,55 @@ import { msToTime } from "@/utils/time";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { LyricLine } from "@applemusic-like-lyrics/lyric";
 
-withDefaults(defineProps<{ showTooltip?: boolean }>(), { showTooltip: true });
+const props = withDefaults(
+  defineProps<{ showTooltip?: boolean; automixFxSeq?: number; automixFxText?: string }>(),
+  {
+    showTooltip: true,
+    automixFxSeq: 0,
+    automixFxText: "混音",
+  },
+);
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
 
 const player = usePlayerController();
+
+const showAutomixFx = ref(false);
+const automixFxKey = ref(0);
+let automixFxTimer: number | null = null;
+
+const triggerAutomixFx = async (seq: number) => {
+  if (automixFxTimer !== null) {
+    window.clearTimeout(automixFxTimer);
+    automixFxTimer = null;
+  }
+
+  showAutomixFx.value = false;
+  automixFxKey.value = seq;
+  await nextTick();
+  showAutomixFx.value = true;
+  automixFxTimer = window.setTimeout(() => {
+    showAutomixFx.value = false;
+    automixFxTimer = null;
+  }, 1400);
+};
+
+watch(
+  () => props.automixFxSeq,
+  (seq, prev) => {
+    if (!seq || seq === prev) return;
+    void triggerAutomixFx(seq);
+  },
+);
+
+onBeforeUnmount(() => {
+  if (automixFxTimer !== null) {
+    window.clearTimeout(automixFxTimer);
+    automixFxTimer = null;
+  }
+});
 
 // 拖动时的临时值
 const dragValue = ref(0);
@@ -144,6 +196,94 @@ const formatTooltip = (value: number) => {
 </script>
 
 <style scoped lang="scss">
+.player-slider-container {
+  position: relative;
+  width: 100%;
+}
+
+.automix-fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.automix-fx-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.automix-fx-bar__fill {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(var(--main-cover-color), 0.18);
+  box-shadow:
+    0 0 14px rgba(var(--main-cover-color), 0.65),
+    0 0 28px rgba(var(--main-cover-color), 0.28);
+  transform-origin: left center;
+  transform: scaleX(0);
+  opacity: 0;
+  animation: automix-bar 1400ms ease-out forwards;
+}
+
+.automix-fx-text {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-160%);
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: rgba(var(--main-cover-color), 0.95);
+  filter: drop-shadow(0 0 10px rgba(var(--main-cover-color), 0.55));
+  opacity: 0;
+  clip-path: inset(0 100% 0 0);
+  animation: automix-text 1400ms ease-out forwards;
+}
+
+@keyframes automix-bar {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+@keyframes automix-text {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  22% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
 .player-slider {
   width: 100%;
   &:not(.drag) {

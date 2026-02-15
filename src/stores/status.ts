@@ -163,6 +163,7 @@ interface StatusState {
   };
   /** 侧边栏歌单显示模式 */
   playlistMode: "online" | "local";
+  automixFxSeq: number;
 }
 
 export const useStatusStore = defineStore("status", {
@@ -244,6 +245,7 @@ export const useStatusStore = defineStore("status", {
       pointB: null,
     },
     playlistMode: "online",
+    automixFxSeq: 0,
   }),
   getters: {
     // 播放音量图标
@@ -301,6 +303,9 @@ export const useStatusStore = defineStore("status", {
     },
   },
   actions: {
+    triggerAutomixFx() {
+      this.automixFxSeq += 1;
+    },
     /**
      * 获取指定歌曲的偏移
      * 单位：毫秒

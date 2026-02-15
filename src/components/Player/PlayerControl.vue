@@ -116,7 +116,11 @@
           <!-- 进度条 -->
           <div class="slider">
             <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
-            <PlayerSlider :show-tooltip="false" />
+            <PlayerSlider
+              :show-tooltip="false"
+              :automix-fx-seq="statusStore.automixFxSeq"
+              automix-fx-text="混音"
+            />
             <span @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
           </div>
         </div>
