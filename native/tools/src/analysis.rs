@@ -79,27 +79,6 @@ pub struct TransitionProposal {
     pub bpm_compatible: bool,
 }
 
-fn get_avg_energy(profile: &[f64], start_sec: f64, duration_sec: f64, rate: f64) -> f64 {
-    if profile.is_empty() || !rate.is_finite() || rate <= 0.0 {
-        return 0.0;
-    }
-    if !start_sec.is_finite() || !duration_sec.is_finite() {
-        return 0.0;
-    }
-    let start_sec = start_sec.max(0.0);
-    let duration_sec = duration_sec.max(0.0);
-    let start_idx = (start_sec * rate) as usize;
-    let end_idx = ((start_sec + duration_sec) * rate) as usize;
-    if start_idx >= profile.len() || start_idx >= end_idx {
-        return 0.0;
-    }
-    let slice = &profile[start_idx..end_idx.min(profile.len())];
-    if slice.is_empty() {
-        return 0.0;
-    }
-    slice.iter().sum::<f64>() / slice.len() as f64
-}
-
 fn get_camelot_key(root: i32, mode: i32) -> Option<String> {
     if !(0..=11).contains(&root) {
         return None;
