@@ -41,7 +41,7 @@ pub struct AudioAnalysis {
     #[napi(js_name = "mix_end_pos")]
     pub mix_end_pos: f64,
     #[napi(js_name = "energy_profile")]
-    pub energy_profile: Vec<f32>,
+    pub energy_profile: Vec<f64>,
     #[napi(js_name = "vocal_in_pos")]
     pub vocal_in_pos: Option<f64>,
     #[napi(js_name = "vocal_out_pos")]
@@ -1174,13 +1174,13 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
 
     let profile_rate = 10.0;
     let profile_len = ((duration * profile_rate).ceil() as usize).max(1);
-    let mut energy_profile = vec![0.0f32; profile_len];
+    let mut energy_profile = vec![0.0f64; profile_len];
 
     for (i, &val) in head_envelope.iter().enumerate() {
         let time = i as f64 / env_rate;
         let profile_idx = (time * profile_rate) as usize;
         if profile_idx < energy_profile.len() {
-            energy_profile[profile_idx] = energy_profile[profile_idx].max(val);
+            energy_profile[profile_idx] = energy_profile[profile_idx].max(val as f64);
         }
     }
 
@@ -1191,7 +1191,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
             let time = tail_start_time + (i as f64 / env_rate);
             let profile_idx = (time * profile_rate) as usize;
             if profile_idx < energy_profile.len() {
-                energy_profile[profile_idx] = energy_profile[profile_idx].max(val);
+                energy_profile[profile_idx] = energy_profile[profile_idx].max(val as f64);
             }
         }
     }

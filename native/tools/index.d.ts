@@ -24,7 +24,7 @@ export interface AudioAnalysis {
   mix_center_pos: number
   mix_start_pos: number
   mix_end_pos: number
-  energy_profile: Float32Array | Array<number>
+  energy_profile: Array<number>
   vocal_in_pos?: number
   vocal_out_pos?: number
   vocal_last_in_pos?: number
