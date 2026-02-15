@@ -796,12 +796,13 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                 
                 // 倒推步长：8 小节 (32拍)
                 let bars_8_duration = beat_len * 32.0;
+                let bars_4_duration = beat_len * 16.0;
                 
-                let raw_cut_in = if intro_len > bars_8_duration * 1.5 {
-                    // 前奏太长了，跳过一部分，只保留人声前的 8 小节
+                let raw_cut_in = if intro_len >= bars_8_duration {
                     anchor - bars_8_duration
+                } else if intro_len >= bars_4_duration {
+                    anchor - bars_4_duration
                 } else {
-                    // 前奏不长，就从 First Beat 开始
                     f_beat
                 };
 
