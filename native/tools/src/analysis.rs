@@ -50,12 +50,7 @@ pub struct AudioAnalysis {
     pub key_confidence: Option<f64>,
 }
 
-enum SnapMode {
-    Ceil,
-    Floor,
-}
-
-fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: SnapMode) -> f64 {
+fn snap_to_bar_floor(time: f64, bpm: f64, first_beat: f64, confidence: f64) -> f64 {
     if bpm <= 0.0 || confidence < 0.4 {
         return time;
     }
@@ -76,10 +71,7 @@ fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: Snap
         }
     }
 
-    let bars_count = match mode {
-        SnapMode::Ceil => raw_bars.ceil(),
-        SnapMode::Floor => raw_bars.floor(),
-    };
+    let bars_count = raw_bars.floor();
 
     // Return snapped time
     let res = first_beat + (bars_count * seconds_per_bar);
@@ -90,13 +82,12 @@ fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: Snap
     }
 }
 
-fn snap_to_phrase(
+fn snap_to_phrase_floor(
     time: f64,
     bpm: f64,
     first_beat: f64,
     confidence: f64,
     beats_per_phrase: f64,
-    mode: SnapMode,
 ) -> f64 {
     if bpm <= 0.0 || confidence < 0.4 || beats_per_phrase <= 0.0 {
         return time;
@@ -120,10 +111,7 @@ fn snap_to_phrase(
         }
     }
 
-    let phrases_count = match mode {
-        SnapMode::Ceil => raw_phrases.ceil(),
-        SnapMode::Floor => raw_phrases.floor(),
-    };
+    let phrases_count = raw_phrases.floor();
 
     let res = first_beat + (phrases_count * phrase_seconds);
     if res < 0.0 {
@@ -133,26 +121,6 @@ fn snap_to_phrase(
     }
 }
 
-fn adaptive_snap_cut_out(
-    raw_target: f64,
-    bpm: f64,
-    first_beat: f64,
-    confidence: f64,
-    fade_out: f64,
-) -> f64 {
-    let safe_max = (fade_out - 0.5).max(0.0);
-
-    let phrase_cut = snap_to_phrase(raw_target, bpm, first_beat, confidence, 16.0, SnapMode::Ceil);
-    let bar_cut_ceil = snap_to_bar(raw_target, bpm, first_beat, confidence, SnapMode::Ceil);
-
-    let mut snapped = if phrase_cut <= safe_max { phrase_cut } else { bar_cut_ceil };
-    if snapped > safe_max {
-        snapped = snap_to_bar(raw_target, bpm, first_beat, confidence, SnapMode::Floor);
-    }
-
-    snapped.min(safe_max).max(0.0)
-}
-
 fn snap_cut_out_floor(
     raw_target: f64,
     bpm: f64,
@@ -160,11 +128,11 @@ fn snap_cut_out_floor(
     confidence: f64,
     max_pos: f64,
 ) -> f64 {
-    let phrase_cut = snap_to_phrase(raw_target, bpm, first_beat, confidence, 16.0, SnapMode::Floor);
+    let phrase_cut = snap_to_phrase_floor(raw_target, bpm, first_beat, confidence, 16.0);
     let mut snapped = if phrase_cut.is_finite() && phrase_cut <= max_pos {
         phrase_cut
     } else {
-        snap_to_bar(raw_target, bpm, first_beat, confidence, SnapMode::Floor)
+        snap_to_bar_floor(raw_target, bpm, first_beat, confidence)
     };
 
     if !snapped.is_finite() {
@@ -196,8 +164,7 @@ fn find_best_phrase_start(
         let duration = bars * seconds_per_bar;
         let raw_start = anchor - duration;
         if raw_start > (fade_in + seconds_per_bar) {
-            let snapped_start =
-                snap_to_bar(raw_start, bpm, first_beat, confidence, SnapMode::Floor);
+            let snapped_start = snap_to_bar_floor(raw_start, bpm, first_beat, confidence);
             if snapped_start.is_finite() && snapped_start >= fade_in {
                 return snapped_start;
             }
@@ -1465,7 +1432,7 @@ fn detect_drop_pos(envelope: &[f32], rate: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::{detect_key_from_pcm, find_best_phrase_start, snap_to_bar, SnapMode};
+    use super::{detect_key_from_pcm, find_best_phrase_start, snap_to_bar_floor};
 
     fn gen_chord(sample_rate: u32, seconds: f32, freqs: &[f32]) -> Vec<f32> {
         let len = (sample_rate as f32 * seconds) as usize;
@@ -1508,7 +1475,7 @@ mod tests {
         let first_beat = 0.0;
         let confidence = 1.0;
         let time = 64.0 - 0.01;
-        let snapped = snap_to_bar(time, bpm, first_beat, confidence, SnapMode::Floor);
+        let snapped = snap_to_bar_floor(time, bpm, first_beat, confidence);
         assert!((snapped - 64.0).abs() < 1e-6);
     }
 
