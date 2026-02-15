@@ -90,6 +90,74 @@ fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: Snap
     }
 }
 
+fn snap_to_phrase(
+    time: f64,
+    bpm: f64,
+    first_beat: f64,
+    confidence: f64,
+    beats_per_phrase: f64,
+    mode: SnapMode,
+) -> f64 {
+    if bpm <= 0.0 || confidence < 0.4 || beats_per_phrase <= 0.0 {
+        return time;
+    }
+
+    let seconds_per_beat = 60.0 / bpm;
+    let phrase_seconds = seconds_per_beat * beats_per_phrase;
+    if !phrase_seconds.is_finite() || phrase_seconds <= 0.0 {
+        return time;
+    }
+
+    let mut raw_phrases = (time - first_beat) / phrase_seconds;
+    if phrase_seconds.is_finite() && phrase_seconds > 0.0 && raw_phrases.is_finite() {
+        let epsilon_sec = 0.05;
+        let eps_phrases = epsilon_sec / phrase_seconds;
+        if eps_phrases.is_finite() && eps_phrases > 0.0 {
+            let nearest = raw_phrases.round();
+            if (raw_phrases - nearest).abs() < eps_phrases {
+                raw_phrases = nearest;
+            }
+        }
+    }
+
+    let phrases_count = match mode {
+        SnapMode::Ceil => raw_phrases.ceil(),
+        SnapMode::Floor => raw_phrases.floor(),
+    };
+
+    let res = first_beat + (phrases_count * phrase_seconds);
+    if res < 0.0 {
+        first_beat
+    } else {
+        res
+    }
+}
+
+fn adaptive_snap_cut_out(
+    raw_target: f64,
+    bpm: f64,
+    first_beat: f64,
+    confidence: f64,
+    fade_out: f64,
+) -> f64 {
+    let ideal_phrase_cut = snap_to_phrase(
+        raw_target,
+        bpm,
+        first_beat,
+        confidence,
+        16.0,
+        SnapMode::Ceil,
+    );
+
+    let snapped = if ideal_phrase_cut < (fade_out - 1.0) {
+        ideal_phrase_cut
+    } else {
+        snap_to_bar(raw_target, bpm, first_beat, confidence, SnapMode::Ceil)
+    };
+
+    snapped.min(fade_out - 0.5).max(0.0)
+}
+
 fn find_best_phrase_start(
     anchor: f64,
     bpm: f64,
@@ -878,29 +946,93 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     // 6. Synthesize Smart Cut Points
 
     // Cut Out Logic
-    let smart_cut_out = if let (Some(v_out), Some(bpm_val), Some(f_beat)) =
-        (vocal_out, bpm, first_beat)
+    let effective_end = fade_out;
+    let (scan_env, scan_ratio, scan_base_time, scan_search_start) = if !tail_envelope.is_empty()
+        && !tail_vocal_ratio.is_empty()
     {
-        let beat_len = 60.0 / bpm_val;
-        // 增加缓冲：给 8 拍 (2小节) 的缓冲，让人声完全结束后的器乐段展示出来
-        let buffer_beats = 8.0;
-        let potential_cut = v_out + (beat_len * buffer_beats);
-
-        let confidence = bpm_conf.unwrap_or(0.0);
-        // 使用 Ceil 模式：必须在 potential_cut 之后的小节线
-        let quantized_cut = snap_to_bar(potential_cut, bpm_val, f_beat, confidence, SnapMode::Ceil);
-
-        // 确保不晚于 fade_out
-        if quantized_cut < (fade_out - 0.5) {
-            Some(quantized_cut)
-        } else {
-            Some((fade_out - 5.0).max(0.0))
-        }
+        let tail_len_sec = tail_envelope.len().min(tail_vocal_ratio.len()) as f64 / env_rate;
+        (
+            &tail_envelope,
+            &tail_vocal_ratio,
+            (duration - tail_len_sec).max(0.0),
+            0usize,
+        )
     } else {
-        // Fallback: 倒数 15秒 (作为长混音的基准)
-        // 但不能早于 fade_in
-        let default_cut = (duration - 15.0).max(fade_in + 10.0);
-        Some(default_cut.min(fade_out - 5.0).max(0.0))
+        let len = head_envelope.len().min(head_vocal_ratio.len());
+        let start = (len as f64 * 0.7) as usize;
+        (
+            &head_envelope,
+            &head_vocal_ratio,
+            0.0,
+            start.min(len),
+        )
+    };
+
+    let scan_len = scan_env.len().min(scan_ratio.len());
+    let outro_start_time = if scan_len == 0 {
+        fade_in.min(effective_end)
+    } else {
+        let outro_window_sec = 8.0;
+        let window_frames = (outro_window_sec * env_rate) as usize;
+        let vocal_ratio_active = 0.12;
+        let vocal_rms_min = 0.008;
+
+        let mut outro_start_idx = scan_search_start.min(scan_len);
+
+        if window_frames > 0 && scan_len > window_frames && outro_start_idx < scan_len {
+            let end = scan_len.saturating_sub(window_frames);
+            let search_start = scan_search_start.min(end);
+            for i in (search_start..=end).rev() {
+                let ratio_slice = &scan_ratio[i..i + window_frames];
+                let env_slice = &scan_env[i..i + window_frames];
+
+                let avg_ratio =
+                    ratio_slice.iter().sum::<f32>() / window_frames.max(1) as f32;
+                let avg_rms = env_slice.iter().sum::<f32>() / window_frames.max(1) as f32;
+
+                if avg_rms >= vocal_rms_min && avg_ratio >= vocal_ratio_active {
+                    outro_start_idx = (i + window_frames).min(scan_len);
+                    break;
+                }
+            }
+        }
+
+        (scan_base_time + outro_start_idx as f64 / env_rate)
+            .clamp(fade_in, effective_end.max(fade_in))
+    };
+
+    let outro_duration = (effective_end - outro_start_time).max(0.0);
+
+    let smart_cut_out = if let (Some(bpm_val), Some(f_beat)) = (bpm, first_beat) {
+        let beat_len = 60.0 / bpm_val;
+        let bar_len = beat_len * 4.0;
+        let confidence = bpm_conf.unwrap_or(0.0);
+
+        let raw_cut = if outro_duration > 20.0 {
+            outro_start_time + (bar_len * 2.0)
+        } else if outro_duration > 10.0 {
+            outro_start_time + bar_len
+        } else {
+            (effective_end - (bar_len * 2.0)).max(outro_start_time)
+        };
+
+        let cut = if outro_duration <= 10.0 {
+            snap_to_bar(raw_cut, bpm_val, f_beat, confidence, SnapMode::Floor)
+                .max(outro_start_time)
+                .min(effective_end - 0.5)
+                .max(0.0)
+        } else {
+            adaptive_snap_cut_out(raw_cut, bpm_val, f_beat, confidence, effective_end)
+        };
+
+        Some(cut)
+    } else {
+        let cut = if outro_duration > 15.0 {
+            outro_start_time + 5.0
+        } else {
+            (duration - 10.0).max(0.0)
+        };
+        Some(cut.min(effective_end - 0.5).max(0.0))
     };
 
     // Cut In Logic (Back-Calculation)
