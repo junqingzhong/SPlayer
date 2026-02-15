@@ -1,6 +1,6 @@
-let timer: number | null = null;
+let timer: ReturnType<typeof setInterval> | null = null;
 
-const start = (intervalMs: number) => {
+const startTick = (intervalMs: number) => {
   if (timer !== null) {
     clearInterval(timer);
     timer = null;
@@ -10,7 +10,7 @@ const start = (intervalMs: number) => {
   }, intervalMs);
 };
 
-const stop = () => {
+const stopTick = () => {
   if (timer === null) return;
   clearInterval(timer);
   timer = null;
@@ -20,9 +20,8 @@ self.onmessage = (ev: MessageEvent) => {
   const msg = ev.data as { type?: string; intervalMs?: number } | undefined;
   if (!msg?.type) return;
   if (msg.type === "START") {
-    start(msg.intervalMs ?? 75);
+    startTick(msg.intervalMs ?? 75);
   } else if (msg.type === "STOP") {
-    stop();
+    stopTick();
   }
 };
-
