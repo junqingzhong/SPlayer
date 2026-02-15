@@ -158,7 +158,7 @@ const showAutomixFx = ref(false);
   let automixFxTimer: number | null = null;
   const showAutomixLabel = ref(false);
   
-  const triggerAutomixFx = async (seq: number) => {
+  const triggerAutomixFx = async () => {
     if (automixFxTimer !== null) {
       window.clearTimeout(automixFxTimer);
       automixFxTimer = null;
@@ -174,7 +174,7 @@ const showAutomixFx = ref(false);
     () => statusStore.automixFxSeq,
     (seq, prev) => {
       if (!seq || seq === prev) return;
-      void triggerAutomixFx(seq);
+      void triggerAutomixFx();
     },
   );
   
