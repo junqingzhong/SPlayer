@@ -647,8 +647,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     // 6. Synthesize Smart Cut Points
     
     // Cut Out Logic
-    let mut smart_cut_out = None;
-    if let (Some(v_out), Some(bpm_val), Some(f_beat)) = (vocal_out, bpm, first_beat) {
+    let smart_cut_out = if let (Some(v_out), Some(bpm_val), Some(f_beat)) = (vocal_out, bpm, first_beat) {
         // Strategy: Vocal Out + Buffer (e.g. 2 bars) -> Snap to Bar
         let beat_len = 60.0 / bpm_val;
         let buffer_beats = 8.0; // 2 bars (assuming 4/4)
@@ -660,31 +659,25 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         // Ensure within valid range (before fade_out)
         // Give 1s buffer before fade out starts to avoid silence
         if quantized_cut < (fade_out - 1.0) {
-            smart_cut_out = Some(quantized_cut);
+            Some(quantized_cut)
         } else {
-             // Fallback: 5s before fade out
-             smart_cut_out = Some((fade_out - 5.0).max(0.0));
+            Some((fade_out - 5.0).max(0.0))
         }
     } else {
-        // No vocal or no BPM, fallback to fade_out - N sec or duration based
-        // If we have duration, use it.
-        // fade_out is calculated from envelope end.
-        smart_cut_out = Some((fade_out - 5.0).max(0.0));
-    }
+        Some((fade_out - 5.0).max(0.0))
+    };
     
     // Cut In Logic
-    let mut smart_cut_in = None;
-    if let (Some(f_beat), Some(_bpm_val)) = (first_beat, bpm) {
-         let confidence = bpm_conf.unwrap_or(0.0);
-         if confidence > 0.4 {
-             // Use first beat
-             smart_cut_in = Some(f_beat);
-         } else {
-             smart_cut_in = Some(fade_in);
-         }
+    let smart_cut_in = if let (Some(f_beat), Some(_bpm_val)) = (first_beat, bpm) {
+        let confidence = bpm_conf.unwrap_or(0.0);
+        if confidence > 0.4 {
+            Some(f_beat)
+        } else {
+            Some(fade_in)
+        }
     } else {
-        smart_cut_in = Some(fade_in);
-    }
+        Some(fade_in)
+    };
 
     let loudness = loudness_meter.get_lufs();
 
