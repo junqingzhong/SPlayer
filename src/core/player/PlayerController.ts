@@ -2,7 +2,7 @@ import { AudioErrorCode } from "@/core/audio-player/BaseAudioPlayer";
 import { AudioScheduler } from "@/core/audio-player/AudioScheduler";
 import { getSharedAudioContext } from "@/core/audio-player/SharedAudioContext";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
-import type { SongType } from "@/types/main";
+import type { AudioSourceType, QualityType, SongType } from "@/types/main";
 import type { RepeatModeType, ShuffleModeType } from "@/types/shared/play-mode";
 import { calculateLyricIndex } from "@/utils/calc";
 import { getCoverColor } from "@/utils/color";
@@ -190,7 +190,11 @@ class PlayerController {
     song: SongType,
     requestToken: number,
   ): Promise<{
-    audioSource: { url: string; quality: string; source: string };
+    audioSource: {
+      url: string;
+      quality: QualityType | undefined;
+      source: AudioSourceType | undefined;
+    };
     analysis: AudioAnalysis | null;
   }> {
     const songManager = useSongManager();
@@ -207,8 +211,8 @@ class PlayerController {
     const safeAudioSource = {
       ...audioSource,
       url: audioSource.url!,
-      quality: audioSource.quality || "standard",
-      source: audioSource.source || "unknown",
+      quality: audioSource.quality,
+      source: audioSource.source,
     };
 
     let analysis: AudioAnalysis | null = null;
@@ -230,7 +234,11 @@ class PlayerController {
    */
   private setupSongUI(
     song: SongType,
-    audioSource: { url: string; quality: string; source: string },
+    audioSource: {
+      url: string;
+      quality: QualityType | undefined;
+      source: AudioSourceType | undefined;
+    },
     startSeek: number,
   ) {
     const musicStore = useMusicStore();
@@ -271,8 +279,8 @@ class PlayerController {
     lyricManager.handleLyric(song);
     console.log(`🎧 [${song.id}] 最终播放信息:`, audioSource);
     // 更新音质和解锁状态
-    statusStore.songQuality = audioSource.quality as any; // Cast to QualityType
-    statusStore.audioSource = audioSource.source as any; // Cast to AudioSourceType
+    statusStore.songQuality = audioSource.quality;
+    statusStore.audioSource = audioSource.source;
   }
 
   /**

@@ -6,7 +6,13 @@ let masterLimiter: DynamicsCompressorNode | null = null;
 
 export const getSharedAudioContext = (): IExtendedAudioContext => {
   if (!sharedContext) {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    const AudioContextClass =
+      window.AudioContext ||
+      (
+        window as unknown as {
+          webkitAudioContext: typeof AudioContext;
+        }
+      ).webkitAudioContext;
     sharedContext = new AudioContextClass() as IExtendedAudioContext;
   }
   return sharedContext;
