@@ -14,10 +14,10 @@ import {
   parseSmartLrc,
 } from "@/utils/lyric/lyricParser";
 import { stripLyricMetadata } from "@/utils/lyric/lyricStripper";
-import { getConverter } from "@/utils/opencc";
 import { parseLrc } from "@/utils/lyric/parseLrc";
+import { getConverter } from "@/utils/opencc";
 import { type LyricLine, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
-import { cloneDeep, escapeRegExp, isEmpty } from "lodash-es";
+import { cloneDeep, isEmpty } from "lodash-es";
 
 interface LyricFetchResult {
   data: SongLyric;
@@ -297,6 +297,7 @@ class LyricManager {
       if (qqLyric.yrcData.length > 0) {
         result.yrcData = qqLyric.yrcData;
         qqMusicAdopted = true;
+        meta.usingQRCLyric = true;
       }
       if (qqLyric.lrcData.length > 0) {
         result.lrcData = qqLyric.lrcData;
@@ -334,7 +335,9 @@ class LyricManager {
 
     // 处理 LRC 歌词
     const adoptLRC = async () => {
-      if (qqMusicAdopted) return;
+      // 如果已经采用了 QRC，则不需要再获取网易云歌词
+      if (qqMusicAdopted && result.yrcData.length > 0) return;
+
       if (typeof id !== "number") return;
       let data: any = null;
       const cached = await this.getRawLyricCache(id, "lrc");
@@ -407,7 +410,10 @@ class LyricManager {
     }
     // 设置元数据状态
     meta.usingTTMLLyric = ttmlAdopted;
-    meta.usingQRCLyric = qqMusicAdopted && !ttmlAdopted;
+    // 如果采用了 TTML，则 QRC 标记失效
+    if (ttmlAdopted) {
+      meta.usingQRCLyric = false;
+    }
 
     return {
       data: result,
@@ -657,22 +663,17 @@ class LyricManager {
 
     const song = targetSong || musicStore.playSong;
     const { name, artists } = song;
-    const songMetadataRegexes: string[] = [];
 
-    // 例如第一行就是 `歌手 - 歌曲名` 这样的格式，或者只有歌曲名
-    if (name && name !== "未播放歌曲") {
-      songMetadataRegexes.push(escapeRegExp(name));
-    }
-
+    const artistNames: string[] = [];
     if (artists) {
       if (typeof artists === "string") {
         if (artists !== "未知歌手") {
-          songMetadataRegexes.push(escapeRegExp(artists));
+          artistNames.push(artists);
         }
       } else if (Array.isArray(artists)) {
         artists.forEach((artist) => {
           if (artist.name) {
-            songMetadataRegexes.push(escapeRegExp(artist.name));
+            artistNames.push(artist.name);
           }
         });
       }
@@ -681,7 +682,10 @@ class LyricManager {
     const options = {
       keywords: mergedKeywords,
       regexPatterns: mergedRegexes,
-      softMatchRegexes: songMetadataRegexes,
+      matchMetadata: {
+        title: name !== "未播放歌曲" ? name : undefined,
+        artists: artistNames,
+      },
     };
 
     const lrcData = stripLyricMetadata(lyricData.lrcData || [], options);
