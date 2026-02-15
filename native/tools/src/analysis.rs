@@ -1894,6 +1894,183 @@ fn detect_drop_pos(envelope: &[f32], rate: f64) -> Option<f64> {
     }
 }
 
+#[napi(object)]
+#[derive(Clone, Debug)]
+pub struct AutomationPoint {
+    pub time_offset: f64, // Seconds relative to mix_start
+    pub volume: f64,      // 0.0 - 1.0
+    pub low_cut: f64,     // 0.0 (No Cut) - 1.0 (Full Cut)
+    pub high_cut: f64,    // 0.0 (No Cut) - 1.0 (Full Cut)
+}
+
+#[napi(object)]
+pub struct AdvancedTransition {
+    pub start_time_current: f64,
+    pub start_time_next: f64,
+    pub duration: f64,
+    
+    #[napi(js_name = "pitch_shift_semitones")]
+    pub pitch_shift_semitones: i32,
+    
+    #[napi(js_name = "playback_rate")]
+    pub playback_rate: f64,
+    
+    #[napi(js_name = "automation_current")]
+    pub automation_current: Vec<AutomationPoint>,
+    
+    #[napi(js_name = "automation_next")]
+    pub automation_next: Vec<AutomationPoint>,
+    
+    pub strategy: String,
+}
+
+fn camelot_to_semitone(num: i32, mode: char) -> i32 {
+    // Camelot Wheel to Semitone Index (0-11, where 0=C, 1=Db, etc.)
+    // 8B = C Major -> 0
+    let base = match num {
+        8 => 0,
+        9 => 7,
+        10 => 2,
+        11 => 9,
+        12 => 4,
+        1 => 11,
+        2 => 6,
+        3 => 1,
+        4 => 8,
+        5 => 3,
+        6 => 10,
+        7 => 5,
+        _ => 0, // Fallback
+    };
+    
+    if mode == 'A' {
+        (base + 9) % 12
+    } else {
+        base
+    }
+}
+
+fn calc_key_distance(key_a: Option<&str>, key_b: Option<&str>) -> (i32, i32) {
+    let (Some(ka), Some(kb)) = (key_a, key_b) else { return (100, 0); }; 
+    let (Some((root_a, mode_a)), Some((root_b, mode_b))) = (parse_camelot(ka), parse_camelot(kb)) else { return (100, 0); }; 
+
+    if root_a == root_b && mode_a == mode_b { return (0, 0); } 
+
+    let diff = (root_a - root_b).abs(); 
+    let circle_dist = diff.min(12 - diff); 
+    
+    if circle_dist <= 1 && mode_a == mode_b { 
+        return (1, 0); // Neighbor
+    } 
+    
+    // Calculate semitone shift
+    let semi_a = camelot_to_semitone(root_a, mode_a);
+    let semi_b = camelot_to_semitone(root_b, mode_b);
+    
+    let mut shift = semi_a - semi_b;
+    
+    // Normalize to -6 to +6
+    while shift > 6 { shift -= 12; }
+    while shift < -6 { shift += 12; }
+    
+    (circle_dist, shift)
+}
+
+fn generate_bass_swap_automation(duration: f64) -> (Vec<AutomationPoint>, Vec<AutomationPoint>) {
+    let mut auto_a = Vec::new();
+    let mut auto_b = Vec::new();
+    
+    let mid_point = duration / 2.0;
+    
+    // Start: A Full, B No Bass/Low Vol
+    auto_a.push(AutomationPoint { time_offset: 0.0, volume: 1.0, low_cut: 0.0, high_cut: 0.0 });
+    auto_b.push(AutomationPoint { time_offset: 0.0, volume: 0.8, low_cut: 1.0, high_cut: 0.0 });
+
+    // Pre-Swap
+    auto_a.push(AutomationPoint { time_offset: mid_point - 2.0, volume: 1.0, low_cut: 0.0, high_cut: 0.0 });
+    auto_b.push(AutomationPoint { time_offset: mid_point - 2.0, volume: 1.0, low_cut: 1.0, high_cut: 0.0 });
+
+    // Swap Point (X-Fade Bass)
+    auto_a.push(AutomationPoint { time_offset: mid_point, volume: 0.9, low_cut: 0.5, high_cut: 0.0 });
+    auto_b.push(AutomationPoint { time_offset: mid_point, volume: 0.9, low_cut: 0.5, high_cut: 0.0 });
+
+    // Post-Swap
+    auto_a.push(AutomationPoint { time_offset: mid_point + 2.0, volume: 0.8, low_cut: 1.0, high_cut: 0.1 });
+    auto_b.push(AutomationPoint { time_offset: mid_point + 2.0, volume: 1.0, low_cut: 0.0, high_cut: 0.0 });
+
+    // End
+    auto_a.push(AutomationPoint { time_offset: duration, volume: 0.0, low_cut: 1.0, high_cut: 1.0 });
+    auto_b.push(AutomationPoint { time_offset: duration, volume: 1.0, low_cut: 0.0, high_cut: 0.0 });
+
+    (auto_a, auto_b)
+}
+
+#[napi]
+pub fn suggest_long_mix(current_path: String, next_path: String) -> Option<AdvancedTransition> {
+    let current = internal_analyze_impl(&current_path, None, true)?;
+    let next = internal_analyze_impl(&next_path, Some(180.0), false)?;
+
+    // 1. 强制 BPM 同步
+    let bpm_a = current.bpm.unwrap_or(128.0);
+    let bpm_b = next.bpm.unwrap_or(128.0);
+    let playback_rate = bpm_a / bpm_b; // 把 B 加速/减速到 A
+
+    // 2. 调性检测
+    let (_, shift) = calc_key_distance(current.camelot_key.as_deref(), next.camelot_key.as_deref());
+
+    // 3. 寻找长混音区间 (Long Blend)
+    // 目标：至少 32 Bar (约 1 分钟 @ 128BPM)，甚至 64 Bar
+    
+    let sec_per_bar = 240.0 / bpm_a;
+    let target_bars = 32.0;
+    let mix_duration = target_bars * sec_per_bar;
+
+    // 锚点 A: Current 的 "Cut Out" 并不是真正的结束，而是混音的结束点
+    // 我们希望 Current 播放到尽量后面，但在结束前留出 mix_duration
+    let cur_end_anchor = current.duration - 5.0;
+    // 对齐到 Bar
+    let cur_mix_end = snap_to_bar_floor(cur_end_anchor, bpm_a, current.first_beat_pos.unwrap_or(0.0), 0.8);
+    let cur_mix_start = cur_mix_end - mix_duration;
+
+    // 锚点 B: Next 的 "Drop" 或 "Vocal In" 作为混音的结束点 (Energy Point)
+    // 我们让 Current 的 Bass 在 Next 的 Drop 处彻底消失
+    let next_anchor = next.drop_pos.or(next.vocal_in_pos).unwrap_or(30.0);
+    // 对齐到 Bar
+    let next_mix_end = snap_to_bar_floor(next_anchor, bpm_b, next.first_beat_pos.unwrap_or(0.0), 0.8);
+    let next_mix_start = next_mix_end - (mix_duration / playback_rate); // 考虑变速后的时长
+
+    // 如果 Next 的开头不够长 (Intro 短于 32 Bar)，我们必须切入更早
+    // 这里允许 "负时间" -> 意味着我们要 Loop Next 的开头，或者接受 Next 从中间开始混
+    // 既然用户允许 "句子内切"，我们尝试找 Next 的 Verse 1 Start
+    let final_next_start = if next_mix_start < 0.0 {
+        next.first_beat_pos.unwrap_or(0.0) // 如果不够长，就从头开始，混音长度缩短
+    } else {
+        next_mix_start
+    };
+    
+    // 重新计算实际可能的混音时长
+    let actual_duration = if next_mix_start < 0.0 {
+        next_mix_end - final_next_start
+    } else {
+        mix_duration
+    };
+
+    // 4. 生成自动化曲线 (Automation)
+    // 这是让 "句子内切" 听起来不违和的关键：Bass Swap
+    let (auto_a, auto_b) = generate_bass_swap_automation(actual_duration);
+
+    Some(AdvancedTransition {
+        start_time_current: cur_mix_start.max(0.0),
+        start_time_next: final_next_start,
+        duration: actual_duration,
+        pitch_shift_semitones: shift,
+        playback_rate,
+        automation_current: auto_a,
+        automation_next: auto_b,
+        strategy: "Long Harmonic Bass Swap".to_string(),
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::{detect_key_from_pcm, find_best_phrase_start, snap_to_bar_floor};

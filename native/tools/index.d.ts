@@ -6,6 +6,17 @@ export declare class DownloadTask {
   download(url: string, filePath: string, metadata: SongMetadata | undefined | null, threadCount: number, referer: string | undefined | null, onProgress: ((err: Error | null, arg: DownloadProgress) => any), enableHttp2: boolean): Promise<void>
 }
 
+export interface AdvancedTransition {
+  startTimeCurrent: number
+  startTimeNext: number
+  duration: number
+  pitch_shift_semitones: number
+  playback_rate: number
+  automation_current: Array<AutomationPoint>
+  automation_next: Array<AutomationPoint>
+  strategy: string
+}
+
 export declare function analyzeAudioFile(path: string, maxAnalyzeTime?: number | undefined | null): AudioAnalysis | null
 
 export declare function analyzeAudioFileHead(path: string, maxAnalyzeTime?: number | undefined | null): AudioAnalysis | null
@@ -35,6 +46,13 @@ export interface AudioAnalysis {
   key_mode?: number
   key_confidence?: number
   camelot_key?: string
+}
+
+export interface AutomationPoint {
+  timeOffset: number
+  volume: number
+  lowCut: number
+  highCut: number
 }
 
 export interface DownloadProgress {
@@ -86,6 +104,8 @@ export interface SongMetadata {
   trackNumber?: number
   discNumber?: number
 }
+
+export declare function suggestLongMix(currentPath: string, nextPath: string): AdvancedTransition | null
 
 export declare function suggestTransition(currentPath: string, nextPath: string): TransitionProposal | null
 
