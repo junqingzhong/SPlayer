@@ -50,7 +50,7 @@ pub struct AudioAnalysis {
     pub key_confidence: Option<f64>,
 }
 
-enum SnapMode { Round, Ceil, Floor }
+enum SnapMode { Ceil, Floor }
 
 fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: SnapMode) -> f64 {
     if bpm <= 0.0 || confidence < 0.4 { return time; }
@@ -62,7 +62,6 @@ fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: Snap
     let raw_bars = (time - first_beat) / seconds_per_bar;
     
     let bars_count = match mode {
-        SnapMode::Round => raw_bars.round(),
         SnapMode::Ceil => raw_bars.ceil(),
         SnapMode::Floor => raw_bars.floor(),
     };
