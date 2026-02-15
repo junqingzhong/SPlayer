@@ -840,6 +840,21 @@ export const useLyricSettings = (): SettingConfig => {
             suffix: "%",
           },
           {
+            key: "taskbarLyricMargin",
+            label: "歌词边距",
+            type: "input-number",
+            description: "任务栏歌词与相邻元素之间的间距",
+            min: 0,
+            max: 500,
+            step: 10,
+            suffix: "px",
+            value: computed({
+              get: () => settingStore.taskbarLyricMargin,
+              set: (v) => (settingStore.taskbarLyricMargin = v ?? 10),
+            }),
+            defaultValue: 10,
+          },
+          {
             key: "taskbarLyricAutoShrink",
             label: "自动收缩",
             type: "switch",

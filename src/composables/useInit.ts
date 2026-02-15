@@ -85,12 +85,14 @@ export const useInit = () => {
           settingStore.taskbarLyricMaxWidth,
           settingStore.taskbarLyricPosition,
           settingStore.taskbarLyricAutoShrink,
+          settingStore.taskbarLyricMargin,
         ],
         () => {
           updateTaskbarConfig({
             maxWidth: settingStore.taskbarLyricMaxWidth,
             position: settingStore.taskbarLyricPosition,
             autoShrink: settingStore.taskbarLyricAutoShrink,
+            margin: settingStore.taskbarLyricMargin,
           });
         },
       );

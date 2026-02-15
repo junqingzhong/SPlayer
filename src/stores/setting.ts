@@ -52,6 +52,8 @@ export interface SettingState {
   taskbarLyricPosition: "automatic" | "left" | "right";
   /** 任务栏歌词自动收缩 */
   taskbarLyricAutoShrink: boolean;
+  /** 任务栏歌词边距 */
+  taskbarLyricMargin: number;
   /** 暂停时显示任务栏歌词 */
   taskbarLyricShowWhenPaused: boolean;
   /** 任务栏歌词动画模式 */
@@ -154,14 +156,14 @@ export interface SettingState {
   proxyPort: number;
   /** 歌曲音质 */
   songLevel:
-    | "standard"
-    | "higher"
-    | "exhigh"
-    | "lossless"
-    | "hires"
-    | "jyeffect"
-    | "sky"
-    | "jymaster";
+  | "standard"
+  | "higher"
+  | "exhigh"
+  | "lossless"
+  | "hires"
+  | "jyeffect"
+  | "sky"
+  | "jymaster";
   /** 播放设备 */
   playDevice: "default" | string;
   /** 音频引擎: element (原生) 或 ffmpeg */
@@ -512,6 +514,7 @@ export const useSettingStore = defineStore("setting", {
     taskbarLyricMaxWidth: 30,
     taskbarLyricPosition: "automatic",
     taskbarLyricAutoShrink: false,
+    taskbarLyricMargin: 10,
     taskbarLyricShowWhenPaused: true,
     taskbarLyricAnimationMode: "slide-blur",
     taskbarLyricSingleLineMode: false,
@@ -810,12 +813,11 @@ export const useSettingStore = defineStore("setting", {
       }
       window.$message.info(
         `已切换至
-        ${
-          this.themeMode === "auto"
-            ? "跟随系统"
-            : this.themeMode === "light"
-              ? "浅色模式"
-              : "深色模式"
+        ${this.themeMode === "auto"
+          ? "跟随系统"
+          : this.themeMode === "light"
+            ? "浅色模式"
+            : "深色模式"
         }`,
         {
           showIcon: false,
