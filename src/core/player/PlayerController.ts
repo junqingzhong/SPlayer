@@ -478,6 +478,7 @@ class PlayerController {
       duration: number;
       uiSwitchDelay?: number;
       onSwitch?: () => void;
+      deferStateSync?: boolean;
       mixType?: "default" | "bassSwap";
       replayGain?: number;
     },
@@ -526,18 +527,38 @@ class PlayerController {
 
     // 播放新音频
     try {
+      const updateSeekState = () => {
+        statusStore.currentTime = seek;
+        const duration = this.getDuration() || statusStore.duration;
+        if (duration > 0) {
+          statusStore.progress = calculateProgress(seek, duration);
+        } else {
+          statusStore.progress = 0;
+        }
+        return duration;
+      };
+
+      const shouldDeferStateSync = !!(crossfadeOptions?.deferStateSync && autoPlay);
+
       // 设置期望的 seek 位置（MPV 引擎特有）
       if (seek > 0) {
         audioManager.setPendingSeek(seek / 1000);
       }
 
       if (crossfadeOptions) {
+        const onSwitch = crossfadeOptions.onSwitch;
+        const wrappedOnSwitch = shouldDeferStateSync
+          ? () => {
+              onSwitch?.();
+              updateSeekState();
+            }
+          : onSwitch;
         await audioManager.crossfadeTo(url, {
           duration: crossfadeOptions.duration,
           seek: seek / 1000,
           autoPlay,
           uiSwitchDelay: crossfadeOptions.uiSwitchDelay,
-          onSwitch: crossfadeOptions.onSwitch,
+          onSwitch: wrappedOnSwitch,
           mixType: crossfadeOptions.mixType,
           rate: audioManager.capabilities.supportsRate
             ? statusStore.playRate * initialRate
@@ -556,13 +577,7 @@ class PlayerController {
       }
 
       // 更新进度到状态
-      statusStore.currentTime = seek;
-      const duration = this.getDuration() || statusStore.duration;
-      if (duration > 0) {
-        statusStore.progress = calculateProgress(seek, duration);
-      } else {
-        statusStore.progress = 0;
-      }
+      const duration = !crossfadeOptions || !shouldDeferStateSync ? updateSeekState() : 0;
 
       // 如果不自动播放，设置任务栏暂停状态
       if (!autoPlay) {
@@ -572,7 +587,8 @@ class PlayerController {
         playerIpc.sendTaskbarState({ isPlaying: false });
         playerIpc.sendTaskbarMode("paused");
         if (seek > 0) {
-          const progress = calculateProgress(seek, duration);
+          const safeDuration = duration || this.getDuration() || statusStore.duration;
+          const progress = calculateProgress(seek, safeDuration);
           playerIpc.sendTaskbarProgress(progress);
         }
       }
@@ -1813,6 +1829,7 @@ class PlayerController {
           uiSwitchDelay,
           mixType: options.mixType,
           replayGain,
+          deferStateSync: true,
           onSwitch: () => {
             console.log("🔀 [Automix] Switching UI to new song");
             this.isTransitioning = false;
