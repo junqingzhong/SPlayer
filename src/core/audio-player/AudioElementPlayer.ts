@@ -50,7 +50,11 @@ export class AudioElementPlayer extends BaseAudioPlayer {
     if (!this.audioCtx || !this.inputNode) return;
 
     try {
-      this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
+      if (!this.sourceNode) {
+        this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
+      } else {
+        this.sourceNode.disconnect();
+      }
 
       // 连接: Source -> Input
       this.sourceNode.connect(this.inputNode);

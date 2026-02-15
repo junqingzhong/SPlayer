@@ -707,42 +707,42 @@ class PlayerController {
    * 计算智能过渡时长
    * 基于 BPM、结构空间和能量差异
    */
-  private calculateSmartDuration(
-    bpm: number,
-    introLen: number,
-    outroLen: number,
-    energyDiff: number = 0,
-  ): number {
-    const beatTime = 60 / bpm;
+  // private calculateSmartDuration(
+  //   bpm: number,
+  //   introLen: number,
+  //   outroLen: number,
+  //   energyDiff: number = 0,
+  // ): number {
+  //   const beatTime = 60 / bpm;
 
-    // 1. 基础时长：默认 32 拍 (8小节)，约 15秒 @ 128BPM
-    let targetBeats = 32;
+  //   // 1. 基础时长：默认 32 拍 (8小节)，约 15秒 @ 128BPM
+  //   let targetBeats = 32;
 
-    // 2. 空间受限检查
-    // 如果下一首的前奏少于 32 拍，就降级到 16 拍
-    if (introLen < beatTime * 32) {
-      targetBeats = 16;
-    }
-    // 如果还是不够，降级到 8 拍
-    if (introLen < beatTime * 16) {
-      targetBeats = 8;
-    }
+  //   // 2. 空间受限检查
+  //   // 如果下一首的前奏少于 32 拍，就降级到 16 拍
+  //   if (introLen < beatTime * 32) {
+  //     targetBeats = 16;
+  //   }
+  //   // 如果还是不够，降级到 8 拍
+  //   if (introLen < beatTime * 16) {
+  //     targetBeats = 8;
+  //   }
 
-    // 3. 同样的逻辑检查当前歌的 Outro
-    // outroLen 是当前歌 vocal_out 之后剩余的空间
-    if (outroLen < beatTime * targetBeats) {
-      targetBeats = Math.floor(outroLen / beatTime / 4) * 4; // 向下取整到 4 拍倍数
-    }
+  //   // 3. 同样的逻辑检查当前歌的 Outro
+  //   // outroLen 是当前歌 vocal_out 之后剩余的空间
+  //   if (outroLen < beatTime * targetBeats) {
+  //     targetBeats = Math.floor(outroLen / beatTime / 4) * 4; // 向下取整到 4 拍倍数
+  //   }
 
-    // 4. 能量差异调整
-    // 如果能量差异过大 (> 6dB)，强制缩短过渡
-    if (energyDiff > 6.0) {
-      targetBeats = Math.min(targetBeats, 8);
-    }
+  //   // 4. 能量差异调整
+  //   // 如果能量差异过大 (> 6dB)，强制缩短过渡
+  //   if (energyDiff > 6.0) {
+  //     targetBeats = Math.min(targetBeats, 8);
+  //   }
 
-    // 5. 兜底：最少 4 拍 (1小节)
-    return Math.max(beatTime * 4, beatTime * targetBeats);
-  }
+  //   // 5. 兜底：最少 4 拍 (1小节)
+  //   return Math.max(beatTime * 4, beatTime * targetBeats);
+  // }
 
   /**
    * 核心 Automix 触发检测逻辑 (每帧运行)
@@ -814,7 +814,7 @@ class PlayerController {
 
       // 3. 动态确定时长 (Dynamic Duration)
       // 取交集，算多少混多少 (Min of Intro & Outro)
-      let calculatedDuration = Math.min(availableIntro, availableOutro);
+      const calculatedDuration = Math.min(availableIntro, availableOutro);
 
       // 保护: 最小 2s，防止瞬间切歌
       crossfadeDuration = Math.max(2, calculatedDuration);

@@ -97,9 +97,10 @@ export abstract class BaseAudioPlayer
     try {
       this.audioCtx = getSharedAudioContext();
 
-      if (this.audioCtx.state === "running") {
-        this.audioCtx.suspend().catch(console.warn);
-      }
+      // 在共享 Context 环境下，初始化不应挂起上下文
+      // if (this.audioCtx.state === "running") {
+      //   this.audioCtx.suspend().catch(console.warn);
+      // }
 
       this.inputNode = this.audioCtx.createGain();
       this.inputNode.gain.value = 1; // 直通
