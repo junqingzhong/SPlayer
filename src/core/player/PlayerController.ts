@@ -244,7 +244,7 @@ class PlayerController {
       source: audioSource.source,
     };
 
-    let analysis: AudioAnalysis | null = null;
+    const analysis: AudioAnalysis | null = null;
     return { audioSource: safeAudioSource, analysis };
   }
 
