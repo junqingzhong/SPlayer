@@ -1195,7 +1195,14 @@ class PlayerController {
         this.automixLog(
           "log",
           `native_proposal:${Math.round(crossfadeDuration * 10)}:${mixType}`,
-          `[Automix] 原生建议：${transition.mix_type} / ${transition.filter_strategy}，Fade=${crossfadeDuration.toFixed(1)}s`,
+          `[Automix] 最终混音数据：
+ 分析当前歌曲结果：（已分析 ${this.formatAutomixTime(currentAnalysis?.duration || 0)}）
+ 分析下一首歌曲结果：（已分析 ${this.formatAutomixTime(nextAnalysis?.duration || 0)}）
+ 最终决定在 ${this.formatAutomixTime(forcedTriggerTime)} 切出
+ 切出到 下一首的 ${this.formatAutomixTime(startSeek / 1000)}
+ 判断过渡方式：${transition.mix_type} (${transition.filter_strategy})
+ 过渡时间：${crossfadeDuration.toFixed(1)}秒
+ 分析到的下一首歌曲voice开始时间 ${this.formatAutomixTime(nextAnalysis?.vocal_in_pos || 0)}`,
           15000,
         );
       }
