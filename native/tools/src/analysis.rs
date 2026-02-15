@@ -34,6 +34,14 @@ pub struct AudioAnalysis {
     pub cut_in_pos: Option<f64>,
     #[napi(js_name = "cut_out_pos")]
     pub cut_out_pos: Option<f64>,
+    #[napi(js_name = "mix_center_pos")]
+    pub mix_center_pos: f64,
+    #[napi(js_name = "mix_start_pos")]
+    pub mix_start_pos: f64,
+    #[napi(js_name = "mix_end_pos")]
+    pub mix_end_pos: f64,
+    #[napi(js_name = "energy_profile")]
+    pub energy_profile: Vec<f32>,
     #[napi(js_name = "vocal_in_pos")]
     pub vocal_in_pos: Option<f64>,
     #[napi(js_name = "vocal_out_pos")]
@@ -48,6 +56,55 @@ pub struct AudioAnalysis {
     pub key_mode: Option<i32>,
     #[napi(js_name = "key_confidence")]
     pub key_confidence: Option<f64>,
+    #[napi(js_name = "camelot_key")]
+    pub camelot_key: Option<String>,
+}
+
+fn get_camelot_key(root: i32, mode: i32) -> Option<String> {
+    if !(0..=11).contains(&root) {
+        return None;
+    }
+
+    let key_num = match mode {
+        0 => match root {
+            11 => 5,
+            6 => 6,
+            1 => 7,
+            8 => 8,
+            3 => 9,
+            10 => 10,
+            5 => 11,
+            0 => 12,
+            7 => 1,
+            2 => 2,
+            9 => 3,
+            4 => 4,
+            _ => 0,
+        },
+        1 => match root {
+            8 => 5,
+            3 => 6,
+            10 => 7,
+            5 => 8,
+            0 => 9,
+            7 => 10,
+            2 => 11,
+            9 => 12,
+            4 => 1,
+            11 => 2,
+            6 => 3,
+            1 => 4,
+            _ => 0,
+        },
+        _ => 0,
+    };
+
+    if key_num <= 0 {
+        return None;
+    }
+
+    let letter = if mode == 0 { "B" } else { "A" };
+    Some(format!("{}{}", key_num, letter))
 }
 
 fn snap_to_bar_floor(time: f64, bpm: f64, first_beat: f64, confidence: f64) -> f64 {
@@ -1067,6 +1124,83 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     let loudness = loudness_meter.get_lufs();
     let (key_root, key_mode, key_confidence) = detect_key_from_pcm(&head_pcm, sample_rate);
 
+    let mut mix_center = smart_cut_out.unwrap_or((duration - 10.0).max(0.0));
+    if !mix_center.is_finite() {
+        mix_center = (duration - 10.0).max(0.0);
+    }
+    mix_center = mix_center.min(duration).max(0.0);
+
+    let target_mix_duration = if let Some(b) = bpm {
+        if b.is_finite() && b > 0.0 {
+            let sec_per_bar = 240.0 / b;
+            if sec_per_bar.is_finite() && sec_per_bar > 0.0 {
+                (sec_per_bar * 8.0).clamp(15.0, 30.0)
+            } else {
+                20.0
+            }
+        } else {
+            20.0
+        }
+    } else {
+        20.0
+    };
+
+    let half_duration = target_mix_duration * 0.5;
+    let mut raw_mix_start = (mix_center - half_duration).max(0.0);
+    let mut raw_mix_end = (mix_center + half_duration).min(duration);
+
+    if has_tail {
+        let tail_len_sec = tail_envelope.len() as f64 / env_rate;
+        let tail_start_time = (duration - tail_len_sec).max(0.0);
+        let check_start_rel = (raw_mix_start - tail_start_time).max(0.0);
+        let check_end_rel = (mix_center - tail_start_time).max(0.0);
+
+        let len = tail_envelope.len().min(tail_vocal_ratio.len());
+        let start_idx = ((check_start_rel * env_rate).floor() as isize).clamp(0, len as isize);
+        let end_idx = ((check_end_rel * env_rate).ceil() as isize).clamp(0, len as isize);
+
+        if end_idx > start_idx {
+            let slice = &tail_vocal_ratio[start_idx as usize..end_idx as usize];
+            let vocal_count = slice.iter().filter(|&&r| r > 0.2).count();
+            let vocal_percent = vocal_count as f64 / slice.len().max(1) as f64;
+            if vocal_percent > 0.4 {
+                raw_mix_start = mix_center;
+            }
+        }
+    }
+
+    raw_mix_start = raw_mix_start.min(mix_center).max(0.0);
+    raw_mix_end = raw_mix_end.max(mix_center).min(duration);
+
+    let profile_rate = 10.0;
+    let profile_len = ((duration * profile_rate).ceil() as usize).max(1);
+    let mut energy_profile = vec![0.0f32; profile_len];
+
+    for (i, &val) in head_envelope.iter().enumerate() {
+        let time = i as f64 / env_rate;
+        let profile_idx = (time * profile_rate) as usize;
+        if profile_idx < energy_profile.len() {
+            energy_profile[profile_idx] = energy_profile[profile_idx].max(val);
+        }
+    }
+
+    if has_tail {
+        let tail_len_sec = tail_envelope.len() as f64 / env_rate;
+        let tail_start_time = (duration - tail_len_sec).max(0.0);
+        for (i, &val) in tail_envelope.iter().enumerate() {
+            let time = tail_start_time + (i as f64 / env_rate);
+            let profile_idx = (time * profile_rate) as usize;
+            if profile_idx < energy_profile.len() {
+                energy_profile[profile_idx] = energy_profile[profile_idx].max(val);
+            }
+        }
+    }
+
+    let camelot_key = match (key_root, key_mode) {
+        (Some(r), Some(m)) => get_camelot_key(r, m),
+        _ => None,
+    };
+
     Some(AudioAnalysis {
         duration,
         bpm,
@@ -1076,10 +1210,14 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         first_beat_pos: first_beat,
         loudness: Some(loudness),
         drop_pos,
-        version: 10,
+        version: 11,
         analyze_window: max_time,
         cut_in_pos: smart_cut_in,
         cut_out_pos: smart_cut_out,
+        mix_center_pos: mix_center,
+        mix_start_pos: raw_mix_start,
+        mix_end_pos: raw_mix_end,
+        energy_profile,
         vocal_in_pos: vocal_in,
         vocal_out_pos: vocal_out,
         vocal_last_in_pos: vocal_last_in,
@@ -1087,6 +1225,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         key_root,
         key_mode,
         key_confidence,
+        camelot_key,
     })
 }
 
