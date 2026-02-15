@@ -28,6 +28,8 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   private pendingSwitchTimer: ReturnType<typeof setTimeout> | null = null;
   /** 用于清理当前引擎的事件监听器 */
   private cleanupListeners: (() => void) | null = null;
+  /** 是否正在进行 Crossfade (避免事件干扰) */
+  private isCrossfading: boolean = false;
 
   /** 主音量 (用于 Crossfade 初始化) */
   private _masterVolume: number = 1.0;
@@ -76,6 +78,13 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
     events.forEach((eventType) => {
       const handler = (e: Event) => {
+        // [修复] Crossfade 期间屏蔽旧引擎的 pause/ended/error 事件，防止状态误判
+        if (this.isCrossfading && (eventType === "pause" || eventType === "ended" || eventType === "error")) {
+          // 如果是 ended，可能需要特别处理？不，crossfade 期间旧引擎结束是正常的
+          // 如果是 error，也应该由新引擎接管，或者通过 promise 抛出
+          return;
+        }
+
         const detail = (e as CustomEvent).detail;
         this.dispatch(eventType, detail);
       };
@@ -154,6 +163,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
     // 清理之前的 pending
     this.clearPendingSwitch();
+    this.isCrossfading = true;
 
     // 1. 创建新引擎 (保持同类型)
     let newEngine: IPlaybackEngine;
@@ -248,6 +258,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
       this.engine = newEngine;
       this.pendingEngine = null; // Cleared from pending, now active
+      this.isCrossfading = false;
       this.bindEngineEvents();
 
       // 触发 UI 切换回调
