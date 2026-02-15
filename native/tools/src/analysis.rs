@@ -1,6 +1,8 @@
 use napi_derive::napi;
+use num_complex::Complex32;
 use std::fs::File;
 use std::path::Path;
+use rustfft::FftPlanner;
 use symphonia::core::audio::{AudioBufferRef, Signal};
 use symphonia::core::codecs::DecoderOptions;
 use symphonia::core::errors::Error;
@@ -40,6 +42,12 @@ pub struct AudioAnalysis {
     pub vocal_last_in_pos: Option<f64>,
     #[napi(js_name = "outro_energy_level")]
     pub outro_energy_level: Option<f64>,
+    #[napi(js_name = "key_root")]
+    pub key_root: Option<i32>,
+    #[napi(js_name = "key_mode")]
+    pub key_mode: Option<i32>,
+    #[napi(js_name = "key_confidence")]
+    pub key_confidence: Option<f64>,
 }
 
 enum SnapMode { Round, Ceil, Floor }
@@ -233,11 +241,14 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     let max_time = max_analyze_time.unwrap_or(60.0).clamp(5.0, 300.0);
     let window_size = (sample_rate as usize * 20) / 1000; // 20ms
     if window_size == 0 { return None; }
+    let key_max_time = max_time.min(30.0);
+    let key_max_samples = (sample_rate as f64 * key_max_time) as usize;
 
     // State
     let mut full_envelope: Vec<f32> = Vec::new(); // For BPM (head only or full if short)
     let mut head_envelope: Vec<f32> = Vec::new();
     let mut head_vocal_ratio: Vec<f32> = Vec::new();
+    let mut head_pcm: Vec<f32> = Vec::new();
     let mut tail_envelope: Vec<f32> = Vec::new();
     let mut tail_vocal_ratio: Vec<f32> = Vec::new();
     
@@ -365,6 +376,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             loudness_meter.process(&frame_samples);
                             
                             let val = sum / channels as f32;
+                            if phase == 0 && head_pcm.len() < key_max_samples {
+                                head_pcm.push(val);
+                            }
                             let high = hpf.process(val);
                             
                             current_sum_sq += val * val;
@@ -395,6 +409,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             loudness_meter.process(&frame_samples);
 
                             let val = sum / channels as f32;
+                            if phase == 0 && head_pcm.len() < key_max_samples {
+                                head_pcm.push(val);
+                            }
                             let high = hpf.process(val);
                             current_sum_sq += val * val;
                             current_high_sum_sq += high * high;
@@ -423,6 +440,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                             loudness_meter.process(&frame_samples);
 
                             let val = sum / channels as f32;
+                            if phase == 0 && head_pcm.len() < key_max_samples {
+                                head_pcm.push(val);
+                            }
                             let high = hpf.process(val);
                             current_sum_sq += val * val;
                             current_high_sum_sq += high * high;
@@ -451,6 +471,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                            loudness_meter.process(&frame_samples);
 
                            let val = sum / channels as f32;
+                           if phase == 0 && head_pcm.len() < key_max_samples {
+                               head_pcm.push(val);
+                           }
                            let high = hpf.process(val);
                            current_sum_sq += val * val;
                            current_high_sum_sq += high * high;
@@ -479,6 +502,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                            loudness_meter.process(&frame_samples);
 
                            let val = sum / channels as f32;
+                           if phase == 0 && head_pcm.len() < key_max_samples {
+                               head_pcm.push(val);
+                           }
                            let high = hpf.process(val);
                            current_sum_sq += val * val;
                            current_high_sum_sq += high * high;
@@ -735,6 +761,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     };
 
     let loudness = loudness_meter.get_lufs();
+    let (key_root, key_mode, key_confidence) = detect_key_from_pcm(&head_pcm, sample_rate);
 
     Some(AudioAnalysis {
         duration,
@@ -745,7 +772,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         first_beat_pos: first_beat,
         loudness: Some(loudness),
         drop_pos,
-        version: 6,
+        version: 7,
         analyze_window: max_time,
         cut_in_pos: smart_cut_in,
         cut_out_pos: smart_cut_out,
@@ -753,6 +780,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         vocal_out_pos: vocal_out,
         vocal_last_in_pos: vocal_last_in,
         outro_energy_level,
+        key_root,
+        key_mode,
+        key_confidence,
     })
 }
 
@@ -862,6 +892,119 @@ fn detect_bpm_from_envelope(envelope: &[f32], rate: f64) -> (Option<f64>, Option
     (Some(bpm), Some(confidence), first_beat)
 }
 
+fn detect_key_from_pcm(pcm: &[f32], sample_rate: u32) -> (Option<i32>, Option<i32>, Option<f64>) {
+    let frame_size = 4096usize;
+    let hop_size = 1024usize;
+    if pcm.len() < frame_size { return (None, None, None); }
+    if sample_rate == 0 { return (None, None, None); }
+
+    let sr = sample_rate as f32;
+    let min_hz = 80.0f32;
+    let max_hz = 5000.0f32;
+
+    let mut window = vec![0.0f32; frame_size];
+    let denom = (frame_size - 1) as f32;
+    for (i, w) in window.iter_mut().enumerate() {
+        *w = 0.5 - 0.5 * (2.0 * std::f32::consts::PI * (i as f32) / denom).cos();
+    }
+
+    let half = frame_size / 2;
+    let mut bin_to_pc: Vec<Option<usize>> = vec![None; half];
+    let bin_hz_scale = sr / (frame_size as f32);
+    for bin in 1..half {
+        let hz = (bin as f32) * bin_hz_scale;
+        if hz < min_hz || hz > max_hz { continue; }
+        let midi = 69.0 + 12.0 * ((hz / 440.0).ln() / std::f32::consts::LN_2);
+        let pc = (midi.round() as i32).rem_euclid(12) as usize;
+        bin_to_pc[bin] = Some(pc);
+    }
+
+    let mut planner = FftPlanner::<f32>::new();
+    let fft = planner.plan_fft_forward(frame_size);
+    let mut buffer = vec![Complex32::new(0.0, 0.0); frame_size];
+
+    let mut chroma = [0.0f32; 12];
+    let mut start = 0usize;
+    while start + frame_size <= pcm.len() {
+        for i in 0..frame_size {
+            buffer[i] = Complex32::new(pcm[start + i] * window[i], 0.0);
+        }
+        fft.process(&mut buffer);
+
+        for bin in 1..half {
+            let Some(pc) = bin_to_pc[bin] else { continue; };
+            let c = buffer[bin];
+            let mag2 = c.re * c.re + c.im * c.im;
+            chroma[pc] += mag2;
+        }
+
+        start += hop_size;
+    }
+
+    let mut chroma_l2 = 0.0f32;
+    for v in chroma.iter() {
+        chroma_l2 += *v * *v;
+    }
+    if chroma_l2 <= 0.0 { return (None, None, None); }
+    let chroma_l2 = chroma_l2.sqrt();
+    let mut chroma_norm = [0.0f32; 12];
+    for (i, v) in chroma.iter().enumerate() {
+        chroma_norm[i] = *v / chroma_l2;
+    }
+
+    let major = [6.35f32, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+    let minor = [6.33f32, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+
+    let mut major_l2 = 0.0f32;
+    let mut minor_l2 = 0.0f32;
+    for i in 0..12 {
+        major_l2 += major[i] * major[i];
+        minor_l2 += minor[i] * minor[i];
+    }
+    let major_l2 = major_l2.sqrt();
+    let minor_l2 = minor_l2.sqrt();
+
+    let mut best_score = -1.0f32;
+    let mut second_score = -1.0f32;
+    let mut best_root = 0i32;
+    let mut best_mode = 0i32;
+
+    for root in 0..12usize {
+        let mut score_major = 0.0f32;
+        let mut score_minor = 0.0f32;
+        for i in 0..12usize {
+            let t_major = major[(i + 12 - root) % 12] / major_l2;
+            let t_minor = minor[(i + 12 - root) % 12] / minor_l2;
+            score_major += chroma_norm[i] * t_major;
+            score_minor += chroma_norm[i] * t_minor;
+        }
+
+        if score_major > best_score {
+            second_score = best_score;
+            best_score = score_major;
+            best_root = root as i32;
+            best_mode = 0;
+        } else if score_major > second_score {
+            second_score = score_major;
+        }
+
+        if score_minor > best_score {
+            second_score = best_score;
+            best_score = score_minor;
+            best_root = root as i32;
+            best_mode = 1;
+        } else if score_minor > second_score {
+            second_score = score_minor;
+        }
+    }
+
+    if best_score <= 0.0 { return (None, None, None); }
+    let confidence = ((best_score - second_score) / best_score).clamp(0.0, 1.0) as f64;
+    if confidence < 0.05 { return (None, None, None); }
+
+    (Some(best_root), Some(best_mode), Some(confidence))
+}
+
 fn detect_drop_pos(envelope: &[f32], rate: f64) -> Option<f64> {
     // Detect energy surge (Drop / Chorus)
     // Sliding window average energy
@@ -897,5 +1040,45 @@ fn detect_drop_pos(envelope: &[f32], rate: f64) -> Option<f64> {
         Some(drop_idx as f64 / rate)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::detect_key_from_pcm;
+
+    fn gen_chord(sample_rate: u32, seconds: f32, freqs: &[f32]) -> Vec<f32> {
+        let len = (sample_rate as f32 * seconds) as usize;
+        let mut out = vec![0.0f32; len];
+        let sr = sample_rate as f32;
+        for i in 0..len {
+            let t = i as f32 / sr;
+            let mut v = 0.0f32;
+            for &f in freqs {
+                v += (2.0 * std::f32::consts::PI * f * t).sin();
+            }
+            out[i] = v / freqs.len() as f32;
+        }
+        out
+    }
+
+    #[test]
+    fn detects_c_major_chord() {
+        let sr = 44_100;
+        let pcm = gen_chord(sr, 2.0, &[261.63, 329.63, 392.00]);
+        let (root, mode, conf) = detect_key_from_pcm(&pcm, sr);
+        assert_eq!(root, Some(0));
+        assert_eq!(mode, Some(0));
+        assert!(conf.unwrap_or(0.0) > 0.05);
+    }
+
+    #[test]
+    fn detects_a_minor_chord() {
+        let sr = 44_100;
+        let pcm = gen_chord(sr, 2.0, &[220.00, 261.63, 329.63]);
+        let (root, mode, conf) = detect_key_from_pcm(&pcm, sr);
+        assert_eq!(root, Some(9));
+        assert_eq!(mode, Some(1));
+        assert!(conf.unwrap_or(0.0) > 0.05);
     }
 }

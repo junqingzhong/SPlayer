@@ -25,6 +25,9 @@ export interface AudioAnalysis {
   vocal_out_pos?: number
   vocal_last_in_pos?: number
   outro_energy_level?: number
+  key_root?: number
+  key_mode?: number
+  key_confidence?: number
 }
 
 export interface DownloadProgress {

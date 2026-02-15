@@ -37,6 +37,9 @@ interface AudioAnalysis {
   vocal_out_pos?: number;
   vocal_last_in_pos?: number;
   outro_energy_level?: number;
+  key_root?: number;
+  key_mode?: number;
+  key_confidence?: number;
 }
 
 /**
@@ -805,39 +808,67 @@ class PlayerController {
         // 收紧 BPM 匹配范围: +/- 6%
         const SAFE_RANGE = 0.06;
         if (ratio >= 1 - SAFE_RANGE && ratio <= 1 + SAFE_RANGE) {
-          initialRate = ratio;
-          mixType = "bassSwap";
+          let harmonicOk = true;
+          const keyA = currentAnalysis.key_root;
+          const keyB = nextAnalysis.key_root;
+          const modeA = currentAnalysis.key_mode;
+          const modeB = nextAnalysis.key_mode;
+          const confA = currentAnalysis.key_confidence ?? 0;
+          const confB = nextAnalysis.key_confidence ?? 0;
 
-          // 计算可用空间
-          // Intro: 从切入点到人声开始/Drop 的距离
-          const nextVocalIn =
-            nextAnalysis.vocal_in_pos || nextAnalysis.drop_pos || cutIn / 1000 + 30;
-          const introLen = Math.max(0, nextVocalIn - cutIn / 1000);
-
-          // Outro: 从 Vocal Out 到 Cut Out 的距离 (近似)
-          const currentOutroStart = currentAnalysis.vocal_out_pos || duration - 30;
-          const outroLen = Math.max(0, fadeOut - currentOutroStart);
-
-          // 能量差异
-          let energyDiff = 0;
-          if (currentAnalysis.outro_energy_level && nextAnalysis.loudness) {
-            energyDiff = Math.abs(currentAnalysis.outro_energy_level - nextAnalysis.loudness);
+          if (
+            keyA !== undefined &&
+            keyB !== undefined &&
+            modeA !== undefined &&
+            modeB !== undefined &&
+            confA >= 0.15 &&
+            confB >= 0.15
+          ) {
+            const diff = ((keyB - keyA) % 12 + 12) % 12;
+            const dist = Math.min(diff, 12 - diff);
+            harmonicOk = dist === 0 || dist === 5 || dist === 7 || (modeA !== modeB && dist === 3);
           }
 
-          // 智能计算时长 (基于下一首歌的 BPM，因为我们已经 Match 到了它)
-          crossfadeDuration = this.calculateSmartDuration(
-            bpmB,
-            introLen,
-            outroLen,
-            energyDiff,
-          );
+          if (!harmonicOk) {
+            initialRate = 1.0;
+            mixType = "default";
+            crossfadeDuration = Math.min(crossfadeDuration, 6);
+            console.log("✨ [Automix] Key Clash: fallback to default mix");
+          } else {
+            initialRate = ratio;
+            mixType = "bassSwap";
 
-          // UI 切换通常在过渡的一半
-          uiSwitchDelay = crossfadeDuration * 0.5;
+            // 计算可用空间
+            // Intro: 从切入点到人声开始/Drop 的距离
+            const nextVocalIn =
+              nextAnalysis.vocal_in_pos || nextAnalysis.drop_pos || cutIn / 1000 + 30;
+            const introLen = Math.max(0, nextVocalIn - cutIn / 1000);
 
-          console.log(
-            `✨ [Automix] BPM Match: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
-          );
+            // Outro: 从 Vocal Out 到 Cut Out 的距离 (近似)
+            const currentOutroStart = currentAnalysis.vocal_out_pos || duration - 30;
+            const outroLen = Math.max(0, fadeOut - currentOutroStart);
+
+            // 能量差异
+            let energyDiff = 0;
+            if (currentAnalysis.outro_energy_level && nextAnalysis.loudness) {
+              energyDiff = Math.abs(currentAnalysis.outro_energy_level - nextAnalysis.loudness);
+            }
+
+            // 智能计算时长 (基于下一首歌的 BPM，因为我们已经 Match 到了它)
+            crossfadeDuration = this.calculateSmartDuration(
+              bpmB,
+              introLen,
+              outroLen,
+              energyDiff,
+            );
+
+            // UI 切换通常在过渡的一半
+            uiSwitchDelay = crossfadeDuration * 0.5;
+
+            console.log(
+              `✨ [Automix] BPM Match: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
+            );
+          }
         } else {
           // BPM 差距大，放弃 Beat Match
           initialRate = 1.0;
