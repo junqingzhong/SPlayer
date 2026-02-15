@@ -1079,7 +1079,7 @@ class PlayerController {
     let startSeek = 0;
     let uiSwitchDelay = 0;
     let mixType: "default" | "bassSwap" = "default";
-    const preRoll = 2.0; // 提前量
+    // const _preRoll = 2.0; // 提前量
     let phraseBars: number | null = null;
     let forcedTriggerTime: number | null = null;
 
