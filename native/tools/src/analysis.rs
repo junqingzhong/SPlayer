@@ -1458,69 +1458,107 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
 
     if !found_strategy {
         let next_safe_intro_len = next_landing_point - next_first_beat;
-        // 只有当 Intro 极短 (< 1 Beat) 时才 Hard Cut
-        if next_safe_intro_len < seconds_per_bar_b * 0.25 {
-            selected_next_in = next_first_beat;
-            selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
-            selected_duration = seconds_per_bar_a * 1.0;
-            strategy_name = "Hard Cut (No Intro)".to_string();
-            filter_strategy = "None".to_string();
-        } else {
-            // Intro 在 1 Beat ~ 2 Bars 之间，尽量做 Echo Out 或 1 Bar 混音
-            selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
-            
-            // [优化] Echo Out 时长策略：
-            // 1. 如果有空间，尽量给足 4 小节 (Echo Out 需要时间衰减)
-            // 2. 至少给 1 小节，避免太快
-            // 3. 取 next_safe_intro_len 的限制
-            // 4. [Fix] 还要受限于 Current Track 剩余时长，避免被后续逻辑截断导致 Voice 不对齐
-            let ideal_echo_len = seconds_per_bar_a * 4.0;
-            
-            let cur_tail_len = (current.duration - selected_cur_out).max(0.0);
-            // 允许稍微超出一点 (1.5倍)，后续逻辑会处理宽松度，但这里先给一个合理的上限
-            let effective_max_len = next_safe_intro_len.min(cur_tail_len * 1.5); 
-            
-            selected_duration = effective_max_len.min(ideal_echo_len).max(seconds_per_bar_a * 1.0);
-            
-            // 安全检查：如果 next_safe_intro_len 真的很短
-            if selected_duration > next_safe_intro_len {
-                selected_duration = next_safe_intro_len;
-            }
-            
-            // [Fix] 智能对齐：让过渡结束点对齐 Voice Start
-            // 默认从头开始
-            selected_next_in = next_first_beat;
-            
-            // 如果 Intro 很长 (比如 7s) 但过渡很短 (比如 2.2s)，则跳过前段 Intro
-            // 使得 selected_next_in + selected_duration ≈ next_landing_point
-            if next_safe_intro_len > selected_duration + 0.5 {
-                let ideal_start = next_landing_point - selected_duration;
-                // 对齐到最近的 Beat
-                let sec_per_beat = 60.0 / bpm_b;
-                let beats = (ideal_start - next_first_beat) / sec_per_beat;
-                
-                // [Fix] 使用 round() 找最近的 Beat，而不是 floor()，减少时间误差
-                // 并重新计算 duration 以精确对齐 Vocal
-                let snapped_beats = beats.round();
-                let aligned_start = next_first_beat + (snapped_beats * sec_per_beat);
-                
-                selected_next_in = aligned_start.max(next_first_beat);
+        
+        // [Refactor] Echo Out / Hard Cut 降级为最低优先级
+        // 只要 BPM 兼容，无条件优先尝试 Aggressive Blend (Bass Swap)
+        let mut aggressive_success = false;
+        
+        if bpm_compatible {
+             // 尝试列表: 32 -> 16 -> 8 -> 4
+             // 用户要求：直接长 Bass Swap / LPF
+             let candidates = [32.0, 16.0, 8.0, 4.0];
+             
+             for &bars in candidates.iter() {
+                  let target_dur = seconds_per_bar_a * bars;
+                  let cur_remaining = (current.duration - cur_ideal_out).max(0.0);
+                  
+                  // 只有当 Current 剩余足够长时才混
+                  // 宽松系数 0.8: 允许 Current 稍微不够一点，靠后续 Clamp
+                  if cur_remaining > target_dur * 0.8 {
+                       selected_duration = target_dur;
+                       selected_next_in = next_first_beat;
+                       selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
+                       
+                       strategy_name = format!("Aggressive Blend ({} Bars)", bars);
+                       // 4 Bar 用 Quick Fade，长得用 Bass Swap
+                       if bars <= 4.0 {
+                           filter_strategy = "Quick Fade".to_string();
+                       } else {
+                           filter_strategy = "Bass Swap / LPF".to_string();
+                       }
+                       aggressive_success = true;
+                       break; 
+                  }
+             }
+        }
 
-                // [Fix] 重新计算 duration，以确保结束点精确对齐 Vocal (Fill the gap)
-                let new_duration = next_landing_point - selected_next_in;
+        if !aggressive_success {
+            // Fallback 区域：BPM 不兼容 或 Current 实在太短
+            
+            // 只有当 Intro 极短 (< 1 Beat) 时才 Hard Cut
+            if next_safe_intro_len < seconds_per_bar_b * 0.25 {
+                selected_next_in = next_first_beat;
+                selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
+                selected_duration = seconds_per_bar_a * 1.0;
+                strategy_name = "Hard Cut (No Intro)".to_string();
+                filter_strategy = "None".to_string();
+            } else {
+                // Echo Out Logic (Lowest Priority Fallback)
+                selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
                 
-                // 安全检查：时长必须合理
-                let min_dur = seconds_per_bar_a * 0.5; // 至少半小节
-                // 上限：允许稍微超过 ideal_echo_len，也允许稍微超过 cur_tail
-                let max_dur = (ideal_echo_len + seconds_per_bar_a).min(cur_tail_len * 2.0 + 5.0); 
-
-                if new_duration >= min_dur && new_duration <= max_dur {
-                     selected_duration = new_duration;
+                // [优化] Echo Out 时长策略：
+                // 1. 如果有空间，尽量给足 4 小节 (Echo Out 需要时间衰减)
+                // 2. 至少给 1 小节，避免太快
+                // 3. 取 next_safe_intro_len 的限制
+                // 4. [Fix] 还要受限于 Current Track 剩余时长，避免被后续逻辑截断导致 Voice 不对齐
+                let ideal_echo_len = seconds_per_bar_a * 4.0;
+                
+                let cur_tail_len = (current.duration - selected_cur_out).max(0.0);
+                // 允许稍微超出一点 (1.5倍)，后续逻辑会处理宽松度，但这里先给一个合理的上限
+                let effective_max_len = next_safe_intro_len.min(cur_tail_len * 1.5); 
+                
+                selected_duration = effective_max_len.min(ideal_echo_len).max(seconds_per_bar_a * 1.0);
+                
+                // 安全检查：如果 next_safe_intro_len 真的很短
+                if selected_duration > next_safe_intro_len {
+                    selected_duration = next_safe_intro_len;
                 }
+                
+                // [Fix] 智能对齐：让过渡结束点对齐 Voice Start
+                // 默认从头开始
+                selected_next_in = next_first_beat;
+                
+                // 如果 Intro 很长 (比如 7s) 但过渡很短 (比如 2.2s)，则跳过前段 Intro
+                // 使得 selected_next_in + selected_duration ≈ next_landing_point
+                if next_safe_intro_len > selected_duration + 0.5 {
+                    let ideal_start = next_landing_point - selected_duration;
+                    // 对齐到最近的 Beat
+                    let sec_per_beat = 60.0 / bpm_b;
+                    let beats = (ideal_start - next_first_beat) / sec_per_beat;
+                    
+                    // [Fix] 使用 round() 找最近的 Beat，而不是 floor()，减少时间误差
+                    // 并重新计算 duration 以精确对齐 Vocal
+                    let snapped_beats = beats.round();
+                    let aligned_start = next_first_beat + (snapped_beats * sec_per_beat);
+                    
+                    selected_next_in = aligned_start.max(next_first_beat);
+
+                    // [Fix] 重新计算 duration，以确保结束点精确对齐 Vocal (Fill the gap)
+                    let new_duration = next_landing_point - selected_next_in;
+                    
+                    // 安全检查：时长必须合理
+                    let min_dur = seconds_per_bar_a * 0.5; // 至少半小节
+                    // 上限：允许稍微超过 ideal_echo_len，也允许稍微超过 cur_tail
+                    let max_dur = (ideal_echo_len + seconds_per_bar_a).min(cur_tail_len * 2.0 + 5.0); 
+
+                    if new_duration >= min_dur && new_duration <= max_dur {
+                         selected_duration = new_duration;
+                    }
+                }
+                
+                strategy_name = "Echo Out Transition".to_string();
+                filter_strategy = "Echo Freeze".to_string();
             }
-            
-            strategy_name = "Echo Out Transition".to_string();
-            filter_strategy = "Echo Freeze".to_string();
         }
     }
 
