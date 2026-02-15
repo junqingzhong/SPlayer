@@ -60,6 +60,23 @@ pub struct AudioAnalysis {
     pub camelot_key: Option<String>,
 }
 
+#[napi(object)]
+pub struct TransitionProposal {
+    pub duration: f64,
+    #[napi(js_name = "current_track_mix_out")]
+    pub current_track_mix_out: f64,
+    #[napi(js_name = "next_track_mix_in")]
+    pub next_track_mix_in: f64,
+    #[napi(js_name = "mix_type")]
+    pub mix_type: String,
+    #[napi(js_name = "compatibility_score")]
+    pub compatibility_score: f64,
+    #[napi(js_name = "key_compatible")]
+    pub key_compatible: bool,
+    #[napi(js_name = "bpm_compatible")]
+    pub bpm_compatible: bool,
+}
+
 fn get_camelot_key(root: i32, mode: i32) -> Option<String> {
     if !(0..=11).contains(&root) {
         return None;
@@ -105,6 +122,45 @@ fn get_camelot_key(root: i32, mode: i32) -> Option<String> {
 
     let letter = if mode == 0 { "B" } else { "A" };
     Some(format!("{}{}", key_num, letter))
+}
+
+fn parse_camelot(key: &str) -> Option<(i32, char)> {
+    let s = key.trim();
+    if s.len() < 2 {
+        return None;
+    }
+    let mut chars = s.chars();
+    let mode = chars.next_back()?;
+    let mode = mode.to_ascii_uppercase();
+    if mode != 'A' && mode != 'B' {
+        return None;
+    }
+    let num_str = chars.as_str().trim();
+    let num = num_str.parse::<i32>().ok()?;
+    if !(1..=12).contains(&num) {
+        return None;
+    }
+    Some((num, mode))
+}
+
+fn is_camelot_compatible(key_a: &str, key_b: &str) -> bool {
+    if key_a == key_b {
+        return true;
+    }
+    let Some((num_a, mode_a)) = parse_camelot(key_a) else {
+        return false;
+    };
+    let Some((num_b, mode_b)) = parse_camelot(key_b) else {
+        return false;
+    };
+
+    if num_a == num_b {
+        return true;
+    }
+
+    let diff = (num_a - num_b).abs();
+    let is_neighbor = diff == 1 || diff == 11;
+    is_neighbor && mode_a == mode_b
 }
 
 fn snap_to_bar_floor(time: f64, bpm: f64, first_beat: f64, confidence: f64) -> f64 {
@@ -1252,6 +1308,90 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
 #[napi]
 pub fn analyze_audio_file_head(path: String, max_analyze_time: Option<f64>) -> Option<AudioAnalysis> {
     internal_analyze_impl(&path, max_analyze_time, false)
+}
+
+#[napi]
+pub fn suggest_transition(current_path: String, next_path: String) -> Option<TransitionProposal> {
+    let current = internal_analyze_impl(&current_path, None, true)?;
+    let next = internal_analyze_impl(&next_path, Some(60.0), false)?;
+
+    let bpm_a = current.bpm.unwrap_or(128.0).max(1.0);
+    let bpm_b = next.bpm.unwrap_or(128.0).max(1.0);
+    let bpm_diff_pct = (bpm_a - bpm_b).abs() / bpm_a;
+    let bpm_compatible = bpm_diff_pct < 0.04;
+
+    let key_compatible = match (current.camelot_key.as_deref(), next.camelot_key.as_deref()) {
+        (Some(a), Some(b)) => is_camelot_compatible(a, b),
+        _ => false,
+    };
+
+    let exit_point = current
+        .vocal_out_pos
+        .unwrap_or((current.fade_out_pos - 15.0).max(0.0));
+    let entry_point = next.first_beat_pos.unwrap_or(0.0).max(0.0);
+    let next_vocal_start = next.vocal_in_pos.unwrap_or(30.0).max(entry_point);
+
+    let available_intro_len = (next_vocal_start - entry_point).max(0.0);
+    let available_outro_len = (current.duration - exit_point).max(0.0);
+
+    let seconds_per_bar = 240.0 / bpm_a;
+
+    let mut mix_duration = 0.0;
+    let mut mix_type = String::from("Standard");
+    let mut start_pos = exit_point;
+
+    if bpm_compatible && key_compatible {
+        let target_len = seconds_per_bar * 16.0;
+        if available_intro_len >= target_len && available_outro_len >= target_len {
+            mix_duration = target_len;
+            mix_type = "Long Blend (16 Bars)".to_string();
+            start_pos = exit_point;
+        } else {
+            let fallback = seconds_per_bar * 8.0;
+            mix_duration = fallback.min(available_intro_len).min(available_outro_len);
+            mix_type = "Harmonic Blend (8 Bars)".to_string();
+        }
+    } else if bpm_compatible {
+        let mut target = seconds_per_bar * 8.0;
+        if available_intro_len < target || available_outro_len < target {
+            target = seconds_per_bar * 4.0;
+        }
+        mix_duration = target.min(available_intro_len).min(available_outro_len);
+        mix_type = "Percussive Mix".to_string();
+    } else {
+        let target = seconds_per_bar * 2.0;
+        mix_duration = target.min(available_outro_len).max(0.5);
+        mix_type = "Echo Out / Cut".to_string();
+    }
+
+    if !mix_duration.is_finite() || mix_duration <= 0.0 {
+        return None;
+    }
+
+    if start_pos + mix_duration > current.duration {
+        start_pos = current.duration - mix_duration;
+    }
+    start_pos = start_pos.max(0.0);
+
+    let next_in = next.first_beat_pos.unwrap_or(0.0).max(0.0);
+
+    let compatibility_score = if bpm_compatible && key_compatible {
+        1.0
+    } else if bpm_compatible {
+        0.7
+    } else {
+        0.4
+    };
+
+    Some(TransitionProposal {
+        duration: mix_duration,
+        current_track_mix_out: start_pos,
+        next_track_mix_in: next_in,
+        mix_type,
+        compatibility_score,
+        key_compatible,
+        bpm_compatible,
+    })
 }
 
 fn detect_silence_from_envelope(envelope: &[f32], rate: f64, threshold_db: f32) -> (f64, f64) {
