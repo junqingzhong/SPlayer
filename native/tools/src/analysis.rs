@@ -435,9 +435,12 @@ impl LoudnessMeter {
     }
 }
 
-#[napi]
-pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option<AudioAnalysis> {
-    let path = Path::new(&path);
+fn internal_analyze_impl(
+    path: &str,
+    max_analyze_time: Option<f64>,
+    include_tail: bool,
+) -> Option<AudioAnalysis> {
+    let path = Path::new(path);
     let src = File::open(path).ok()?;
     let mss = MediaSourceStream::new(Box::new(src), Default::default());
 
@@ -461,6 +464,13 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     let time_base = track.codec_params.time_base;
     let n_frames = track.codec_params.n_frames;
     let sample_rate = track.codec_params.sample_rate.unwrap_or(44100);
+    let total_duration = match (n_frames, time_base) {
+        (Some(n), Some(tb)) => {
+            let t = tb.calc_time(n);
+            Some(t.seconds as f64 + t.frac)
+        }
+        _ => None,
+    };
 
     let dec_opts: DecoderOptions = Default::default();
     let mut decoder = symphonia::default::get_codecs()
@@ -545,12 +555,8 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
                 full_envelope = head_envelope.clone();
                 full_low_envelope = head_low_envelope.clone();
 
-                let mut total_duration = None;
-                if let Some(n) = n_frames {
-                    if let Some(tb) = time_base {
-                        let t = tb.calc_time(n);
-                        total_duration = Some(t.seconds as f64 + t.frac);
-                    }
+                if !include_tail {
+                    break;
                 }
 
                 if let Some(tot) = total_duration {
@@ -829,6 +835,9 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     }
 
     // Analysis Logic
+    if let Some(tot) = total_duration {
+        duration = tot;
+    }
     let env_rate = 50.0; // 20ms
 
     // 1. Basic Silence
@@ -1201,32 +1210,48 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         _ => None,
     };
 
+    let fade_out_pos = if include_tail { fade_out } else { duration };
+    let vocal_out_pos = if include_tail { vocal_out } else { None };
+    let vocal_last_in_pos = if include_tail { vocal_last_in } else { None };
+    let outro_energy_level = if include_tail { outro_energy_level } else { None };
+    let cut_out_pos = if include_tail { smart_cut_out } else { None };
+
     Some(AudioAnalysis {
         duration,
         bpm,
         bpm_confidence: bpm_conf,
         fade_in_pos: fade_in,
-        fade_out_pos: fade_out,
+        fade_out_pos,
         first_beat_pos: first_beat,
         loudness: Some(loudness),
         drop_pos,
         version: 11,
         analyze_window: max_time,
         cut_in_pos: smart_cut_in,
-        cut_out_pos: smart_cut_out,
+        cut_out_pos,
         mix_center_pos: mix_center,
         mix_start_pos: raw_mix_start,
         mix_end_pos: raw_mix_end,
         energy_profile,
         vocal_in_pos: vocal_in,
-        vocal_out_pos: vocal_out,
-        vocal_last_in_pos: vocal_last_in,
+        vocal_out_pos,
+        vocal_last_in_pos,
         outro_energy_level,
         key_root,
         key_mode,
         key_confidence,
         camelot_key,
     })
+}
+
+#[napi]
+pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option<AudioAnalysis> {
+    internal_analyze_impl(&path, max_analyze_time, true)
+}
+
+#[napi]
+pub fn analyze_audio_file_head(path: String, max_analyze_time: Option<f64>) -> Option<AudioAnalysis> {
+    internal_analyze_impl(&path, max_analyze_time, false)
 }
 
 fn detect_silence_from_envelope(envelope: &[f32], rate: f64, threshold_db: f32) -> (f64, f64) {
