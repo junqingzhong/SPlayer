@@ -1368,8 +1368,15 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
             continue;
         }
 
-        let snapped_cur_start =
-            snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 64.0);
+        let mut snapped_cur_start =
+            snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 16.0);
+        // 如果 snap 导致时间回退太远 (超过 30s)，则说明 phrase 网格不合适，尝试更细的网格 (4 Bar)
+        if cur_ideal_out - snapped_cur_start > 30.0 {
+            snapped_cur_start = snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 16.0);
+            if cur_ideal_out - snapped_cur_start > 15.0 {
+                 snapped_cur_start = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
+            }
+        }
         let remaining_len = current.duration - snapped_cur_start;
         if remaining_len < duration * 0.8 {
             continue;
