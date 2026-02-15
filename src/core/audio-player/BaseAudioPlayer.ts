@@ -75,6 +75,8 @@ export abstract class BaseAudioPlayer
   protected isInitialized = false;
   /** 目标音量 (0-1) */
   protected volume: number = 1;
+  /** ReplayGain 增益 (1.0 = 0dB) */
+  protected replayGain: number = 1.0;
   /** 存储淡出暂停的定时器 ID */
   private fadeTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -197,7 +199,7 @@ export abstract class BaseAudioPlayer
       this.gainNode.gain.setValueAtTime(0, this.audioCtx.currentTime);
     }
 
-    this.applyFadeTo(this.volume, duration, options.fadeCurve);
+    this.applyFadeTo(this.volume * this.replayGain, duration, options.fadeCurve);
 
     try {
       await this.doPlay();
@@ -272,9 +274,9 @@ export abstract class BaseAudioPlayer
     await this.doSeek(time);
 
     if (!immediate) {
-      this.applyFadeTo(this.volume, SEEK_FADE_TIME);
+      this.applyFadeTo(this.volume * this.replayGain, SEEK_FADE_TIME);
     } else {
-      this.applyFadeTo(this.volume, 0);
+      this.applyFadeTo(this.volume * this.replayGain, 0);
     }
   }
 
@@ -305,7 +307,16 @@ export abstract class BaseAudioPlayer
    */
   public setVolume(value: number) {
     this.volume = Math.max(0, Math.min(1, value));
-    this.applyFadeTo(this.volume, 0);
+    this.applyFadeTo(this.volume * this.replayGain, 0);
+  }
+
+  /**
+   * 设置 ReplayGain 增益
+   * @param gain 线性增益值
+   */
+  public setReplayGain(gain: number) {
+    this.replayGain = gain;
+    this.applyFadeTo(this.volume * this.replayGain, 0.1);
   }
 
   /**
