@@ -701,6 +701,47 @@ class PlayerController {
   }
 
   /**
+   * 计算智能过渡时长
+   * 基于 BPM、结构空间和能量差异
+   */
+  private calculateSmartDuration(
+    bpm: number,
+    introLen: number,
+    outroLen: number,
+    energyDiff: number = 0,
+  ): number {
+    const beatTime = 60 / bpm;
+
+    // 1. 基础时长：默认 32 拍 (8小节)，约 15秒 @ 128BPM
+    let targetBeats = 32;
+
+    // 2. 空间受限检查
+    // 如果下一首的前奏少于 32 拍，就降级到 16 拍
+    if (introLen < beatTime * 32) {
+      targetBeats = 16;
+    }
+    // 如果还是不够，降级到 8 拍
+    if (introLen < beatTime * 16) {
+      targetBeats = 8;
+    }
+
+    // 3. 同样的逻辑检查当前歌的 Outro
+    // outroLen 是当前歌 vocal_out 之后剩余的空间
+    if (outroLen < beatTime * targetBeats) {
+      targetBeats = Math.floor(outroLen / beatTime / 4) * 4; // 向下取整到 4 拍倍数
+    }
+
+    // 4. 能量差异调整
+    // 如果能量差异过大 (> 6dB)，强制缩短过渡
+    if (energyDiff > 6.0) {
+      targetBeats = Math.min(targetBeats, 8);
+    }
+
+    // 5. 兜底：最少 4 拍 (1小节)
+    return Math.max(beatTime * 4, beatTime * targetBeats);
+  }
+
+  /**
    * 核心 Automix 触发检测逻辑 (每帧运行)
    */
   private checkAutomixTrigger(rawTime: number) {
@@ -730,8 +771,9 @@ class PlayerController {
     const nextAnalysis = this.nextAnalysis;
 
     // 基础锚点：fade_out_pos 或 duration
+    // 优先使用 smart cut_out_pos (Rust 侧计算好的吸附点)
     const duration = this.getDuration() / 1000;
-    const fadeOut = currentAnalysis?.fade_out_pos || duration;
+    const fadeOut = currentAnalysis?.cut_out_pos || currentAnalysis?.fade_out_pos || duration;
 
     // 默认混音时长 8s
     let crossfadeDuration = 8;
@@ -766,9 +808,29 @@ class PlayerController {
           initialRate = ratio;
           mixType = "bassSwap";
 
-          // Duration = 32 beats (Standard Phrase)
-          const beatDuration = 60 / bpmA;
-          crossfadeDuration = Math.max(8, Math.min(beatDuration * 32, 25));
+          // 计算可用空间
+          // Intro: 从切入点到人声开始/Drop 的距离
+          const nextVocalIn =
+            nextAnalysis.vocal_in_pos || nextAnalysis.drop_pos || cutIn / 1000 + 30;
+          const introLen = Math.max(0, nextVocalIn - cutIn / 1000);
+
+          // Outro: 从 Vocal Out 到 Cut Out 的距离 (近似)
+          const currentOutroStart = currentAnalysis.vocal_out_pos || duration - 30;
+          const outroLen = Math.max(0, fadeOut - currentOutroStart);
+
+          // 能量差异
+          let energyDiff = 0;
+          if (currentAnalysis.outro_energy_level && nextAnalysis.loudness) {
+            energyDiff = Math.abs(currentAnalysis.outro_energy_level - nextAnalysis.loudness);
+          }
+
+          // 智能计算时长 (基于下一首歌的 BPM，因为我们已经 Match 到了它)
+          crossfadeDuration = this.calculateSmartDuration(
+            bpmB,
+            introLen,
+            outroLen,
+            energyDiff,
+          );
 
           // UI 切换通常在过渡的一半
           uiSwitchDelay = crossfadeDuration * 0.5;
@@ -785,7 +847,7 @@ class PlayerController {
         }
       }
 
-      // Energy Flow Adjustment
+      // Energy Flow Adjustment (Default Mix)
       if (
         mixType === "default" &&
         currentAnalysis?.outro_energy_level &&

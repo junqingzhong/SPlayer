@@ -668,21 +668,25 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     // Cut Out Logic
     let smart_cut_out = if let (Some(v_out), Some(bpm_val), Some(f_beat)) = (vocal_out, bpm, first_beat) {
         let beat_len = 60.0 / bpm_val;
-        // 缩短缓冲：只给 1 拍的缓冲
-        let buffer_beats = 1.0; 
+        // 增加缓冲：给 8 拍 (2小节) 的缓冲，让人声完全结束后的器乐段展示出来
+        let buffer_beats = 8.0; 
         let potential_cut = v_out + (beat_len * buffer_beats);
         
         let confidence = bpm_conf.unwrap_or(0.0);
         // 使用 Ceil 模式：必须在 potential_cut 之后的小节线
         let quantized_cut = snap_to_bar(potential_cut, bpm_val, f_beat, confidence, SnapMode::Ceil);
         
-        if quantized_cut < (fade_out - 1.0) {
+        // 确保不晚于 fade_out
+        if quantized_cut < (fade_out - 0.5) {
             Some(quantized_cut)
         } else {
             Some((fade_out - 5.0).max(0.0))
         }
     } else {
-        Some((fade_out - 5.0).max(0.0))
+        // Fallback: 倒数 15秒 (作为长混音的基准)
+        // 但不能早于 fade_in
+        let default_cut = (duration - 15.0).max(fade_in + 10.0);
+        Some(default_cut.min(fade_out - 5.0).max(0.0))
     };
     
     // Cut In Logic (Back-Calculation)
@@ -741,7 +745,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         first_beat_pos: first_beat,
         loudness: Some(loudness),
         drop_pos,
-        version: 5,
+        version: 6,
         analyze_window: max_time,
         cut_in_pos: smart_cut_in,
         cut_out_pos: smart_cut_out,
