@@ -1365,6 +1365,56 @@ class PlayerController {
     // cut_out_pos 也是 Rust 计算好的吸附点
     let triggerTime = forcedTriggerTime ?? exitPoint - crossfadeDuration;
 
+    // 长尾奏激进模式：当人声结束到退出点间隔过长时，提前触发混音
+    if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos !== undefined) {
+      const vocalOut = currentAnalysis.vocal_out_pos;
+      const originalExit = exitPoint;
+      const tailLength = originalExit - vocalOut;
+
+      if (Number.isFinite(tailLength) && tailLength > 12.0) {
+        const bpm = currentAnalysis.bpm;
+        const firstBeat = currentAnalysis.first_beat_pos;
+        const bpmConf = currentAnalysis.bpm_confidence ?? 0;
+
+        const breathingRoom = bpm && Number.isFinite(bpm) && bpm > 0 ? (60 / bpm) * 4 : 3.0;
+        const idealStart = vocalOut + breathingRoom;
+        let aggressiveTrigger = idealStart;
+
+        if (
+          bpm &&
+          Number.isFinite(bpm) &&
+          bpm > 0 &&
+          firstBeat !== undefined &&
+          Number.isFinite(firstBeat) &&
+          bpmConf >= 0.4 &&
+          idealStart < originalExit
+        ) {
+          const spb = 60 / bpm;
+          const barDuration = spb * 4;
+          if (Number.isFinite(barDuration) && barDuration > 0) {
+            const relTime = idealStart - firstBeat;
+            const nextBarIndex = Math.ceil(relTime / barDuration);
+            aggressiveTrigger = firstBeat + nextBarIndex * barDuration;
+          }
+        }
+
+        const originalTrigger = triggerTime;
+        if (
+          Number.isFinite(aggressiveTrigger) &&
+          aggressiveTrigger < originalTrigger &&
+          aggressiveTrigger + crossfadeDuration < duration
+        ) {
+          triggerTime = aggressiveTrigger;
+          this.automixLog(
+            "log",
+            "long_outro_aggressive",
+            `[Automix] 长尾奏(${tailLength.toFixed(1)}s)，触发点提前：${this.formatAutomixTime(originalTrigger)} -> ${this.formatAutomixTime(aggressiveTrigger)} (vocal_out=${this.formatAutomixTime(vocalOut)})`,
+            15000,
+          );
+        }
+      }
+    }
+
     if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos !== undefined) {
       const bpm = currentAnalysis?.bpm;
       const vocalGuardSec = bpm ? Math.max(3.0, (60 / bpm) * 4) : 3.0;
