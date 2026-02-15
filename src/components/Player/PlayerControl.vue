@@ -114,14 +114,11 @@
             </template>
           </div>
           <!-- 进度条 -->
-          <div class="slider">
+          <div :class="['slider', { 'automix-active': showAutomixFx }]" @animationend="onFxAnimationEnd">
             <span @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
-            <PlayerSlider
-              :show-tooltip="false"
-              :automix-fx-seq="statusStore.automixFxSeq"
-              automix-fx-text="混音"
-            />
+            <PlayerSlider :show-tooltip="false" />
             <span @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
+            <div v-if="showAutomixFx" :key="automixFxKey" class="automix-fx-text">混音</div>
           </div>
         </div>
         <n-flex class="right" align="center" justify="end">
@@ -150,6 +147,48 @@ const songManager = useSongManager();
 const player = usePlayerController();
 
 const { timeDisplay, toggleTimeFormat } = useTimeFormat();
+
+const showAutomixFx = ref(false);
+const automixFxKey = ref(0);
+let automixFxTimer: number | null = null;
+
+const triggerAutomixFx = async (seq: number) => {
+  if (automixFxTimer !== null) {
+    window.clearTimeout(automixFxTimer);
+    automixFxTimer = null;
+  }
+  showAutomixFx.value = false;
+  automixFxKey.value = seq;
+  await nextTick();
+  showAutomixFx.value = true;
+  automixFxTimer = window.setTimeout(() => {
+    showAutomixFx.value = false;
+    automixFxTimer = null;
+  }, 1400);
+};
+
+watch(
+  () => statusStore.automixFxSeq,
+  (seq, prev) => {
+    if (!seq || seq === prev) return;
+    void triggerAutomixFx(seq);
+  },
+);
+
+const onFxAnimationEnd = () => {
+  if (automixFxTimer !== null) {
+    window.clearTimeout(automixFxTimer);
+    automixFxTimer = null;
+  }
+  showAutomixFx.value = false;
+};
+
+onBeforeUnmount(() => {
+  if (automixFxTimer !== null) {
+    window.clearTimeout(automixFxTimer);
+    automixFxTimer = null;
+  }
+});
 </script>
 
 <style lang="scss" scoped>
@@ -276,6 +315,7 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
       width: 100%;
       max-width: 480px;
       font-size: 12px;
+      position: relative;
       .n-slider {
         margin: 6px 8px;
         --n-handle-size: 12px;
@@ -286,12 +326,83 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
         cursor: pointer;
       }
     }
+    .slider.automix-active {
+      :deep(.n-slider-rail) {
+        position: relative;
+        overflow: hidden;
+      }
+      :deep(.n-slider-rail)::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: 999px;
+        background: rgba(var(--main-cover-color), 0.18);
+        box-shadow:
+          0 0 14px rgba(var(--main-cover-color), 0.65),
+          0 0 28px rgba(var(--main-cover-color), 0.28);
+        opacity: 0;
+        clip-path: inset(0 100% 0 0);
+        animation: automix-rail 1400ms ease-out forwards;
+      }
+      .automix-fx-text {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -160%);
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.2em;
+        color: rgba(var(--main-cover-color), 0.95);
+        filter: drop-shadow(0 0 10px rgba(var(--main-cover-color), 0.55));
+        opacity: 0;
+        clip-path: inset(0 100% 0 0);
+        animation: automix-text 1400ms ease-out forwards;
+        pointer-events: none;
+      }
+    }
   }
   &:hover {
     .left,
     .right {
       opacity: 1;
     }
+  }
+}
+
+@keyframes automix-rail {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  14% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes automix-text {
+  0% {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  22% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  100% {
+    opacity: 0;
+    clip-path: inset(0 0 0 0);
   }
 }
 </style>

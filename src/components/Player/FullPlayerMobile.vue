@@ -58,12 +58,7 @@
           <!-- 进度条 -->
           <div class="progress-section">
             <span class="time" @click="toggleTimeFormat">{{ timeDisplay[0] }}</span>
-            <PlayerSlider
-              class="player"
-              :show-tooltip="false"
-              :automix-fx-seq="statusStore.automixFxSeq"
-              automix-fx-text="混音"
-            />
+            <PlayerSlider class="player" :show-tooltip="false" />
             <span class="time" @click="toggleTimeFormat">{{ timeDisplay[1] }}</span>
           </div>
 
