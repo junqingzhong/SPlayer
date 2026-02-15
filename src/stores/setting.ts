@@ -413,8 +413,8 @@ export interface SettingState {
   };
   /** 启用搜索关键词获取 */
   enableSearchKeyword: boolean;
-  /** 失焦后自动清空搜索框 */
-  clearSearchOnBlur: boolean;
+  /** 搜索框行为 */
+  searchInputBehavior: "normal" | "clear" | "sync";
   /** 显示主页问好 */
   showHomeGreeting: boolean;
   /** 首页栏目顺序和显示配置 */
@@ -703,7 +703,7 @@ export const useSettingStore = defineStore("setting", {
       musicTagEditor: true,
     },
     enableSearchKeyword: true,
-    clearSearchOnBlur: false,
+    searchInputBehavior: "normal",
     showHomeGreeting: true,
     homePageSections: [
       { key: "playlist", name: "专属歌单", visible: true, order: 0 },
