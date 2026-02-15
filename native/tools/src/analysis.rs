@@ -1341,7 +1341,7 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
     let seconds_per_bar_a = (240.0 / bpm_a).max(0.1);
     let seconds_per_bar_b = (240.0 / bpm_b).max(0.1);
 
-    let candidate_bars = [32.0, 16.0, 8.0, 4.0];
+    let candidate_bars = [32.0, 16.0, 8.0, 4.0, 2.0];
 
     let mut selected_duration = 0.0;
     let mut selected_next_in = 0.0;
@@ -1428,8 +1428,22 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
             selected_duration = duration;
             selected_next_in = snapped_next_in;
             selected_cur_out = snapped_cur_start;
-            strategy_name = "Quick Cut (4 Bars)".to_string();
-            filter_strategy = "Hard Swap".to_string();
+            strategy_name = "Quick Blend (4 Bars)".to_string();
+            filter_strategy = if bpm_compatible {
+                "Quick Fade".to_string()
+            } else {
+                "Echo Freeze".to_string()
+            };
+            found_strategy = true;
+            break;
+        }
+
+        if bars == 2.0 {
+            selected_duration = duration;
+            selected_next_in = snapped_next_in;
+            selected_cur_out = snapped_cur_start;
+            strategy_name = "Rapid Blend (2 Bars)".to_string();
+            filter_strategy = "Quick Fade".to_string();
             found_strategy = true;
             break;
         }
@@ -1437,13 +1451,15 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
 
     if !found_strategy {
         let next_safe_intro_len = next_landing_point - next_first_beat;
-        if next_safe_intro_len < seconds_per_bar_b * 2.0 {
+        // 只有当 Intro 极短 (< 1 Beat) 时才 Hard Cut
+        if next_safe_intro_len < seconds_per_bar_b * 0.25 {
             selected_next_in = next_first_beat;
             selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
             selected_duration = seconds_per_bar_a * 1.0;
-            strategy_name = "Hard Cut (Short Intro)".to_string();
+            strategy_name = "Hard Cut (No Intro)".to_string();
             filter_strategy = "None".to_string();
         } else {
+            // Intro 在 1 Beat ~ 2 Bars 之间，尽量做 Echo Out 或 1 Bar 混音
             selected_next_in = next_first_beat;
             selected_cur_out = snap_to_bar_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a);
             selected_duration = next_safe_intro_len.min(seconds_per_bar_a * 4.0);
