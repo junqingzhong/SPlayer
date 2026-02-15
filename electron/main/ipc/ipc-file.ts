@@ -42,7 +42,7 @@ const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
       ipcLog.warn(`[AudioAnalysis] tools.node 不存在: ${nativeModulePath}`);
       throw new Error("TOOLS_NATIVE_MODULE_MISSING");
     });
-    if (jobType === "analyzeHead" || jobType === "suggestTransition") {
+    if (jobType === "analyzeHead" || jobType === "suggestTransition" || jobType === "suggestLongMix") {
       ipcLog.info(`[AudioAnalysis] Worker 启动: ${jobType}`);
     }
     const result = await new Promise<unknown | null>((resolvePromise) => {
@@ -86,7 +86,7 @@ const runToolsJobInWorker = async (payload: Record<string, unknown>) => {
       worker.postMessage({ ...payload, nativeModulePath });
     });
 
-    if (jobType === "analyzeHead" || jobType === "suggestTransition") {
+    if (jobType === "analyzeHead" || jobType === "suggestTransition" || jobType === "suggestLongMix") {
       ipcLog.info(`[AudioAnalysis] Worker 完成: ${jobType} (${result ? "ok" : "null"})`);
     }
     return result;
@@ -108,6 +108,10 @@ const runHeadAnalysisInWorker = async (filePath: string, maxTime: number) => {
 
 const runSuggestTransitionInWorker = async (currentPath: string, nextPath: string) => {
   return await runToolsJobInWorker({ type: "suggestTransition", currentPath, nextPath });
+};
+
+const runSuggestLongMixInWorker = async (currentPath: string, nextPath: string) => {
+  return await runToolsJobInWorker({ type: "suggestLongMix", currentPath, nextPath });
 };
 
 /** 获取封面目录路径 */
@@ -495,6 +499,20 @@ const initFileIpc = (): void => {
       return await runSuggestTransitionInWorker(currentPath, nextPath);
     } catch (err) {
       console.error("Suggest transition failed:", err);
+      return null;
+    }
+  });
+
+  ipcMain.handle("suggest-long-mix", async (_, currentPath: string, nextPath: string) => {
+    try {
+      const a = await stat(currentPath).catch(() => null);
+      if (!a) return null;
+      const b = await stat(nextPath).catch(() => null);
+      if (!b) return null;
+      ipcLog.info(`[AudioAnalysis] SuggestLongMix: ${currentPath} -> ${nextPath}`);
+      return await runSuggestLongMixInWorker(currentPath, nextPath);
+    } catch (err) {
+      console.error("Suggest long mix failed:", err);
       return null;
     }
   });

@@ -22,7 +22,14 @@ type SuggestTransitionRequest = {
   nativeModulePath: string;
 };
 
-type WorkerRequest = AnalyzeRequest | AnalyzeHeadRequest | SuggestTransitionRequest;
+type SuggestLongMixRequest = {
+  type: "suggestLongMix";
+  currentPath: string;
+  nextPath: string;
+  nativeModulePath: string;
+};
+
+type WorkerRequest = AnalyzeRequest | AnalyzeHeadRequest | SuggestTransitionRequest | SuggestLongMixRequest;
 
 type AnalyzeResponse =
   | { ok: true; result: unknown }
@@ -36,6 +43,7 @@ let cachedTools:
       analyzeAudioFile?: (filePath: string, maxTime: number) => unknown;
       analyzeAudioFileHead?: (filePath: string, maxTime: number) => unknown;
       suggestTransition?: (currentPath: string, nextPath: string) => unknown;
+      suggestLongMix?: (currentPath: string, nextPath: string) => unknown;
     }
   | null = null;
 let cachedToolsError: string | null = null;
@@ -85,12 +93,18 @@ port.on("message", (msg: WorkerRequest) => {
         return;
       }
       result = tools.analyzeAudioFileHead(msg.filePath, msg.maxTime);
-    } else {
+    } else if (msg.type === "suggestTransition") {
       if (typeof tools.suggestTransition !== "function") {
         port.postMessage({ ok: false, error: "NATIVE_EXPORT_MISSING:suggestTransition" });
         return;
       }
       result = tools.suggestTransition(msg.currentPath, msg.nextPath);
+    } else if (msg.type === "suggestLongMix") {
+      if (typeof tools.suggestLongMix !== "function") {
+        port.postMessage({ ok: false, error: "NATIVE_EXPORT_MISSING:suggestLongMix" });
+        return;
+      }
+      result = tools.suggestLongMix(msg.currentPath, msg.nextPath);
     }
 
     if (result == null) {
