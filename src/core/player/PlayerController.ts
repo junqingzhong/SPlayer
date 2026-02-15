@@ -95,8 +95,6 @@ class PlayerController {
 
   /** 下一首歌分析结果 (AutoMIX Cache) */
   private nextAnalysis: AudioAnalysis | null = null;
-  /** 是否正在获取下一首歌分析 */
-  private isFetchingNextAnalysis = false;
   /** Automix 增益调整 (LUFS Normalization) */
   private automixGain = 1.0;
   private automixState: AutomixState = "IDLE";
@@ -230,7 +228,6 @@ class PlayerController {
     analysis: AudioAnalysis | null;
   }> {
     const songManager = useSongManager();
-    const settingStore = useSettingStore();
 
     const audioSource = await songManager.getAudioSource(song);
     // 检查请求是否过期
@@ -248,16 +245,6 @@ class PlayerController {
     };
 
     let analysis: AudioAnalysis | null = null;
-    if (isElectron && song.path && song.type !== "streaming" && settingStore.enableAutomix) {
-      try {
-        console.log(`🔍 [Automix] Analysing: ${song.path}`);
-        analysis = await window.electron.ipcRenderer.invoke("analyze-audio", song.path, {
-          maxAnalyzeTimeSec: settingStore.automixMaxAnalyzeTime,
-        });
-      } catch (e) {
-        console.warn("[Automix] Analysis failed", e);
-      }
-    }
     return { audioSource: safeAudioSource, analysis };
   }
 
@@ -336,7 +323,6 @@ class PlayerController {
     // 重置过渡状态
     this.isTransitioning = false;
     this.nextAnalysis = null;
-    this.isFetchingNextAnalysis = false;
     this.automixLogTimestamps.clear();
 
     // 生成新的请求标识
@@ -978,58 +964,9 @@ class PlayerController {
    * 核心 Automix 触发检测逻辑 (每帧运行)
    */
   private computeAutomixPlan(_rawTime: number): AutomixPlan | null {
-    const settingStore = useSettingStore();
-
     // 1. 获取下一首歌
     const nextInfo = this.getNextSongForAutomix();
     if (!nextInfo) return null;
-
-    // 2. 尝试获取下一首歌的分析 (如果还没获取)
-    if (!this.nextAnalysis && !this.isFetchingNextAnalysis) {
-      if (!nextInfo.song.path) {
-        this.automixLog(
-          "warn",
-          `next_not_local:${nextInfo.song.id}`,
-          "[Automix] 下一首不是本地文件，无法进行分析，将退化为默认混音",
-          60000,
-        );
-        return null;
-      }
-      this.isFetchingNextAnalysis = true;
-      window.electron.ipcRenderer
-        .invoke("analyze-audio", nextInfo.song.path, {
-          maxAnalyzeTimeSec: settingStore.automixMaxAnalyzeTime,
-        })
-        .then((res) => {
-          this.nextAnalysis = res;
-          this.isFetchingNextAnalysis = false;
-          if (res) {
-            const analyzeWindow = res.analyze_window ?? 0;
-            const currentCutOut = this.currentAnalysis?.cut_out_pos;
-            const nextCutIn = res.cut_in_pos ?? res.fade_in_pos;
-            if (currentCutOut !== undefined) {
-              console.log(
-                `[Automix] 已完成分析，分析窗口 ${this.formatAutomixTime(analyzeWindow)}，切出 ${this.formatAutomixTime(currentCutOut)} -> 下一首切入 ${this.formatAutomixTime(nextCutIn)}`,
-              );
-            } else {
-              console.log(
-                `[Automix] 已完成分析，分析窗口 ${this.formatAutomixTime(analyzeWindow)}，下一首切入 ${this.formatAutomixTime(nextCutIn)}`,
-              );
-            }
-          } else {
-            this.automixLog(
-              "warn",
-              "next_analysis_empty",
-              "[Automix] 音频分析返回空结果，将退化为默认混音",
-              60000,
-            );
-          }
-        })
-        .catch((e) => {
-          this.isFetchingNextAnalysis = false;
-          this.automixLog("warn", "next_analysis_failed", "[Automix] 音频分析失败，将退化为默认混音", 60000, e);
-        });
-    }
 
     const currentAnalysis = this.currentAnalysis;
     const nextAnalysis = this.nextAnalysis;
@@ -1975,7 +1912,6 @@ class PlayerController {
       this.currentAnalysis = analysis;
       // 重置下一首分析缓存
       this.nextAnalysis = null;
-      this.isFetchingNextAnalysis = false;
 
       // 2. 启动 Crossfade
       const uiSwitchDelay = options.uiSwitchDelay ?? options.crossfadeDuration * 0.5;

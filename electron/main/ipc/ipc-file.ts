@@ -37,6 +37,10 @@ const runAnalysisInWorker = async (filePath: string, maxTime: number) => {
 
   try {
     const nativeModulePath = resolveToolsNativeModulePath();
+    await access(nativeModulePath).catch(() => {
+      ipcLog.warn(`[AudioAnalysis] tools.node 不存在: ${nativeModulePath}`);
+      throw new Error("TOOLS_NATIVE_MODULE_MISSING");
+    });
     const result = await new Promise<unknown | null>((resolvePromise) => {
       const cleanup = () => {
         worker.removeAllListeners("message");
@@ -45,32 +49,43 @@ const runAnalysisInWorker = async (filePath: string, maxTime: number) => {
         worker.terminate().catch(() => {});
       };
 
-      worker.once("message", (resp: { ok: boolean; result?: unknown } | { ok: false }) => {
+      worker.once(
+        "message",
+        (resp: { ok: true; result?: unknown } | { ok: false; error?: string }) => {
         cleanup();
         if (resp && resp.ok) {
           resolvePromise(resp.result ?? null);
           return;
         }
+        if (resp && !resp.ok && resp.error) {
+          ipcLog.warn(`[AudioAnalysis] Worker 分析失败: ${resp.error}`);
+        }
         resolvePromise(null);
-      });
+      },
+      );
 
-      worker.once("error", () => {
+      worker.once("error", (err) => {
         cleanup();
+        const message = err instanceof Error ? err.message : String(err);
+        ipcLog.warn(`[AudioAnalysis] Worker 线程错误: ${message}`);
         resolvePromise(null);
       });
 
       worker.once("exit", (code) => {
+        cleanup();
         if (code !== 0) {
-          cleanup();
-          resolvePromise(null);
+          ipcLog.warn(`[AudioAnalysis] Worker 异常退出: code=${code}`);
         }
+        resolvePromise(null);
       });
 
       worker.postMessage({ filePath, maxTime, nativeModulePath });
     });
 
     return result;
-  } catch {
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    ipcLog.warn(`[AudioAnalysis] 启动分析失败: ${message}`);
     worker.terminate().catch(() => {});
     return null;
   }

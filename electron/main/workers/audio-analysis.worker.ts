@@ -15,10 +15,11 @@ const requireNative = createRequire(import.meta.url);
 
 let cachedNativeModulePath: string | null = null;
 let cachedAnalyzeAudioFile: ((filePath: string, maxTime: number) => unknown) | null = null;
+let cachedAnalyzeAudioFileError: string | null = null;
 
 const getAnalyzeAudioFile = (nativeModulePath: string) => {
-  if (cachedNativeModulePath === nativeModulePath && cachedAnalyzeAudioFile) {
-    return cachedAnalyzeAudioFile;
+  if (cachedNativeModulePath === nativeModulePath) {
+    return { analyzeAudioFile: cachedAnalyzeAudioFile, error: cachedAnalyzeAudioFileError };
   }
 
   try {
@@ -26,15 +27,18 @@ const getAnalyzeAudioFile = (nativeModulePath: string) => {
     if (typeof tools.analyzeAudioFile !== "function") {
       cachedNativeModulePath = nativeModulePath;
       cachedAnalyzeAudioFile = null;
-      return null;
+      cachedAnalyzeAudioFileError = "NATIVE_EXPORT_MISSING:analyzeAudioFile";
+      return { analyzeAudioFile: null, error: cachedAnalyzeAudioFileError };
     }
     cachedNativeModulePath = nativeModulePath;
     cachedAnalyzeAudioFile = tools.analyzeAudioFile as (filePath: string, maxTime: number) => unknown;
-    return cachedAnalyzeAudioFile;
-  } catch {
+    cachedAnalyzeAudioFileError = null;
+    return { analyzeAudioFile: cachedAnalyzeAudioFile, error: null };
+  } catch (e) {
     cachedNativeModulePath = nativeModulePath;
     cachedAnalyzeAudioFile = null;
-    return null;
+    cachedAnalyzeAudioFileError = e instanceof Error ? e.message : String(e);
+    return { analyzeAudioFile: null, error: cachedAnalyzeAudioFileError };
   }
 };
 
@@ -43,13 +47,21 @@ if (!port) throw new Error("WORKER_PARENT_PORT_MISSING");
 
 port.on("message", (msg: AnalyzeRequest) => {
   try {
-    const analyzeAudioFile = getAnalyzeAudioFile(msg.nativeModulePath);
+    const { analyzeAudioFile, error } = getAnalyzeAudioFile(msg.nativeModulePath);
     if (!analyzeAudioFile) {
-      const resp: AnalyzeResponse = { ok: false, error: "NATIVE_TOOLS_NOT_AVAILABLE" };
+      const resp: AnalyzeResponse = {
+        ok: false,
+        error: error ? `NATIVE_TOOLS_NOT_AVAILABLE:${error}` : "NATIVE_TOOLS_NOT_AVAILABLE",
+      };
       port.postMessage(resp);
       return;
     }
     const result = analyzeAudioFile(msg.filePath, msg.maxTime);
+    if (result == null) {
+      const resp: AnalyzeResponse = { ok: false, error: "ANALYZE_RETURNED_NULL" };
+      port.postMessage(resp);
+      return;
+    }
     const resp: AnalyzeResponse = { ok: true, result };
     port.postMessage(resp);
   } catch (e) {
