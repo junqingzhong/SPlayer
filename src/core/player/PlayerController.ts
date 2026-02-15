@@ -1445,8 +1445,7 @@ class PlayerController {
     }
 
     if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos !== undefined) {
-      const bpm = currentAnalysis?.bpm;
-      const vocalGuardSec = bpm ? Math.max(3.0, (60 / bpm) * 4) : 3.0;
+      const vocalGuardSec = 0.1;
       const minTrigger = Math.min(
         exitPoint - 2,
         Math.max(currentFadeIn, currentAnalysis.vocal_out_pos + vocalGuardSec),
