@@ -795,7 +795,10 @@ class PlayerController {
     const rawTime = audioManager.currentTime;
     const remaining = duration - rawTime;
 
-    if (remaining > 30) {
+    const analyzeWindowSec = settingStore.automixMaxAnalyzeTime || 60;
+    const monitorWindowSec = Math.max(30, Math.min(300, analyzeWindowSec));
+
+    if (remaining > monitorWindowSec) {
       if (this.automixState === "SCHEDULED") {
         this.resetAutomixScheduling("MONITORING");
       } else if (this.automixState === "IDLE") {
