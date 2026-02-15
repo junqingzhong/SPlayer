@@ -167,7 +167,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     this.pendingEngine = newEngine;
 
     // 2. 预设状态
-    newEngine.setVolume(this._masterVolume);
+    newEngine.setVolume(0);
     if (this.engine.capabilities.supportsRate) {
       newEngine.setRate(options.rate ?? this.getRate());
     }
@@ -175,9 +175,6 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     // Apply ReplayGain to new engine
     if (options.replayGain !== undefined) {
       newEngine.setReplayGain?.(options.replayGain);
-    } else {
-      // Default to 1.0 or copy? ReplayGain is specific to song, so 1.0 is safer if not provided.
-      newEngine.setReplayGain?.(1.0);
     }
 
     // Bass Swap Filter Setup
@@ -189,14 +186,18 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
     const fadeCurve = options.fadeCurve ?? "equalPower";
 
-    // 3. 启动新引擎 (Fade In)
+    // 3. 启动新引擎
     await newEngine.play(url, {
       autoPlay: true,
       seek: options.seek,
-      fadeIn: true,
-      fadeDuration: options.duration,
-      fadeCurve,
+      fadeIn: false,
     });
+
+    if (newEngine.rampVolumeTo) {
+      newEngine.rampVolumeTo(this._masterVolume, options.duration, fadeCurve);
+    } else {
+      newEngine.setVolume(this._masterVolume);
+    }
 
     if (options.mixType === "bassSwap") {
       const mid = options.duration * 0.5;

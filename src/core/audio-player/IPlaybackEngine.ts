@@ -110,6 +110,8 @@ export interface IPlaybackEngine {
    */
   setVolume(value: number): void;
 
+  rampVolumeTo?(value: number, duration: number, curve?: FadeCurve): void;
+
   /**
    * 获取当前音量
    * @returns 音量值 (0.0 - 1.0)

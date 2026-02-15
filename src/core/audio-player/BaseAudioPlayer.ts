@@ -311,6 +311,11 @@ export abstract class BaseAudioPlayer
     this.applyFadeTo(this.volume * this.replayGain, 0);
   }
 
+  public rampVolumeTo(value: number, duration: number, curve?: FadeCurve) {
+    this.volume = Math.max(0, Math.min(1, value));
+    this.applyFadeTo(this.volume * this.replayGain, duration, curve);
+  }
+
   /**
    * 设置 ReplayGain 增益
    * @param gain 线性增益值
