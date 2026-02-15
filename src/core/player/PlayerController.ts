@@ -11,7 +11,7 @@ import { getPlayerInfoObj, getPlaySongData } from "@/utils/format";
 import { handleSongQuality, shuffleArray, sleep } from "@/utils/helper";
 import lastfmScrobbler from "@/utils/lastfmScrobbler";
 import { DJ_MODE_KEYWORDS } from "@/utils/meta";
-import { calculateProgress, secondsToTime } from "@/utils/time";
+import { calculateProgress, msToTime } from "@/utils/time";
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 import { type DebouncedFunc, throttle } from "lodash-es";
 import { useBlobURLManager } from "../resource/BlobURLManager";
@@ -100,6 +100,33 @@ class PlayerController {
   private automixScheduledCtxTime: number | null = null;
   private automixScheduledToken: number | null = null;
   private automixScheduledNextId: number | string | null = null;
+  private automixLogTimestamps = new Map<string, number>();
+
+  private formatAutomixTime(seconds: number): string {
+    if (!Number.isFinite(seconds)) return "--:--";
+    return msToTime(Math.max(0, Math.round(seconds * 1000)));
+  }
+
+  private automixLog(
+    level: "log" | "warn",
+    key: string,
+    message: string,
+    intervalMs: number = 5000,
+    detail?: unknown,
+  ): void {
+    const now = Date.now();
+    const scopedKey = `${this.currentRequestToken}:${key}`;
+    const lastAt = this.automixLogTimestamps.get(scopedKey) ?? 0;
+    if (intervalMs > 0 && now - lastAt < intervalMs) return;
+    this.automixLogTimestamps.set(scopedKey, now);
+    if (level === "warn") {
+      if (detail === undefined) console.warn(message);
+      else console.warn(message, detail);
+      return;
+    }
+    if (detail === undefined) console.log(message);
+    else console.log(message, detail);
+  }
 
   constructor() {
     // 初始化 AudioManager（会根据设置自动选择引擎）
@@ -305,6 +332,7 @@ class PlayerController {
     this.isTransitioning = false;
     this.nextAnalysis = null;
     this.isFetchingNextAnalysis = false;
+    this.automixLogTimestamps.clear();
 
     // 生成新的请求标识
     this.currentRequestToken++;
@@ -350,7 +378,7 @@ class PlayerController {
           // 如果有 cut_in_pos，优先使用
           const cutIn = analysis.cut_in_pos ?? analysis.fade_in_pos;
           startSeek = Math.max(startSeek, cutIn * 1000);
-          console.log(`✨ [Automix] Smart Cut Start: ${cutIn.toFixed(2)}s`);
+          console.log(`✨ [Automix] Smart Cut Start: ${this.formatAutomixTime(cutIn)}`);
         }
 
         // BPM Alignment
@@ -849,6 +877,12 @@ class PlayerController {
     this.automixState = "SCHEDULED";
 
     scheduler.runAt(groupId, ctxTriggerTime, () => this.beginAutomix(plan));
+    this.automixLog(
+      "log",
+      `schedule:${plan.nextSong.id}:${Math.round(plan.triggerTime * 10)}:${Math.round(plan.crossfadeDuration * 10)}:${Math.round(plan.startSeek)}`,
+      `[Automix] 已调度：触发 ${this.formatAutomixTime(plan.triggerTime)}，时长 ${this.formatAutomixTime(plan.crossfadeDuration)}，Seek ${this.formatAutomixTime(plan.startSeek / 1000)}，Rate ${plan.initialRate.toFixed(4)}，类型 ${plan.mixType}`,
+      0,
+    );
   }
 
   private beginAutomix(plan: AutomixPlan): void {
@@ -948,7 +982,12 @@ class PlayerController {
     // 2. 尝试获取下一首歌的分析 (如果还没获取)
     if (!this.nextAnalysis && !this.isFetchingNextAnalysis) {
       if (!nextInfo.song.path) {
-        console.warn("[Automix] 下一首不是本地文件，无法进行分析，将退化为默认混音");
+        this.automixLog(
+          "warn",
+          `next_not_local:${nextInfo.song.id}`,
+          "[Automix] 下一首不是本地文件，无法进行分析，将退化为默认混音",
+          60000,
+        );
         return null;
       }
       this.isFetchingNextAnalysis = true;
@@ -965,20 +1004,25 @@ class PlayerController {
             const nextCutIn = res.cut_in_pos ?? res.fade_in_pos;
             if (currentCutOut !== undefined) {
               console.log(
-                `[Automix] 已完成分析，分析时长 ${analyzeWindow.toFixed(0)}s，切出 ${secondsToTime(currentCutOut)} -> 下一首切入 ${secondsToTime(nextCutIn)}`,
+                `[Automix] 已完成分析，分析窗口 ${this.formatAutomixTime(analyzeWindow)}，切出 ${this.formatAutomixTime(currentCutOut)} -> 下一首切入 ${this.formatAutomixTime(nextCutIn)}`,
               );
             } else {
               console.log(
-                `[Automix] 已完成分析，分析时长 ${analyzeWindow.toFixed(0)}s，下一首切入 ${secondsToTime(nextCutIn)}`,
+                `[Automix] 已完成分析，分析窗口 ${this.formatAutomixTime(analyzeWindow)}，下一首切入 ${this.formatAutomixTime(nextCutIn)}`,
               );
             }
           } else {
-            console.warn("[Automix] 音频分析返回空结果，将退化为默认混音");
+            this.automixLog(
+              "warn",
+              "next_analysis_empty",
+              "[Automix] 音频分析返回空结果，将退化为默认混音",
+              60000,
+            );
           }
         })
         .catch((e) => {
           this.isFetchingNextAnalysis = false;
-          console.warn("[Automix] 音频分析失败，将退化为默认混音:", e);
+          this.automixLog("warn", "next_analysis_failed", "[Automix] 音频分析失败，将退化为默认混音", 60000, e);
         });
     }
 
@@ -1000,8 +1044,11 @@ class PlayerController {
       const bpm = currentAnalysis?.bpm;
       const minBreathingRoom = bpm ? Math.max(2.0, (60 / bpm) * 4) : 3.0;
       if (cutOutPos < currentVocalOut + minBreathingRoom) {
-        console.warn(
-          `[Automix] cut_out 过近，将回退到 fade_out：cut_out=${cutOutPos.toFixed(2)}s vocal_out=${currentVocalOut.toFixed(2)}s gap=${minBreathingRoom.toFixed(2)}s`,
+        this.automixLog(
+          "warn",
+          `cut_out_close:${Math.round(cutOutPos * 100)}:${Math.round(currentVocalOut * 100)}:${Math.round(minBreathingRoom * 100)}`,
+          `[Automix] cut_out 过近，将回退到 fade_out：cut_out=${this.formatAutomixTime(cutOutPos)} vocal_out=${this.formatAutomixTime(currentVocalOut)} gap=${this.formatAutomixTime(minBreathingRoom)}`,
+          15000,
         );
         cutOutPos = undefined;
       }
@@ -1012,8 +1059,11 @@ class PlayerController {
       const vocalEndedLongAgo =
         currentVocalOut !== undefined ? cutOutPos - currentVocalOut > 30 : false;
       if (remainingAfterCut > 45 && !vocalEndedLongAgo) {
-        console.warn(
-          `[Automix] cut_out 过早，将回退到 fade_out：cut_out=${cutOutPos.toFixed(2)}s 剩余=${remainingAfterCut.toFixed(0)}s`,
+        this.automixLog(
+          "warn",
+          `cut_out_early:${Math.round(cutOutPos * 100)}:${Math.round(remainingAfterCut)}`,
+          `[Automix] cut_out 过早，将回退到 fade_out：cut_out=${this.formatAutomixTime(cutOutPos)} 剩余=${this.formatAutomixTime(remainingAfterCut)}`,
+          15000,
         );
         cutOutPos = undefined;
       }
@@ -1147,21 +1197,10 @@ class PlayerController {
         const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
         startSeek = Math.max(idealSeek, fadeIn * 1000);
         applyStartSeekFallback();
-
-        console.log(
-          `[Automix] Duration: ${crossfadeDuration.toFixed(2)}s (Anchor: ${targetAnchor.toFixed(2)}s, Intro: ${availableIntro.toFixed(2)}s, Outro: ${availableOutro.toFixed(2)}s)`,
-        );
-        console.log(
-          `[Automix] Anchor(${anchorSource}): ${targetAnchor.toFixed(2)}s -> Start: ${(startSeek / 1000).toFixed(2)}s`,
-        );
       } else {
         phraseBars = selected.bars;
         crossfadeDuration = selected.duration;
         startSeek = selected.startSec * 1000;
-
-        console.log(
-          `✨ [Automix] Phrase Pick: ${selected.bars} bars, duration ${selected.duration.toFixed(2)}s (Anchor(${anchorSource}): ${targetAnchor.toFixed(2)}s, CutIn: ${selected.startSec.toFixed(2)}s)`,
-        );
 
         const bpmA = currentAnalysis?.bpm;
         const bpmB = nextAnalysis.bpm;
@@ -1212,15 +1251,8 @@ class PlayerController {
                 startSecAligned >= fadeIn &&
                 startSecAligned < targetAnchor
               ) {
-                console.log(
-                  `✨ [Automix] Phase Lock: trigger ${baseTrigger.toFixed(2)} -> ${safeAligned.toFixed(2)} (Δ${delta.toFixed(2)}s), seek ${(startSeek / 1000).toFixed(2)} -> ${startSecAligned.toFixed(2)}`,
-                );
                 startSeek = startSecAligned * 1000;
                 forcedTriggerTime = safeAligned;
-              } else {
-                console.log(
-                  `✨ [Automix] Phase Lock Skip: seek snap too large (Δ${delta.toFixed(2)}s, snapShift ${shift.toFixed(2)}s)`,
-                );
               }
             }
           }
@@ -1270,15 +1302,10 @@ class PlayerController {
             initialRate = 1.0;
             mixType = "default";
             // Key Clash: 保持动态时长，但放弃 BassSwap
-            console.log("✨ [Automix] Key Clash: fallback to default mix (duration kept)");
           } else {
             initialRate = ratio;
             mixType = "bassSwap";
             uiSwitchDelay = crossfadeDuration * 0.5;
-
-            console.log(
-              `✨ [Automix] BPM Match: ${bpmA.toFixed(1)} -> ${bpmB.toFixed(1)} (Rate: ${ratio.toFixed(4)})`,
-            );
           }
         } else {
           // BPM 差距大，放弃 Beat Match
@@ -1838,6 +1865,7 @@ class PlayerController {
     const statusStore = useStatusStore();
 
     // 生成新的 requestToken
+    this.automixLogTimestamps.clear();
     this.currentRequestToken++;
     const requestToken = this.currentRequestToken;
 
