@@ -42,17 +42,26 @@ pub struct AudioAnalysis {
     pub outro_energy_level: Option<f64>,
 }
 
-fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64) -> f64 {
+enum SnapMode { Round, Ceil, Floor }
+
+fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: SnapMode) -> f64 {
     if bpm <= 0.0 || confidence < 0.4 { return time; }
     
     let seconds_per_beat = 60.0 / bpm;
     let seconds_per_bar = seconds_per_beat * 4.0; // Assume 4/4
     
     // Calculate how many bars from first_beat
-    let bars_count = ((time - first_beat) / seconds_per_bar).round();
+    let raw_bars = (time - first_beat) / seconds_per_bar;
+    
+    let bars_count = match mode {
+        SnapMode::Round => raw_bars.round(),
+        SnapMode::Ceil => raw_bars.ceil(),
+        SnapMode::Floor => raw_bars.floor(),
+    };
     
     // Return snapped time
-    first_beat + (bars_count * seconds_per_bar)
+    let res = first_beat + (bars_count * seconds_per_bar);
+    if res < 0.0 { first_beat } else { res }
 }
 
 struct HighPassFilter {
@@ -633,12 +642,22 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     
     // 5. Outro Energy
     let outro_energy_level = if !tail_envelope.is_empty() {
-        let sum_sq: f32 = tail_envelope.iter().map(|&x| x * x).sum();
-        let mean_sq = sum_sq / tail_envelope.len() as f32;
-        if mean_sq > 0.0 {
-            Some((20.0 * mean_sq.sqrt().log10()) as f64)
+        let (_, local_out_time) = detect_silence_from_envelope(&tail_envelope, env_rate, -48.0);
+        let end_idx = (local_out_time * env_rate) as usize;
+        let end_idx = end_idx.min(tail_envelope.len());
+        let start_idx = end_idx.saturating_sub(500); // 10s * 50Hz
+        
+        if end_idx > start_idx {
+            let slice = &tail_envelope[start_idx..end_idx];
+            let sum_sq: f32 = slice.iter().map(|&x| x * x).sum();
+            let mean_sq = sum_sq / slice.len() as f32;
+            if mean_sq > 0.0 {
+                Some((20.0 * mean_sq.sqrt().log10()) as f64)
+            } else {
+                Some(-70.0)
+            }
         } else {
-            Some(-70.0)
+            None
         }
     } else {
         None
@@ -648,16 +667,15 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     
     // Cut Out Logic
     let smart_cut_out = if let (Some(v_out), Some(bpm_val), Some(f_beat)) = (vocal_out, bpm, first_beat) {
-        // Strategy: Vocal Out + Buffer (e.g. 2 bars) -> Snap to Bar
         let beat_len = 60.0 / bpm_val;
-        let buffer_beats = 8.0; // 2 bars (assuming 4/4)
+        // 缩短缓冲：只给 1 拍的缓冲
+        let buffer_beats = 1.0; 
         let potential_cut = v_out + (beat_len * buffer_beats);
         
         let confidence = bpm_conf.unwrap_or(0.0);
-        let quantized_cut = snap_to_bar(potential_cut, bpm_val, f_beat, confidence);
+        // 使用 Ceil 模式：必须在 potential_cut 之后的小节线
+        let quantized_cut = snap_to_bar(potential_cut, bpm_val, f_beat, confidence, SnapMode::Ceil);
         
-        // Ensure within valid range (before fade_out)
-        // Give 1s buffer before fade out starts to avoid silence
         if quantized_cut < (fade_out - 1.0) {
             Some(quantized_cut)
         } else {
@@ -667,11 +685,44 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         Some((fade_out - 5.0).max(0.0))
     };
     
-    // Cut In Logic
-    let smart_cut_in = if let (Some(f_beat), Some(_bpm_val)) = (first_beat, bpm) {
+    // Cut In Logic (Back-Calculation)
+    let smart_cut_in = if let (Some(bpm_val), Some(f_beat)) = (bpm, first_beat) {
         let confidence = bpm_conf.unwrap_or(0.0);
+        
         if confidence > 0.4 {
-            Some(f_beat)
+            let beat_len = 60.0 / bpm_val;
+            
+            // 目标锚点：优先找人声进入点，其次找 Drop 点
+            let target_anchor = if let Some(v_in) = vocal_in {
+                Some(v_in)
+            } else if let Some(d_pos) = drop_pos {
+                Some(d_pos)
+            } else {
+                None
+            };
+
+            if let Some(anchor) = target_anchor {
+                // 计算从第一拍到锚点的距离
+                let intro_len = anchor - f_beat;
+                
+                // 倒推步长：8 小节 (32拍)
+                let bars_8_duration = beat_len * 32.0;
+                
+                let raw_cut_in = if intro_len > bars_8_duration * 1.5 {
+                    // 前奏太长了，跳过一部分，只保留人声前的 8 小节
+                    anchor - bars_8_duration
+                } else {
+                    // 前奏不长，就从 First Beat 开始
+                    f_beat
+                };
+
+                // 使用 Floor 模式：确保切入点在计算出的 raw_cut_in 之前最近的一个小节线
+                let snapped_in = snap_to_bar(raw_cut_in, bpm_val, f_beat, confidence, SnapMode::Floor);
+                
+                Some(snapped_in.max(fade_in))
+            } else {
+                Some(f_beat)
+            }
         } else {
             Some(fade_in)
         }
