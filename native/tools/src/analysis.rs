@@ -59,7 +59,17 @@ fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: Snap
     let seconds_per_bar = seconds_per_beat * 4.0; // Assume 4/4
     
     // Calculate how many bars from first_beat
-    let raw_bars = (time - first_beat) / seconds_per_bar;
+    let mut raw_bars = (time - first_beat) / seconds_per_bar;
+    if seconds_per_bar.is_finite() && seconds_per_bar > 0.0 && raw_bars.is_finite() {
+        let epsilon_sec = 0.05;
+        let eps_bars = epsilon_sec / seconds_per_bar;
+        if eps_bars.is_finite() && eps_bars > 0.0 {
+            let nearest = raw_bars.round();
+            if (raw_bars - nearest).abs() < eps_bars {
+                raw_bars = nearest;
+            }
+        }
+    }
     
     let bars_count = match mode {
         SnapMode::Ceil => raw_bars.ceil(),
@@ -69,6 +79,32 @@ fn snap_to_bar(time: f64, bpm: f64, first_beat: f64, confidence: f64, mode: Snap
     // Return snapped time
     let res = first_beat + (bars_count * seconds_per_bar);
     if res < 0.0 { first_beat } else { res }
+}
+
+fn find_best_phrase_start(anchor: f64, bpm: f64, first_beat: f64, fade_in: f64, confidence: f64) -> f64 {
+    if bpm <= 0.0 || confidence < 0.4 {
+        return fade_in;
+    }
+
+    let seconds_per_beat = 60.0 / bpm;
+    let seconds_per_bar = seconds_per_beat * 4.0;
+    if !seconds_per_bar.is_finite() || seconds_per_bar <= 0.0 {
+        return first_beat.max(fade_in);
+    }
+
+    let candidate_lengths = [32.0, 16.0, 8.0, 4.0];
+    for &bars in candidate_lengths.iter() {
+        let duration = bars * seconds_per_bar;
+        let raw_start = anchor - duration;
+        if raw_start > (fade_in + seconds_per_bar) {
+            let snapped_start = snap_to_bar(raw_start, bpm, first_beat, confidence, SnapMode::Floor);
+            if snapped_start.is_finite() && snapped_start >= fade_in {
+                return snapped_start;
+            }
+        }
+    }
+
+    first_beat.max(fade_in)
 }
 
 struct HighPassFilter {
@@ -777,44 +813,18 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
     // Cut In Logic (Back-Calculation)
     let smart_cut_in = if let (Some(bpm_val), Some(f_beat)) = (bpm, first_beat) {
         let confidence = bpm_conf.unwrap_or(0.0);
-        
-        if confidence > 0.4 {
-            let beat_len = 60.0 / bpm_val;
-            
-            // 目标锚点：优先找人声进入点，其次找 Drop 点
-            let target_anchor = if let Some(v_in) = vocal_in {
-                Some(v_in)
-            } else if let Some(d_pos) = drop_pos {
-                Some(d_pos)
-            } else {
-                None
-            };
-
-            if let Some(anchor) = target_anchor {
-                // 计算从第一拍到锚点的距离
-                let intro_len = anchor - f_beat;
-                
-                // 倒推步长：8 小节 (32拍)
-                let bars_8_duration = beat_len * 32.0;
-                let bars_4_duration = beat_len * 16.0;
-                
-                let raw_cut_in = if intro_len >= bars_8_duration {
-                    anchor - bars_8_duration
-                } else if intro_len >= bars_4_duration {
-                    anchor - bars_4_duration
-                } else {
-                    f_beat
-                };
-
-                // 使用 Floor 模式：确保切入点在计算出的 raw_cut_in 之前最近的一个小节线
-                let snapped_in = snap_to_bar(raw_cut_in, bpm_val, f_beat, confidence, SnapMode::Floor);
-                
-                Some(snapped_in.max(fade_in))
-            } else {
-                Some(f_beat)
-            }
+        let target_anchor = if let Some(v_in) = vocal_in {
+            Some(v_in)
+        } else if let Some(d_pos) = drop_pos {
+            Some(d_pos)
         } else {
-            Some(fade_in)
+            None
+        };
+
+        if let Some(anchor) = target_anchor {
+            Some(find_best_phrase_start(anchor, bpm_val, f_beat, fade_in, confidence))
+        } else {
+            Some(f_beat.max(fade_in))
         }
     } else {
         Some(fade_in)
@@ -832,7 +842,7 @@ pub fn analyze_audio_file(path: String, max_analyze_time: Option<f64>) -> Option
         first_beat_pos: first_beat,
         loudness: Some(loudness),
         drop_pos,
-        version: 8,
+        version: 9,
         analyze_window: max_time,
         cut_in_pos: smart_cut_in,
         cut_out_pos: smart_cut_out,
@@ -1145,7 +1155,7 @@ fn detect_drop_pos(envelope: &[f32], rate: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
-    use super::detect_key_from_pcm;
+    use super::{detect_key_from_pcm, find_best_phrase_start, snap_to_bar, SnapMode};
 
     fn gen_chord(sample_rate: u32, seconds: f32, freqs: &[f32]) -> Vec<f32> {
         let len = (sample_rate as f32 * seconds) as usize;
@@ -1180,5 +1190,33 @@ mod tests {
         assert_eq!(root, Some(9));
         assert_eq!(mode, Some(1));
         assert!(conf.unwrap_or(0.0) > 0.05);
+    }
+
+    #[test]
+    fn snap_to_bar_handles_float_edge() {
+        let bpm = 120.0;
+        let first_beat = 0.0;
+        let confidence = 1.0;
+        let time = 64.0 - 0.01;
+        let snapped = snap_to_bar(time, bpm, first_beat, confidence, SnapMode::Floor);
+        assert!((snapped - 64.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn phrase_start_low_confidence_falls_back_to_fade_in() {
+        let res = find_best_phrase_start(100.0, 120.0, 0.0, 5.0, 0.1);
+        assert!((res - 5.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn phrase_start_prefers_32_bars() {
+        let res = find_best_phrase_start(100.0, 120.0, 0.0, 10.0, 1.0);
+        assert!((res - 36.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn phrase_start_downgrades_to_16_bars() {
+        let res = find_best_phrase_start(50.0, 120.0, 0.0, 10.0, 1.0);
+        assert!((res - 18.0).abs() < 1e-9);
     }
 }
