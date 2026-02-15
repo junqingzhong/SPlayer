@@ -100,7 +100,13 @@ export class AudioEffectManager {
     const currentTime = this.audioCtx.currentTime;
     this.highPassFilter.frequency.cancelScheduledValues(currentTime);
 
-    // 避免 0Hz 导致的计算错误，设置一个极小值
+    if (frequency <= 0) {
+      this.highPassFilter.type = "allpass";
+      this.highPassFilter.frequency.setValueAtTime(10, currentTime);
+      return;
+    }
+
+    this.highPassFilter.type = "highpass";
     const targetFreq = Math.max(10, Math.min(22000, frequency));
 
     if (rampTime > 0) {
@@ -123,6 +129,13 @@ export class AudioEffectManager {
     const currentTime = this.audioCtx.currentTime;
     this.lowPassFilter.frequency.cancelScheduledValues(currentTime);
 
+    if (frequency <= 0 || frequency >= 22000) {
+      this.lowPassFilter.type = "allpass";
+      this.lowPassFilter.frequency.setValueAtTime(22000, currentTime);
+      return;
+    }
+
+    this.lowPassFilter.type = "lowpass";
     const targetFreq = Math.max(10, Math.min(22000, frequency));
 
     if (rampTime > 0) {
@@ -141,6 +154,18 @@ export class AudioEffectManager {
     if (this.filters[index]) {
       this.filters[index].gain.value = value;
     }
+  }
+
+  public setHighPassQ(q: number) {
+    if (!this.highPassFilter) return;
+    const safeQ = Math.max(0.1, Math.min(10, q));
+    this.highPassFilter.Q.value = safeQ;
+  }
+
+  public setLowPassQ(q: number) {
+    if (!this.lowPassFilter) return;
+    const safeQ = Math.max(0.1, Math.min(10, q));
+    this.lowPassFilter.Q.value = safeQ;
   }
 
   /**

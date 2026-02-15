@@ -452,9 +452,17 @@ export abstract class BaseAudioPlayer
     this.effectManager?.setHighPassFilter(frequency, rampTime);
   }
 
+  public setHighPassQ(q: number) {
+    this.effectManager?.setHighPassQ(q);
+  }
+
   /** 设置低通滤波器频率 */
   public setLowPassFilter(frequency: number, rampTime: number = 0) {
     this.effectManager?.setLowPassFilter(frequency, rampTime);
+  }
+
+  public setLowPassQ(q: number) {
+    this.effectManager?.setLowPassQ(q);
   }
 
   /** 获取滤波器增益 */

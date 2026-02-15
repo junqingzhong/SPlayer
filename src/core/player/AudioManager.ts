@@ -180,6 +180,8 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
     // Bass Swap Filter Setup
     if (options.mixType === "bassSwap") {
+      this.engine.setHighPassQ?.(1.0);
+      newEngine.setHighPassQ?.(1.0);
       newEngine.setHighPassFilter?.(400, 0);
     }
 
@@ -208,6 +210,12 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       this.pendingBassSwapTimers.push(
         setTimeout(() => {
           newEngine.setHighPassFilter?.(0, 0);
+        }, options.duration * 1000 + 50),
+      );
+
+      this.pendingBassSwapTimers.push(
+        setTimeout(() => {
+          newEngine.setHighPassQ?.(0.707);
         }, options.duration * 1000 + 50),
       );
     }
@@ -301,6 +309,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       this.pendingBassSwapTimers.forEach((t) => clearTimeout(t));
       this.pendingBassSwapTimers = [];
     }
+    this.engine.setHighPassQ?.(0.707);
     if (this.pendingEngine) {
       // 如果有待切换引擎，销毁它
       try {
@@ -387,11 +396,19 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
     this.engine.setHighPassFilter?.(frequency, rampTime);
   }
 
+  public setHighPassQ(q: number): void {
+    this.engine.setHighPassQ?.(q);
+  }
+
   /**
    * 设置低通滤波器频率
    */
   public setLowPassFilter(frequency: number, rampTime: number = 0): void {
     this.engine.setLowPassFilter?.(frequency, rampTime);
+  }
+
+  public setLowPassQ(q: number): void {
+    this.engine.setLowPassQ?.(q);
   }
 
   /**

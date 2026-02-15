@@ -152,12 +152,16 @@ export interface IPlaybackEngine {
    */
   setHighPassFilter?(frequency: number, rampTime?: number): void;
 
+  setHighPassQ?(q: number): void;
+
   /**
    * 设置低通滤波器频率
    * @param frequency 截止频率 (Hz)
    * @param rampTime 渐变时间 (s)
    */
   setLowPassFilter?(frequency: number, rampTime?: number): void;
+
+  setLowPassQ?(q: number): void;
 
   /**
    * 获取频谱数据
