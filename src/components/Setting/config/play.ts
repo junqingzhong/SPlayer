@@ -406,10 +406,26 @@ export const usePlaySettings = (): SettingConfig => {
             key: "enableAutomix",
             label: "启用自动混音",
             type: "switch",
+            tags: [{ text: "Beta", type: "warning" }],
             description: "是否启用自动混音功能",
             value: computed({
               get: () => settingStore.enableAutomix,
-              set: (v) => (settingStore.enableAutomix = v),
+              set: (v) => {
+                if (v) {
+                  window.$dialog.warning({
+                    title: "启用自动混音 (Beta)",
+                    content:
+                      "可能出现兼容性问题，该功能在早期测试，遇到问题请反馈issue，不保证可以及时处理。",
+                    positiveText: "开启",
+                    negativeText: "取消",
+                    onPositiveClick: () => {
+                      settingStore.enableAutomix = true;
+                    },
+                  });
+                } else {
+                  settingStore.enableAutomix = v;
+                }
+              },
             }),
             children: [
               {
