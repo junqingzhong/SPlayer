@@ -1483,6 +1483,7 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
         return None;
     }
 
+    // 安全检查：防止计算出的时间为负数或超出范围
     selected_next_in = selected_next_in.max(0.0);
     let next_max_start = (next.duration - 5.0).max(0.0);
     if selected_next_in > next_max_start {
@@ -1493,7 +1494,28 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
 
     let cur_avail = (current.duration - selected_cur_out).max(0.0);
     let next_avail = (next.duration - selected_next_in).max(0.0);
-    selected_duration = selected_duration.min(cur_avail).min(next_avail);
+    
+    // [优化] 如果空间不够，优先保持 selected_duration，哪怕稍微超出一点点 next_avail
+    // 只有当超出很多时才裁剪
+    if selected_duration > next_avail {
+        // 如果 next_avail 至少有 2/3 的 duration，就允许 (稍微混到下一首歌的人声也没事，总比硬切好)
+        if next_avail > selected_duration * 0.6 {
+            // Keep duration, but clamp next_in if possible? No, we need duration.
+            // Do nothing, trust selected_duration.
+        } else {
+             selected_duration = next_avail;
+        }
+    }
+    
+    // 同理，如果 current 剩余时间不够，但差的不多，也允许混完
+    if selected_duration > cur_avail {
+         if cur_avail > selected_duration * 0.6 {
+             // Keep
+         } else {
+             selected_duration = cur_avail;
+         }
+    }
+    
     if !selected_duration.is_finite() || selected_duration <= 0.0 {
         return None;
     }

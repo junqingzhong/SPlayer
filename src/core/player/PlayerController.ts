@@ -1108,14 +1108,13 @@ class PlayerController {
 
     const currentVocalOut = currentAnalysis?.vocal_out_pos;
     if (cutOutPos !== undefined && currentVocalOut !== undefined) {
-      const bpm = currentAnalysis?.bpm;
-      // [优化] 将 minBreathingRoom 从 4 拍/3.0s 降至 1 拍/0.5s，避免误杀紧凑的 Outro
-      const minBreathingRoom = bpm ? Math.max(0.5, 60 / bpm) : 0.5;
-      if (cutOutPos < currentVocalOut + minBreathingRoom) {
+      // [优化] 移除 minBreathingRoom 限制，完全信任分析结果
+      // 只要 cutOutPos >= currentVocalOut，就认为是安全的
+      if (cutOutPos < currentVocalOut - 0.1) {
         this.automixLog(
           "warn",
-          `cut_out_close:${Math.round(cutOutPos * 100)}:${Math.round(currentVocalOut * 100)}:${Math.round(minBreathingRoom * 100)}`,
-          `[Automix] cut_out 过近，将回退到 fade_out：cut_out=${this.formatAutomixTime(cutOutPos)} vocal_out=${this.formatAutomixTime(currentVocalOut)} gap=${this.formatAutomixTime(minBreathingRoom)}`,
+          `cut_out_close:${Math.round(cutOutPos * 100)}:${Math.round(currentVocalOut * 100)}`,
+          `[Automix] cut_out 早于 vocal_out，将回退到 fade_out：cut_out=${this.formatAutomixTime(cutOutPos)} vocal_out=${this.formatAutomixTime(currentVocalOut)}`,
           15000,
         );
         cutOutPos = undefined;
@@ -1171,14 +1170,18 @@ class PlayerController {
         proposedSeek >= 0
       ) {
         let safeTrigger = proposedTrigger;
-        if (safeTrigger > exitPoint - 0.5) {
-          safeTrigger = exitPoint - 0.5;
+        // Native 建议的点通常是可靠的，即便稍微晚于 exitPoint (fade_out)，只要不是太离谱，也信任它
+        // 放宽限制，允许稍微超出一点点 (5s) 以完成混音
+        if (safeTrigger > exitPoint + 5.0) {
+          safeTrigger = exitPoint;
         }
         safeTrigger = Math.max(currentFadeIn, safeTrigger);
 
         let safeDuration = proposedDuration;
-        if (safeTrigger + safeDuration > exitPoint) {
-          safeDuration = Math.max(0.5, exitPoint - safeTrigger);
+        // 如果 Native 建议的混音结束点超出了当前歌的总时长，才需要截断
+        // 注意：这里用 duration (总时长) 而不是 exitPoint (fade_out)
+        if (safeTrigger + safeDuration > duration) {
+          safeDuration = Math.max(0.5, duration - safeTrigger);
         }
 
         forcedTriggerTime = safeTrigger;
