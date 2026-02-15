@@ -155,52 +155,45 @@ const player = usePlayerController();
 const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 
 const showAutomixFx = ref(false);
-let automixFxTimer: number | null = null;
-const showAutomixLabel = ref(false);
-
-const triggerAutomixFx = async (seq: number) => {
-  if (automixFxTimer !== null) {
-    window.clearTimeout(automixFxTimer);
-    automixFxTimer = null;
-  }
-  showAutomixFx.value = false;
-  await nextTick();
-  showAutomixFx.value = true;
-  showAutomixLabel.value = true;
-  // 辉光动画时长 1.4s，但“混音”文字显示要持续到切歌后
-  automixFxTimer = window.setTimeout(() => {
-    showAutomixFx.value = false;
-    automixFxTimer = null;
-  }, 1400);
-};
-
-watch(
-  () => statusStore.automixFxSeq,
-  (seq, prev) => {
-    if (!seq || seq === prev) return;
-    void triggerAutomixFx(seq);
-  },
-);
-
-// 监听歌曲变化，延迟关闭混音显示
-watch(
-  () => musicStore.playSong?.id,
-  (_newId, _oldId) => {
-    if (showAutomixLabel.value) {
-      setTimeout(() => {
-        showAutomixLabel.value = false;
-      }, 2000); // 切歌后保留 2 秒再淡出
+  let automixFxTimer: number | null = null;
+  const showAutomixLabel = ref(false);
+  
+  const triggerAutomixFx = async (seq: number) => {
+    if (automixFxTimer !== null) {
+      window.clearTimeout(automixFxTimer);
+      automixFxTimer = null;
     }
-  },
-);
-
-const onFxAnimationEnd = () => {
-  if (automixFxTimer !== null) {
-    window.clearTimeout(automixFxTimer);
-    automixFxTimer = null;
-  }
-  showAutomixFx.value = false;
-};
+    showAutomixFx.value = false;
+    await nextTick();
+    showAutomixFx.value = true;
+    showAutomixLabel.value = true;
+    // 移除辉光自动关闭逻辑，现在跟随 showAutomixLabel
+  };
+  
+  watch(
+    () => statusStore.automixFxSeq,
+    (seq, prev) => {
+      if (!seq || seq === prev) return;
+      void triggerAutomixFx(seq);
+    },
+  );
+  
+  // 监听歌曲变化，延迟关闭混音显示和辉光
+  watch(
+    () => musicStore.playSong?.id,
+    (_newId, _oldId) => {
+      if (showAutomixLabel.value) {
+        setTimeout(() => {
+          showAutomixLabel.value = false;
+          showAutomixFx.value = false;
+        }, 2000); // 切歌后保留 2 秒再淡出
+      }
+    },
+  );
+  
+  const onFxAnimationEnd = () => {
+    // 移除之前的单次动画结束逻辑，因为现在是 infinite 循环，直到 showAutomixFx 为 false
+  };
 
 onBeforeUnmount(() => {
   if (automixFxTimer !== null) {
@@ -373,15 +366,24 @@ onBeforeUnmount(() => {
       :deep(.n-slider-rail)::after {
         content: "";
         position: absolute;
-        inset: 0;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
         border-radius: 999px;
-        background: rgba(var(--main-cover-color), 0.18);
-        box-shadow:
-          0 0 14px rgba(var(--main-cover-color), 0.65),
-          0 0 28px rgba(var(--main-cover-color), 0.28);
-        opacity: 0;
-        clip-path: inset(0 100% 0 0);
-        animation: automix-rail 1400ms ease-out forwards;
+        background: linear-gradient(
+          90deg,
+          rgba(var(--main-cover-color), 0) 0%,
+          rgba(var(--main-cover-color), 0.2) 20%,
+          rgba(var(--main-cover-color), 0.6) 50%,
+          rgba(var(--main-cover-color), 0.2) 80%,
+          rgba(var(--main-cover-color), 0) 100%
+        );
+        box-shadow: 0 0 15px rgba(var(--main-cover-color), 0.5);
+        opacity: 0.8;
+        transform: translateX(-100%);
+        animation: automix-scan 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        pointer-events: none;
       }
     }
   }
@@ -428,6 +430,23 @@ onBeforeUnmount(() => {
     clip-path: inset(0 0 0 0);
   }
 }
+@keyframes automix-scan {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
 @keyframes text-pulse {
   0%,
   100% {
