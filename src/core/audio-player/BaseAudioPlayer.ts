@@ -350,61 +350,52 @@ export abstract class BaseAudioPlayer
     const currentValue = this.gainNode.gain.value;
     this.gainNode.gain.setValueAtTime(currentValue, currentTime);
 
+    if (duration <= 0) {
+      const safeStartTime = currentTime + 0.02;
+      if (Number.isFinite(safeStartTime) && safeStartTime > currentTime) {
+        this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime);
+      } else {
+        this.gainNode.gain.setValueAtTime(targetValue, currentTime);
+      }
+      return;
+    }
+
     // 稍微延后一点点开始 Ramp，给 AudioContext 内部队列一点喘息时间
     const safeStartTime = currentTime + 0.02;
     this.gainNode.gain.setValueAtTime(currentValue, safeStartTime);
 
-    if (duration > 0) {
-      if (curve === "equalPower") {
-        // Equal Power Crossfade implementation
-        // Fade In: target * sin(t * PI/2)
-        // Fade Out: start * cos(t * PI/2)
-        const steps = Math.max(2, Math.floor(duration * 60)); // 60Hz resolution
-        const curveData = new Float32Array(steps);
+    if (curve === "equalPower") {
+      const steps = Math.max(2, Math.floor(duration * 60));
+      const curveData = new Float32Array(steps);
 
-        for (let i = 0; i < steps; i++) {
-          const t = i / (steps - 1); // 0 to 1
-          let val = 0;
+      for (let i = 0; i < steps; i++) {
+        const t = i / (steps - 1);
+        let val = 0;
 
-          if (targetValue > currentValue) {
-            // Fade In (assuming from ~0)
-            const factor = Math.sin((t * Math.PI) / 2);
-            // Linear interpolate start to target but apply sin curve shape?
-            // Standard Equal Power is 0->1.
-            // If we start from 0.5 to 1.0, we should map that segment?
-            // For simplicity in this context (Crossfade):
-            // We assume FadeIn starts near 0, FadeOut ends near 0.
-            val = currentValue + (targetValue - currentValue) * factor;
-          } else {
-            // Fade Out (assuming to ~0)
-            const factor = Math.cos((t * Math.PI) / 2);
-            val = targetValue + (currentValue - targetValue) * factor;
-          }
-          curveData[i] = val;
-        }
-        this.gainNode.gain.setValueCurveAtTime(curveData, safeStartTime, duration);
-      } else if (curve === "exponential") {
-        // Exponential ramp requires positive values
-        let safeTarget = targetValue;
-        if (safeTarget <= 0.001) safeTarget = 0.001;
-
-        // If current is too small, start with linear ramp to avoid errors
-        if (currentValue < 0.001) {
-          this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime + duration);
+        if (targetValue > currentValue) {
+          const factor = Math.sin((t * Math.PI) / 2);
+          val = currentValue + (targetValue - currentValue) * factor;
         } else {
-          this.gainNode.gain.exponentialRampToValueAtTime(safeTarget, safeStartTime + duration);
-          // If target is 0, snap to 0 at end
-          if (targetValue === 0) {
-            this.gainNode.gain.setValueAtTime(0, safeStartTime + duration);
-          }
+          const factor = Math.cos((t * Math.PI) / 2);
+          val = targetValue + (currentValue - targetValue) * factor;
         }
-      } else {
-        // 线性渐变到目标值
+        curveData[i] = val;
+      }
+      this.gainNode.gain.setValueCurveAtTime(curveData, safeStartTime, duration);
+    } else if (curve === "exponential") {
+      let safeTarget = targetValue;
+      if (safeTarget <= 0.001) safeTarget = 0.001;
+
+      if (currentValue < 0.001) {
         this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime + duration);
+      } else {
+        this.gainNode.gain.exponentialRampToValueAtTime(safeTarget, safeStartTime + duration);
+        if (targetValue === 0) {
+          this.gainNode.gain.setValueAtTime(0, safeStartTime + duration);
+        }
       }
     } else {
-      // 立即设置
-      this.gainNode.gain.setValueAtTime(targetValue, currentTime);
+      this.gainNode.gain.linearRampToValueAtTime(targetValue, safeStartTime + duration);
     }
   }
 
