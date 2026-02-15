@@ -456,6 +456,18 @@ export abstract class BaseAudioPlayer
     this.effectManager?.setHighPassQ(q);
   }
 
+  public setHighPassFilterAt(frequency: number, when: number) {
+    this.effectManager?.setHighPassFilterAt(frequency, when);
+  }
+
+  public rampHighPassFilterToAt(frequency: number, when: number) {
+    this.effectManager?.rampHighPassFilterToAt(frequency, when);
+  }
+
+  public setHighPassQAt(q: number, when: number) {
+    this.effectManager?.setHighPassQAt(q, when);
+  }
+
   /** 设置低通滤波器频率 */
   public setLowPassFilter(frequency: number, rampTime: number = 0) {
     this.effectManager?.setLowPassFilter(frequency, rampTime);
@@ -463,6 +475,18 @@ export abstract class BaseAudioPlayer
 
   public setLowPassQ(q: number) {
     this.effectManager?.setLowPassQ(q);
+  }
+
+  public setLowPassFilterAt(frequency: number, when: number) {
+    this.effectManager?.setLowPassFilterAt(frequency, when);
+  }
+
+  public rampLowPassFilterToAt(frequency: number, when: number) {
+    this.effectManager?.rampLowPassFilterToAt(frequency, when);
+  }
+
+  public setLowPassQAt(q: number, when: number) {
+    this.effectManager?.setLowPassQAt(q, when);
   }
 
   /** 获取滤波器增益 */

@@ -11,6 +11,7 @@ import type {
   PlayOptions,
 } from "../audio-player/IPlaybackEngine";
 import { MpvPlayer, useMpvPlayer } from "../audio-player/MpvPlayer";
+import { getSharedAudioContext } from "../audio-player/SharedAudioContext";
 
 /**
  * 音频管理器
@@ -24,7 +25,6 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   private pendingEngine: IPlaybackEngine | null = null;
   /** 切换引擎的定时器 */
   private pendingSwitchTimer: ReturnType<typeof setTimeout> | null = null;
-  private pendingBassSwapTimers: ReturnType<typeof setTimeout>[] = [];
   /** 用于清理当前引擎的事件监听器 */
   private cleanupListeners: (() => void) | null = null;
 
@@ -194,30 +194,35 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       fadeCurve: "equalPower",
     });
 
-    // Apply Bass Swap Ramps
     if (options.mixType === "bassSwap") {
       const mid = options.duration * 0.5;
       const release = Math.min(0.6, options.duration * 0.25);
 
-      this.engine.setHighPassFilter?.(400, mid);
+      const t0 = getSharedAudioContext().currentTime + 0.02;
+      const tMid = t0 + mid;
+      const tReleaseEnd = tMid + release;
+      const tEnd = t0 + options.duration;
+      const bypassFreq = 10;
 
-      this.pendingBassSwapTimers.push(
-        setTimeout(() => {
-          newEngine.setHighPassFilter?.(0, release);
-        }, mid * 1000),
-      );
+      if (this.engine.setHighPassFilterAt && this.engine.rampHighPassFilterToAt) {
+        this.engine.setHighPassFilterAt(bypassFreq, t0);
+        this.engine.rampHighPassFilterToAt(400, tMid);
+      } else {
+        this.engine.setHighPassFilter?.(400, mid);
+      }
 
-      this.pendingBassSwapTimers.push(
-        setTimeout(() => {
-          newEngine.setHighPassFilter?.(0, 0);
-        }, options.duration * 1000 + 50),
-      );
+      if (newEngine.setHighPassFilterAt && newEngine.rampHighPassFilterToAt) {
+        newEngine.setHighPassFilterAt(400, t0);
+        newEngine.setHighPassFilterAt(400, tMid);
+        newEngine.rampHighPassFilterToAt(bypassFreq, tReleaseEnd);
+        newEngine.setHighPassFilterAt(bypassFreq, tEnd + 0.05);
+      }
 
-      this.pendingBassSwapTimers.push(
-        setTimeout(() => {
-          newEngine.setHighPassQ?.(0.707);
-        }, options.duration * 1000 + 50),
-      );
+      if (newEngine.setHighPassQAt) {
+        newEngine.setHighPassQAt(0.707, tEnd + 0.05);
+      } else {
+        newEngine.setHighPassQ?.(0.707);
+      }
     }
 
     // 4. 旧引擎淡出 (Fade Out, Equal Power, Keep Context)
@@ -305,10 +310,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       clearTimeout(this.pendingSwitchTimer);
       this.pendingSwitchTimer = null;
     }
-    if (this.pendingBassSwapTimers.length > 0) {
-      this.pendingBassSwapTimers.forEach((t) => clearTimeout(t));
-      this.pendingBassSwapTimers = [];
-    }
+    this.engine.setHighPassFilter?.(0, 0);
     this.engine.setHighPassQ?.(0.707);
     if (this.pendingEngine) {
       // 如果有待切换引擎，销毁它
