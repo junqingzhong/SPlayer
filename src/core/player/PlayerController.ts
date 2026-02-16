@@ -175,11 +175,14 @@ class PlayerController {
   /** 下一首歌分析结果 (AutoMIX Cache) */
   private nextAnalysis: AudioAnalysis | null = null;
   private nextAnalysisKey: string | null = null;
+  private nextAnalysisSongId: number | null = null;
   private nextAnalysisInFlight: Promise<void> | null = null;
   private nextTransitionKey: string | null = null;
   private nextTransitionInFlight: Promise<void> | null = null;
   private nextTransitionProposal: TransitionProposal | null = null;
   private nextAdvancedTransition: AdvancedTransition | null = null;
+  private ensureAutomixAnalysisKey: string | null = null;
+  private ensureAutomixAnalysisInFlight: Promise<void> | null = null;
   /** Automix 增益调整 (LUFS Normalization) */
   private automixGain = 1.0;
   private automixState: AutomixState = "IDLE";
@@ -210,6 +213,117 @@ class PlayerController {
     const settingStore = useSettingStore();
     const raw = settingStore.automixMaxAnalyzeTime || 60;
     return Math.max(10, Math.min(300, raw));
+  }
+
+  private getSongIdForCache(song: SongType): number | null {
+    if (song.type === "radio") return song.dj?.id ?? null;
+    return song.id || null;
+  }
+
+  private ensureAutomixAnalysisReady(): void {
+    if (!isElectron) return;
+    if (this.ensureAutomixAnalysisInFlight) return;
+
+    const settingStore = useSettingStore();
+    if (!settingStore.enableAutomix) return;
+
+    const musicStore = useMusicStore();
+    const currentSong = musicStore.playSong;
+    if (!currentSong) return;
+
+    const nextInfo = this.getNextSongForAutomix();
+    if (!nextInfo) return;
+
+    const currentId = this.getSongIdForCache(currentSong);
+    const nextId = this.getSongIdForCache(nextInfo.song);
+    const key = `${this.currentRequestToken}:${currentId ?? "x"}:${nextId ?? "x"}`;
+
+    if (this.ensureAutomixAnalysisKey === key) {
+      if (this.currentAnalysis && this.nextAnalysis) return;
+    }
+
+    this.ensureAutomixAnalysisKey = key;
+    const token = this.currentRequestToken;
+    const analyzeTime = this.getAutomixAnalyzeTimeSec();
+
+    this.ensureAutomixAnalysisInFlight = (async () => {
+      const songManager = useSongManager();
+
+      let currentPath =
+        this.currentAnalysisKey ||
+        currentSong.path ||
+        (this.currentAudioSource ? this.fileUrlToPath(this.currentAudioSource.url) : null);
+
+      if (!currentPath && currentId !== null) {
+        const quality = this.currentAudioSource?.quality;
+        const url = this.currentAudioSource?.url;
+        if (url && url.startsWith("http")) {
+          currentPath = await songManager.ensureMusicCachePath(currentId, url, quality);
+        } else {
+          currentPath = await songManager.getMusicCachePath(currentId, quality);
+        }
+      }
+
+      if (token !== this.currentRequestToken) return;
+
+      if (currentPath) {
+        this.currentAnalysisKey = currentPath;
+        if (!this.currentAnalysis) {
+          const raw = await window.electron.ipcRenderer.invoke("analyze-audio", currentPath, {
+            maxAnalyzeTimeSec: analyzeTime,
+          });
+          if (token !== this.currentRequestToken) return;
+          if (isAudioAnalysis(raw)) {
+            this.currentAnalysis = raw;
+          }
+        }
+      }
+
+      let nextPath = nextInfo.song.path || null;
+      if (!nextPath && nextId !== null) {
+        const cached = await songManager.getMusicCachePath(nextId);
+        if (cached) {
+          nextPath = cached;
+        } else {
+          const prefetch = songManager.peekPrefetch(nextId);
+          if (!prefetch && settingStore.useNextPrefetch) {
+            await songManager.prefetchNextSong();
+          }
+          const updatedPrefetch = songManager.peekPrefetch(nextId);
+          const url = updatedPrefetch?.url;
+          const quality = updatedPrefetch?.quality;
+          if (url && url.startsWith("file://")) {
+            nextPath = this.fileUrlToPath(url);
+          } else if (url && url.startsWith("http")) {
+            nextPath = await songManager.ensureMusicCachePath(nextId, url, quality);
+          }
+        }
+      }
+
+      if (token !== this.currentRequestToken) return;
+
+      if (nextPath) {
+        if (this.nextAnalysisKey !== nextPath) {
+          this.nextAnalysisKey = nextPath;
+          this.nextAnalysisSongId = nextId;
+          this.nextAnalysis = null;
+          this.nextAnalysisInFlight = null;
+        }
+        if (!this.nextAnalysis) {
+          const raw = await window.electron.ipcRenderer.invoke("analyze-audio-head", nextPath, {
+            maxAnalyzeTimeSec: analyzeTime,
+          });
+          if (token !== this.currentRequestToken) return;
+          if (this.nextAnalysisKey === nextPath && isAudioAnalysis(raw)) {
+            this.nextAnalysis = raw;
+          }
+        }
+      }
+    })().finally(() => {
+      if (this.ensureAutomixAnalysisKey === key) {
+        this.ensureAutomixAnalysisInFlight = null;
+      }
+    });
   }
 
   private automixLog(
@@ -446,6 +560,7 @@ class PlayerController {
     this.isTransitioning = false;
     this.nextAnalysis = null;
     this.nextAnalysisKey = null;
+    this.nextAnalysisSongId = null;
     this.nextAnalysisInFlight = null;
     this.nextTransitionKey = null;
     this.nextTransitionInFlight = null;
@@ -963,6 +1078,7 @@ class PlayerController {
       return;
     }
 
+    this.ensureAutomixAnalysisReady();
     if (this.automixState === "COOLDOWN") return;
 
     this.maybeScheduleAutomix(rawTime);
@@ -1105,18 +1221,22 @@ class PlayerController {
     const settingStore = useSettingStore();
     const musicStore = useMusicStore();
     if (!isElectron || !settingStore.enableAutomix) return;
-    if (!nextSong.path) return;
 
-    const nextKey = nextSong.path;
+    const nextSongId = this.getSongIdForCache(nextSong);
+    const nextKey =
+      nextSong.path ||
+      (nextSongId !== null && this.nextAnalysisSongId === nextSongId ? this.nextAnalysisKey : null);
+    if (!nextKey) return;
     if (this.nextAnalysisKey !== nextKey) {
       this.nextAnalysisKey = nextKey;
+      this.nextAnalysisSongId = nextSongId;
       this.nextAnalysis = null;
       this.nextAnalysisInFlight = null;
     }
 
     if (!this.nextAnalysis && !this.nextAnalysisInFlight) {
       this.nextAnalysisInFlight = window.electron.ipcRenderer
-        .invoke("analyze-audio-head", nextKey)
+        .invoke("analyze-audio-head", nextKey, { maxAnalyzeTimeSec: this.getAutomixAnalyzeTimeSec() })
         .then((raw) => {
           if (this.nextAnalysisKey !== nextKey) return;
           if (isAudioAnalysis(raw)) {
@@ -1134,7 +1254,10 @@ class PlayerController {
         });
     }
 
-    const currentPath = musicStore.playSong?.path;
+    const currentPath =
+      this.currentAnalysisKey ||
+      musicStore.playSong?.path ||
+      (this.currentAudioSource ? this.fileUrlToPath(this.currentAudioSource.url) : null);
     if (!currentPath) return;
 
     const transitionKey = `${currentPath}>>${nextKey}`;
@@ -1247,8 +1370,14 @@ class PlayerController {
     let useNativeProposal = false;
 
     const musicStore = useMusicStore();
-    const currentPath = musicStore.playSong?.path;
-    const nextPath = nextInfo.song.path;
+    const nextSongId = this.getSongIdForCache(nextInfo.song);
+    const currentPath =
+      this.currentAnalysisKey ||
+      musicStore.playSong?.path ||
+      (this.currentAudioSource ? this.fileUrlToPath(this.currentAudioSource.url) : null);
+    const nextPath =
+      nextInfo.song.path ||
+      (nextSongId !== null && this.nextAnalysisSongId === nextSongId ? this.nextAnalysisKey : null);
     const transitionKey = currentPath && nextPath ? `${currentPath}>>${nextPath}` : null;
     const transition =
       transitionKey && this.nextTransitionKey === transitionKey
