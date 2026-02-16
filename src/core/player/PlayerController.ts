@@ -2400,18 +2400,17 @@ class PlayerController {
 
     try {
       // 1. 准备数据
-        const { audioSource } = await this.prepareAudioSource(
-          targetSong,
-          requestToken,
-          { forceCacheForOnline: true, analysis: "none" },
-        );
+      const { audioSource } = await this.prepareAudioSource(targetSong, requestToken, {
+        forceCacheForOnline: true,
+        analysis: "none",
+      });
 
-        const analysisKey = targetSong.path || this.fileUrlToPath(audioSource.url);
-        const analysis =
-          analysisKey && this.nextAnalysisKey === analysisKey && this.nextAnalysis
-            ? this.nextAnalysis
-            : null;
-        const analysisKind: "none" | "head" | "full" = analysis ? this.nextAnalysisKind : "none";
+      const analysisKey = targetSong.path || this.fileUrlToPath(audioSource.url);
+      const analysis =
+        analysisKey && this.nextAnalysisKey === analysisKey && this.nextAnalysis
+          ? this.nextAnalysis
+          : null;
+      const analysisKind: "none" | "head" | "full" = analysis ? this.nextAnalysisKind : "none";
 
       // Automix Gain Calculation (LUFS)
       if (this.currentAnalysis?.loudness && analysis?.loudness) {
