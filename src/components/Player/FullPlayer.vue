@@ -6,7 +6,7 @@
         :style="{
           cursor: statusStore.playerMetaShow || isShowComment ? 'auto' : 'none',
         }"
-        :class="['full-player', { 'show-comment': isShowComment }]"
+        :class="['full-player', { 'show-comment': isShowComment && !statusStore.pureLyricMode }]"
         @mouseleave="playerLeave"
         @mousemove="playerMove"
         @click="playerMove"
