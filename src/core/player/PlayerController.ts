@@ -161,6 +161,12 @@ class PlayerController {
   private lastErrorTime = 0;
   /** 当前歌曲分析结果 */
   private currentAnalysis: AudioAnalysis | null = null;
+  private currentAnalysisKey: string | null = null;
+  private currentAudioSource: {
+    url: string;
+    quality: QualityType | undefined;
+    source: AudioSourceType | undefined;
+  } | null = null;
   /** 速率重置定时器 */
   private rateResetTimer: ReturnType<typeof setTimeout> | undefined;
   /** 速率渐变动画帧 */
@@ -187,6 +193,23 @@ class PlayerController {
   private formatAutomixTime(seconds: number): string {
     if (!Number.isFinite(seconds)) return "--:--";
     return msToTime(Math.max(0, Math.round(seconds * 1000)));
+  }
+
+  private fileUrlToPath(url: string): string | null {
+    if (!url.startsWith("file://")) return null;
+    const raw = url.slice("file://".length);
+    const normalized = raw.startsWith("/") && /^[A-Za-z]:/.test(raw.slice(1)) ? raw.slice(1) : raw;
+    try {
+      return decodeURIComponent(normalized);
+    } catch {
+      return normalized;
+    }
+  }
+
+  private getAutomixAnalyzeTimeSec(): number {
+    const settingStore = useSettingStore();
+    const raw = settingStore.automixMaxAnalyzeTime || 60;
+    return Math.max(10, Math.min(300, raw));
   }
 
   private automixLog(
@@ -323,11 +346,16 @@ class PlayerController {
       quality: audioSource.quality,
       source: audioSource.source,
     };
+    this.currentAudioSource = safeAudioSource;
 
     let analysis: AudioAnalysis | null = null;
-    if (isElectron && settingStore.enableAutomix && song.path) {
+    const analysisKey = song.path || this.fileUrlToPath(safeAudioSource.url);
+    this.currentAnalysisKey = analysisKey;
+    if (isElectron && settingStore.enableAutomix && analysisKey) {
       try {
-        const raw = await window.electron.ipcRenderer.invoke("analyze-audio", song.path);
+        const raw = await window.electron.ipcRenderer.invoke("analyze-audio", analysisKey, {
+          maxAnalyzeTimeSec: this.getAutomixAnalyzeTimeSec(),
+        });
         if (requestToken !== this.currentRequestToken) {
           throw new Error("EXPIRED");
         }
@@ -423,6 +451,8 @@ class PlayerController {
     this.nextTransitionInFlight = null;
     this.nextTransitionProposal = null;
     this.automixLogTimestamps.clear();
+    this.currentAnalysisKey = null;
+    this.currentAudioSource = null;
 
     // 生成新的请求标识
     this.currentRequestToken++;
