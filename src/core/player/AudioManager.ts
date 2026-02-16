@@ -236,12 +236,10 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
       // 应用 Current 曲线 (Volume & Filter)
       options.automationCurrent.forEach((point) => {
-        const t = startTime + point.timeOffset;
         if (point.timeOffset >= 0 && point.timeOffset <= options.duration) {
           // Volume
           this.engine.rampVolumeTo?.(point.volume * this._masterVolume, 0.1, "linear"); // 简化处理，实际应使用 rampAt
           // Low Cut (High Pass Filter)
-          const hpFreq = point.lowCut > 0 ? 20 + point.lowCut * 400 : 0; // Map 0-1 to 20-420Hz? No, Bass Swap usually cuts up to 300-400Hz
           // DJ EQ Low Cut usually goes up to 200-400Hz.
           // Let's map 0.0 -> 10Hz, 1.0 -> 400Hz
           const targetFreq = point.lowCut * 400;
@@ -251,7 +249,6 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
 
       // 应用 Next 曲线
       options.automationNext.forEach((point) => {
-        const t = startTime + point.timeOffset;
         if (point.timeOffset >= 0 && point.timeOffset <= options.duration) {
           // Volume
           // newEngine 已经有 rampVolumeTo 处理了整体淡入，这里叠加自动化可能冲突

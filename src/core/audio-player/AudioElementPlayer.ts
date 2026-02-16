@@ -145,8 +145,8 @@ export class AudioElementPlayer extends BaseAudioPlayer {
     // But we can implement the interface method to avoid crashes.
 
     if ("preservesPitch" in this.audioElement) {
-      // @ts-ignore
-      this.audioElement.preservesPitch = semitones === 0;
+      const el = this.audioElement as HTMLAudioElement & { preservesPitch: boolean };
+      el.preservesPitch = semitones === 0;
     }
   }
 
