@@ -162,6 +162,7 @@ class PlayerController {
   /** 当前歌曲分析结果 */
   private currentAnalysis: AudioAnalysis | null = null;
   private currentAnalysisKey: string | null = null;
+  private currentAnalysisKind: "none" | "head" | "full" = "none";
   private currentAudioSource: {
     url: string;
     quality: QualityType | undefined;
@@ -176,6 +177,7 @@ class PlayerController {
   private nextAnalysis: AudioAnalysis | null = null;
   private nextAnalysisKey: string | null = null;
   private nextAnalysisSongId: number | null = null;
+  private nextAnalysisKind: "none" | "head" | "full" = "none";
   private nextAnalysisInFlight: Promise<void> | null = null;
   private nextTransitionKey: string | null = null;
   private nextTransitionInFlight: Promise<void> | null = null;
@@ -239,7 +241,7 @@ class PlayerController {
     const key = `${this.currentRequestToken}:${currentId ?? "x"}:${nextId ?? "x"}`;
 
     if (this.ensureAutomixAnalysisKey === key) {
-      if (this.currentAnalysis && this.nextAnalysis) return;
+      if (this.currentAnalysis && this.currentAnalysisKind === "full" && this.nextAnalysis) return;
     }
 
     this.ensureAutomixAnalysisKey = key;
@@ -268,13 +270,14 @@ class PlayerController {
 
       if (currentPath) {
         this.currentAnalysisKey = currentPath;
-        if (!this.currentAnalysis) {
+        if (!this.currentAnalysis || this.currentAnalysisKind !== "full") {
           const raw = await window.electron.ipcRenderer.invoke("analyze-audio", currentPath, {
             maxAnalyzeTimeSec: analyzeTime,
           });
           if (token !== this.currentRequestToken) return;
           if (isAudioAnalysis(raw)) {
             this.currentAnalysis = raw;
+            this.currentAnalysisKind = "full";
           }
         }
       }
@@ -307,6 +310,7 @@ class PlayerController {
           this.nextAnalysisKey = nextPath;
           this.nextAnalysisSongId = nextId;
           this.nextAnalysis = null;
+          this.nextAnalysisKind = "none";
           this.nextAnalysisInFlight = null;
         }
         if (!this.nextAnalysis) {
@@ -316,6 +320,7 @@ class PlayerController {
           if (token !== this.currentRequestToken) return;
           if (this.nextAnalysisKey === nextPath && isAudioAnalysis(raw)) {
             this.nextAnalysis = raw;
+            this.nextAnalysisKind = "head";
           }
         }
       }
@@ -435,7 +440,7 @@ class PlayerController {
   private async prepareAudioSource(
     song: SongType,
     requestToken: number,
-    options?: { forceCacheForOnline?: boolean },
+    options?: { forceCacheForOnline?: boolean; analysis?: "none" | "head" | "full" },
   ): Promise<{
     audioSource: {
       url: string;
@@ -443,6 +448,7 @@ class PlayerController {
       source: AudioSourceType | undefined;
     };
     analysis: AudioAnalysis | null;
+    analysisKind: "none" | "head" | "full";
   }> {
     const songManager = useSongManager();
     const settingStore = useSettingStore();
@@ -487,11 +493,14 @@ class PlayerController {
     this.currentAudioSource = safeAudioSource;
 
     let analysis: AudioAnalysis | null = null;
+    let analysisKind: "none" | "head" | "full" = "none";
     const analysisKey = song.path || this.fileUrlToPath(safeAudioSource.url);
     this.currentAnalysisKey = analysisKey;
-    if (isElectron && settingStore.enableAutomix && analysisKey) {
+    const analysisMode = options?.analysis ?? "full";
+    if (analysisMode !== "none" && isElectron && settingStore.enableAutomix && analysisKey) {
       try {
-        const raw = await window.electron.ipcRenderer.invoke("analyze-audio", analysisKey, {
+        const channel = analysisMode === "head" ? "analyze-audio-head" : "analyze-audio";
+        const raw = await window.electron.ipcRenderer.invoke(channel, analysisKey, {
           maxAnalyzeTimeSec: this.getAutomixAnalyzeTimeSec(),
         });
         if (requestToken !== this.currentRequestToken) {
@@ -499,13 +508,14 @@ class PlayerController {
         }
         if (isAudioAnalysis(raw)) {
           analysis = raw;
+          analysisKind = analysisMode;
         }
       } catch (e: any) {
         if (e.message === "EXPIRED") throw e;
         console.warn("[Automix] 分析失败:", e);
       }
     }
-    return { audioSource: safeAudioSource, analysis };
+    return { audioSource: safeAudioSource, analysis, analysisKind };
   }
 
   /**
@@ -586,6 +596,7 @@ class PlayerController {
     this.nextAnalysisKey = null;
     this.nextAnalysisSongId = null;
     this.nextAnalysisInFlight = null;
+    this.nextAnalysisKind = "none";
     this.nextTransitionKey = null;
     this.nextTransitionInFlight = null;
     this.nextTransitionProposal = null;
@@ -623,12 +634,17 @@ class PlayerController {
 
       statusStore.playLoading = true;
 
-      const { audioSource, analysis } = await this.prepareAudioSource(playSongData, requestToken);
+      const { audioSource, analysis, analysisKind } = await this.prepareAudioSource(
+        playSongData,
+        requestToken,
+        { analysis: options.crossfade ? "head" : "none" },
+      );
 
       // Automix 分析应用
       let startSeek = seek ?? 0;
       const lastAnalysis = this.currentAnalysis;
       this.currentAnalysis = analysis;
+      this.currentAnalysisKind = analysis ? analysisKind : "none";
       let initialRate = 1.0;
 
       if (analysis) {
@@ -2384,9 +2400,18 @@ class PlayerController {
 
     try {
       // 1. 准备数据
-      const { audioSource, analysis } = await this.prepareAudioSource(targetSong, requestToken, {
-        forceCacheForOnline: true,
-      });
+        const { audioSource } = await this.prepareAudioSource(
+          targetSong,
+          requestToken,
+          { forceCacheForOnline: true, analysis: "none" },
+        );
+
+        const analysisKey = targetSong.path || this.fileUrlToPath(audioSource.url);
+        const analysis =
+          analysisKey && this.nextAnalysisKey === analysisKey && this.nextAnalysis
+            ? this.nextAnalysis
+            : null;
+        const analysisKind: "none" | "head" | "full" = analysis ? this.nextAnalysisKind : "none";
 
       // Automix Gain Calculation (LUFS)
       if (this.currentAnalysis?.loudness && analysis?.loudness) {
@@ -2405,8 +2430,10 @@ class PlayerController {
 
       // 更新当前分析结果
       this.currentAnalysis = analysis;
+      this.currentAnalysisKind = analysis ? analysisKind : "none";
       // 重置下一首分析缓存
       this.nextAnalysis = null;
+      this.nextAnalysisKind = "none";
 
       // 2. 启动 Crossfade
       const uiSwitchDelay = options.uiSwitchDelay ?? options.crossfadeDuration * 0.5;
