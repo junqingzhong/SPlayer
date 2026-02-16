@@ -435,6 +435,7 @@ class PlayerController {
   private async prepareAudioSource(
     song: SongType,
     requestToken: number,
+    options?: { forceCacheForOnline?: boolean },
   ): Promise<{
     audioSource: {
       url: string;
@@ -460,6 +461,29 @@ class PlayerController {
       quality: audioSource.quality,
       source: audioSource.source,
     };
+
+    if (
+      isElectron &&
+      settingStore.enableAutomix &&
+      options?.forceCacheForOnline &&
+      safeAudioSource.url.startsWith("http")
+    ) {
+      const songId = this.getSongIdForCache(song);
+      if (songId !== null) {
+        const cachedPath = await songManager.ensureMusicCachePath(
+          songId,
+          safeAudioSource.url,
+          safeAudioSource.quality,
+        );
+        if (requestToken !== this.currentRequestToken) {
+          throw new Error("EXPIRED");
+        }
+        if (cachedPath) {
+          const encodedPath = cachedPath.replace(/#/g, "%23").replace(/\?/g, "%3F");
+          safeAudioSource.url = `file://${encodedPath}`;
+        }
+      }
+    }
     this.currentAudioSource = safeAudioSource;
 
     let analysis: AudioAnalysis | null = null;
@@ -2003,6 +2027,7 @@ class PlayerController {
 
     // 播放结束
     audioManager.addEventListener("ended", () => {
+      if (this.isTransitioning) return;
       this.resetAutomixScheduling("IDLE");
       console.log(`⏹️ [${musicStore.playSong?.id}] 歌曲结束`);
       lastfmScrobbler.stop();
@@ -2359,7 +2384,9 @@ class PlayerController {
 
     try {
       // 1. 准备数据
-      const { audioSource, analysis } = await this.prepareAudioSource(targetSong, requestToken);
+      const { audioSource, analysis } = await this.prepareAudioSource(targetSong, requestToken, {
+        forceCacheForOnline: true,
+      });
 
       // Automix Gain Calculation (LUFS)
       if (this.currentAnalysis?.loudness && analysis?.loudness) {
