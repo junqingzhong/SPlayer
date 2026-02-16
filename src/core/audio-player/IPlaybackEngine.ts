@@ -21,6 +21,13 @@ export interface AudioErrorDetail {
   message?: string;
 }
 
+export interface AutomationPoint {
+  timeOffset: number;
+  volume: number;
+  lowCut: number;
+  highCut: number;
+}
+
 export type FadeCurve = "linear" | "exponential" | "equalPower";
 
 /**

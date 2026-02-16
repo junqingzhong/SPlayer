@@ -1,5 +1,6 @@
 import { AudioErrorCode } from "@/core/audio-player/BaseAudioPlayer";
 import { AudioScheduler } from "@/core/audio-player/AudioScheduler";
+import type { AutomationPoint } from "@/core/audio-player/IPlaybackEngine";
 import { getSharedAudioContext } from "@/core/audio-player/SharedAudioContext";
 import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import type { AudioSourceType, QualityType, SongType } from "@/types/main";
@@ -103,13 +104,6 @@ type AutomixPlan = {
   automationCurrent: AutomationPoint[];
   automationNext: AutomationPoint[];
 };
-
-interface AutomationPoint {
-  timeOffset: number;
-  volume: number;
-  lowCut: number;
-  highCut: number;
-}
 
 const isAudioAnalysis = (value: unknown): value is AudioAnalysis => {
   if (!value || typeof value !== "object") return false;
@@ -1276,7 +1270,9 @@ class PlayerController {
 
     if (!this.nextAnalysis && !this.nextAnalysisInFlight) {
       this.nextAnalysisInFlight = window.electron.ipcRenderer
-        .invoke("analyze-audio-head", nextKey, { maxAnalyzeTimeSec: this.getAutomixAnalyzeTimeSec() })
+        .invoke("analyze-audio-head", nextKey, {
+          maxAnalyzeTimeSec: this.getAutomixAnalyzeTimeSec(),
+        })
         .then((raw) => {
           if (this.nextAnalysisKey !== nextKey) return;
           if (isAudioAnalysis(raw)) {

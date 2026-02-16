@@ -10,6 +10,7 @@ import type {
   IPlaybackEngine,
   PauseOptions,
   PlayOptions,
+  AutomationPoint,
 } from "../audio-player/IPlaybackEngine";
 import { MpvPlayer, useMpvPlayer } from "../audio-player/MpvPlayer";
 import { getSharedAudioContext } from "../audio-player/SharedAudioContext";
