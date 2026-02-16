@@ -952,8 +952,9 @@ class PlayerController {
       console.warn("⚠️ 无效的播放速率:", rate);
       return;
     }
-    if (audioManager.engineType === "mpv") {
-      console.warn("⚠️ MPV 引擎不支持倍速播放");
+
+    if (!audioManager.capabilities.supportsRate) {
+      console.warn("⚠️ 当前引擎不支持倍速播放");
       return;
     }
     const safeRate = Math.max(0.2, Math.min(rate, 2.0));
@@ -1242,15 +1243,11 @@ class PlayerController {
    * 切换输出设备
    * @param deviceId 设备 ID
    */
-  public toggleOutputDevice(deviceId?: string) {
+  public async toggleOutputDevice(deviceId?: string) {
     const settingStore = useSettingStore();
     const audioManager = useAudioManager();
     const device = deviceId ?? settingStore.playDevice;
-    try {
-      audioManager.setSinkId(deviceId ?? device);
-    } catch (error) {
-      console.error("AudioManager: 设置输出设备失败", error);
-    }
+    await audioManager.setSinkId(device);
   }
 
   /**
