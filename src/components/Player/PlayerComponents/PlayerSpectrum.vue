@@ -65,6 +65,60 @@ const drawSpectrum = () => {
       roundRect(ctx, x2, y, barWidth - 3, barHeight, cornerRadius);
     }
   }
+
+  if (import.meta.env.DEV) {
+    drawBeatGrid(ctx, canvasWidth, canvasHeight);
+  }
+};
+
+const drawBeatGrid = (ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number) => {
+  const analysis = player.getCurrentAnalysis();
+  const bpm = analysis?.bpm;
+  const firstBeat = analysis?.first_beat_pos;
+  const confidence = analysis?.bpm_confidence ?? 0;
+  if (!bpm || firstBeat === undefined) return;
+
+  const spb = 60 / bpm;
+  if (!Number.isFinite(spb) || spb <= 0) return;
+
+  const now = player.getSeek() / 1000;
+  const windowSec = 8;
+  const start = now - windowSec / 2;
+  const end = now + windowSec / 2;
+
+  const beatStart = Math.floor((start - firstBeat) / spb) - 1;
+  const beatEnd = Math.ceil((end - firstBeat) / spb) + 1;
+
+  ctx.save();
+  ctx.lineWidth = 1;
+
+  for (let k = beatStart; k <= beatEnd; k++) {
+    const t = firstBeat + k * spb;
+    const x = ((t - start) / windowSec) * canvasWidth;
+    if (x < 0 || x > canvasWidth) continue;
+    const isBar = k % 4 === 0;
+    ctx.strokeStyle = isBar ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.18)";
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, canvasHeight);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "rgba(0,255,180,0.55)";
+  ctx.beginPath();
+  ctx.moveTo(canvasWidth / 2, 0);
+  ctx.lineTo(canvasWidth / 2, canvasHeight);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  ctx.font = "12px sans-serif";
+  ctx.fillText(
+    `BPM ${bpm.toFixed(1)}  Conf ${(confidence * 100).toFixed(0)}%  First ${firstBeat.toFixed(2)}s`,
+    12,
+    16,
+  );
+
+  ctx.restore();
 };
 
 /**

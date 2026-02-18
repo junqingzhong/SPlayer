@@ -163,6 +163,8 @@ interface StatusState {
   };
   /** 侧边栏歌单显示模式 */
   playlistMode: "online" | "local";
+  automixFxSeq: number;
+  automixEndedSeq: number;
 }
 
 export const useStatusStore = defineStore("status", {
@@ -177,9 +179,10 @@ export const useStatusStore = defineStore("status", {
     playListShow: false,
     showFullPlayer: false,
     playerMetaShow: true,
+    automixFxSeq: 0,
+    automixEndedSeq: 0,
     currentTime: 0,
     duration: 0,
-    progress: 0,
     currentTimeOffsetMap: {},
     songCoverTheme: {},
     pureLyricMode: false,
@@ -244,6 +247,8 @@ export const useStatusStore = defineStore("status", {
       pointB: null,
     },
     playlistMode: "online",
+    automixFxSeq: 0,
+    automixEndedSeq: 0,
   }),
   getters: {
     // 播放音量图标
@@ -301,6 +306,12 @@ export const useStatusStore = defineStore("status", {
     },
   },
   actions: {
+    triggerAutomixFx() {
+      this.automixFxSeq += 1;
+    },
+    endAutomixFx() {
+      this.automixEndedSeq += 1;
+    },
     /**
      * 获取指定歌曲的偏移
      * 单位：毫秒
