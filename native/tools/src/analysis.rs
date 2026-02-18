@@ -576,6 +576,8 @@ fn internal_analyze_impl(
     max_analyze_time: Option<f64>,
     include_tail: bool,
 ) -> Option<AudioAnalysis> {
+    // FIXME: THIS FUNCTION IS A DISASTER. IT DOES EVERYTHING.
+    // TODO: Split into decode_audio(), extract_features(), compute_analysis()
     let path = Path::new(path);
     let src = File::open(path).ok()?;
     let mss = MediaSourceStream::new(Box::new(src), Default::default());
@@ -1337,6 +1339,25 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
     let mut filter_strategy = String::new();
     let mut found_strategy = false;
 
+    struct MixStrategy<'a> {
+        name: &'a str,
+        filter: &'a str,
+        min_bars: f64,
+        req_bpm: bool,
+        req_key: bool,
+    }
+
+    let strategies = [
+        MixStrategy { name: "Harmonic Deep Blend", filter: "Eq Swap (Bass/Mid)", min_bars: 32.0, req_bpm: true, req_key: true },
+        MixStrategy { name: "Long Filter Blend", filter: "Bass Swap / LPF", min_bars: 32.0, req_bpm: true, req_key: false },
+        MixStrategy { name: "Standard Blend", filter: "Eq Mixing", min_bars: 16.0, req_bpm: true, req_key: true },
+        MixStrategy { name: "Filter Blend", filter: "Bass Cut Out", min_bars: 16.0, req_bpm: true, req_key: false },
+        MixStrategy { name: "Short Blend", filter: "Wash Out / Echo", min_bars: 8.0, req_bpm: false, req_key: false },
+        MixStrategy { name: "Quick Blend", filter: "Quick Fade", min_bars: 4.0, req_bpm: true, req_key: false }, // Special case handling later for filter
+        MixStrategy { name: "Quick Blend", filter: "Echo Freeze", min_bars: 4.0, req_bpm: false, req_key: false },
+        MixStrategy { name: "Rapid Bass Swap", filter: "Bass Swap / LPF", min_bars: 2.0, req_bpm: false, req_key: false },
+    ];
+
     for &bars in candidate_bars.iter() {
         let duration = bars * seconds_per_bar_a;
 
@@ -1357,7 +1378,8 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
 
         let mut snapped_cur_start =
             snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 16.0);
-        // 如果 snap 导致时间回退太远 (超过 30s)，则说明 phrase 网格不合适，尝试更细的网格 (4 Bar)
+        
+        // Phrase alignment fallback
         if cur_ideal_out - snapped_cur_start > 30.0 {
             snapped_cur_start =
                 snap_to_phrase_floor(cur_ideal_out, bpm_a, cur_first_beat, conf_a, 16.0);
@@ -1370,76 +1392,22 @@ pub fn suggest_transition(current_path: String, next_path: String) -> Option<Tra
             continue;
         }
 
-        if bars == 32.0 {
-            if bpm_compatible && key_compatible {
-                selected_duration = duration;
-                selected_next_in = snapped_next_in;
-                selected_cur_out = snapped_cur_start;
-                strategy_name = "Harmonic Deep Blend (32 Bars)".to_string();
-                filter_strategy = "Eq Swap (Bass/Mid)".to_string();
-                found_strategy = true;
-                break;
-            }
-            if bpm_compatible {
-                selected_duration = duration;
-                selected_next_in = snapped_next_in;
-                selected_cur_out = snapped_cur_start;
-                strategy_name = "Long Filter Blend (32 Bars)".to_string();
-                filter_strategy = "Bass Swap / LPF".to_string();
-                found_strategy = true;
-                break;
-            }
-        }
+        // Match Strategy
+        for strat in strategies.iter() {
+            if bars != strat.min_bars { continue; }
+            if strat.req_bpm && !bpm_compatible { continue; }
+            if strat.req_key && !key_compatible { continue; }
 
-        if bars == 16.0 && bpm_compatible {
             selected_duration = duration;
             selected_next_in = snapped_next_in;
             selected_cur_out = snapped_cur_start;
-            strategy_name = if key_compatible {
-                "Standard Blend (16 Bars)".to_string()
-            } else {
-                "Filter Blend (16 Bars)".to_string()
-            };
-            filter_strategy = if key_compatible {
-                "Eq Mixing".to_string()
-            } else {
-                "Bass Cut Out".to_string()
-            };
+            strategy_name = format!("{} ({} Bars)", strat.name, bars);
+            filter_strategy = strat.filter.to_string();
             found_strategy = true;
             break;
         }
 
-        if bars == 8.0 {
-            selected_duration = duration;
-            selected_next_in = snapped_next_in;
-            selected_cur_out = snapped_cur_start;
-            strategy_name = "Short Blend (8 Bars)".to_string();
-            filter_strategy = "Wash Out / Echo".to_string();
-            found_strategy = true;
-            break;
-        }
-
-        if bars == 4.0 {
-            selected_duration = duration;
-            selected_next_in = snapped_next_in;
-            selected_cur_out = snapped_cur_start;
-            strategy_name = "Quick Blend (4 Bars)".to_string();
-            filter_strategy = if bpm_compatible {
-                "Quick Fade".to_string()
-            } else {
-                "Echo Freeze".to_string()
-            };
-            found_strategy = true;
-            break;
-        }
-
-        if bars == 2.0 {
-            selected_duration = duration;
-            selected_next_in = snapped_next_in;
-            selected_cur_out = snapped_cur_start;
-            strategy_name = "Rapid Bass Swap (2 Bars)".to_string();
-            filter_strategy = "Bass Swap / LPF".to_string();
-            found_strategy = true;
+        if found_strategy {
             break;
         }
     }
