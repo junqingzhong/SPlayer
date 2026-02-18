@@ -1998,8 +1998,8 @@ class PlayerController {
 
     // 单曲循环
     // 如果是自动结束触发的单曲循环，则重播当前歌曲
-    // Automix 模式下不支持单曲循环（没有意义 Crossfade 自己），或者可以？
-    // 假设 Automix 忽略单曲循环逻辑，直接切下一首 (TODO: check logic)
+    // 注意：如果开启了 Automix，monitorAutomix 应该已经提前触发了过渡（支持自循环）
+    // 如果运行到这里，说明 Automix 未触发（如歌曲太短或分析失败），则执行硬切重播
     if (statusStore.repeatMode === "one" && autoEnd) {
       await this.playSong({ autoPlay: play, seek: 0 });
       return;
@@ -2172,6 +2172,16 @@ class PlayerController {
   private getNextSongForAutomix(): { song: SongType; index: number } | null {
     const dataStore = useDataStore();
     const statusStore = useStatusStore();
+
+    if (dataStore.playList.length === 0) return null;
+
+    // 单曲循环模式下，下一首就是当前这首
+    if (statusStore.repeatMode === "one") {
+      const currentSong = dataStore.playList[statusStore.playIndex];
+      if (currentSong) {
+        return { song: currentSong, index: statusStore.playIndex };
+      }
+    }
 
     if (dataStore.playList.length <= 1) return null;
 
