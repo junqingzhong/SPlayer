@@ -79,6 +79,11 @@ export const useInit = () => {
         window.electron.ipcRenderer.send(TASKBAR_IPC_CHANNELS.REQUEST_DATA);
       }
 
+      // 确保主窗口在最后获得焦点
+      setTimeout(() => {
+        window.electron.ipcRenderer.send("win-show-main");
+      }, 500);
+
       // 监听任务栏歌词设置
       watch(
         () => [
