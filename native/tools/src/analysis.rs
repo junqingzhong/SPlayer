@@ -2,14 +2,12 @@ use napi_derive::napi;
 use num_complex::Complex32;
 use rustfft::FftPlanner;
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use symphonia::core::audio::{AudioBufferRef, Signal};
 use symphonia::core::sample::i24;
-use symphonia::core::codecs::{Decoder, DecoderOptions};
-use symphonia::core::errors::Error;
-use symphonia::core::formats::{FormatOptions, FormatReader, SeekMode, SeekTo};
+use symphonia::core::codecs::Decoder;
+use symphonia::core::formats::{FormatReader, SeekMode, SeekTo};
 use symphonia::core::io::MediaSourceStream;
-use symphonia::core::meta::MetadataOptions;
 use symphonia::core::probe::Hint;
 use symphonia::core::units::Time;
 
@@ -388,6 +386,8 @@ impl TrackAnalyzer {
         let mut processed_duration_local = 0.0; // For fallback if time_base missing
 
         let segment = if is_head { &mut self.head } else { &mut self.tail };
+        let loudness_meter = &mut self.loudness_meter;
+        let head_pcm = &mut self.head_pcm;
         
         // Use a small buffer to hold channel data to avoid allocation per sample
         // Max 8 channels supported
@@ -436,7 +436,7 @@ impl TrackAnalyzer {
                 processed_duration_local += frames as f64 / self.sample_rate as f64;
             }
 
-            let capture_pcm = is_head && self.head_pcm.len() < key_max_samples;
+            let capture_pcm = is_head && head_pcm.len() < key_max_samples;
 
             // Process Frames
             macro_rules! process_buffer {
@@ -448,7 +448,7 @@ impl TrackAnalyzer {
                             frame_buf[c] = s;
                             sum += s;
                         }
-                        self.process_sample(sum, channels, &frame_buf[..channels], &mut acc_env, &mut acc_low, &mut acc_vocal, &mut vocal_filter, &mut lpf, segment, capture_pcm);
+                        Self::process_sample_static(loudness_meter, head_pcm, sum, channels, &frame_buf[..channels], &mut acc_env, &mut acc_low, &mut acc_vocal, &mut vocal_filter, &mut lpf, segment, capture_pcm);
                     }
                 }
             }
@@ -465,9 +465,11 @@ impl TrackAnalyzer {
         Some(())
     }
 
+    // Static helper to avoid double borrow of self
     #[inline(always)]
-    fn process_sample(
-        &mut self,
+    fn process_sample_static(
+        loudness_meter: &mut LoudnessMeter,
+        head_pcm: &mut Vec<f32>,
         sum: f32,
         channels: usize,
         frame_buf: &[f32],
@@ -479,14 +481,14 @@ impl TrackAnalyzer {
         segment: &mut AnalysisSegment,
         capture_pcm: bool
     ) {
-        self.loudness_meter.process(frame_buf);
+        loudness_meter.process(frame_buf);
         
         let val = sum / channels as f32;
         let vocal = vocal_filter.process(val);
         let low = lpf.process(val);
 
         if capture_pcm {
-            self.head_pcm.push(val);
+            head_pcm.push(val);
         }
         
         if let Some(rms) = acc_env.process(val) { segment.envelope.push(rms); }
@@ -818,7 +820,7 @@ fn detect_key(pcm: &[f32], sr: u32) -> (Option<i32>, Option<i32>, Option<f64>) {
     }
     
     if best_score > 0.0 {
-        Some((Some(best_root as i32), Some(best_mode), Some(0.8)))
+        (Some(best_root as i32), Some(best_mode), Some(0.8))
     } else {
         (None, None, None)
     }
