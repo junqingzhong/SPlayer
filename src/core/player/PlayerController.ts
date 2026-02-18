@@ -1363,23 +1363,35 @@ class PlayerController {
 
     // 2. 确定基础退出点 (Exit Point)
     // 优先级: Cut Out > Fade Out > End of File
-    const rawFadeOut = currentAnalysis?.fade_out_pos || duration;
+    const canTrustExitPoint = !!currentAnalysis && this.currentAnalysisKind === "full";
+    const vocalOut = canTrustExitPoint ? currentAnalysis.vocal_out_pos : undefined;
+    let rawFadeOut = canTrustExitPoint ? currentAnalysis.fade_out_pos || duration : duration;
+    rawFadeOut = Math.min(rawFadeOut, duration);
+    if (vocalOut !== undefined && rawFadeOut < vocalOut - 0.1) {
+      this.automixLog(
+        "warn",
+        "fade_out_early",
+        `Fade out ${rawFadeOut} < Vocal out ${vocalOut}`,
+        5000,
+      );
+      rawFadeOut = duration;
+    }
     let exitPoint = rawFadeOut;
 
-    if (currentAnalysis?.cut_out_pos !== undefined) {
+    if (canTrustExitPoint && currentAnalysis.cut_out_pos !== undefined) {
       const cutOut = currentAnalysis.cut_out_pos;
       const cutIn = currentAnalysis.cut_in_pos ?? currentAnalysis.fade_in_pos ?? 0;
       // 只有当有效时长足够时才使用 cut_out
-      if (cutOut - cutIn > 30) {
+      if (Number.isFinite(cutOut) && cutOut > 0 && cutOut <= duration && cutOut - cutIn > 30) {
         exitPoint = cutOut;
-        // 安全检查: 如果 cut_out 早于 vocal_out，警告但信任分析 (或回退)
-        if (currentAnalysis.vocal_out_pos && exitPoint < currentAnalysis.vocal_out_pos - 0.1) {
+        if (vocalOut !== undefined && exitPoint < vocalOut - 0.1) {
           this.automixLog(
             "warn",
             "cut_out_early",
-            `Cut out ${exitPoint} < Vocal out ${currentAnalysis.vocal_out_pos}`,
+            `Cut out ${exitPoint} < Vocal out ${vocalOut}`,
             5000,
           );
+          exitPoint = rawFadeOut;
         }
       }
     }
@@ -1481,7 +1493,7 @@ class PlayerController {
 
     // 5. 后处理: Ultra Aggressive Mode (超激进尾奏快切)
     // 这是一个特定的业务规则，保留并简化
-    if (!advancedTransition && currentAnalysis?.vocal_out_pos) {
+    if (!advancedTransition && canTrustExitPoint && currentAnalysis.vocal_out_pos) {
       const plan = this.applyAggressiveOutro(
         currentAnalysis,
         triggerTime,
