@@ -235,7 +235,7 @@ class PlayerController {
     if (this.ensureAutomixAnalysisInFlight) return;
 
     const settingStore = useSettingStore();
-    if (!settingStore.enableAutomix) return;
+    if (!settingStore.enableAutomix || settingStore.playbackEngine !== "web-audio") return;
 
     const musicStore = useMusicStore();
     const currentSong = musicStore.playSong;
@@ -479,6 +479,7 @@ class PlayerController {
     if (
       isElectron &&
       settingStore.enableAutomix &&
+      settingStore.playbackEngine === "web-audio" &&
       options?.forceCacheForOnline &&
       safeAudioSource.url.startsWith("http")
     ) {
@@ -505,7 +506,13 @@ class PlayerController {
     const analysisKey = song.path || this.fileUrlToPath(safeAudioSource.url);
     this.currentAnalysisKey = analysisKey;
     const analysisMode = options?.analysis ?? "full";
-    if (analysisMode !== "none" && isElectron && settingStore.enableAutomix && analysisKey) {
+    if (
+      analysisMode !== "none" &&
+      isElectron &&
+      settingStore.enableAutomix &&
+      settingStore.playbackEngine === "web-audio" &&
+      analysisKey
+    ) {
       try {
         const channel = analysisMode === "head" ? "analyze-audio-head" : "analyze-audio";
         const raw = await window.electron.ipcRenderer.invoke(channel, analysisKey, {

@@ -407,7 +407,11 @@ export const usePlaySettings = (): SettingConfig => {
             label: "启用自动混音",
             type: "switch",
             tags: [{ text: "Beta", type: "warning" }],
-            description: "是否启用自动混音功能",
+            description: computed(() =>
+              settingStore.playbackEngine === "web-audio"
+                ? "是否启用自动混音功能"
+                : "自动混音功能仅在使用 Web Audio 引擎时可用",
+            ),
             value: computed({
               get: () => settingStore.enableAutomix,
               set: (v) => {
@@ -427,6 +431,7 @@ export const usePlaySettings = (): SettingConfig => {
                 }
               },
             }),
+            disabled: computed(() => settingStore.playbackEngine !== "web-audio"),
             children: [
               {
                 key: "automixMaxAnalyzeTime",
