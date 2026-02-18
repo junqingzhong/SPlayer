@@ -2131,6 +2131,7 @@ class PlayerController {
             this.automixState = "MONITORING";
             // 提交状态切换
             statusStore.playIndex = targetIndex;
+            statusStore.endAutomixFx();
             this.setupSongUI(targetSong, audioSource, options.startSeek);
             this.afterPlaySetup(targetSong);
           },
@@ -2143,6 +2144,7 @@ class PlayerController {
         this.isTransitioning = false;
         this.resetAutomixScheduling("IDLE");
         statusStore.playIndex = targetIndex;
+        statusStore.endAutomixFx();
         this.playSong({ autoPlay: true });
       }
     }
