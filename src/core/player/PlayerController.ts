@@ -211,6 +211,20 @@ class PlayerController {
     return Math.max(10, Math.min(300, raw));
   }
 
+  private snapToBeat(
+    time: number,
+    bpm: number,
+    firstBeat: number,
+    snapToBar: boolean = true,
+  ): number {
+    if (bpm <= 0) return time;
+    const spb = 60 / bpm;
+    const interval = snapToBar ? spb * 4 : spb;
+    const offset = time - firstBeat;
+    const units = Math.round(offset / interval);
+    return firstBeat + units * interval;
+  }
+
   private getSongIdForCache(song: SongType): number | null {
     if (song.type === "radio") return song.dj?.id ?? null;
     return song.id || null;
@@ -1345,89 +1359,64 @@ class PlayerController {
 
     const currentAnalysis = this.currentAnalysis;
     const nextAnalysis = this.nextAnalysis;
-
     const duration = this.getDuration() / 1000;
-    const currentFadeIn = currentAnalysis?.fade_in_pos || 0;
-    const currentCutIn = currentAnalysis?.cut_in_pos ?? currentFadeIn;
-    const currentCutOut = currentAnalysis?.cut_out_pos;
-    const currentEffectiveDuration =
-      currentCutOut !== undefined ? currentCutOut - currentCutIn : Number.POSITIVE_INFINITY;
+
+    // 2. 确定基础退出点 (Exit Point)
+    // 优先级: Cut Out > Fade Out > End of File
     const rawFadeOut = currentAnalysis?.fade_out_pos || duration;
-    let cutOutPos =
-      currentCutOut !== undefined && currentEffectiveDuration >= 30 ? currentCutOut : undefined;
+    let exitPoint = rawFadeOut;
 
-    const currentVocalOut = currentAnalysis?.vocal_out_pos;
-    if (cutOutPos !== undefined && currentVocalOut !== undefined) {
-      // [优化] 移除 minBreathingRoom 限制，完全信任分析结果
-      // 只要 cutOutPos >= currentVocalOut，就认为是安全的
-      if (cutOutPos < currentVocalOut - 0.1) {
-        this.automixLog(
-          "warn",
-          `cut_out_close:${Math.round(cutOutPos * 100)}:${Math.round(currentVocalOut * 100)}`,
-          `[Automix] cut_out 早于 vocal_out，将回退到 fade_out：cut_out=${this.formatAutomixTime(cutOutPos)} vocal_out=${this.formatAutomixTime(currentVocalOut)}`,
-          15000,
-        );
-        cutOutPos = undefined;
+    if (currentAnalysis?.cut_out_pos !== undefined) {
+      const cutOut = currentAnalysis.cut_out_pos;
+      const cutIn = currentAnalysis.cut_in_pos ?? currentAnalysis.fade_in_pos ?? 0;
+      // 只有当有效时长足够时才使用 cut_out
+      if (cutOut - cutIn > 30) {
+        exitPoint = cutOut;
+        // 安全检查: 如果 cut_out 早于 vocal_out，警告但信任分析 (或回退)
+        if (currentAnalysis.vocal_out_pos && exitPoint < currentAnalysis.vocal_out_pos - 0.1) {
+          this.automixLog(
+            "warn",
+            "cut_out_early",
+            `Cut out ${exitPoint} < Vocal out ${currentAnalysis.vocal_out_pos}`,
+            5000,
+          );
+        }
       }
     }
 
-    if (cutOutPos !== undefined) {
-      const remainingAfterCut = rawFadeOut - cutOutPos;
-      const vocalEndedLongAgo =
-        currentVocalOut !== undefined ? cutOutPos - currentVocalOut > 30 : false;
-      if (remainingAfterCut > 45 && !vocalEndedLongAgo) {
-        this.automixLog(
-          "warn",
-          `cut_out_early:${Math.round(cutOutPos * 100)}:${Math.round(remainingAfterCut)}`,
-          `[Automix] cut_out 过早，将回退到 fade_out：cut_out=${this.formatAutomixTime(cutOutPos)} 剩余=${this.formatAutomixTime(remainingAfterCut)}`,
-          15000,
-        );
-        cutOutPos = undefined;
-      }
-    }
-
-    const fadeOut = cutOutPos ?? rawFadeOut;
-    const exitPoint = fadeOut;
-    const currentValid = fadeOut - currentFadeIn;
-
-    // 默认混音时长 8s (作为最后兜底)
-    let crossfadeDuration = 8;
-    let initialRate = 1.0;
+    // 3. 初始化默认计划
+    let triggerTime = exitPoint - 8.0; // 默认 8s Crossfade
+    let crossfadeDuration = 8.0;
     let startSeek = 0;
-    let uiSwitchDelay = 0;
     let mixType: "default" | "bassSwap" = "default";
     let pitchShift = 0;
     let playbackRate = 1.0;
+    let initialRate = 1.0;
+    let uiSwitchDelay = 0;
     let automationCurrent: AutomationPoint[] = [];
     let automationNext: AutomationPoint[] = [];
-    // const _preRoll = 2.0; // 提前量
-    let phraseBars: number | null = null;
-    let forcedTriggerTime: number | null = null;
-    let useNativeProposal = false;
 
+    // 4. 获取过渡建议 (Native / Mashup)
     const musicStore = useMusicStore();
     const nextSongId = this.getSongIdForCache(nextInfo.song);
-    const currentPath =
-      this.currentAnalysisKey ||
-      musicStore.playSong?.path ||
-      (this.currentAudioSource ? this.fileUrlToPath(this.currentAudioSource.url) : null);
+    const currentPath = this.currentAnalysisKey || musicStore.playSong?.path;
     const nextPath =
       nextInfo.song.path ||
       (nextSongId !== null && this.nextAnalysisSongId === nextSongId ? this.nextAnalysisKey : null);
     const transitionKey = currentPath && nextPath ? `${currentPath}>>${nextPath}` : null;
-    const transition =
-      transitionKey && this.nextTransitionKey === transitionKey
-        ? this.nextTransitionProposal
-        : null;
+
     const advancedTransition =
       transitionKey && this.nextTransitionKey === transitionKey
         ? this.nextAdvancedTransition
         : null;
+    const transition =
+      transitionKey && this.nextTransitionKey === transitionKey
+        ? this.nextTransitionProposal
+        : null;
 
-    // 优先使用 Advanced Transition (Mashup Mode)
+    // 策略 A: Mashup / Advanced Transition
     if (advancedTransition) {
-      // Advanced Transition 的逻辑非常明确，直接使用
-      const triggerTime = advancedTransition.start_time_current;
+      triggerTime = advancedTransition.start_time_current;
       crossfadeDuration = advancedTransition.duration;
       startSeek = advancedTransition.start_time_next * 1000;
       pitchShift = advancedTransition.pitch_shift_semitones;
@@ -1435,29 +1424,11 @@ class PlayerController {
       automationCurrent = advancedTransition.automation_current;
       automationNext = advancedTransition.automation_next;
       mixType = advancedTransition.strategy.includes("Bass Swap") ? "bassSwap" : "default";
-
-      // 修正 initialRate 用于 UI 显示和后续 audioManager.setRate
       initialRate = playbackRate;
-
-      // 设置 UI 切换延迟为一半时长
       uiSwitchDelay = crossfadeDuration * 0.5;
 
-      this.automixLog(
-        "log",
-        `mashup_proposal:${Math.round(crossfadeDuration * 10)}:${mixType}`,
-        `[Automix Mashup] 混音策略：${advancedTransition.strategy}
-             触发时间：${this.formatAutomixTime(triggerTime)}
-             切入点：${this.formatAutomixTime(startSeek / 1000)}
-             时长：${crossfadeDuration.toFixed(1)}s
-             变速：${playbackRate.toFixed(4)}
-             变调：${pitchShift} Semitones`,
-        15000,
-      );
-
-      return {
-        token: this.currentRequestToken,
-        nextSong: nextInfo.song,
-        nextIndex: nextInfo.index,
+      return this.createAutomixPlan(
+        nextInfo,
         triggerTime,
         crossfadeDuration,
         startSeek,
@@ -1468,460 +1439,95 @@ class PlayerController {
         playbackRate,
         automationCurrent,
         automationNext,
-      };
+      );
     }
 
-    if (transition) {
-      const proposedDuration = transition.duration;
-      const proposedTrigger = transition.current_track_mix_out;
-      const proposedSeek = transition.next_track_mix_in * 1000;
-      if (
-        Number.isFinite(proposedDuration) &&
-        Number.isFinite(proposedTrigger) &&
-        Number.isFinite(proposedSeek) &&
-        proposedDuration > 0.5 &&
-        proposedSeek >= 0
-      ) {
-        let safeTrigger = proposedTrigger;
-        // Native 建议的点通常是可靠的，即便稍微晚于 exitPoint (fade_out)，只要不是太离谱，也信任它
-        // 放宽限制，允许稍微超出一点点 (5s) 以完成混音
-        if (safeTrigger > exitPoint + 5.0) {
-          safeTrigger = exitPoint;
-        }
-        safeTrigger = Math.max(currentFadeIn, safeTrigger);
+    // 策略 B: Native Transition Proposal
+    if (transition && transition.duration > 0.5) {
+      // 信任 Native 建议，仅做基本边界检查
+      const safeTrigger = Math.min(transition.current_track_mix_out, duration - 1.0);
+      const safeDuration = Math.min(transition.duration, duration - safeTrigger);
 
-        let safeDuration = proposedDuration;
-        // 如果 Native 建议的混音结束点超出了当前歌的总时长，才需要截断
-        // 注意：这里用 duration (总时长) 而不是 exitPoint (fade_out)
-        if (safeTrigger + safeDuration > duration) {
-          safeDuration = Math.max(0.5, duration - safeTrigger);
-        }
+      triggerTime = safeTrigger;
+      crossfadeDuration = safeDuration;
+      startSeek = transition.next_track_mix_in * 1000;
+      mixType = transition.filter_strategy.includes("Bass Swap") ? "bassSwap" : "default";
+    } else {
+      // 策略 C: Fallback (简单 Crossfade)
+      // 如果没有 Native 建议，使用默认的 8s 混音，但尝试对齐小节
+      if (currentAnalysis && nextAnalysis) {
+        crossfadeDuration = 8.0;
+        let rawTrigger = exitPoint - crossfadeDuration;
 
-        forcedTriggerTime = safeTrigger;
-        crossfadeDuration = safeDuration;
-        startSeek = proposedSeek;
-        uiSwitchDelay = crossfadeDuration * 0.5;
-        mixType = transition.filter_strategy.includes("Bass Swap") ? "bassSwap" : "default";
-        initialRate = 1.0;
-        useNativeProposal = true;
-
-        this.automixLog(
-          "log",
-          `native_proposal:${Math.round(crossfadeDuration * 10)}:${mixType}`,
-          `[Automix] 最终混音数据：
- 分析当前歌曲结果：（已分析 ${this.formatAutomixTime(currentAnalysis?.duration || 0)}）
- 分析下一首歌曲结果：（已分析 ${this.formatAutomixTime(nextAnalysis?.duration || 0)}）
- 最终决定在 ${this.formatAutomixTime(forcedTriggerTime)} 切出
- 切出到 下一首的 ${this.formatAutomixTime(startSeek / 1000)}
- 判断过渡方式：${transition.mix_type} (${transition.filter_strategy})
- 过渡时间：${crossfadeDuration.toFixed(1)}秒
- 分析到的下一首歌曲voice开始时间 ${this.formatAutomixTime(nextAnalysis?.vocal_in_pos || 0)}`,
-          15000,
-        );
-      }
-    }
-
-    const applyStartSeekFallback = () => {
-      if (!nextAnalysis) return;
-      const fadeIn = nextAnalysis.fade_in_pos || 0;
-      const vocalIn = nextAnalysis.vocal_in_pos;
-      if (!vocalIn) return;
-      if (startSeek >= 1000) return;
-      const buffer = 2;
-      if (vocalIn - fadeIn < crossfadeDuration + buffer) return;
-      startSeek = Math.max((vocalIn - crossfadeDuration - buffer) * 1000, fadeIn * 1000);
-    };
-
-    // 如果有下一首分析数据，进行智能计算
-    if (nextAnalysis && !useNativeProposal) {
-      const fadeIn = nextAnalysis.fade_in_pos || 0;
-      const cutInB = nextAnalysis.cut_in_pos ?? fadeIn;
-
-      const snapToBar = (
-        time: number,
-        bpm: number,
-        firstBeat: number,
-        confidence: number,
-        mode: "ceil" | "floor",
-      ): number => {
-        if (!Number.isFinite(time) || !Number.isFinite(bpm) || bpm <= 0) return time;
-        if (!Number.isFinite(firstBeat)) return time;
-        if (confidence < 0.4) return time;
-
-        const spb = 60 / bpm;
-        const bar = spb * 4;
-        if (!Number.isFinite(bar) || bar <= 0) return time;
-
-        let rawBars = (time - firstBeat) / bar;
-        const epsBars = 0.05 / bar;
-        if (Number.isFinite(rawBars) && Number.isFinite(epsBars) && epsBars > 0) {
-          const nearest = Math.round(rawBars);
-          if (Math.abs(rawBars - nearest) < epsBars) {
-            rawBars = nearest;
-          }
-        }
-
-        const barsCount = mode === "ceil" ? Math.ceil(rawBars) : Math.floor(rawBars);
-        const snapped = firstBeat + barsCount * bar;
-        return snapped < 0 ? firstBeat : snapped;
-      };
-
-      // 1. 确定锚点 (Target Anchor)
-      // 优先: Vocal In > Drop > Cut In > Fade In + 15
-      const targetAnchor =
-        nextAnalysis.vocal_in_pos || nextAnalysis.drop_pos || cutInB || fadeIn + 15;
-      const anchorSource = nextAnalysis.vocal_in_pos
-        ? "vocal_in"
-        : nextAnalysis.drop_pos
-          ? "drop"
-          : nextAnalysis.cut_in_pos
-            ? "cut_in"
-            : "fade_in+15";
-
-      // 2. 计算可用空间 (Available Space)
-      // Available Intro: 锚点到开头的距离
-      const availableIntro = Math.max(0, targetAnchor - fadeIn);
-
-      // Available Outro (Current Song): 结尾到 Exit 的距离
-      // Exit Point: Vocal Out > Cut Out > Fade Out - 15
-      const currentExit =
-        currentAnalysis?.vocal_out_pos ||
-        cutOutPos ||
-        (currentAnalysis?.fade_out_pos || duration) - 15;
-
-      const currentFadeOut = cutOutPos || currentAnalysis?.fade_out_pos || duration;
-      const availableOutro = Math.max(0, currentFadeOut - currentExit);
-
-      const canUsePhrase =
-        (anchorSource === "vocal_in" || anchorSource === "drop") &&
-        (nextAnalysis.bpm ?? 0) > 0 &&
-        nextAnalysis.first_beat_pos !== undefined &&
-        (nextAnalysis.bpm_confidence ?? 0) > 0.4;
-
-      const maxDurationByPhysics = Math.max(2, currentValid / 2);
-      const tryBars = [32, 16, 8, 4];
-
-      const buildPhraseCandidate = (bars: number) => {
-        const bpm = nextAnalysis.bpm as number;
-        const firstBeat = nextAnalysis.first_beat_pos as number;
-        const conf = nextAnalysis.bpm_confidence ?? 0;
-        const bar = (60 / bpm) * 4;
-        const rawStart = targetAnchor - bars * bar;
-        if (rawStart <= fadeIn + bar) return null;
-        const snappedStart = snapToBar(rawStart, bpm, firstBeat, conf, "floor");
-        if (!Number.isFinite(snappedStart) || snappedStart < fadeIn) return null;
-        const dur = targetAnchor - snappedStart;
-        return { bars, startSec: snappedStart, duration: dur };
-      };
-
-      let selected: { bars: number | null; startSec: number; duration: number } | null = null;
-
-      if (canUsePhrase) {
-        for (const bars of tryBars) {
-          const c = buildPhraseCandidate(bars);
-          if (!c) continue;
-          if (c.duration < 2) continue;
-          if (c.duration > availableOutro) continue;
-          if (c.duration > availableIntro) continue;
-          if (c.duration > maxDurationByPhysics) continue;
-          selected = c;
-          break;
-        }
-      }
-
-      if (!selected) {
-        const calculatedDuration = Math.min(availableIntro, availableOutro, maxDurationByPhysics);
-        crossfadeDuration = Math.max(2, calculatedDuration);
-        const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
-        startSeek = Math.max(idealSeek, fadeIn * 1000);
-        applyStartSeekFallback();
-      } else {
-        phraseBars = selected.bars;
-        crossfadeDuration = selected.duration;
-        startSeek = selected.startSec * 1000;
-
-        const bpmA = currentAnalysis?.bpm;
-        const bpmB = nextAnalysis.bpm;
-        const confA = currentAnalysis?.bpm_confidence ?? 0;
-        const confB = nextAnalysis.bpm_confidence ?? 0;
-        const beatAlignOk =
-          bpmA !== undefined &&
-          bpmB !== undefined &&
-          currentAnalysis?.first_beat_pos !== undefined &&
-          nextAnalysis.first_beat_pos !== undefined &&
-          confA > 0.4 &&
-          confB > 0.4;
-
-        if (beatAlignOk) {
-          const ratio = bpmA / bpmB;
-          const SAFE_RANGE = 0.1;
-          const nearHalfDouble = Math.abs(ratio - 0.5) < 0.05 || Math.abs(ratio - 2.0) < 0.1;
-          const ratioOk = ratio >= 1 - SAFE_RANGE && ratio <= 1 + SAFE_RANGE;
-
-          if (!nearHalfDouble && ratioOk) {
-            const spbA = 60 / bpmA;
-            const barA = spbA * 4;
-            const firstBeatA = currentAnalysis.first_beat_pos as number;
-            const baseTrigger = exitPoint - crossfadeDuration;
-            const rawBarsA = (baseTrigger - firstBeatA) / barA;
-            const alignedBarsA = Math.ceil(rawBarsA);
-            const alignedTrigger = firstBeatA + alignedBarsA * barA;
-            const safeAligned = Math.max(currentExit, Math.min(alignedTrigger, exitPoint));
-            const delta = safeAligned - baseTrigger;
-            const tolerance = Math.min(2, barA * 0.9);
-
-            if (Number.isFinite(barA) && barA > 0 && delta >= 0 && delta <= tolerance) {
-              const startSecRaw = startSeek / 1000 + delta;
-              const startSecAligned = snapToBar(
-                startSecRaw,
-                bpmB,
-                nextAnalysis.first_beat_pos as number,
-                confB,
-                "ceil",
-              );
-
-              const shift = startSecAligned - startSecRaw;
-              const shiftTol = Math.min(0.2, (60 / bpmB) * 4 * 0.25);
-
-              if (
-                Number.isFinite(startSecAligned) &&
-                Math.abs(shift) <= shiftTol &&
-                startSecAligned >= fadeIn &&
-                startSecAligned < targetAnchor
-              ) {
-                startSeek = startSecAligned * 1000;
-                forcedTriggerTime = safeAligned;
-              }
-            }
-          }
-        }
-      }
-
-      // BPM Alignment & Bass Swap
-      if (
-        currentAnalysis?.bpm &&
-        nextAnalysis.bpm &&
-        (currentAnalysis.bpm_confidence ?? 0) > 0.25 &&
-        (nextAnalysis.bpm_confidence ?? 0) > 0.25
-      ) {
-        const bpmA = currentAnalysis.bpm;
-        const bpmB = nextAnalysis.bpm;
-        const ratio = bpmA / bpmB;
-
-        // 收紧 BPM 匹配范围: +/- 6%
-        const SAFE_RANGE = 0.1;
-        if (ratio >= 1 - SAFE_RANGE && ratio <= 1 + SAFE_RANGE) {
-          let harmonicOk = true;
-          const keyA = currentAnalysis.key_root;
-          const keyB = nextAnalysis.key_root;
-          const modeA = currentAnalysis.key_mode;
-          const modeB = nextAnalysis.key_mode;
-          const confA = currentAnalysis.key_confidence ?? 0;
-          const confB = nextAnalysis.key_confidence ?? 0;
-
-          if (
-            keyA !== undefined &&
-            keyB !== undefined &&
-            modeA !== undefined &&
-            modeB !== undefined &&
-            confA >= 0.25 &&
-            confB >= 0.25
-          ) {
-            const deltaSemitones = 12 * Math.log2(ratio);
-            const shift = Math.round(deltaSemitones);
-            const effectiveKeyB = (((keyB + shift) % 12) + 12) % 12;
-
-            const diff = (((effectiveKeyB - keyA) % 12) + 12) % 12;
-            const dist = Math.min(diff, 12 - diff);
-            harmonicOk = dist !== 1 && dist !== 6;
-          }
-
-          if (!harmonicOk) {
-            initialRate = 1.0;
-            mixType = "default";
-            // Key Clash: 保持动态时长，但放弃 BassSwap
-          } else {
-            initialRate = ratio;
-            mixType = "bassSwap";
-            uiSwitchDelay = crossfadeDuration * 0.5;
-          }
-        } else {
-          // BPM 差距大，放弃 Beat Match
-          initialRate = 1.0;
-          mixType = "default";
-        }
-      }
-
-      if (mixType === "bassSwap" && currentAnalysis?.bpm) {
-        const pairConf = Math.min(
-          currentAnalysis.bpm_confidence ?? 0,
-          nextAnalysis.bpm_confidence ?? 0,
-        );
-        if (pairConf <= 0.8 && phraseBars === null) {
-          const spb = 60 / currentAnalysis.bpm;
-          const maxByBeats = spb * 16;
-          const maxBySeconds = 8;
-          let capped = Math.min(crossfadeDuration, maxByBeats, maxBySeconds);
-          if (spb > 0) {
-            const bar = spb * 4;
-            if (capped >= bar) {
-              capped = Math.floor(capped / bar) * bar;
-            }
-          }
-          crossfadeDuration = Math.max(2, capped);
-
-          const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
-          startSeek = Math.max(idealSeek, fadeIn * 1000);
-          applyStartSeekFallback();
-        }
-      }
-    }
-
-    // 物理极限保护
-    if (crossfadeDuration > currentValid / 2) {
-      crossfadeDuration = Math.max(2, currentValid / 2);
-      // 如果时长因保护而改变，重新计算 startSeek
-      if (nextAnalysis && phraseBars === null) {
-        const fadeIn = nextAnalysis.fade_in_pos || 0;
-        const targetAnchor =
-          nextAnalysis.vocal_in_pos ||
-          nextAnalysis.drop_pos ||
-          nextAnalysis.cut_in_pos ||
-          fadeIn + 15;
-        const idealSeek = (targetAnchor - crossfadeDuration) * 1000;
-        startSeek = Math.max(idealSeek, fadeIn * 1000);
-        applyStartSeekFallback();
-      }
-    }
-
-    if (uiSwitchDelay === 0 || uiSwitchDelay > crossfadeDuration) {
-      uiSwitchDelay = crossfadeDuration * 0.5;
-    }
-
-    // 计算触发时间
-    // 1. 基于 cut_out_pos (优先) 或 fadeOut
-    // cut_out_pos 也是 Rust 计算好的吸附点
-    let triggerTime = forcedTriggerTime ?? exitPoint - crossfadeDuration;
-
-    // 超激进模式：紧贴人声结束点，按“拍”切入
-    if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos !== undefined) {
-      const vocalOut = currentAnalysis.vocal_out_pos;
-      const actualEnd = cutOutPos ?? currentAnalysis.fade_out_pos ?? duration;
-      const tailLength = actualEnd - vocalOut;
-
-      if (Number.isFinite(tailLength) && tailLength > 8.0) {
-        const bpm = currentAnalysis.bpm;
-        const firstBeat = currentAnalysis.first_beat_pos;
-        const bpmConf = currentAnalysis.bpm_confidence ?? 0;
-
-        const outroEnergy = currentAnalysis.outro_energy_level ?? -70;
-        const isHighEnergyOutro = outroEnergy > -12.0;
-
-        const beatsToWait = isHighEnergyOutro ? 8 : 1;
-        const minSecondsToWait = isHighEnergyOutro ? 4.0 : 0.5;
-
-        let aggressiveTrigger = triggerTime;
-
-        if (
-          bpm &&
-          Number.isFinite(bpm) &&
-          bpm > 0 &&
-          firstBeat !== undefined &&
-          Number.isFinite(firstBeat) &&
-          bpmConf > 0.4
-        ) {
-          const spb = 60 / bpm;
-          if (Number.isFinite(spb) && spb > 0) {
-            const relVocal = vocalOut - firstBeat;
-            const currentBeatIndex = Math.floor(relVocal / spb);
-            let targetBeatIndex = currentBeatIndex + beatsToWait;
-
-            if (relVocal % spb > spb * 0.9) {
-              targetBeatIndex += 1;
-            }
-
-            if (isHighEnergyOutro) {
-              targetBeatIndex = Math.ceil(targetBeatIndex / 4) * 4;
-            }
-
-            const snappedStart = firstBeat + targetBeatIndex * spb;
-            aggressiveTrigger = Math.max(firstBeat, snappedStart);
-          }
-        } else {
-          aggressiveTrigger = vocalOut + minSecondsToWait;
-        }
-
-        if (
-          Number.isFinite(aggressiveTrigger) &&
-          aggressiveTrigger < triggerTime &&
-          aggressiveTrigger < actualEnd - 1.0
-        ) {
-          const maxFade = isHighEnergyOutro ? 8.0 : 5.0;
-          let adjustedFade = Math.min(crossfadeDuration, maxFade);
-
-          const remaining = duration - aggressiveTrigger - 0.5;
-          if (Number.isFinite(remaining) && remaining > 0) {
-            adjustedFade = Math.min(adjustedFade, Math.max(2, remaining));
-          }
-
-          if (aggressiveTrigger + adjustedFade > duration) {
-            adjustedFade = Math.max(0.5, duration - aggressiveTrigger);
-          }
-
-          const originalTrigger = triggerTime;
-          triggerTime = aggressiveTrigger;
-          crossfadeDuration = adjustedFade;
-
-          this.automixLog(
-            "log",
-            `ultra_aggressive_mix:${Math.round(tailLength)}`,
-            `[Automix] 超激进切歌(${isHighEnergyOutro ? "高能" : "低能"}尾奏)：尾长 ${tailLength.toFixed(1)}s，触发点 ${this.formatAutomixTime(originalTrigger)} -> ${this.formatAutomixTime(aggressiveTrigger)}，Fade=${adjustedFade.toFixed(1)}s`,
-            15000,
+        // 尝试对齐到最近的小节 (Bar)
+        if (currentAnalysis.bpm && currentAnalysis.first_beat_pos !== undefined) {
+          rawTrigger = this.snapToBeat(
+            rawTrigger,
+            currentAnalysis.bpm,
+            currentAnalysis.first_beat_pos,
+            true,
           );
         }
-      }
-    }
 
-    if (forcedTriggerTime === null && currentAnalysis?.vocal_out_pos !== undefined) {
-      const vocalGuardSec = 0.1;
-      const minTrigger = Math.min(
-        exitPoint - 2,
-        Math.max(currentFadeIn, currentAnalysis.vocal_out_pos + vocalGuardSec),
-      );
-      if (Number.isFinite(minTrigger) && triggerTime < minTrigger) {
-        triggerTime = minTrigger;
-      }
-      if (triggerTime + crossfadeDuration > exitPoint) {
-        crossfadeDuration = Math.max(2, exitPoint - triggerTime);
-      }
-    }
+        triggerTime = rawTrigger;
+        startSeek = (nextAnalysis.fade_in_pos || 0) * 1000;
 
-    // 3. Bar Alignment (Current Song) - 确保触发点在小节第一拍
-    if (
-      forcedTriggerTime === null &&
-      mixType === "bassSwap" &&
-      currentAnalysis?.bpm &&
-      currentAnalysis.first_beat_pos !== undefined
-    ) {
-      const spb = 60 / currentAnalysis.bpm;
-      const firstBeat = currentAnalysis.first_beat_pos;
-
-      const relTime = triggerTime - firstBeat;
-      // Round to nearest bar (4 beats)
-      const barDuration = spb * 4;
-      const barIndex = Math.round(relTime / barDuration);
-      const alignedTrigger = firstBeat + barIndex * barDuration;
-
-      // 只有在误差允许范围内才吸附 (比如 2s 内)
-      if (Number.isFinite(barDuration) && barDuration > 0) {
-        const tolerance = barDuration * 0.6;
-        const safeAligned = Math.max(currentFadeIn, Math.min(alignedTrigger, exitPoint));
-        if (Math.abs(safeAligned - triggerTime) < tolerance) {
-          triggerTime = safeAligned;
+        // 如果对齐导致触发点太晚（剩余时间不足 4s），则放弃对齐，优先保证过渡时长
+        if (duration - triggerTime < 4.0) {
+          triggerTime = exitPoint - crossfadeDuration;
         }
       }
     }
 
+    // 5. 后处理: Ultra Aggressive Mode (超激进尾奏快切)
+    // 这是一个特定的业务规则，保留并简化
+    if (!advancedTransition && currentAnalysis?.vocal_out_pos) {
+      const plan = this.applyAggressiveOutro(
+        currentAnalysis,
+        triggerTime,
+        crossfadeDuration,
+        exitPoint,
+      );
+      if (plan) {
+        triggerTime = plan.triggerTime;
+        crossfadeDuration = plan.crossfadeDuration;
+      }
+    }
+
+    // 6. 最终安全检查
+    if (triggerTime + crossfadeDuration > duration) {
+      crossfadeDuration = Math.max(0.5, duration - triggerTime);
+    }
+    uiSwitchDelay = uiSwitchDelay || crossfadeDuration * 0.5;
+
+    return this.createAutomixPlan(
+      nextInfo,
+      triggerTime,
+      crossfadeDuration,
+      startSeek,
+      initialRate,
+      uiSwitchDelay,
+      mixType,
+      pitchShift,
+      playbackRate,
+      automationCurrent,
+      automationNext,
+    );
+  }
+
+  private createAutomixPlan(
+    nextInfo: { song: SongType; index: number },
+    triggerTime: number,
+    crossfadeDuration: number,
+    startSeek: number,
+    initialRate: number,
+    uiSwitchDelay: number,
+    mixType: "default" | "bassSwap",
+    pitchShift: number,
+    playbackRate: number,
+    automationCurrent: AutomationPoint[],
+    automationNext: AutomationPoint[],
+  ): AutomixPlan {
     return {
       token: this.currentRequestToken,
       nextSong: nextInfo.song,
@@ -1937,6 +1543,57 @@ class PlayerController {
       automationCurrent,
       automationNext,
     };
+  }
+
+  private applyAggressiveOutro(
+    analysis: AudioAnalysis,
+    currentTrigger: number,
+    currentDuration: number,
+    exitPoint: number,
+  ): { triggerTime: number; crossfadeDuration: number } | null {
+    const vocalOut = analysis.vocal_out_pos!;
+    const tailLength = exitPoint - vocalOut;
+
+    // 只有长尾奏 (>8s) 才介入
+    if (tailLength <= 8.0) return null;
+
+    const outroEnergy = analysis.outro_energy_level ?? -70;
+    const isHighEnergy = outroEnergy > -12.0;
+
+    // 高能: 等 8 拍 (约 2 小节); 低能: 等 1 拍
+    const beatsToWait = isHighEnergy ? 8 : 1;
+    let newTrigger = currentTrigger;
+
+    if (analysis.bpm && analysis.first_beat_pos !== undefined) {
+      const spb = 60 / analysis.bpm;
+      const relVocal = vocalOut - analysis.first_beat_pos;
+      let beatIndex = Math.floor(relVocal / spb);
+
+      // 如果 vocalOut 离下一拍很近 (>90%)，视为下一拍
+      if (relVocal % spb > spb * 0.9) beatIndex++;
+
+      let targetBeat = beatIndex + beatsToWait;
+      // 高能尾奏对齐到 4 拍 (小节)
+      if (isHighEnergy) targetBeat = Math.ceil(targetBeat / 4) * 4;
+
+      newTrigger = analysis.first_beat_pos + targetBeat * spb;
+    } else {
+      newTrigger = vocalOut + (isHighEnergy ? 4.0 : 0.5);
+    }
+
+    // 如果新触发点比原计划更早，且合理
+    if (newTrigger < currentTrigger && newTrigger < exitPoint - 1.0) {
+      const maxFade = isHighEnergy ? 8.0 : 5.0;
+      const newDuration = Math.min(currentDuration, maxFade, exitPoint - newTrigger);
+      this.automixLog(
+        "log",
+        "aggressive_outro",
+        `Aggressive Outro: ${tailLength.toFixed(1)}s tail, trigger ${newTrigger.toFixed(1)}`,
+        5000,
+      );
+      return { triggerTime: newTrigger, crossfadeDuration: newDuration };
+    }
+    return null;
   }
 
   /**
