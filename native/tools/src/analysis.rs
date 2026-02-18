@@ -84,43 +84,13 @@ fn get_camelot_key(root: i32, mode: i32) -> Option<String> {
         return None;
     }
 
+    let key_map_mode_0 = [12, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5];
+    let key_map_mode_1 = [9, 4, 11, 6, 1, 8, 3, 10, 5, 12, 7, 2];
     let key_num = match mode {
-        0 => match root {
-            11 => 5,
-            6 => 6,
-            1 => 7,
-            8 => 8,
-            3 => 9,
-            10 => 10,
-            5 => 11,
-            0 => 12,
-            7 => 1,
-            2 => 2,
-            9 => 3,
-            4 => 4,
-            _ => 0,
-        },
-        1 => match root {
-            8 => 5,
-            3 => 6,
-            10 => 7,
-            5 => 8,
-            0 => 9,
-            7 => 10,
-            2 => 11,
-            9 => 12,
-            4 => 1,
-            11 => 2,
-            6 => 3,
-            1 => 4,
-            _ => 0,
-        },
-        _ => 0,
+        0 => *key_map_mode_0.get(root as usize)?,
+        1 => *key_map_mode_1.get(root as usize)?,
+        _ => return None,
     };
-
-    if key_num <= 0 {
-        return None;
-    }
 
     let letter = if mode == 0 { "B" } else { "A" };
     Some(format!("{}{}", key_num, letter))
