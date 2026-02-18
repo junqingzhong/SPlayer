@@ -463,6 +463,114 @@ impl LoudnessMeter {
     }
 }
 
+struct WindowState {
+    sum_sq: f32,
+    low_sum_sq: f32,
+    vocal_sum_sq: f32,
+    count: usize,
+}
+
+impl WindowState {
+    fn new() -> Self {
+        Self {
+            sum_sq: 0.0,
+            low_sum_sq: 0.0,
+            vocal_sum_sq: 0.0,
+            count: 0,
+        }
+    }
+
+    fn reset(&mut self) {
+        self.sum_sq = 0.0;
+        self.low_sum_sq = 0.0;
+        self.vocal_sum_sq = 0.0;
+        self.count = 0;
+    }
+}
+
+struct TempBuffers {
+    envelope: Vec<f32>,
+    low_envelope: Vec<f32>,
+    vocal_ratio: Vec<f32>,
+}
+
+impl TempBuffers {
+    fn new() -> Self {
+        Self {
+            envelope: Vec::new(),
+            low_envelope: Vec::new(),
+            vocal_ratio: Vec::new(),
+        }
+    }
+
+    fn clear(&mut self) {
+        self.envelope.clear();
+        self.low_envelope.clear();
+        self.vocal_ratio.clear();
+    }
+}
+
+fn process_decoded_frames<F>(
+    frames: usize,
+    channels: usize,
+    mut sample_at: F,
+    loudness_meter: &mut LoudnessMeter,
+    phase: i32,
+    head_pcm: &mut Vec<f32>,
+    key_max_samples: usize,
+    vocal_filter: &mut VocalFilter,
+    lpf: &mut LowPassFilter,
+    window_size: usize,
+    window_state: &mut WindowState,
+    temp: &mut TempBuffers,
+    frame_samples: &mut Vec<f32>,
+) where
+    F: FnMut(usize, usize) -> f32,
+{
+    if channels == 0 || frames == 0 {
+        return;
+    }
+
+    for i in 0..frames {
+        frame_samples.resize(channels, 0.0);
+        let mut sum = 0.0;
+        for c in 0..channels {
+            let s = sample_at(c, i);
+            frame_samples[c] = s;
+            sum += s;
+        }
+
+        loudness_meter.process(frame_samples);
+
+        let val = sum / channels as f32;
+        if phase == 0 && head_pcm.len() < key_max_samples {
+            head_pcm.push(val);
+        }
+
+        let vocal = vocal_filter.process(val);
+        let low = lpf.process(val);
+
+        window_state.sum_sq += val * val;
+        window_state.low_sum_sq += low * low;
+        window_state.vocal_sum_sq += vocal * vocal;
+        window_state.count += 1;
+
+        if window_state.count >= window_size {
+            let denom = window_size as f32;
+            let rms = (window_state.sum_sq / denom).sqrt();
+            let rms_low = (window_state.low_sum_sq / denom).sqrt();
+            let rms_vocal = (window_state.vocal_sum_sq / denom).sqrt();
+
+            temp.envelope.push(rms);
+            temp.low_envelope.push(rms_low);
+            let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
+            temp.vocal_ratio.push(ratio);
+
+            window_state.reset();
+        }
+    }
+}
+
 fn internal_analyze_impl(
     path: &str,
     max_analyze_time: Option<f64>,
@@ -525,11 +633,8 @@ fn internal_analyze_impl(
     let mut tail_low_envelope: Vec<f32> = Vec::new();
     let mut tail_vocal_ratio: Vec<f32> = Vec::new();
 
-    let mut current_sum_sq = 0.0;
-    let mut current_low_sum_sq = 0.0;
-    let mut current_vocal_sum_sq = 0.0;
-    let mut current_count = 0;
     let mut duration = 0.0;
+    let mut processed_duration = 0.0;
 
     let mut vocal_filter = VocalFilter::new(sample_rate);
     let mut lpf = LowPassFilter::new(sample_rate, 150.0);
@@ -541,12 +646,9 @@ fn internal_analyze_impl(
     let mut phase = 0;
     let mut _seek_done = false;
 
-    // We will collect data into temporary buffer then decide where to put it
-    let mut temp_envelope = Vec::new();
-    let mut temp_low_envelope = Vec::new();
-    let mut temp_vocal = Vec::new();
-
-    let processed_duration = 0.0;
+    let mut window_state = WindowState::new();
+    let mut temp = TempBuffers::new();
+    let mut frame_samples: Vec<f32> = Vec::new();
 
     loop {
         let packet = match format.next_packet() {
@@ -560,24 +662,25 @@ fn internal_analyze_impl(
             continue;
         }
 
-        let current_time = if let Some(tb) = time_base {
+        let packet_start_time = if let Some(tb) = time_base {
             let t = tb.calc_time(packet.ts());
             t.seconds as f64 + t.frac
         } else {
             processed_duration
         };
 
-        duration = current_time; // Update total duration estimation
+        duration = packet_start_time;
 
         // Check if we need to switch phase or stop
         if phase == 0 {
             // In Head phase
-            if current_time > max_time {
+            if packet_start_time > max_time {
                 // Head limit reached.
                 // Save temp to head
-                head_envelope.append(&mut temp_envelope);
-                head_low_envelope.append(&mut temp_low_envelope);
-                head_vocal_ratio.append(&mut temp_vocal);
+                head_envelope.append(&mut temp.envelope);
+                head_low_envelope.append(&mut temp.low_envelope);
+                head_vocal_ratio.append(&mut temp.vocal_ratio);
+                temp.clear();
 
                 // Copy head for BPM (use at most max_time)
                 full_envelope = head_envelope.clone();
@@ -604,10 +707,7 @@ fn internal_analyze_impl(
                                 phase = 1;
                                 _seek_done = true;
                                 // Reset filters/state
-                                current_sum_sq = 0.0;
-                                current_low_sum_sq = 0.0;
-                                current_vocal_sum_sq = 0.0;
-                                current_count = 0;
+                                window_state.reset();
                                 vocal_filter = VocalFilter::new(sample_rate);
                                 lpf = LowPassFilter::new(sample_rate, 150.0);
                                 continue; // Next packet will be from seek point
@@ -642,193 +742,98 @@ fn internal_analyze_impl(
                     loudness_meter = LoudnessMeter::new(sample_rate, channels);
                 }
 
-                // Macro or helper to handle types
                 match decoded {
                     AudioBufferRef::F32(buf) => {
-                        for i in 0..duration_frames {
-                            let mut frame_samples = Vec::with_capacity(channels);
-                            let mut sum = 0.0;
-                            for c in 0..channels {
-                                let s = buf.chan(c)[i];
-                                frame_samples.push(s);
-                                sum += s;
-                            }
-
-                            // Process Loudness
-                            loudness_meter.process(&frame_samples);
-
-                            let val = sum / channels as f32;
-                            if phase == 0 && head_pcm.len() < key_max_samples {
-                                head_pcm.push(val);
-                            }
-                            let vocal = vocal_filter.process(val);
-                            let low = lpf.process(val);
-
-                            current_sum_sq += val * val;
-                            current_low_sum_sq += low * low;
-                            current_vocal_sum_sq += vocal * vocal;
-                            current_count += 1;
-
-                            if current_count >= window_size {
-                                let rms = (current_sum_sq / window_size as f32).sqrt();
-                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
-                                temp_envelope.push(rms);
-                                temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
-                                temp_vocal.push(ratio);
-                                current_sum_sq = 0.0;
-                                current_low_sum_sq = 0.0;
-                                current_vocal_sum_sq = 0.0;
-                                current_count = 0;
-                            }
-                        }
+                        process_decoded_frames(
+                            duration_frames,
+                            channels,
+                            |c, i| buf.chan(c)[i],
+                            &mut loudness_meter,
+                            phase,
+                            &mut head_pcm,
+                            key_max_samples,
+                            &mut vocal_filter,
+                            &mut lpf,
+                            window_size,
+                            &mut window_state,
+                            &mut temp,
+                            &mut frame_samples,
+                        );
                     }
                     AudioBufferRef::U8(buf) => {
-                        for i in 0..duration_frames {
-                            let mut frame_samples = Vec::with_capacity(channels);
-                            let mut sum = 0.0;
-                            for c in 0..channels {
-                                let s = (buf.chan(c)[i] as f32 - 128.0) / 128.0;
-                                frame_samples.push(s);
-                                sum += s;
-                            }
-                            loudness_meter.process(&frame_samples);
-
-                            let val = sum / channels as f32;
-                            if phase == 0 && head_pcm.len() < key_max_samples {
-                                head_pcm.push(val);
-                            }
-                            current_sum_sq += val * val;
-                            let vocal = vocal_filter.process(val);
-                            let low = lpf.process(val);
-                            current_low_sum_sq += low * low;
-                            current_vocal_sum_sq += vocal * vocal;
-                            current_count += 1;
-                            if current_count >= window_size {
-                                let rms = (current_sum_sq / window_size as f32).sqrt();
-                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
-                                temp_envelope.push(rms);
-                                temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
-                                temp_vocal.push(ratio);
-                                current_sum_sq = 0.0;
-                                current_low_sum_sq = 0.0;
-                                current_vocal_sum_sq = 0.0;
-                                current_count = 0;
-                            }
-                        }
+                        process_decoded_frames(
+                            duration_frames,
+                            channels,
+                            |c, i| (buf.chan(c)[i] as f32 - 128.0) / 128.0,
+                            &mut loudness_meter,
+                            phase,
+                            &mut head_pcm,
+                            key_max_samples,
+                            &mut vocal_filter,
+                            &mut lpf,
+                            window_size,
+                            &mut window_state,
+                            &mut temp,
+                            &mut frame_samples,
+                        );
                     }
                     AudioBufferRef::S16(buf) => {
-                        for i in 0..duration_frames {
-                            let mut frame_samples = Vec::with_capacity(channels);
-                            let mut sum = 0.0;
-                            for c in 0..channels {
-                                let s = (buf.chan(c)[i] as f32) / 32768.0;
-                                frame_samples.push(s);
-                                sum += s;
-                            }
-                            loudness_meter.process(&frame_samples);
-
-                            let val = sum / channels as f32;
-                            if phase == 0 && head_pcm.len() < key_max_samples {
-                                head_pcm.push(val);
-                            }
-                            let vocal = vocal_filter.process(val);
-                            current_sum_sq += val * val;
-                            let low = lpf.process(val);
-                            current_low_sum_sq += low * low;
-                            current_vocal_sum_sq += vocal * vocal;
-                            current_count += 1;
-                            if current_count >= window_size {
-                                let rms = (current_sum_sq / window_size as f32).sqrt();
-                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
-                                temp_envelope.push(rms);
-                                temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
-                                temp_vocal.push(ratio);
-                                current_sum_sq = 0.0;
-                                current_low_sum_sq = 0.0;
-                                current_vocal_sum_sq = 0.0;
-                                current_count = 0;
-                            }
-                        }
+                        process_decoded_frames(
+                            duration_frames,
+                            channels,
+                            |c, i| (buf.chan(c)[i] as f32) / 32768.0,
+                            &mut loudness_meter,
+                            phase,
+                            &mut head_pcm,
+                            key_max_samples,
+                            &mut vocal_filter,
+                            &mut lpf,
+                            window_size,
+                            &mut window_state,
+                            &mut temp,
+                            &mut frame_samples,
+                        );
                     }
                     AudioBufferRef::S24(buf) => {
-                        for i in 0..duration_frames {
-                            let mut frame_samples = Vec::with_capacity(channels);
-                            let mut sum = 0.0;
-                            for c in 0..channels {
-                                let s = (buf.chan(c)[i].0 as f32) / 8388608.0;
-                                frame_samples.push(s);
-                                sum += s;
-                            }
-                            loudness_meter.process(&frame_samples);
-
-                            let val = sum / channels as f32;
-                            if phase == 0 && head_pcm.len() < key_max_samples {
-                                head_pcm.push(val);
-                            }
-                            let vocal = vocal_filter.process(val);
-                            current_sum_sq += val * val;
-                            let low = lpf.process(val);
-                            current_low_sum_sq += low * low;
-                            current_vocal_sum_sq += vocal * vocal;
-                            current_count += 1;
-                            if current_count >= window_size {
-                                let rms = (current_sum_sq / window_size as f32).sqrt();
-                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
-                                temp_envelope.push(rms);
-                                temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
-                                temp_vocal.push(ratio);
-                                current_sum_sq = 0.0;
-                                current_low_sum_sq = 0.0;
-                                current_vocal_sum_sq = 0.0;
-                                current_count = 0;
-                            }
-                        }
+                        process_decoded_frames(
+                            duration_frames,
+                            channels,
+                            |c, i| (buf.chan(c)[i].0 as f32) / 8388608.0,
+                            &mut loudness_meter,
+                            phase,
+                            &mut head_pcm,
+                            key_max_samples,
+                            &mut vocal_filter,
+                            &mut lpf,
+                            window_size,
+                            &mut window_state,
+                            &mut temp,
+                            &mut frame_samples,
+                        );
                     }
                     AudioBufferRef::S32(buf) => {
-                        for i in 0..duration_frames {
-                            let mut frame_samples = Vec::with_capacity(channels);
-                            let mut sum = 0.0;
-                            for c in 0..channels {
-                                let s = (buf.chan(c)[i] as f32) / 2147483648.0;
-                                frame_samples.push(s);
-                                sum += s;
-                            }
-                            loudness_meter.process(&frame_samples);
-
-                            let val = sum / channels as f32;
-                            if phase == 0 && head_pcm.len() < key_max_samples {
-                                head_pcm.push(val);
-                            }
-                            let vocal = vocal_filter.process(val);
-                            current_sum_sq += val * val;
-                            let low = lpf.process(val);
-                            current_low_sum_sq += low * low;
-                            current_vocal_sum_sq += vocal * vocal;
-                            current_count += 1;
-                            if current_count >= window_size {
-                                let rms = (current_sum_sq / window_size as f32).sqrt();
-                                let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-                                let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
-                                temp_envelope.push(rms);
-                                temp_low_envelope.push(rms_low);
-                                let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
-                                temp_vocal.push(ratio);
-                                current_sum_sq = 0.0;
-                                current_low_sum_sq = 0.0;
-                                current_vocal_sum_sq = 0.0;
-                                current_count = 0;
-                            }
-                        }
+                        process_decoded_frames(
+                            duration_frames,
+                            channels,
+                            |c, i| (buf.chan(c)[i] as f32) / 2147483648.0,
+                            &mut loudness_meter,
+                            phase,
+                            &mut head_pcm,
+                            key_max_samples,
+                            &mut vocal_filter,
+                            &mut lpf,
+                            window_size,
+                            &mut window_state,
+                            &mut temp,
+                            &mut frame_samples,
+                        );
                     }
                     _ => {}
+                }
+
+                if time_base.is_none() {
+                    processed_duration += duration_frames as f64 / sample_rate as f64;
+                    duration = processed_duration;
                 }
             }
             Err(_) => break,
@@ -836,30 +841,31 @@ fn internal_analyze_impl(
     }
 
     // Final flush
-    if current_count > 0 {
-        let rms = (current_sum_sq / window_size as f32).sqrt();
-        let rms_low = (current_low_sum_sq / window_size as f32).sqrt();
-        let rms_vocal = (current_vocal_sum_sq / window_size as f32).sqrt();
-        temp_envelope.push(rms);
-        temp_low_envelope.push(rms_low);
+    if window_state.count > 0 {
+        let denom = window_size as f32;
+        let rms = (window_state.sum_sq / denom).sqrt();
+        let rms_low = (window_state.low_sum_sq / denom).sqrt();
+        let rms_vocal = (window_state.vocal_sum_sq / denom).sqrt();
+        temp.envelope.push(rms);
+        temp.low_envelope.push(rms_low);
         let ratio = if rms > 0.0001 { rms_vocal / rms } else { 0.0 };
-        temp_vocal.push(ratio);
+        temp.vocal_ratio.push(ratio);
     }
 
     // Distribute temp buffer based on phase
     if phase == 0 {
-        head_envelope.append(&mut temp_envelope);
-        head_low_envelope.append(&mut temp_low_envelope);
-        head_vocal_ratio.append(&mut temp_vocal);
+        head_envelope.append(&mut temp.envelope);
+        head_low_envelope.append(&mut temp.low_envelope);
+        head_vocal_ratio.append(&mut temp.vocal_ratio);
         // If we never seeked, head is full
         if full_envelope.is_empty() {
             full_envelope = head_envelope.clone();
             full_low_envelope = head_low_envelope.clone();
         }
     } else {
-        tail_envelope.append(&mut temp_envelope);
-        tail_low_envelope.append(&mut temp_low_envelope);
-        tail_vocal_ratio.append(&mut temp_vocal);
+        tail_envelope.append(&mut temp.envelope);
+        tail_low_envelope.append(&mut temp.low_envelope);
+        tail_vocal_ratio.append(&mut temp.vocal_ratio);
     }
 
     // Analysis Logic
