@@ -38,8 +38,8 @@
             <span class="spacer"></span>
             <strong>{{ userPlatform }}</strong>
             <span class="spacer"></span>
-            <span v-if="archName" class="tag tag-theme">
-              {{ archName }}
+            <span v-if="userArch !== ArchType.Unknown" class="tag tag-theme">
+              {{ userArch }}
             </span>
           </div>
           <div class="header-right">
@@ -57,25 +57,9 @@
             <div class="btn-main">
               <div class="btn-title-row">
                 <span class="btn-title">下载 SPlayer</span>
-                <span class="tag tag-theme">
-                  {{
-                    {
-                      portable: "便携版",
-                      appimage: "AppImage",
-                      targz: "归档包",
-                    }[asset.format.id] ?? "安装版"
-                  }}
-                </span>
+                <span class="tag tag-theme">{{ getAssetTagName(asset) }}</span>
               </div>
-              <span class="btn-desc">
-                {{
-                  userPlatform === PlatformType.Linux
-                    ? "这是 AppImage，由于无法检测发行版，软件包需下方下载"
-                    : asset.format.id === "portable"
-                      ? "适合随身携带，数据隔离"
-                      : "包含自动更新，推荐使用"
-                }}
-              </span>
+              <span class="btn-desc">{{ getAssetRecommendDesc(asset) }}</span>
             </div>
             <div class="btn-side">
               <span class="size-badge">预估 {{ formatFileSize(asset.size) }}</span>
@@ -276,9 +260,9 @@ const getAssetInfo = (asset: GitHubAsset): AssetInfo | null => {
 
   // 识别格式
   let format: AssetFormat | null = null;
-  for (const key in formats) {
-    if (formats[key].regex.test(name)) {
-      format = formats[key];
+  for (const candidateFormat of formats) {
+    if (candidateFormat.regex.test(name)) {
+      format = candidateFormat;
       break;
     }
   }
@@ -295,13 +279,6 @@ const getAssetInfo = (asset: GitHubAsset): AssetInfo | null => {
 
   // 返回
   return { name, url: asset.browser_download_url, size: asset.size, format, arch };
-};
-
-const isPortable = (name: string) => {
-  const n = name.toLowerCase();
-  // 排除 blockmap, 排除 .yaml, 排除 .json 等元数据
-  if (n.endsWith(".blockmap") || n.endsWith(".yml") || n.endsWith(".json")) return false;
-  return n.includes("portable");
 };
 
 const getExtensionName = (name: string) => {
@@ -448,12 +425,7 @@ const recommendedAssets = computed(() => {
 
   // 兜底：如果完全没找到推荐，且是 Windows，给一个最通用的
   if (result.length === 0 && p === PlatformType.Windows) {
-    const fallback = assets.value.find(
-      (f) =>
-        f.format.platform === PlatformType.Windows &&
-        f.arch !== ArchType.ARM64 &&
-        !isPortable(f.name),
-    );
+    const fallback = assets.value.find((f) => f.format.id === "nsis" && f.arch !== ArchType.ARM64);
     if (fallback) result.push(fallback);
   }
 
@@ -492,7 +464,7 @@ const classifiedAssets = computed<PlatformGroup[]>(() => {
           assets: sortAssets(assets.value.filter((f) => f.format.id === "dmg")),
         },
         {
-          title: "压缩安装包",
+          title: "应用压缩包",
           desc: "手动安装",
           assets: sortAssets(assets.value.filter((f) => f.format.id === "zip")),
         },
@@ -515,17 +487,17 @@ const classifiedAssets = computed<PlatformGroup[]>(() => {
         },
         {
           title: "RPM 包",
-          desc: "Red Hat / Fedora / AlmaLinux...",
+          desc: "Fedora / RHEL / AlmaLinux...",
           assets: sortAssets(assets.value.filter((f) => f.format.id === "rpm")),
         },
         {
           title: "Pacman 包",
-          desc: "Arch Linux / Manjaro...",
+          desc: "Arch Linux / CachyOS / Manjaro...",
           assets: sortAssets(assets.value.filter((f) => f.format.id === "pacman")),
         },
         {
-          title: "归档包",
-          desc: "其他",
+          title: "程序压缩包",
+          desc: "其它",
           assets: sortAssets(assets.value.filter((f) => f.format.id === "targz")),
         },
       ],
@@ -540,7 +512,19 @@ const classifiedAssets = computed<PlatformGroup[]>(() => {
     .filter((p) => p.groups.length > 0);
 });
 
-const archName = computed(() => (userArch.value === ArchType.ARM64 ? "ARM64" : "x64"));
+const getAssetTagName = (asset: AssetInfo) => {
+  const format = asset.format.id;
+  if (format === "portable") return "便携版";
+  if (format === "appimage") return "AppImage";
+  return "安装版";
+};
+const getAssetRecommendDesc = (asset: AssetInfo) => {
+  const format = asset.format.id;
+  if (format === "portable") return "适合随身携带，数据隔离";
+  if (format === "appimage") return "这是 AppImage，由于无法检测发行版，软件包需下方下载";
+  return "包含自动更新，推荐使用";
+};
+
 const formatFileSize = (bytes: number) =>
   bytes ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : "未知";
 const formatDate = (s: string) =>
