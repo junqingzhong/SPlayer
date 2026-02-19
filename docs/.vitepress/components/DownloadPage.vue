@@ -14,7 +14,9 @@
       <!-- Hero: 版本概览 -->
       <header class="version-hero">
         <div class="version-badges">
-          <span class="v-tag">{{ latestRelease.tag_name }}</span>
+          <a class="v-tag" :href="getReleaseTagUrl(latestRelease.tag_name)" target="_blank">
+            {{ latestRelease.tag_name }}
+          </a>
           <span class="v-date">{{ formatDate(latestRelease.published_at) }}</span>
         </div>
         <div class="mirror-selector">
@@ -165,6 +167,7 @@ import { marked } from "marked";
 // --- 配置常量 ---
 const GITHUB_REPO = "imsyy/SPlayer";
 const GITHUB_API_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
+
 const githubReleasesUrl = `https://github.com/${GITHUB_REPO}/releases`;
 
 // --- 类型定义 ---
@@ -557,6 +560,8 @@ const getMirrorUrl = (originalUrl: string): string => {
   return mirror.url + originalUrl;
 };
 
+const getReleaseTagUrl = (tag: string) => `${githubReleasesUrl}/tag/${tag}`;
+
 onMounted(() => {
   detectEnvironment();
   fetchRelease();
@@ -674,6 +679,7 @@ const scrollToPlatforms = () => {
   background: var(--primary-bg);
   padding: 4px 16px;
   border-radius: 99px;
+  text-decoration: none;
 }
 
 .v-date {
