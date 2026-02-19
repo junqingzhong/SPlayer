@@ -586,7 +586,7 @@ class PlayerController {
       playerIpc.sendSongChange(playTitle, name || "", artist || "", album || "");
 
       if (isMac) {
-        window.electron.ipcRenderer.send("mac-statusbar:update-progress", {
+        playerIpc.sendTaskbarProgressData({
           currentTime: startSeek,
           duration: song.duration,
           offset: statusStore.getSongOffset(song.id),
