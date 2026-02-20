@@ -572,13 +572,28 @@ class PlayerController {
     }
     // 更新任务栏歌词窗口的元数据
     // 注意：getPlayerInfoObj 内部读取 musicStore.playSong，所以上面必须先赋值
-    const { name, artist } = getPlayerInfoObj() || {};
+    const { name, artist, album } = getPlayerInfoObj() || {};
     const coverUrl = song.coverSize?.s || song.cover || "";
     playerIpc.sendTaskbarMetadata({
       title: name || "",
       artist: artist || "",
       cover: coverUrl,
     });
+
+    // 主动通知桌面歌词和 macOS 状态栏歌词 确保 AutoMix 平滑过渡时也触发更新
+    if (isElectron) {
+      const playTitle = `${name} - ${artist}`;
+      playerIpc.sendSongChange(playTitle, name || "", artist || "", album || "");
+
+      if (isMac) {
+        playerIpc.sendTaskbarProgressData({
+          currentTime: startSeek,
+          duration: song.duration,
+          offset: statusStore.getSongOffset(song.id),
+        });
+      }
+    }
+
     // 获取歌词
     lyricManager.handleLyric(song);
     console.log(`🎧 [${song.id}] 最终播放信息:`, audioSource);
