@@ -264,7 +264,7 @@ export const useSongMenu = () => {
             show: !isLocal && type !== "streaming",
             props: {
               onClick: () =>
-                copyData(getShareUrl(type, song.id), "已复制分享链接到剪切板"),
+                copyData(getShareUrl(type, song.id), "已复制分享链接到剪贴板"),
             },
             icon: renderIcon("Share", { size: 18 }),
           },
