@@ -161,7 +161,12 @@ export const formatFileSize = (bytes: number): string => {
  */
 export const copyData = async (text: any, message?: string) => {
   if (!text) return;
-  const content = typeof text === "string" ? text.trim() : JSON.stringify(text, null, 2);
+  const content =
+    typeof text === "string"
+      ? text.trim()
+      : Array.isArray(text)
+        ? text.join("\n")
+        : JSON.stringify(text, null, 2);
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(content);

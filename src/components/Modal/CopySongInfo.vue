@@ -241,7 +241,7 @@ const handleCopyAll = () => {
     duration.value ? `时长：${duration.value}` : "",
     publishTime.value ? `发布时间：${publishTime.value}` : "",
     `链接：${songLink.value}`,
-  ].filter((line) => line).join("\n");
+  ].filter((line) => line);
 
   copyData(lines, "已复制全部信息");
 };
