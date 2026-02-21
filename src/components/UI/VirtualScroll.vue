@@ -10,12 +10,13 @@
       <div :style="{ height: `${totalHeight}px`, position: 'relative' }">
         <!-- 可见项目容器 -->
         <div
+          ref="contentRef"
           :style="{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            transform: `translateY(${offsetY}px)`,
+            // transform: `translateY(${offsetY}px)`,
           }"
         >
           <div
@@ -24,6 +25,14 @@
             ref="itemRefs"
             class="virtual-item"
             :data-index="actualStartIndex + index"
+            :style="{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              transform: `translateY(${getItemTop(actualStartIndex + index)}px)`,
+              transition: 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)',
+            }"
           >
             <slot :item="item" :index="actualStartIndex + index" />
           </div>
@@ -34,7 +43,7 @@
 </template>
 
 <script setup lang="ts">
-import { NScrollbar } from "naive-ui";
+import type { NScrollbar } from "naive-ui";
 
 interface Props {
   /** 列表项数据 */
@@ -71,6 +80,7 @@ const emit = defineEmits<{
 
 const wrapperRef = ref<HTMLElement | null>(null);
 const scrollbarRef = ref<InstanceType<typeof NScrollbar> | null>(null);
+const contentRef = ref<HTMLElement | null>(null);
 
 // 测量外层容器高度
 const { height: containerHeight } = useElementSize(wrapperRef);
@@ -215,14 +225,14 @@ const visibleItems = computed(() => {
 });
 
 // Y 轴偏移量
-const offsetY = computed(() => {
-  if (actualStartIndex.value === 0) return 0;
-  if (props.itemFixed) {
-    return actualStartIndex.value * props.itemHeight;
-  }
-  if (itemTops.value.length === 0) return 0;
-  return Math.round(itemTops.value[actualStartIndex.value]);
-});
+// const offsetY = computed(() => {
+//   if (actualStartIndex.value === 0) return 0;
+//   if (props.itemFixed) {
+//     return actualStartIndex.value * props.itemHeight;
+//   }
+//   if (itemTops.value.length === 0) return 0;
+//   return Math.round(itemTops.value[actualStartIndex.value]);
+// });
 
 // 测量项目高度
 const measureItemHeights = () => {
@@ -322,11 +332,22 @@ const getScrollTop = () => {
   return scrollTop.value;
 };
 
+const getItemTop = (index: number) => {
+  if (props.itemFixed) {
+    return index * props.itemHeight;
+  }
+  return itemTops.value[index] || 0;
+};
+
 // 暴露方法给父组件
 defineExpose({
+  wrapperRef,
   scrollTo: scrollToPosition,
   scrollToIndex,
   getScrollTop,
+  getItemTop,
+  contentRef,
+  actualStartIndex,
 });
 
 // 防抖高度测量
