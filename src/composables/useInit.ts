@@ -112,6 +112,7 @@ export const useInit = () => {
       watch(
         () => [
           settingStore.taskbarLyricShowCover,
+          settingStore.themeMode,
           settingStore.LyricFont,
           settingStore.globalFont,
           settingStore.taskbarLyricFontWeight,
