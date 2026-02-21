@@ -920,6 +920,13 @@ export const useLyricSettings = (): SettingConfig => {
             value: toRef(settingStore, "taskbarLyricSingleLineMode"),
           },
           {
+            key: "taskbarLyricShowYrc",
+            label: "显示逐字歌词",
+            type: "switch",
+            description: "是否显示任务栏歌词逐字效果",
+            value: toRef(settingStore, "taskbarLyricShowYrc"),
+          },
+          {
             key: "taskbarLyricFontWeight",
             label: "文字字重",
             type: "input-number",

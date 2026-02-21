@@ -27,6 +27,7 @@ const getTaskbarConfig = (): TaskbarConfig => {
     singleLineMode: store.get("taskbar.singleLineMode", false),
     showTranslation: store.get("taskbar.showTranslation", true),
     showRomaji: store.get("taskbar.showRomaji", true),
+    showYrc: store.get("taskbar.showYrc", true),
   };
 };
 
