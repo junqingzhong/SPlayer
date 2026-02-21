@@ -218,6 +218,45 @@ const calculateVisibleRange = (currentScrollTop: number) => {
   }
 };
 
+/**
+ * 通过 Y 轴绝对偏移量，计算出悬停的列表索引及处于该项的上半区还是下半区
+ */
+const getDropInfoByOffset = (offsetY: number) => {
+  const len = props.items.length;
+  if (len === 0) return { index: 0, position: "top" };
+
+  if (props.itemFixed) {
+    const index = Math.floor(offsetY / props.itemHeight);
+    const remainder = offsetY % props.itemHeight;
+    const position = remainder < props.itemHeight / 2 ? "top" : "bottom";
+    return { index: Math.max(0, Math.min(index, len - 1)), position };
+  }
+
+  const tops = itemTops.value;
+  const heights = itemHeights.value;
+
+  if (offsetY <= 0) return { index: 0, position: "top" };
+  if (offsetY >= tops[len - 1] + heights[len - 1]) return { index: len - 1, position: "bottom" };
+
+  let low = 0;
+  let high = len - 1;
+  while (low <= high) {
+    const mid = (low + high) >>> 1;
+    const top = tops[mid];
+    const bottom = top + heights[mid];
+
+    if (offsetY >= top && offsetY < bottom) {
+      const position = offsetY - top < heights[mid] / 2 ? "top" : "bottom";
+      return { index: mid, position };
+    } else if (offsetY < top) {
+      high = mid - 1;
+    } else {
+      low = mid + 1;
+    }
+  }
+  return { index: len - 1, position: "bottom" };
+};
+
 // 可见项
 const visibleItems = computed(() => {
   if (actualStartIndex.value > actualEndIndex.value) return [];
@@ -346,6 +385,7 @@ defineExpose({
   scrollToIndex,
   getScrollTop,
   getItemTop,
+  getDropInfoByOffset,
   contentRef,
   actualStartIndex,
 });

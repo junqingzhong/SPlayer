@@ -145,11 +145,10 @@
       <Teleport to="body">
         <Transition name="fade">
           <div
-            v-if="(isDragging || isDropping) && dragLabelData"
+            v-if="isDragging && dragLabelData"
             class="drag-label"
             :class="{
               'full-player-drag-label': statusStore.showFullPlayer,
-              'is-dropping': isDropping,
             }"
             :style="{
               top: `${dragLabelPosition.top}px`,
@@ -208,7 +207,6 @@ const cleanPlayList = () => {
 };
 
 const isDragging = ref(false);
-const isDropping = ref(false);
 const draggedIndex = ref(-1);
 const targetIndex = ref(-1);
 const dropIndicator = reactive({ index: -1, position: "none" });
@@ -218,7 +216,6 @@ const dragLabelPosition = reactive({ top: 0, left: 0 });
 
 let listRect: DOMRect | null = null;
 let autoScrollRafId: number | null = null;
-const itemHeight = 80;
 
 const handleDragStart = (e: MouseEvent | TouchEvent, index: number, item: SongType) => {
   if (e.type === "mousedown") {
@@ -257,13 +254,43 @@ const handleDragMove = (e: MouseEvent | TouchEvent) => {
   calculateTargetIndex(clientY);
 };
 
+const handleDragEnd = () => {
+  if (draggedIndex.value !== targetIndex.value && targetIndex.value !== -1) {
+    player.moveSong(draggedIndex.value, targetIndex.value);
+  }
+
+  cleanupDragState();
+};
+
+const cleanupDragState = () => {
+  stopAutoScroll();
+
+  isDragging.value = false;
+  draggedIndex.value = -1;
+  targetIndex.value = -1;
+  dropIndicator.index = -1;
+  dropIndicator.position = "none";
+  dragLabelData.value = null;
+
+  window.removeEventListener("mousemove", handleDragMove);
+  window.removeEventListener("touchmove", handleDragMove);
+  window.removeEventListener("mouseup", handleDragEnd);
+  window.removeEventListener("touchend", handleDragEnd);
+};
+
 const calculateTargetIndex = (clientY: number) => {
-  if (!listRect) return;
-  const currentScrollTop = playListRef.value?.getScrollTop() || 0;
+  if (!listRect || !playListRef.value) return;
+
+  const currentScrollTop = playListRef.value.getScrollTop() || 0;
   const paddingTop = 16;
   const relativeY = clientY - listRect.top + currentScrollTop - paddingTop;
+  const dropInfo = playListRef.value.getDropInfoByOffset(relativeY);
 
-  let gapIndex = Math.round(relativeY / itemHeight);
+  let gapIndex = dropInfo.index;
+  if (dropInfo.position === "bottom") {
+    gapIndex += 1;
+  }
+
   const maxGap = dataStore.playList.length;
   gapIndex = Math.max(0, Math.min(gapIndex, maxGap));
 
@@ -284,26 +311,6 @@ const calculateTargetIndex = (clientY: number) => {
   }
 
   targetIndex.value = Math.max(0, Math.min(insertIndex, maxGap - 1));
-};
-
-const handleDragEnd = () => {
-  stopAutoScroll();
-
-  if (draggedIndex.value !== targetIndex.value && targetIndex.value !== -1) {
-    player.moveSong(draggedIndex.value, targetIndex.value);
-  }
-
-  isDragging.value = false;
-  draggedIndex.value = -1;
-  targetIndex.value = -1;
-  dropIndicator.index = -1;
-  dropIndicator.position = "none";
-  dragLabelData.value = null;
-
-  window.removeEventListener("mousemove", handleDragMove);
-  window.removeEventListener("touchmove", handleDragMove);
-  window.removeEventListener("mouseup", handleDragEnd);
-  window.removeEventListener("touchend", handleDragEnd);
 };
 
 const updateDragLabelPosition = (e: MouseEvent | TouchEvent) => {
@@ -358,13 +365,7 @@ const stopAutoScroll = () => {
 };
 
 onUnmounted(() => {
-  stopAutoScroll();
-  window.removeEventListener("mousemove", handleDragMove);
-  window.removeEventListener("touchmove", handleDragMove);
-  window.removeEventListener("mouseup", handleDragEnd);
-  window.removeEventListener("touchend", handleDragEnd);
-  isDragging.value = false;
-  draggedIndex.value = -1;
+  cleanupDragState();
 });
 </script>
 
