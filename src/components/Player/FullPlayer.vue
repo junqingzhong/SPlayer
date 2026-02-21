@@ -219,11 +219,13 @@ watch(
 // 键盘控制
 const onKeydown = (e: KeyboardEvent) => {
   if (e.code === "Space") {
-    const activeElement = document.activeElement;
-    // 如果焦点在输入框，不响应
+    const activeElement = document.activeElement as HTMLElement;
+    // 如果焦点在输入框、文本域或任何可编辑元素上，则不响应
     if (
       activeElement &&
-      (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA")
+      (activeElement.tagName === "INPUT" ||
+        activeElement.tagName === "TEXTAREA" ||
+        activeElement.isContentEditable)
     ) {
       return;
     }
@@ -233,17 +235,14 @@ const onKeydown = (e: KeyboardEvent) => {
 };
 
 // 监听全屏状态
-watch(
-  () => statusStore.showFullPlayer,
-  (val) => {
-    if (val) {
-      window.addEventListener("keydown", onKeydown);
-    } else {
+watchEffect((onCleanup) => {
+  if (statusStore.showFullPlayer) {
+    window.addEventListener("keydown", onKeydown);
+    onCleanup(() => {
       window.removeEventListener("keydown", onKeydown);
-    }
-  },
-  { immediate: true },
-);
+    });
+  }
+});
 
 onMounted(() => {
   mainCoverColor.value = statusStore.mainColor;
@@ -254,7 +253,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  window.removeEventListener("keydown", onKeydown);
   stopShow();
   if (isElectron) window.electron.ipcRenderer.send("prevent-sleep", false);
 });
