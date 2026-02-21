@@ -97,11 +97,13 @@
 <script setup lang="ts">
 import { useMobile } from "@/composables/useMobile";
 import { useStatusStore, useMusicStore, useSettingStore } from "@/stores";
+import { usePlayerController } from "@/core/player/PlayerController";
 import { isElectron } from "@/utils/env";
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const player = usePlayerController();
 
 const { isTablet } = useMobile();
 
@@ -214,6 +216,35 @@ watch(
   },
 );
 
+// 键盘控制
+const onKeydown = (e: KeyboardEvent) => {
+  if (e.code === "Space") {
+    const activeElement = document.activeElement;
+    // 如果焦点在输入框，不响应
+    if (
+      activeElement &&
+      (activeElement.tagName === "INPUT" || activeElement.tagName === "TEXTAREA")
+    ) {
+      return;
+    }
+    e.preventDefault();
+    player.playOrPause();
+  }
+};
+
+// 监听全屏状态
+watch(
+  () => statusStore.showFullPlayer,
+  (val) => {
+    if (val) {
+      window.addEventListener("keydown", onKeydown);
+    } else {
+      window.removeEventListener("keydown", onKeydown);
+    }
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   mainCoverColor.value = statusStore.mainColor;
   // 阻止息屏
@@ -223,6 +254,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeydown);
   stopShow();
   if (isElectron) window.electron.ipcRenderer.send("prevent-sleep", false);
 });
