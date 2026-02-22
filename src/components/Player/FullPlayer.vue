@@ -269,7 +269,6 @@ onBeforeUnmount(() => {
     align-items: center;
     width: 100%;
     height: calc(100vh - 160px);
-    z-index: 0;
     transition:
       opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
       transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -294,6 +293,7 @@ onBeforeUnmount(() => {
       height: 100%;
       display: flex;
       flex-direction: column;
+      mix-blend-mode: plus-lighter;
       transition:
         width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
         opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
