@@ -154,15 +154,11 @@ watch(
 .word-item {
   display: inline-block;
   white-space: pre;
-  mask-image: linear-gradient(
-    to right,
-    black var(--progress),
-    rgba(0, 0, 0, 0.5) var(--progress)
-  );
+  mask-image: linear-gradient(to right, black var(--progress), rgba(0, 0, 0, 0.7) var(--progress));
   -webkit-mask-image: linear-gradient(
     to right,
     black var(--progress),
-    rgba(0, 0, 0, 0.5) var(--progress)
+    rgba(0, 0, 0, 0.7) var(--progress)
   );
 }
 </style>

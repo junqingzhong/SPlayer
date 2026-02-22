@@ -115,7 +115,7 @@ const initIpc = () => {
         singleLineMode: settingStore.taskbarLyricSingleLineMode,
         showTranslation: settingStore.showTran,
         showRomaji: settingStore.showRoma,
-        showYrc: settingStore.taskbarLyricShowYrc,
+        showWordLyrics: settingStore.taskbarLyricShowWordLyrics,
       };
 
       const hasYrc = (musicStore.songLyric.yrcData?.length ?? 0) > 0;

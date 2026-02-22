@@ -252,7 +252,7 @@ const displayItems = computed<DisplayItem[]>(() => {
     text: currentText,
     isPrimary: true,
     itemType: "main",
-    words: settingStore.taskbarLyricShowYrc ? currentLine.words : undefined,
+    words: settingStore.taskbarLyricShowWordLyrics ? currentLine.words : undefined,
   });
 
   if (subText) {
@@ -446,7 +446,7 @@ const configMap: Partial<Record<keyof TaskbarConfig, keyof typeof settingStore>>
   fontWeight: "taskbarLyricFontWeight",
   showTranslation: "showTran",
   showRomaji: "showRoma",
-  showYrc: "taskbarLyricShowYrc",
+  showWordLyrics: "taskbarLyricShowWordLyrics",
   showWhenPaused: "taskbarLyricShowWhenPaused",
 };
 

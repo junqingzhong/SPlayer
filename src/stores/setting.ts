@@ -63,7 +63,7 @@ export interface SettingState {
   /** 任务栏歌词单行模式 */
   taskbarLyricSingleLineMode: boolean;
   /** 任务栏歌词逐字模式 */
-  taskbarLyricShowYrc: boolean;
+  taskbarLyricShowWordLyrics: boolean;
   /** 任务栏歌词跟随主题色 */
   taskbarLyricUseThemeColor: boolean;
   /** 任务栏歌词字重 */
@@ -87,7 +87,7 @@ export interface SettingState {
   /** 歌词字重设置 */
   lyricFontWeight: number;
   /** 显示逐字歌词 */
-  showYrc: boolean;
+  showWordLyrics: boolean;
   /** 显示歌词翻译 */
   showTran: boolean;
   /** 显示歌词音译 */
@@ -530,7 +530,7 @@ export const useSettingStore = defineStore("setting", {
     taskbarLyricShowWhenPaused: true,
     taskbarLyricAnimationMode: "slide-blur",
     taskbarLyricSingleLineMode: false,
-    taskbarLyricShowYrc: true,
+    taskbarLyricShowWordLyrics: true,
     taskbarLyricUseThemeColor: false,
     taskbarLyricFontWeight: 400,
     checkUpdateOnStart: true,
@@ -587,7 +587,7 @@ export const useSettingStore = defineStore("setting", {
     lyricPriority: "auto",
     localLyricQQMusicMatch: false,
     amllDbServer: defaultAMLLDbServer,
-    showYrc: true,
+    showWordLyrics: true,
     showTran: true,
     showRoma: true,
     swapTranRoma: false,

@@ -19,7 +19,7 @@ export interface TaskbarConfig {
   fontWeight: number;
   animationMode: "slide-blur" | "left-sm";
   singleLineMode: boolean;
-  showYrc: boolean;
+  showWordLyrics: boolean;
   showTranslation: boolean;
   showRomaji: boolean;
 }

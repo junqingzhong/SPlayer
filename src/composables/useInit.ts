@@ -120,7 +120,7 @@ export const useInit = () => {
           settingStore.taskbarLyricSingleLineMode,
           settingStore.showTran,
           settingStore.showRoma,
-          settingStore.taskbarLyricShowYrc,
+          settingStore.taskbarLyricShowWordLyrics,
           settingStore.taskbarLyricShowWhenPaused,
         ],
         () => {
@@ -135,7 +135,7 @@ export const useInit = () => {
             showWhenPaused: settingStore.taskbarLyricShowWhenPaused,
             showTranslation: settingStore.showTran,
             showRomaji: settingStore.showRoma,
-            showYrc: settingStore.taskbarLyricShowYrc,
+            showWordLyrics: settingStore.taskbarLyricShowWordLyrics,
           });
         },
       );
