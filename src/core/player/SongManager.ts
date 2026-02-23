@@ -132,8 +132,13 @@ class SongManager {
    * 检查本地缓存
    * @param id 歌曲id
    * @param quality 音质
+   * @param md5 歌曲文件md5
    */
-  private checkLocalCache = async (id: number, quality?: QualityType): Promise<string | null> => {
+  private checkLocalCache = async (
+    id: number,
+    quality?: QualityType,
+    md5?: string,
+  ): Promise<string | null> => {
     const settingStore = useSettingStore();
     if (isElectron && settingStore.cacheEnabled && settingStore.songCacheEnabled) {
       try {
@@ -141,6 +146,7 @@ class SongManager {
           "music-cache-check",
           id,
           quality,
+          md5,
         );
         if (cachePath) {
           console.log(`🚀 [${id}] 由本地音乐缓存提供`);
@@ -235,7 +241,7 @@ class SongManager {
     
     // 检查本地缓存
     if (finalUrl && quality) {
-      const cachedUrl = await this.checkLocalCache(id, quality);
+      const cachedUrl = await this.checkLocalCache(id, quality, songData?.md5);
       if (cachedUrl) {
         return { id, url: cachedUrl, isTrial, quality };
       }
