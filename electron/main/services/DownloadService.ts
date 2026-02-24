@@ -33,7 +33,7 @@ export class DownloadService {
       downloadLyric?: boolean;
       saveMetaFile?: boolean;
       lyric?: string;
-      albumArtist?: string;
+      albumArtists?: string[];
       songData?: any;
       skipIfExist?: boolean;
       threadCount?: number;
@@ -55,7 +55,7 @@ export class DownloadService {
         fileType,
         path,
         lyric,
-        albumArtist,
+        albumArtists,
         downloadMeta,
         downloadCover,
         downloadLyric,
@@ -99,6 +99,7 @@ export class DownloadService {
       if (downloadMeta && songData) {
         const artistNames = getArtistNames(songData.artists);
         const artist = artistNames.join(", ") || "未知艺术家";
+        const albumArtist = albumArtists?.join(", ");
         const coverUrl =
           downloadCover && (songData.coverSize?.l || songData.cover)
             ? songData.coverSize?.l || songData.cover
