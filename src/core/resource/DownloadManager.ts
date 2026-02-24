@@ -8,6 +8,7 @@ import { qqMusicMatch } from "@/api/qqmusic";
 import { songLevelData } from "@/utils/meta";
 import { getPlayerInfoObj } from "@/utils/format";
 import { LyricProcessor, type LyricProcessorOptions, type LyricResult } from "./LyricProcessor";
+import { albumDetail } from "@/api/album";
 
 interface DownloadConfig {
   fileName: string;
@@ -19,6 +20,7 @@ interface DownloadConfig {
   saveMetaFile: boolean;
   songData: SongType;
   lyric: string;
+  albumArtist: string;
   skipIfExist: boolean;
   threadCount: number;
   referer?: string;
@@ -55,6 +57,7 @@ class SongDownloadStrategy implements DownloadStrategy {
   private basicLyric = "";
   private ttmlLyric = "";
   private yrcLyric = "";
+  private albumArtist = "";
 
   constructor(
     public readonly song: SongType,
@@ -125,6 +128,19 @@ class SongDownloadStrategy implements DownloadStrategy {
         this.yrcLyric = verbatim.yrc;
       }
     }
+
+    // 处理专辑艺术家信息
+    if (this.settingStore.downloadMeta) {
+      const album = this.song.album;
+      if (typeof album !== "string") {
+        try {
+          const detail = await albumDetail(album.id);
+          this.albumArtist = detail?.album?.artist?.name || "";
+        } catch (e) {
+          console.error("获取专辑艺术家失败", e);
+        }
+      }
+    }
   }
   /**
    * 获取下载配置
@@ -146,6 +162,7 @@ class SongDownloadStrategy implements DownloadStrategy {
       saveMetaFile: downloadMeta && saveMetaFile,
       songData: cloneDeep(this.song),
       lyric: this.basicLyric,
+      albumArtist: this.albumArtist,
       skipIfExist: true,
       threadCount: downloadThreadCount,
       enableDownloadHttp2: enableDownloadHttp2,
