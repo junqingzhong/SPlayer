@@ -42,6 +42,10 @@ export type AudioSource = {
   source?: AudioSourceType;
 };
 
+/**
+ * 歌曲管理器
+ * 负责歌曲的获取、缓存、预加载等操作
+ */
 class SongManager {
   /** 预载下一首歌曲播放信息 */
   private nextPrefetch: AudioSource | undefined;
