@@ -10,6 +10,8 @@ import { getPlayerInfoObj } from "@/utils/format";
 import { LyricProcessor, type LyricProcessorOptions, type LyricResult } from "./LyricProcessor";
 import { albumDetail } from "@/api/album";
 
+const albumDetailCache = new Map<number, any>();
+
 interface DownloadConfig {
   fileName: string;
   fileType: string;
@@ -132,13 +134,20 @@ class SongDownloadStrategy implements DownloadStrategy {
     // 处理专辑艺术家信息
     if (this.settingStore.downloadMeta) {
       const album = this.song.album;
+      let detail: { album: { artist: { name: string } } } | null;
       if (typeof album !== "string") {
-        try {
-          const detail = await albumDetail(album.id);
-          this.albumArtist = detail?.album?.artist?.name || "";
-        } catch (e) {
-          console.error("获取专辑艺术家失败", e);
+        if (albumDetailCache.has(album.id)) {
+          detail = albumDetailCache.get(album.id);
+        } else {
+          try {
+            detail = await albumDetail(album.id);
+          } catch (e) {
+            console.error(`获取专辑艺术家失败: ${album.id}`, e);
+            detail = null;
+          }
+          albumDetailCache.set(album.id, detail);
         }
+        this.albumArtist = detail?.album?.artist?.name || "";
       }
     }
   }
