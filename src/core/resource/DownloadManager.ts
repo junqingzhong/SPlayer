@@ -10,7 +10,8 @@ import { getPlayerInfoObj } from "@/utils/format";
 import { LyricProcessor, type LyricProcessorOptions, type LyricResult } from "./LyricProcessor";
 import { albumDetail } from "@/api/album";
 
-const albumDetailCache = new Map<number, any>();
+const albumArtistCache = new Map<number, string | Promise<string>>();
+const MAX_ALBUM_ARTIST_CACHE_SIZE = 100;
 
 interface DownloadConfig {
   fileName: string;
@@ -134,20 +135,38 @@ class SongDownloadStrategy implements DownloadStrategy {
     // 处理专辑艺术家信息
     if (this.settingStore.downloadMeta) {
       const album = this.song.album;
-      let detail: { album: { artist: { name: string } } } | null;
       if (typeof album !== "string") {
-        if (albumDetailCache.has(album.id)) {
-          detail = albumDetailCache.get(album.id);
+        const cached = albumArtistCache.get(album.id);
+        if (typeof cached === "string") {
+          this.albumArtist = cached;
+        } else if (cached instanceof Promise) {
+          this.albumArtist = await cached;
         } else {
-          try {
-            detail = await albumDetail(album.id);
-          } catch (e) {
-            console.error(`获取专辑艺术家失败: ${album.id}`, e);
-            detail = null;
-          }
-          albumDetailCache.set(album.id, detail);
+          const promise = albumDetail(album.id)
+            .then((res) => {
+              if (res.code === 200) {
+                const artistName = res?.album?.artist?.name || "";
+                albumArtistCache.set(album.id, artistName);
+                // 控制缓存大小
+                if (albumArtistCache.size > MAX_ALBUM_ARTIST_CACHE_SIZE) {
+                  for (const [k, v] of albumArtistCache) {
+                    if (typeof v === "string") {
+                      albumArtistCache.delete(k);
+                      if (albumArtistCache.size < MAX_ALBUM_ARTIST_CACHE_SIZE) break;
+                    }
+                  }
+                }
+                return artistName;
+              }
+              return "";
+            })
+            .catch((e) => {
+              console.error(`获取专辑艺术家失败: ${album.id}`, e);
+              return "";
+            });
+          albumArtistCache.set(album.id, promise);
+          this.albumArtist = await promise;
         }
-        this.albumArtist = detail?.album?.artist?.name || "";
       }
     }
   }

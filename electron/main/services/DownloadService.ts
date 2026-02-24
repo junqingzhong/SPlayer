@@ -109,7 +109,7 @@ export class DownloadService {
           album:
             (typeof songData.album === "string" ? songData.album : songData.album?.name) ||
             "未知专辑",
-          albumArtist: albumArtist !== "" ? albumArtist : undefined,
+          albumArtist: albumArtist && albumArtist !== "" ? albumArtist : undefined,
           coverUrl: coverUrl,
           lyric: downloadLyric && lyric ? lyric : undefined,
           description: songData.alia || "",
