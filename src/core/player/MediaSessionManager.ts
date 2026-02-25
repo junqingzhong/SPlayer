@@ -2,7 +2,7 @@ import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
 import { msToS } from "@/utils/time";
-import { SystemMediaEvent } from "@emi";
+import type { SystemMediaEvent } from "@emi";
 import axios from "axios";
 import { throttle } from "lodash-es";
 import { usePlayerController } from "./PlayerController";
@@ -11,6 +11,8 @@ import {
   sendMediaMetadata,
   sendMediaPlayMode,
   sendMediaPlayState,
+  sendMediaPlaybackRate,
+  sendMediaVolume,
   sendMediaTimeline,
   updateDiscordConfig,
 } from "./PlayerIpc";
@@ -22,10 +24,11 @@ import {
  */
 class MediaSessionManager {
   private metadataAbortController: AbortController | null = null;
+  private currentRate: number = 1;
 
   private throttledSendTimeline = throttle((currentTime: number, duration: number) => {
     sendMediaTimeline(currentTime, duration);
-  }, 1000);
+  }, 200);
 
   /**
    * 是否使用原生媒体集成
@@ -71,6 +74,16 @@ class MediaSessionManager {
       case "ToggleRepeat":
         player.toggleRepeat();
         break;
+      case "SetRate":
+        if (event.rate != null) {
+          player.setRate(event.rate);
+        }
+        break;
+      case "SetVolume":
+        if (event.volume != null) {
+          player.setVolume(event.volume);
+        }
+        break;
     }
   }
 
@@ -83,6 +96,8 @@ class MediaSessionManager {
 
     const player = usePlayerController();
     const statusStore = useStatusStore();
+
+    this.currentRate = statusStore.playRate;
 
     if (isElectron) {
       window.electron.ipcRenderer.removeAllListeners("media-event");
@@ -101,6 +116,9 @@ class MediaSessionManager {
       sendMediaPlayMode(shuffle, repeat);
 
       player.syncMediaPlayMode();
+
+      // 同步初始播放速率
+      sendMediaPlaybackRate(statusStore.playRate);
 
       // Discord RPC 初始化
       if (settingStore.discordRpc.enabled) {
@@ -130,8 +148,9 @@ class MediaSessionManager {
 
   /**
    * 更新元数据
+   * @param coverBuffer 封面数据（可选，避免重复下载）
    */
-  public async updateMetadata() {
+  public async updateMetadata(coverBuffer?: Uint8Array) {
     if (!("mediaSession" in navigator) && !isElectron) return;
 
     const musicStore = useMusicStore();
@@ -152,19 +171,24 @@ class MediaSessionManager {
     // 原生插件
     if (this.shouldUseNativeMedia() && settingStore.smtcOpen) {
       try {
-        let coverBuffer: Uint8Array | undefined;
-
         // 获取封面数据
         if (
+          !coverBuffer &&
           metadata.coverUrl &&
           (metadata.coverUrl.startsWith("http") || metadata.coverUrl.startsWith("blob:"))
         ) {
           try {
-            const resp = await axios.get(metadata.coverUrl, {
-              responseType: "arraybuffer",
-              signal,
-            });
-            coverBuffer = new Uint8Array(resp.data);
+            if (metadata.coverUrl.startsWith("blob:")) {
+              const resp = await fetch(metadata.coverUrl, { signal });
+              const buf = await resp.arrayBuffer();
+              coverBuffer = new Uint8Array(buf);
+            } else {
+              const resp = await axios.get(metadata.coverUrl, {
+                responseType: "arraybuffer",
+                signal,
+              });
+              coverBuffer = new Uint8Array(resp.data);
+            }
           } catch {
             // 忽略下载失败
           }
@@ -277,8 +301,8 @@ class MediaSessionManager {
     if (this.shouldUseNativeMedia()) {
       if (immediate) {
         this.throttledSendTimeline.cancel();
-        // 取消节流就会立刻触发一次更新了，所以不再发送一个多余的事件
-        // sendMediaTimeline(position, duration);
+        // 绝对位置更新，避免 Seek 操作的进度更新被限流丢弃
+        sendMediaTimeline(position, duration, true);
       } else {
         this.throttledSendTimeline(position, duration);
       }
@@ -300,6 +324,23 @@ class MediaSessionManager {
   }
 
   /**
+   * 更新播放速率
+   */
+  public updatePlaybackRate(rate: number) {
+    this.currentRate = rate;
+
+    if (this.shouldUseNativeMedia()) {
+      sendMediaPlaybackRate(rate);
+    }
+  }
+
+  public updateVolume(volume: number) {
+    if (this.shouldUseNativeMedia()) {
+      sendMediaVolume(volume);
+    }
+  }
+
+  /**
    * 限流更新进度状态
    */
   private throttledUpdatePositionState = throttle((duration: number, position: number) => {
@@ -307,6 +348,7 @@ class MediaSessionManager {
       navigator.mediaSession.setPositionState({
         duration: msToS(duration),
         position: msToS(position),
+        playbackRate: this.currentRate,
       });
     }
   }, 1000);

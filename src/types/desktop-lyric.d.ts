@@ -44,7 +44,7 @@ export interface LyricConfig {
   /** 显示翻译 */
   showTran: boolean;
   /** 是否开启逐字歌词 */
-  showYrc: boolean;
+  showWordLyrics: boolean;
   /** 文本排版位置 */
   position: "left" | "center" | "right" | "both";
   /** 是否限制在屏幕边界内拖动 */
@@ -55,6 +55,8 @@ export interface LyricConfig {
   backgroundMaskColor: string;
   /** 始终展示播放信息 */
   alwaysShowPlayInfo: boolean;
+  /** 是否开启歌词切换动画 */
+  animation: boolean;
 }
 
 /**

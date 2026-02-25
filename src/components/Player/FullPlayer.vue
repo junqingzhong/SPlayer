@@ -6,8 +6,10 @@
         :style="{
           cursor: statusStore.playerMetaShow || isShowComment ? 'auto' : 'none',
         }"
-        :class="['full-player', { 'show-comment': isShowComment }]"
+        :class="['full-player', { 'show-comment': isShowComment && !statusStore.pureLyricMode }]"
         @mouseleave="playerLeave"
+        @mousemove="playerMove"
+        @click="playerMove"
       >
         <!-- 背景 -->
         <PlayerBackground />
@@ -28,6 +30,8 @@
           </Transition>
           <!-- 菜单 -->
           <PlayerMenu @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
+          <!-- 全屏封面 -->
+          <PlayerCover v-if="showFullScreenCover" />
           <!-- 主内容 -->
           <Transition name="zoom" mode="out-in">
             <div
@@ -36,20 +40,18 @@
                 'player-content',
                 {
                   'no-lrc': noLrc,
-                  pure: statusStore.pureLyricMode && musicStore.isHasLrc,
+                  'full-screen': settingStore.playerType === 'fullscreen',
+                  pure: pureLyricMode && musicStore.isHasLrc,
                 },
               ]"
               @mousemove="playerMove"
             >
               <Transition name="zoom">
                 <div
-                  v-if="!pureLyricMode"
+                  v-if="!pureLyricMode && settingStore.playerType !== 'fullscreen'"
                   :key="musicStore.playSong.id"
                   class="content-left"
-                  :style="{
-                    width: `${settingStore.playerStyleRatio}%`,
-                    minWidth: `${settingStore.playerStyleRatio}%`,
-                  }"
+                  :style="layoutStyles.left"
                 >
                   <!-- 封面 -->
                   <PlayerCover />
@@ -58,21 +60,18 @@
                 </div>
               </Transition>
               <!-- 歌词 -->
-              <div
-                class="content-right"
-                :style="{
-                  width: `${100 - settingStore.playerStyleRatio}%`,
-                  maxWidth: `${100 - settingStore.playerStyleRatio}%`,
-                }"
-              >
+              <div class="content-right" :style="layoutStyles.right">
                 <!-- 数据 -->
                 <PlayerData
-                  v-if="statusStore.pureLyricMode && musicStore.isHasLrc"
-                  :center="statusStore.pureLyricMode"
-                  :light="pureLyricMode"
+                  v-if="
+                    (pureLyricMode && musicStore.isHasLrc) ||
+                    settingStore.playerType === 'fullscreen'
+                  "
+                  :center="pureLyricMode || noLrc"
+                  :light="!(settingStore.playerType === 'fullscreen' && noLrc)"
                 />
                 <!-- 歌词 -->
-                <PlayerLyric />
+                <PlayerLyric v-if="!noLrc" />
               </div>
             </div>
           </Transition>
@@ -117,9 +116,7 @@ const isShowComment = computed<boolean>(
 /** 没有歌词 */
 const noLrc = computed<boolean>(() => {
   const noNormalLrc = !musicStore.isHasLrc;
-  const noYrcAvailable = !musicStore.isHasYrc || !settingStore.showYrc;
-  // const notLoading = !statusStore.lyricLoading;
-
+  const noYrcAvailable = !musicStore.isHasYrc || !settingStore.showWordLyrics;
   return noNormalLrc && noYrcAvailable;
 });
 
@@ -128,8 +125,28 @@ const pureLyricMode = computed<boolean>(
   () => (statusStore.pureLyricMode && musicStore.isHasLrc) || musicStore.playSong.type === "radio",
 );
 
+/* 是否显示全屏封面 */
+const showFullScreenCover = computed<boolean>(
+  () => settingStore.playerType === "fullscreen" && !pureLyricMode.value && !isShowComment.value,
+);
+
 // 主内容 key
 const playerContentKey = computed(() => `${musicStore.playSong.id}-${statusStore.pureLyricMode}`);
+
+// 左右布局样式
+const layoutStyles = computed(() => {
+  const ratio = settingStore.playerType === "fullscreen" ? 50 : settingStore.playerStyleRatio;
+  return {
+    left: {
+      width: `${ratio}%`,
+      minWidth: `${ratio}%`,
+    },
+    right: {
+      width: `${100 - ratio}%`,
+      maxWidth: `${100 - ratio}%`,
+    },
+  };
+});
 
 // 数据是否居中
 const playerDataCenter = computed<boolean>(
@@ -142,7 +159,7 @@ const playerDataCenter = computed<boolean>(
 
 // 当前实时歌词
 const instantLyrics = computed(() => {
-  const isYrc = musicStore.songLyric.yrcData?.length && settingStore.showYrc;
+  const isYrc = musicStore.songLyric.yrcData?.length && settingStore.showWordLyrics;
   const content = isYrc
     ? musicStore.songLyric.yrcData[statusStore.lyricIndex]
     : musicStore.songLyric.lrcData[statusStore.lyricIndex];
@@ -252,7 +269,6 @@ onBeforeUnmount(() => {
     align-items: center;
     width: 100%;
     height: calc(100vh - 160px);
-    z-index: 0;
     transition:
       opacity 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
       transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -277,6 +293,7 @@ onBeforeUnmount(() => {
       height: 100%;
       display: flex;
       flex-direction: column;
+      mix-blend-mode: plus-lighter;
       transition:
         width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
         opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -295,13 +312,24 @@ onBeforeUnmount(() => {
     }
     // 无歌词
     &.no-lrc {
-      .content-left {
-        width: 50% !important;
-        transform: translateX(50%);
+      &:not(.full-screen) {
+        .content-left {
+          width: 50% !important;
+          transform: translateX(50%);
+        }
+        .content-right {
+          opacity: 0;
+          pointer-events: none;
+        }
       }
-      .content-right {
-        opacity: 0;
-        pointer-events: none;
+      &.full-screen {
+        .content-right {
+          .player-data {
+            width: 100%;
+            max-width: 100%;
+            transform: translateY(30vh);
+          }
+        }
       }
     }
   }

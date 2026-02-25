@@ -12,7 +12,7 @@
     "electron/preload/index.d.ts",
     "electron/preload/index.ts",
     "src/assets/data/*",
-    "src/types/shared.ts",
+    "src/types/shared",
     "scripts/*"
   ],
   "exclude": [
@@ -24,7 +24,8 @@
     "types": ["electron-vite/node"],
     "paths": {
       "@emi": ["./native/external-media-integration"],
-      "@shared": ["./src/types/shared.ts"]
+      "@native/*": ["./native/*"],
+      "@shared": ["./src/types/shared"]
     }
   }
 }

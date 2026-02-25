@@ -7,6 +7,7 @@ import type {
   CatType,
   LoginType,
   SongLevelType,
+  AccountType,
 } from "@/types/main";
 import { playlistCatlist } from "@/api/playlist";
 import { cloneDeep, isEmpty } from "lodash-es";
@@ -24,6 +25,7 @@ interface ListState {
   userLoginStatus: boolean;
   loginType: LoginType;
   userData: UserDataType;
+  userList: AccountType[];
   userLikeData: UserLikeDataType;
   likeSongsList: {
     detail: CoverType;
@@ -99,6 +101,8 @@ export const useDataStore = defineStore("data", {
       vipType: 0,
       name: "",
     },
+    // 用户列表（多账号）
+    userList: [],
     // 用户喜欢数据
     userLikeData: {
       songs: [],
@@ -165,6 +169,7 @@ export const useDataStore = defineStore("data", {
             }
           }),
         );
+
         // 获取 user-data
         const userDataKeys = await userDB.keys();
         await Promise.all(
@@ -530,6 +535,6 @@ export const useDataStore = defineStore("data", {
   persist: {
     key: "data-store",
     storage: localStorage,
-    pick: ["userLoginStatus", "loginType", "userData", "searchHistory", "catData"],
+    pick: ["userLoginStatus", "loginType", "userData", "userList", "searchHistory", "catData"],
   },
 });

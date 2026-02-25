@@ -80,7 +80,6 @@ import { songDetail } from "@/api/song";
 import { formatSongsList } from "@/utils/format";
 import { pick } from "lodash-es";
 import { useDownloadManager } from "@/core/resource/DownloadManager";
-import SongDataCard from "@/components/Card/SongDataCard.vue";
 
 const props = defineProps<{
   songs?: SongType[];
@@ -105,7 +104,7 @@ const downloadPath = computed(() => settingStore.downloadPath);
 
 // 是否可以下载（需要配置下载目录）
 const canDownload = computed(() => {
-  if (!isElectron) return true; // 非 Electron 环境允许下载
+  if (!isElectron) return true;
   return !!downloadPath.value;
 });
 

@@ -1,7 +1,11 @@
 <template>
   <n-popover
-    :show="userMenuShow "
-    style="padding: 12px; max-width: 160px"
+  <n-popover
+    :show="userMenuShow"
+    style="padding: 12px; max-width: 240px"
+    trigger="manual"
+    @clickoutside="userMenuShow = false"
+  >
     trigger="manual"
     @clickoutside="userMenuShow = false"
   >
@@ -27,8 +31,8 @@
             <SvgIcon name="Person" :depth="3" size="26" />
           </n-avatar>
         </div>
-        <n-flex v-if="isDesktop" class="user-data" size="small">
-          <n-text class="name">
+        <n-flex v-if="isDesktop" :wrap="false" class="user-data" size="small">
+          <n-text class="name text-hidden">
             {{ dataStore.userLoginStatus ? dataStore.userData.name || "未知用户名" : "未登录" }}
           </n-text>
           <!-- VIP -->
@@ -75,6 +79,29 @@
         <n-text :depth="3">部分功能暂不可用</n-text>
       </n-flex>
       <n-divider />
+      <!-- 多账号 -->
+      <div class="account-list" v-if="dataStore.userLoginStatus && dataStore.loginType !== 'uid'">
+        <n-text class="subtitle" :depth="3">切换账号</n-text>
+        <div
+          v-for="account in otherAccounts"
+          :key="account.userId"
+          class="account-item"
+          @click="handleSwitchAccount(account.userId)"
+        >
+          <n-avatar :src="account.avatarUrl" round size="small" />
+          <div class="account-name text-hidden">{{ account.name }}</div>
+          <div class="delete-btn" @click.stop="handleRemoveAccount(account.userId)">
+            <SvgIcon name="Close" />
+          </div>
+        </div>
+        <n-button class="add-account" ghost block @click="handleAddAccount">
+          <template #icon>
+            <SvgIcon name="Add" />
+          </template>
+          添加账号
+        </n-button>
+      </div>
+      <n-divider v-if="dataStore.userLoginStatus" />
       <!-- 退出登录 -->
       <n-button :focusable="false" class="logout" strong secondary round @click="isLogout">
         <template #icon>
@@ -91,11 +118,14 @@ import { useDataStore } from "@/stores";
 import { openUserLogin } from "@/utils/modal";
 import { getLoginState } from "@/api/login";
 import {
+  updateUserData,
+  updateSpecialUserData,
   toLogout,
   isLogin,
   refreshLoginData,
-  updateUserData,
-  updateSpecialUserData,
+  saveCurrentAccount,
+  switchAccount,
+  removeAccount,
 } from "@/utils/auth";
 import { useMobile } from "@/composables/useMobile";
 
@@ -163,6 +193,55 @@ const checkLoginStatus = async () => {
   }
 };
 
+// 其他账号列表（排除当前登录的）
+const otherAccounts = computed(() => {
+  return dataStore.userList.filter((u) => u.userId !== dataStore.userData.userId);
+});
+
+// 切换账号
+const handleSwitchAccount = async (userId: number) => {
+  userMenuShow.value = false;
+  await switchAccount(userId);
+};
+
+// 移除账号
+const handleRemoveAccount = (userId: number) => {
+  removeAccount(userId);
+};
+
+// 添加新账号 (保存当前 -> 开启强制登录 -> 成功后自动切换)
+const handleAddAccount = async () => {
+  // 限制账号数量
+  if (dataStore.userList.length >= 3) {
+    window.$message.warning("最多只能保留 3 个账号");
+    return;
+  }
+
+  // 1先保存当前账号状态 (快照)
+  saveCurrentAccount();
+
+  userMenuShow.value = false;
+
+  // 打开登录框 (强制模式, 不登出当前用户以保持 cookies 直到新登录成功, 禁用 UID 登录)
+  openUserLogin(
+    false,
+    true,
+    async () => {
+      // 登录成功回调
+      // 此时新 cookies 已设置，store 已更新
+      window.$message.loading("正在更新数据...");
+      try {
+        await updateUserData();
+        window.$message.success("登录成功");
+        // router.push("/");
+      } catch (error) {
+        console.error("Login update failed", error);
+      }
+    },
+    true,
+  );
+};
+
 // 退出登录
 const isLogout = () => {
   if (!isLogin()) {
@@ -174,7 +253,11 @@ const isLogout = () => {
     content: "确认退出当前用户登录？",
     positiveText: "确认登出",
     negativeText: "取消",
-    onPositiveClick: () => toLogout(),
+    onPositiveClick: () => {
+      // 退出时保存当前账号，方便下次登录
+      saveCurrentAccount();
+      toLogout();
+    },
   });
 };
 
@@ -238,6 +321,7 @@ onBeforeMount(() => {
   .user-info {
     .nickname {
       font-weight: bold;
+      max-width: 220px;
     }
     .n-tag {
       height: 18px;
@@ -258,7 +342,54 @@ onBeforeMount(() => {
       .n-text {
         font-size: 12px;
         font-weight: normal;
+        margin-top: 4px;
       }
+    }
+  }
+  .account-list {
+    .subtitle {
+      font-size: 12px;
+      text-align: center;
+      margin-bottom: 8px;
+      display: block;
+    }
+    .account-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      position: relative;
+      .account-name {
+        margin-left: 8px;
+        font-size: 13px;
+        flex: 1;
+      }
+      .delete-btn {
+        opacity: 0;
+        padding: 4px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        transition:
+          background-color 0.2s,
+          color 0.2s;
+        &:hover {
+          background-color: rgba(var(--primary), 0.1);
+          color: var(--primary-color);
+        }
+      }
+      &:hover {
+        background-color: rgba(var(--primary), 0.08);
+        .delete-btn {
+          opacity: 1;
+        }
+      }
+    }
+    .add-account {
+      border-radius: 8px;
     }
   }
   .n-divider {

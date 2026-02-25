@@ -1,8 +1,15 @@
 import { useSettingStore } from "@/stores/setting";
-import { PlayModePayload, RepeatModeType, ShuffleModeType } from "@/types/shared";
+import type { SongLyric } from "@/types/lyric";
+import {
+  TASKBAR_IPC_CHANNELS,
+  type SyncStatePayload,
+  type SyncTickPayload,
+  type TaskbarConfig,
+} from "@/types/shared";
+import type { PlayModePayload, RepeatModeType, ShuffleModeType } from "@/types/shared/play-mode";
 import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
-import { DiscordConfigPayload, MetadataParam, PlaybackStatus, RepeatMode } from "@emi";
+import type { DiscordConfigPayload, MetadataParam, PlaybackStatus, RepeatMode } from "@emi";
 import { throttle } from "lodash-es";
 
 /**
@@ -25,7 +32,7 @@ export const sendSongChange = (title: string, name: string, artist: string, albu
   // 获取歌曲时长
   const duration = getPlaySongData()?.duration ?? 0;
   window.electron.ipcRenderer.send("play-song-change", { title, name, artist, album, duration });
-  window.electron.ipcRenderer.send("update-desktop-lyric-data", {
+  window.electron.ipcRenderer.send("desktop-lyric:update-data", {
     playName: name,
     artistName: artist,
   });
@@ -94,7 +101,87 @@ export const sendLikeStatus = (isLiked: boolean) => {
  * @param show 是否显示
  */
 export const toggleDesktopLyric = (show: boolean) => {
-  if (isElectron) window.electron.ipcRenderer.send("toggle-desktop-lyric", show);
+  if (isElectron) window.electron.ipcRenderer.send("desktop-lyric:toggle", show);
+};
+
+export const updateTaskbarConfig = (config: Partial<TaskbarConfig>) => {
+  if (!isElectron) return;
+  window.electron.ipcRenderer.send(TASKBAR_IPC_CHANNELS.UPDATE_CONFIG, config);
+};
+
+export const broadcastTaskbarState = (payload: SyncStatePayload) => {
+  if (!isElectron) return;
+  window.electron.ipcRenderer.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, payload);
+};
+
+export const broadcastTaskbarTick = (payload: SyncTickPayload) => {
+  if (!isElectron) return;
+  window.electron.ipcRenderer.send(TASKBAR_IPC_CHANNELS.SYNC_TICK, payload);
+};
+
+export interface TaskbarMetadataPayload {
+  title: string;
+  artist: string;
+  cover: string;
+}
+
+export const sendTaskbarMetadata = (payload: TaskbarMetadataPayload) => {
+  broadcastTaskbarState({
+    type: "track-change",
+    data: {
+      title: payload.title,
+      artist: payload.artist,
+      cover: payload.cover,
+    },
+  });
+};
+
+export const sendTaskbarLyrics = (lyrics: SongLyric) => {
+  if (!isElectron) return;
+
+  const yrcData = lyrics.yrcData ?? [];
+  const lrcData = lyrics.lrcData ?? [];
+  const hasYrc = yrcData.length > 0;
+
+  const taskbarLyrics = hasYrc ? yrcData : lrcData;
+
+  broadcastTaskbarState({
+    type: "lyrics-loaded",
+    data: {
+      lines: toRaw(taskbarLyrics),
+      type: hasYrc ? "word" : "line",
+    },
+  });
+};
+
+export interface TaskbarStatePayload {
+  isPlaying: boolean;
+}
+
+export const sendTaskbarState = (payload: TaskbarStatePayload) => {
+  broadcastTaskbarState({
+    type: "playback-state",
+    data: payload,
+  });
+};
+
+export interface TaskbarProgressPayload {
+  currentTime: number;
+  duration: number;
+  offset: number;
+}
+
+export const sendTaskbarProgressData = (payload: TaskbarProgressPayload) => {
+  broadcastTaskbarTick([payload.currentTime, payload.duration, payload.offset]);
+};
+
+export const sendTaskbarThemeColor = (color: { light: string; dark: string } | null) => {
+  if (!isElectron) return;
+
+  broadcastTaskbarState({
+    type: "theme-color",
+    data: color,
+  });
 };
 
 /**
@@ -139,15 +226,36 @@ export const sendMediaPlayState = (status: PlaybackStatus) => {
 };
 
 /**
+ * @description 通过外部媒体集成模块更新媒体控件的播放速率
+ * @note 仅在 Electron 上有效
+ * @param rate - 播放速率，1.0 表示正常速度
+ * @see {@link EmiModule.updatePlaybackRate 外部媒体集成模块的 `updatePlaybackRate` 方法}
+ */
+export const sendMediaPlaybackRate = (rate: number) => {
+  if (isElectron) window.electron.ipcRenderer.send("media-update-playback-rate", { rate });
+};
+
+/**
+ * @description 通过外部媒体集成模块更新媒体控件的音量
+ * @note 仅在 Electron 上有效
+ * @param volume - 音量，范围是 0.0（静音）到 1.0（最大音量）
+ * @see {@link EmiModule.updateVolume 外部媒体集成模块的 `updateVolume` 方法}
+ */
+export const sendMediaVolume = (volume: number) => {
+  if (isElectron) window.electron.ipcRenderer.send("media-update-volume", { volume });
+};
+
+/**
  * @description 通过外部媒体集成模块更新媒体控件和 Discord RPC 的播放状态
  * @note 仅在 Electron 上有效
  * @param currentTime - 当前的播放进度，单位是毫秒
  * @param totalTime - 总时长，单位是毫秒
+ * @param seeked - 是否为 seek 操作触发的更新
  * @see {@link EmiModule.updateTimeline 外部媒体集成模块的 `updateTimeline` 方法}
  */
-export const sendMediaTimeline = (currentTime: number, totalTime: number) => {
+export const sendMediaTimeline = (currentTime: number, totalTime: number, seeked?: boolean) => {
   if (isElectron) {
-    window.electron.ipcRenderer.send("media-update-timeline", { currentTime, totalTime });
+    window.electron.ipcRenderer.send("media-update-timeline", { currentTime, totalTime, seeked });
   }
 };
 

@@ -12,10 +12,11 @@
     <!-- 进度条 -->
     <PlayerSlider />
     <!-- 信息 -->
-    <div class="play-data">
+    <div :class="['play-data', { 'hidden-cover': settingStore.hiddenCovers.player }]">
       <!-- 封面 -->
-      <Transition name="fade" mode="out-in">
+      <Transition name="fade">
         <div
+          v-if="!settingStore.hiddenCovers.player"
           :key="musicStore.playSong.cover"
           class="cover"
           @click.stop="statusStore.showFullPlayer = true"
@@ -45,12 +46,14 @@
             <TextContainer
               :key="musicStore.playSong.name"
               :text="
-                settingStore.hideLyricBrackets
+                settingStore.hideBracketedContent
                   ? removeBrackets(musicStore.playSong.name)
                   : musicStore.playSong.name
               "
               :speed="0.2"
               class="name"
+              style="cursor: pointer"
+              @click.stop="settingStore.hiddenCovers.player && (statusStore.showFullPlayer = true)"
             />
             <!-- 倍速 -->
             <n-tag
@@ -77,34 +80,53 @@
               <SvgIcon name="FormatList" :size="20" :depth="2" class="more" />
             </n-dropdown>
           </div>
-          <Transition name="fade" mode="out-in">
-            <!-- 歌词 -->
-            <TextContainer
-              v-if="isShowLyrics && instantLyrics"
-              :key="instantLyrics"
-              :text="instantLyrics"
-              :speed="0.2"
-              :delay="500"
-              class="lyric"
-            />
-            <!-- 歌手 -->
-            <div v-else class="artists">
-              <n-text v-if="musicStore.playSong.type === 'radio'" class="ar-item">播客电台</n-text>
-              <template v-else-if="Array.isArray(musicStore.playSong.artists)">
-                <n-text
-                  v-for="(item, index) in musicStore.playSong.artists"
-                  :key="index"
-                  class="ar-item"
-                  @click="openJumpArtist(musicStore.playSong.artists, item.id)"
-                >
-                  {{ item.name }}
-                </n-text>
-              </template>
-              <n-text v-else class="ar-item" @click="openJumpArtist(musicStore.playSong.artists)">
-                {{ musicStore.playSong.artists || "未知艺术家" }}
-              </n-text>
-            </div>
-          </Transition>
+          <div class="lyric-container">
+            <Transition
+              :name="settingStore.lyricTransition === 'fade' ? 'fade' : 'lyric-slide'"
+              :mode="settingStore.lyricTransition === 'fade' ? 'out-in' : undefined"
+            >
+              <!-- 歌词 -->
+              <TextContainer
+                v-if="isShowLyrics && instantLyrics"
+                :key="instantLyrics"
+                :text="instantLyrics"
+                :speed="0.5"
+                :delay="500"
+                class="lyric"
+              />
+              <!-- 歌手 -->
+              <div v-else class="artists">
+                <TextContainer :speed="0.5" class="artists-container">
+                  <n-text v-if="musicStore.playSong.type === 'radio'" class="ar-item">
+                    播客电台
+                  </n-text>
+                  <template v-else-if="Array.isArray(musicStore.playSong.artists)">
+                    <n-text
+                      v-for="(item, index) in musicStore.playSong.artists"
+                      :key="index"
+                      class="ar-item"
+                      @click="openJumpArtist(musicStore.playSong.artists, item.id)"
+                    >
+                      {{
+                        settingStore.hideBracketedContent ? removeBrackets(item.name) : item.name
+                      }}
+                    </n-text>
+                  </template>
+                  <n-text
+                    v-else
+                    class="ar-item"
+                    @click="openJumpArtist(musicStore.playSong.artists)"
+                  >
+                    {{
+                      settingStore.hideBracketedContent
+                        ? removeBrackets(musicStore.playSong.artists)
+                        : musicStore.playSong.artists || "未知艺术家"
+                    }}
+                  </n-text>
+                </TextContainer>
+              </div>
+            </Transition>
+          </div>
         </div>
       </Transition>
     </div>
@@ -225,10 +247,11 @@ import { useDataStore, useMusicStore, useSettingStore, useStatusStore } from "@/
 import { toLikeSong } from "@/utils/auth";
 import { useTimeFormat } from "@/composables/useTimeFormat";
 import { useSwipe } from "@vueuse/core";
-import { copyData, coverLoaded, renderIcon } from "@/utils/helper";
+import { copyData, coverLoaded, renderIcon, getShareUrl } from "@/utils/helper";
 import {
   openAutoClose,
   openChangeRate,
+  openCopySongInfo,
   openDownloadSong,
   openJumpArtist,
   openPlaylistAdd,
@@ -295,15 +318,20 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
           icon: renderIcon("Copy", { size: 18 }),
         },
         {
+          key: "copy-song-info",
+          label: "复制更多信息",
+          show: !isLocal && isSong,
+          props: {
+            onClick: () => openCopySongInfo(song.id),
+          },
+          icon: renderIcon("FormatList", { size: 18 }),
+        },
+        {
           key: "share",
           label: `分享${song.type === "song" ? "歌曲" : "节目"}链接`,
           show: !isLocal,
           props: {
-            onClick: () =>
-              copyData(
-                `https://music.163.com/#/${song.type}?id=${song.id}`,
-                "已复制分享链接到剪切板",
-              ),
+            onClick: () => copyData(getShareUrl(song.type, song.id), "已复制分享链接到剪切板"),
           },
           icon: renderIcon("Share", { size: 18 }),
         },
@@ -348,6 +376,15 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
       icon: renderIcon("Download"),
     },
     {
+      key: "wiki",
+      label: "音乐百科",
+      show: !isLocal && isSong,
+      props: {
+        onClick: () => router.push({ name: "song-wiki", query: { id: musicStore.playSong.id } }),
+      },
+      icon: renderIcon("Info"),
+    },
+    {
       key: "comment",
       label: "查看评论",
       show: !isLocal,
@@ -379,7 +416,7 @@ const isShowLyrics = computed(() => {
 
 // 当前实时歌词
 const instantLyrics = computed(() => {
-  const isYrc = musicStore.songLyric.yrcData?.length && settingStore.showYrc;
+  const isYrc = musicStore.songLyric.yrcData?.length && settingStore.showWordLyrics;
   const content = isYrc
     ? musicStore.songLyric.yrcData[statusStore.lyricIndex]
     : musicStore.songLyric.lrcData[statusStore.lyricIndex];
@@ -418,26 +455,31 @@ const instantLyrics = computed(() => {
     --n-handle-size: 14px;
   }
   .play-data {
+    position: relative;
     display: flex;
     flex-direction: row;
+    align-items: center;
     overflow: hidden;
+    height: 100%;
     max-width: 640px;
+    padding-left: 68px;
     .cover {
-      position: relative;
+      position: absolute;
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 55px;
-      height: 55px;
-      min-width: 55px;
+      left: 0;
+      width: 56px;
+      height: 56px;
+      min-width: 56px;
       border-radius: 8px;
       overflow: hidden;
       margin-right: 12px;
       transition: opacity 0.2s;
       cursor: pointer;
       :deep(img) {
-        width: 55px;
-        height: 55px;
+        width: 56px;
+        height: 56px;
         opacity: 0;
         transition:
           transform 0.3s,
@@ -477,7 +519,6 @@ const instantLyrics = computed(() => {
       .data {
         display: flex;
         align-items: center;
-        margin-top: 2px;
         .name {
           font-weight: bold;
           font-size: 16px;
@@ -509,40 +550,57 @@ const instantLyrics = computed(() => {
           flex-shrink: 0;
         }
       }
-      .artists {
+      .lyric-container {
+        position: relative;
+        height: 22px;
         margin-top: 2px;
-        display: -webkit-box;
-        line-clamp: 1;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 1;
         overflow: hidden;
-        word-break: break-all;
-        .ar-item {
-          display: inline-flex;
-          transition: color 0.3s;
-          cursor: pointer;
-          &::after {
-            content: "/";
-            margin: 0 6px;
-            opacity: 0.6;
-            transition: none;
-          }
-          &:last-child {
+        .lyric,
+        .artists {
+          margin-top: 0;
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+        }
+      }
+      .artists {
+        width: 100%;
+        overflow: hidden;
+
+        .artists-container {
+          .ar-item {
+            display: inline-flex;
+            transition: color 0.3s;
+            cursor: pointer;
+            white-space: nowrap;
+
             &::after {
-              display: none;
+              content: "/";
+              margin: 0 6px;
+              opacity: 0.6;
+              transition: none;
             }
-          }
-          &:hover {
-            color: var(--primary-hex);
-            &::after {
-              color: var(--n-close-icon-color);
+            &:last-child {
+              &::after {
+                display: none;
+              }
+            }
+            &:hover {
+              color: var(--primary-hex);
+              &::after {
+                color: var(--n-close-icon-color);
+              }
             }
           }
         }
       }
-      .lyric {
-        margin-top: 2px;
-      }
+    }
+    &.hidden-cover {
+      padding-left: 0;
     }
   }
   .play-control {

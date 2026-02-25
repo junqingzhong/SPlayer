@@ -1,5 +1,6 @@
 import { personalFm, personalFmToTrash } from "@/api/rec";
 import { songUrl, unlockSongUrl } from "@/api/song";
+import { useLyricManager } from "@/core/player/LyricManager";
 import {
   useDataStore,
   useMusicStore,
@@ -7,7 +8,7 @@ import {
   useStatusStore,
   useStreamingStore,
 } from "@/stores";
-import { QualityType, type SongType } from "@/types/main";
+import { QualityType, type SongType, type AudioSourceType } from "@/types/main";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
 import { formatSongsList } from "@/utils/format";
@@ -41,12 +42,61 @@ export type AudioSource = {
   /** 音质 */
   quality?: QualityType;
   /** 音源 */
-  source?: string;
+  source?: AudioSourceType;
 };
 
 class SongManager {
   /** 预载下一首歌曲播放信息 */
   private nextPrefetch: AudioSource | undefined;
+
+  public peekPrefetch(id: number): AudioSource | undefined {
+    if (!this.nextPrefetch) return;
+    if (this.nextPrefetch.id !== id) return;
+    return this.nextPrefetch;
+  }
+
+  public async getMusicCachePath(
+    id: number | string,
+    quality?: QualityType | string,
+  ): Promise<string | null> {
+    const settingStore = useSettingStore();
+    if (!isElectron || !settingStore.cacheEnabled || !settingStore.songCacheEnabled) return null;
+    try {
+      return await window.electron.ipcRenderer.invoke("music-cache-check", id, quality);
+    } catch {
+      return null;
+    }
+  }
+
+  public async ensureMusicCachePath(
+    id: number | string,
+    url: string | undefined,
+    quality?: QualityType | string,
+  ): Promise<string | null> {
+    const existing = await this.getMusicCachePath(id, quality);
+    if (existing) return existing;
+    if (!url) return null;
+
+    const settingStore = useSettingStore();
+    if (!isElectron || !settingStore.cacheEnabled || !settingStore.songCacheEnabled) return null;
+    try {
+      const result: unknown = await window.electron.ipcRenderer.invoke(
+        "music-cache-download",
+        id,
+        url,
+        quality || "standard",
+      );
+      if (result && typeof result === "object") {
+        const record = result as Record<string, unknown>;
+        if (record.success === true && typeof record.path === "string") {
+          return record.path;
+        }
+      }
+    } catch {
+      return null;
+    }
+    return await this.getMusicCachePath(id);
+  }
 
   /**
    * 预加载封面图片
@@ -127,12 +177,10 @@ class SongManager {
   public getOnlineUrl = async (id: number, isPc: boolean = false): Promise<AudioSource> => {
     const settingStore = useSettingStore();
     let level = isPc ? "exhigh" : settingStore.songLevel;
-
     // Fuck AI Mode: 如果开启，且请求的 level 是 AI 音质，降级为 hires
     if (settingStore.disableAiAudio && AI_AUDIO_LEVELS.includes(level)) {
       level = "hires";
     }
-
     const res = await songUrl(id, level);
     console.log(`🌐 ${id} music data:`, res);
     const songData = res.data?.[0];
@@ -169,15 +217,31 @@ class SongManager {
   /**
    * 获取解锁播放链接
    * @param songData 歌曲数据
+   * @param specificSource 指定解锁源
    * @returns
    */
-  public getUnlockSongUrl = async (song: SongType): Promise<AudioSource> => {
+  public getUnlockSongUrl = async (
+    song: SongType,
+    specificSource?: string,
+  ): Promise<AudioSource> => {
     const settingStore = useSettingStore();
     const songId = song.id;
-    // 优先检查本地缓存
-    const cachedUrl = await this.checkLocalCache(songId);
-    if (cachedUrl) {
-      return { id: songId, url: cachedUrl, isUnlocked: true };
+    // 优先检查本地缓存 (仅在未指定源或指定为 auto 时)
+    if (!specificSource || specificSource === "auto") {
+      const cachedUrl = await this.checkLocalCache(songId);
+      if (cachedUrl) {
+        // Auto 模式下命中缓存，尝试获取第一个启用的源作为标识
+        let source: AudioSourceType = SongUnlockServer.NETEASE;
+        const firstEnabled = settingStore.songUnlockServer.find((s) => s.enabled);
+        if (firstEnabled) source = firstEnabled.key as AudioSourceType;
+        return {
+          id: songId,
+          url: cachedUrl,
+          isUnlocked: true,
+          source,
+          quality: QualityType.HQ,
+        };
+      }
     }
     const artist = Array.isArray(song.artists) ? song.artists[0].name : song.artists;
     const keyWord = song.name + "-" + artist;
@@ -186,7 +250,15 @@ class SongManager {
     }
 
     // 获取音源列表
-    const servers = settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
+    let servers: SongUnlockServer[] = [];
+    if (specificSource && specificSource !== "auto") {
+      servers = [specificSource as SongUnlockServer];
+    } else {
+      servers = settingStore.songUnlockServer
+        .filter((s) => s.enabled)
+        .map((s) => s.key as SongUnlockServer);
+    }
+
     if (servers.length === 0) {
       return { id: songId, url: undefined };
     }
@@ -227,14 +299,15 @@ class SongManager {
   };
 
   /**
-   * 预载下一首歌曲播放地址
+   * 预载下一首歌曲
    * @returns 预载数据
    */
-  public getNextSongUrl = async (): Promise<AudioSource | undefined> => {
+  public prefetchNextSong = async (): Promise<AudioSource | undefined> => {
     try {
       const dataStore = useDataStore();
       const statusStore = useStatusStore();
       const settingStore = useSettingStore();
+      const lyricManager = useLyricManager();
 
       // 无列表或私人FM模式直接跳过
       const playList = dataStore.playList;
@@ -250,9 +323,19 @@ class SongManager {
 
       // 预加载封面图片
       this.prefetchCover(nextSong);
+      // 预加载歌词
+      lyricManager.prefetchLyric(nextSong);
 
-      // 本地歌曲跳过
-      if (nextSong.path) return;
+      // 本地歌曲
+      if (nextSong.path) {
+        // 预分析音频 (Automix)
+        if (isElectron && settingStore.enableAutomix) {
+          window.electron.ipcRenderer.invoke("analyze-audio-head", nextSong.path).catch((e) => {
+            console.warn("[Prefetch] Analysis failed:", e);
+          });
+        }
+        return;
+      }
 
       // 流媒体歌曲
       if (nextSong.type === "streaming" && nextSong.streamUrl) {
@@ -275,7 +358,13 @@ class SongManager {
       const { url: officialUrl, isTrial, quality } = await this.getOnlineUrl(songId, false);
       if (officialUrl && !isTrial) {
         // 官方可播放且非试听
-        this.nextPrefetch = { id: songId, url: officialUrl, isUnlocked: false, quality };
+        this.nextPrefetch = {
+          id: songId,
+          url: officialUrl,
+          isUnlocked: false,
+          quality,
+          source: "official",
+        };
         return this.nextPrefetch;
       } else if (canUnlock) {
         // 官方失败或为试听时尝试解锁
@@ -285,14 +374,14 @@ class SongManager {
           return this.nextPrefetch;
         } else if (officialUrl && settingStore.playSongDemo) {
           // 解锁失败，若官方为试听且允许试听，保留官方试听地址
-          this.nextPrefetch = { id: songId, url: officialUrl };
+          this.nextPrefetch = { id: songId, url: officialUrl, source: "official" };
           return this.nextPrefetch;
         } else {
           return;
         }
       } else {
         // 不可解锁，仅保留官方结果（可能为空）
-        this.nextPrefetch = { id: songId, url: officialUrl };
+        this.nextPrefetch = { id: songId, url: officialUrl, source: "official" };
         return this.nextPrefetch;
       }
     } catch (error) {
@@ -315,7 +404,7 @@ class SongManager {
    * @param song 歌曲
    * @returns 音频源
    */
-  public getAudioSource = async (song: SongType): Promise<AudioSource> => {
+  public getAudioSource = async (song: SongType, forceSource?: string): Promise<AudioSource> => {
     const settingStore = useSettingStore();
 
     // 本地文件直接返回
@@ -328,7 +417,7 @@ class SongManager {
         return { id: song.id, url: undefined };
       }
       const encodedPath = song.path.replace(/#/g, "%23").replace(/\?/g, "%3F");
-      return { id: song.id, url: `file://${encodedPath}` };
+      return { id: song.id, url: `file://${encodedPath}`, source: "local" };
     }
 
     // Stream songs (Subsonic / Jellyfin)
@@ -341,6 +430,7 @@ class SongManager {
         url: finalUrl,
         isUnlocked: false,
         quality: song.quality || QualityType.SQ,
+        source: "streaming",
       };
     }
 
@@ -349,7 +439,12 @@ class SongManager {
     if (!songId) return { id: 0, url: undefined, quality: undefined, isUnlocked: false };
 
     // 检查缓存并返回
-    if (this.nextPrefetch && this.nextPrefetch.id === songId && settingStore.useNextPrefetch) {
+    if (
+      !forceSource &&
+      this.nextPrefetch &&
+      this.nextPrefetch.id === songId &&
+      settingStore.useNextPrefetch
+    ) {
       console.log(`🚀 [${songId}] 使用预加载缓存播放`);
       const cachedSource = this.nextPrefetch;
       this.nextPrefetch = undefined;
@@ -360,15 +455,33 @@ class SongManager {
     try {
       // 是否可解锁
       const canUnlock = isElectron && song.type !== "radio" && settingStore.useSongUnlock;
+
+      // 如果指定了非官方源，直接走解锁流程
+      if (forceSource && forceSource !== "auto") {
+        if (!canUnlock) {
+          // 如果不支持解锁但请求了非官方源，返回失败
+          return { id: songId, url: undefined };
+        }
+        const unlockUrl = await this.getUnlockSongUrl(song, forceSource);
+        if (unlockUrl.url) {
+          console.log(`🔓 [${songId}] 指定源解锁成功: ${forceSource}`, unlockUrl);
+          return unlockUrl;
+        } else {
+          // 指定源失败，不回退
+          return { id: songId, url: undefined };
+        }
+      }
+
+      // 如果指定了官方源，或未指定 (默认优先官方)
       // 尝试获取官方链接
       const { url: officialUrl, isTrial, quality } = await this.getOnlineUrl(songId, !!song.pc);
       // 如果官方链接有效且非试听（或者用户接受试听）
       if (officialUrl && (!isTrial || (isTrial && settingStore.playSongDemo))) {
         if (isTrial) window.$message.warning("当前歌曲仅可试听");
-        return { id: songId, url: officialUrl, quality, isUnlocked: false, source: "netease" };
+        return { id: songId, url: officialUrl, quality, isUnlocked: false, source: "official" };
       }
-      // 尝试解锁
-      if (canUnlock) {
+      // 如果官方失败（或被跳过），且未强制指定 auto (或者指定了 auto 但允许回退 - 即 Auto 模式)
+      if ((!forceSource || forceSource === "auto") && canUnlock) {
         const unlockUrl = await this.getUnlockSongUrl(song);
         if (unlockUrl.url) {
           console.log(`🔓 [${songId}] 解锁成功`, unlockUrl);
@@ -376,20 +489,36 @@ class SongManager {
         }
       }
       // 最后的兜底：检查本地是否有缓存（不区分音质）
-      const fallbackUrl = await this.checkLocalCache(songId);
-      if (fallbackUrl) {
-        console.log(`🚀 [${songId}] 网络请求失败，使用本地缓存兜底`, fallbackUrl);
-        return { id: songId, url: fallbackUrl, isUnlocked: true };
+      if (!forceSource || forceSource === "auto") {
+        const fallbackUrl = await this.checkLocalCache(songId);
+        if (fallbackUrl) {
+          console.log(`🚀 [${songId}] 网络请求失败，使用本地缓存兜底`, fallbackUrl);
+          return {
+            id: songId,
+            url: fallbackUrl,
+            isUnlocked: true,
+            source: "local",
+            quality: QualityType.HQ,
+          };
+        }
       }
       // 无可用源
       return { id: songId, url: undefined, quality: undefined, isUnlocked: false };
     } catch (e) {
       console.error(`❌ [${songId}] 获取音频源异常:`, e);
       // 异常时的兜底：检查本地是否有缓存
-      const fallbackUrl = await this.checkLocalCache(songId);
-      if (fallbackUrl) {
-        console.log(`🚀 [${songId}] 获取异常，使用本地缓存兜底`);
-        return { id: songId, url: fallbackUrl, isUnlocked: true };
+      if (!forceSource || forceSource === "auto") {
+        const fallbackUrl = await this.checkLocalCache(songId);
+        if (fallbackUrl) {
+          console.log(`🚀 [${songId}] 获取异常，使用本地缓存兜底`);
+          return {
+            id: songId,
+            url: fallbackUrl,
+            isUnlocked: true,
+            source: "local",
+            quality: QualityType.HQ,
+          };
+        }
       }
       return {
         id: songId,

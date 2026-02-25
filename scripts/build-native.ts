@@ -8,8 +8,16 @@
  *
  * Copyright (c) 2026 by ${git_name_email}, All Rights Reserved.
  */
+import dotenv from "dotenv";
 import { execSync } from "node:child_process";
+import os from "node:os";
+import path from "node:path";
 import process from "node:process";
+
+interface NativeModule {
+  name: string;
+  enabled?: boolean;
+}
 
 const isRustAvailable = () => {
   try {
@@ -24,6 +32,11 @@ const shouldSkipIfNoRust = () => {
   const args = process.argv.slice(2);
   return args.includes("--skip-if-no-rust") || args.includes("--allow-missing-rust");
 };
+
+const platform = os.platform();
+const isWindows = platform === "win32";
+
+dotenv.config({ path: path.resolve(import.meta.dirname, "../.env") });
 
 if (process.env.SKIP_NATIVE_BUILD === "true") {
   console.log("[BuildNative] SKIP_NATIVE_BUILD 已设置，跳过原生模块构建");
@@ -43,25 +56,37 @@ if (!isRustAvailable()) {
   process.exit(1);
 }
 
-console.log(`[BuildNative] 当前构建目标: ${process.platform}`);
+const modules: NativeModule[] = [
+  {
+    name: "external-media-integration",
+  },
+  {
+    name: "tools",
+  },
+  {
+    name: "taskbar-lyric",
+    enabled: isWindows,
+  },
+  // 有人抱怨编译 wasm 总是有问题，暂时注释掉
+  // {
+  //   name: "ferrous-opencc-wasm",
+  // },
+];
 
 try {
-  console.log("[BuildNative] 开始构建原生模块...");
+  const args = process.argv.slice(2);
+  const isDev = args.includes("--dev");
+  const buildCommand = isDev ? "build:debug" : "build";
 
-  execSync("pnpm --filter external-media-integration build", {
-    stdio: "inherit",
-  });
-
-  // 有人抱怨编译 wasm 总是有问题，暂时注释掉
-  // console.log("[BuildNative] 构建 ferrous-opencc-wasm...");
-  // execSync("pnpm --filter ferrous-opencc-wasm build", {
-  //   stdio: "inherit",
-  // });
-
-  console.log("[BuildNative] 模块构建成功");
+  for (const mod of modules) {
+    if (mod.enabled === false) {
+      continue;
+    }
+    execSync(`pnpm --filter ${mod.name} ${buildCommand}`, {
+      stdio: "inherit",
+    });
+  }
 } catch (error) {
   console.error("[BuildNative] 模块构建失败", error);
   process.exit(1);
 }
-
-console.log("[BuildNative] 原生模块构建完成");

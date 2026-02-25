@@ -12,7 +12,9 @@
       ]"
       :style="{
         '--amll-lp-color': 'rgb(var(--main-cover-color, 239 239 239))',
-        '--amll-lp-hover-bg-color': 'rgba(var(--main-cover-color), 0.08)',
+        '--amll-lp-hover-bg-color': statusStore.playerMetaShow
+          ? 'rgba(var(--main-cover-color), 0.08)'
+          : 'transparent',
         '--amll-lyric-left-padding': settingStore.lyricAlignRight
           ? ''
           : `${settingStore.lyricHorizontalOffset}px`,
@@ -37,7 +39,10 @@
         :wordFadeWidth="settingStore.wordFadeWidth"
         :style="{
           '--display-count-down-show': settingStore.countDownShow ? 'flex' : 'none',
-          '--amll-lp-font-size': settingStore.lyricFontSize + 'px',
+          '--amll-lp-font-size': getFontSize(
+            settingStore.lyricFontSize,
+            settingStore.lyricFontSizeMode,
+          ),
           'font-weight': settingStore.lyricFontWeight,
           'font-family': settingStore.LyricFont !== 'follow' ? settingStore.LyricFont : '',
           ...lyricLangFontStyle(settingStore),
@@ -55,7 +60,8 @@ import { useMusicStore, useSettingStore, useStatusStore } from "@/stores";
 import { getLyricLanguage } from "@/utils/format";
 import { usePlayerController } from "@/core/player/PlayerController";
 import { cloneDeep } from "lodash-es";
-import { lyricLangFontStyle } from "@/utils/lyricFontConfig";
+import { lyricLangFontStyle } from "@/utils/lyric/lyricFontConfig";
+import { getFontSize } from "@/utils/style";
 
 defineProps({
   currentTime: {
@@ -76,7 +82,7 @@ const amLyricsData = computed(() => {
   const { songLyric } = musicStore;
   if (!songLyric) return [];
   // 优先使用逐字歌词(YRC/TTML)
-  const useYrc = songLyric.yrcData?.length && settingStore.showYrc;
+  const useYrc = songLyric.yrcData?.length && settingStore.showWordLyrics;
   const lyrics = useYrc ? songLyric.yrcData : songLyric.lrcData;
   // 简单检查歌词有效性
   if (!Array.isArray(lyrics) || lyrics.length === 0) return [];
@@ -165,8 +171,15 @@ watch(lyricPlayerRef, (player) => {
         display: var(--display-count-down-show);
       }
     }
-    @media (max-width: 500px) {
+    @media (max-width: 990px) {
+      padding: 0;
       margin-left: 0;
+      .amll-lyric-player {
+        > div {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+      }
     }
   }
 
@@ -234,6 +247,10 @@ watch(lyricPlayerRef, (player) => {
       color: #ffffff;
       text-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
     }
+  }
+
+  :deep(.am-lyric div[class*="lyricMainLine"] span) {
+    text-align: start;
   }
 
   :lang(ja) {

@@ -87,7 +87,7 @@ import {
   updatePlaylistPrivacy,
 } from "@/api/playlist";
 import { formatCoverList, formatSongsList } from "@/utils/format";
-import { renderIcon, copyData } from "@/utils/helper";
+import { renderIcon, copyData, getShareUrl } from "@/utils/helper";
 import { isLogin, toLikePlaylist, updateUserLikePlaylist } from "@/utils/auth";
 import { useDataStore, useLocalStore } from "@/stores";
 import { openBatchList, openUpdatePlaylist } from "@/utils/modal";
@@ -136,7 +136,7 @@ const currentTab = ref<"songs" | "comments">("songs");
 
 // 是否为本地歌单
 const isLocalPlaylist = computed(() => {
-  return playlistId.value.toString().length === 16;
+  return localStore.isLocalPlaylist(playlistId.value);
 });
 
 // 是否为用户歌单
@@ -228,11 +228,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     key: "copy",
     show: !isLocalPlaylist.value,
     props: {
-      onClick: () =>
-        copyData(
-          `https://music.163.com/#/playlist?id=${playlistId.value}`,
-          "已复制分享链接到剪贴板",
-        ),
+      onClick: () => copyData(getShareUrl("playlist", playlistId.value), "已复制分享链接到剪贴板"),
     },
     icon: renderIcon("Share"),
   },
@@ -263,12 +259,30 @@ const getPlaylistDetail = async (
   // 清空数据
   clearSearch();
   if (!refresh && detailData.value?.id !== id) resetPlaylistData(getList);
+  // 等待本地歌单加载
+  if (id.toString().length === 16 && !localStore.isInitialized) {
+    try {
+      await localStore.readLocalPlaylists();
+    } catch (e) {
+      window.$message.error("获取本地歌单失败");
+      console.error("Failed to init local playlists", e);
+    }
+  }
   // 判断是否为本地歌单，本地歌单 ID 为 16 位
-  const isLocal = id.toString().length === 16;
+  const isLocal = localStore.isLocalPlaylist(id);
   // 本地歌单
   if (isLocal) handleLocalPlaylist(id);
   // 在线歌单
-  else await handleOnlinePlaylist(id, getList, refresh);
+  else {
+    try {
+      await handleOnlinePlaylist(id, getList, refresh);
+    } catch (error) {
+      console.error("Failed to load playlist", error);
+      window.$message.error("获取歌单详情失败");
+      setLoading(false);
+      router.push("/");
+    }
+  }
 };
 
 // 重置歌单数据
@@ -346,6 +360,7 @@ const handleOnlinePlaylist = async (id: number, getList: boolean, refresh: boole
     // 保存缓存
     saveCache("playlist", id, detailData.value!, songs);
   } else {
+    if (!refresh) setListData([]);
     await getPlaylistAllSongs(id, count, refresh);
   }
   // 检查是否仍然是当前请求的歌单
@@ -432,8 +447,8 @@ const handleTabChange = (value: "songs" | "comments") => {
 
 // 播放全部歌曲
 const playAllSongs = useDebounceFn(() => {
-  if (!detailData.value || !listData.value?.length) return;
-  playAllSongsAction(listData.value, playlistId.value);
+  if (!detailData.value || !displayData.value?.length) return;
+  playAllSongsAction(displayData.value, playlistId.value);
 }, 300);
 
 // 加载提示
@@ -503,8 +518,11 @@ const removeSong = async (ids: number[]) => {
 // 编辑歌单
 const updatePlaylist = () => {
   if (!detailData.value || !playlistId.value) return;
-  openUpdatePlaylist(playlistId.value, detailData.value, () =>
-    getPlaylistDetail(playlistId.value, { getList: false, refresh: false }),
+  openUpdatePlaylist(
+    playlistId.value,
+    detailData.value,
+    () => getPlaylistDetail(playlistId.value, { getList: false, refresh: false }),
+    isLocalPlaylist.value,
   );
 };
 

@@ -9,11 +9,13 @@
  * Copyright (c) 2026 by ${git_name_email}, All Rights Reserved.
 -->
 <template>
-  <div id="app-wrapper" :class="{ 'mobile-mode': !isDesktop }">
+<template>
+  <div id="app-wrapper" :class="{ 'mobile-mode': !isDesktop }" v-if="!isDesktopLyric">
     <Provider>
       <router-view />
     </Provider>
   </div>
+  <router-view v-else />
 </template>
 
 <script setup lang="ts">
@@ -23,6 +25,7 @@ import { onMounted } from "vue";
 
 const settingStore = useSettingStore();
 const { isDesktop } = useMobile();
+const isDesktopLyric = location.hash.includes("desktop-lyric");
 
 /**
  * 应用挂载时初始化

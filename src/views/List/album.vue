@@ -65,7 +65,7 @@ import type { DropdownOption } from "naive-ui";
 import { songDetail } from "@/api/song";
 import { albumDetail } from "@/api/album";
 import { formatCoverList, formatSongsList } from "@/utils/format";
-import { renderIcon, copyData } from "@/utils/helper";
+import { renderIcon, copyData, getShareUrl } from "@/utils/helper";
 import { openBatchList } from "@/utils/modal";
 import { useDataStore } from "@/stores";
 import { toLikeAlbum } from "@/utils/auth";
@@ -162,8 +162,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     label: "复制分享链接",
     key: "copy",
     props: {
-      onClick: () =>
-        copyData(`https://music.163.com/#/album?id=${albumId.value}`, "已复制分享链接到剪贴板"),
+      onClick: () => copyData(getShareUrl("album", albumId.value), "已复制分享链接到剪贴板"),
     },
     icon: renderIcon("Share"),
   },
@@ -254,8 +253,8 @@ const handleTabChange = (value: "songs" | "comments") => {
 
 // 播放全部歌曲
 const playAllSongs = useDebounceFn(() => {
-  if (!detailData.value || !listData.value?.length) return;
-  playAllSongsAction(listData.value);
+  if (!detailData.value || !displayData.value?.length) return;
+  playAllSongsAction(displayData.value);
 }, 300);
 
 onBeforeRouteUpdate((to) => {

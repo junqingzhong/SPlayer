@@ -1,6 +1,14 @@
-import type { ColorScheme, RGB } from "@/types/main";
-import { QualityType, type SongLevelDataType, type SortField, type SortOrder } from "@/types/main";
-import { RepeatModeType, ShuffleModeType } from "@/types/shared";
+import type {
+  AudioSourceType,
+  ColorScheme,
+  QualityType,
+  RGB,
+  SongLevelDataType,
+  SortField,
+  SortOrder,
+  UpdateInfoType,
+} from "@/types/main";
+import type { RepeatModeType, ShuffleModeType } from "@/types/shared/play-mode";
 import { isDevBuild } from "@/utils/env";
 import { defineStore } from "pinia";
 
@@ -61,7 +69,7 @@ interface StatusState {
   /** 当前歌曲音质 */
   songQuality: QualityType | undefined;
   /** 当前歌曲音源 */
-  audioSource: string | undefined;
+  audioSource: AudioSourceType | undefined;
   /** 当前播放索引 */
   playIndex: number;
   /** 歌词播放索引 */
@@ -78,8 +86,6 @@ interface StatusState {
   chorus?: number;
   /** 每首歌曲的进度偏移（按歌曲 id 记忆） */
   currentTimeOffsetMap: Record<number, number>;
-  /** 是否为解锁歌曲 */
-  playUblock: boolean;
   /** 主内容高度 */
   mainContentHeight: number;
   /** 列表排序字段 */
@@ -88,6 +94,8 @@ interface StatusState {
   listSortOrder: SortOrder;
   /** 桌面歌词 */
   showDesktopLyric: boolean;
+  /** 任务栏歌词 */
+  showTaskbarLyric: boolean;
   /** 播放器评论 */
   showPlayerComment: boolean;
   /** 私人FM模式 */
@@ -95,6 +103,16 @@ interface StatusState {
   /** 更新检查 */
   updateCheck: boolean;
   showMobileSidebar: boolean; // 添加移动端侧边栏显示状态
+  /** 有可用更新 */
+  updateAvailable: boolean;
+  /** 更新信息 */
+  updateInfo: UpdateInfoType | null;
+  /** 更新已下载完成 */
+  updateDownloaded: boolean;
+  /** 更新下载中 */
+  updateDownloading: boolean;
+  /** 更新下载进度 */
+  updateDownloadProgress: number;
   /** 均衡器是否开启 */
   eqEnabled: boolean;
   /** 均衡器 10 段增益（dB） */
@@ -120,7 +138,7 @@ interface StatusState {
    * 主题背景模式
    * color: 颜色模式 | image: 图片模式
    */
-  themeBackgroundMode: "color" | "image";
+  themeBackgroundMode: "color" | "image" | "video";
   /** 背景图配置 */
   backgroundConfig: {
     /** 背景放大倍数 (1-2) */
@@ -140,6 +158,16 @@ interface StatusState {
   };
   /** 可用音质列表 */
   availableQualities: SongLevelDataType[];
+  /** AB 循环 */
+  abLoop: {
+    enable: boolean;
+    pointA: number | null;
+    pointB: number | null;
+  };
+  /** 侧边栏歌单显示模式 */
+  playlistMode: "online" | "local";
+  automixFxSeq: number;
+  automixEndedSeq: number;
 }
 
 export const useStatusStore = defineStore("status", {
@@ -151,7 +179,6 @@ export const useStatusStore = defineStore("status", {
     showPlayBar: true,
     playStatus: false,
     playLoading: true,
-    playUblock: false,
     playListShow: false,
     showFullPlayer: false,
     playerMetaShow: true,
@@ -178,10 +205,16 @@ export const useStatusStore = defineStore("status", {
     listSortField: "default",
     listSortOrder: "default",
     showDesktopLyric: false,
+    showTaskbarLyric: false,
     showPlayerComment: false,
     updateCheck: false,
     // 移动端侧边栏显示状态
     showMobileSidebar: false,
+    updateAvailable: false,
+    updateInfo: null,
+    updateDownloaded: false,
+    updateDownloading: false,
+    updateDownloadProgress: 0,
     eqEnabled: false,
     eqBands: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     eqPreset: "acoustic",
@@ -212,6 +245,14 @@ export const useStatusStore = defineStore("status", {
       isSolid: false,
     },
     availableQualities: [],
+    abLoop: {
+      enable: false,
+      pointA: null,
+      pointB: null,
+    },
+    playlistMode: "online",
+    automixFxSeq: 0,
+    automixEndedSeq: 0,
   }),
   getters: {
     // 播放音量图标
@@ -225,12 +266,14 @@ export const useStatusStore = defineStore("status", {
             ? "VolumeDown"
             : "VolumeUp";
     },
+    /** 播放模式图标 */
     shuffleIcon(state) {
       if (state.shuffleMode === "heartbeat") {
         return "HeartBit";
       }
       return "Shuffle";
     },
+    /** 循环模式图标 */
     repeatIcon(state) {
       if (state.repeatMode === "one") {
         return "RepeatSong";
@@ -243,22 +286,42 @@ export const useStatusStore = defineStore("status", {
       if (state.repeatMode === "one") return "RepeatSong";
       return "Repeat";
     },
-    // 音量百分比
+    /** 音量百分比 */
     playVolumePercent(state) {
       return Math.round(state.playVolume * 100);
     },
-    // 播放器主色
+    /** 播放器主色 */
     mainColor(state) {
       const mainColor = state.songCoverTheme?.main;
       if (!mainColor) return "239, 239, 239";
       return `${mainColor.r}, ${mainColor.g}, ${mainColor.b}`;
     },
+    /** 是否为自定义背景模式 */
+    isCustomBackground(state) {
+      return state.themeBackgroundMode === "image" || state.themeBackgroundMode === "video";
+    },
     /** 是否为开发者模式 */
     isDeveloperMode(state) {
       return state.developerMode || isDevBuild;
     },
+    /** 是否解锁 */
+    isUnlocked(state) {
+      const audioSource = state.audioSource;
+      return (
+        !!audioSource &&
+        audioSource !== "official" &&
+        audioSource !== "local" &&
+        audioSource !== "streaming"
+      );
+    },
   },
   actions: {
+    triggerAutomixFx() {
+      this.automixFxSeq += 1;
+    },
+    endAutomixFx() {
+      this.automixEndedSeq += 1;
+    },
     /**
      * 获取指定歌曲的偏移
      * 单位：毫秒
@@ -400,6 +463,7 @@ export const useStatusStore = defineStore("status", {
       "listSortField",
       "listSortOrder",
       "showDesktopLyric",
+      "showTaskbarLyric",
       "personalFmMode",
       "autoClose",
       "eqEnabled",
@@ -408,6 +472,7 @@ export const useStatusStore = defineStore("status", {
       "developerMode",
       "themeBackgroundMode",
       "backgroundConfig",
+      "playlistMode",
     ],
   },
 });

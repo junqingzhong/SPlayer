@@ -14,15 +14,32 @@
           <SvgIcon name="Menu" />
         </template>
       </n-button>
-      <!-- 前进后退 -->
-      <n-button :focusable="false" tertiary circle @click="router.go(-1)">
+      
+      <template v-if="!isSmallScreen">
+        <!-- 前进后退 -->
+        <n-button :focusable="false" tertiary circle @click="router.go(-1)">
+          <template #icon>
+            <SvgIcon name="NavigateBefore" :size="26" />
+          </template>
+        </n-button>
+        <n-button :focusable="false" tertiary circle @click="router.go(1)">
+          <template #icon>
+            <SvgIcon name="NavigateNext" :size="26" />
+          </template>
+        </n-button>
+      </template>
+
+      <!-- 有可用更新 -->
+      <n-button
+        v-if="statusStore.updateAvailable"
+        :focusable="false"
+        :title="updateBtnTitle"
+        tertiary
+        circle
+        @click="handleUpdateClick"
+      >
         <template #icon>
-          <SvgIcon name="NavigateBefore" :size="26" />
-        </template>
-      </n-button>
-      <n-button :focusable="false" tertiary circle @click="router.go(1)">
-        <template #icon>
-          <SvgIcon name="NavigateNext" :size="26" />
+          <SvgIcon name="Update" />
         </template>
       </n-button>
     </n-flex>
@@ -131,7 +148,7 @@
 import type { DropdownOption } from "naive-ui";
 import { useSettingStore, useStatusStore } from "@/stores";
 import { renderIcon } from "@/utils/helper";
-import { openSetting, openThemeConfig, openScalingModal } from "@/utils/modal";
+import { openSetting, openThemeConfig, openScalingModal, openUpdateApp } from "@/utils/modal";
 import { isDev, isElectron } from "@/utils/env";
 import { useMobile } from "@/composables/useMobile";
 
@@ -139,6 +156,22 @@ const router = useRouter();
 const settingStore = useSettingStore();
 const statusStore = useStatusStore();
 const { isDesktop, isSmallScreen } = useMobile();
+
+// 更新按钮提示
+const updateBtnTitle = computed(() => {
+  if (statusStore.updateDownloaded) return "更新已就绪，点击查看";
+  if (statusStore.updateDownloading) {
+    return `下载中 ${Math.round(statusStore.updateDownloadProgress)}%`;
+  }
+  return `发现新版本 ${statusStore.updateInfo?.version || ""}`;
+});
+
+// 点击更新按钮
+const handleUpdateClick = () => {
+  if (statusStore.updateInfo) {
+    openUpdateApp(statusStore.updateInfo);
+  }
+};
 
 const showCloseModal = ref(false);
 // 是否记住

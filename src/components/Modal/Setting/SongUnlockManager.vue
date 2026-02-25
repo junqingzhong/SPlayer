@@ -37,6 +37,7 @@
 import { useSettingStore } from "@/stores";
 import { useSortable } from "@vueuse/integrations/useSortable";
 import { SongUnlockServer } from "@/core/player/SongManager";
+import type { Options } from "sortablejs";
 
 const settingStore = useSettingStore();
 
@@ -60,7 +61,7 @@ const getServerDisplayName = (key: SongUnlockServer): string => {
 useSortable(sortableRef, settingStore.songUnlockServer, {
   animation: 150,
   handle: ".n-icon",
-});
+} as Options);
 </script>
 
 <style scoped lang="scss">

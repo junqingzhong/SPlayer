@@ -68,8 +68,61 @@ export const openUserAgreement = async () => {
   });
 };
 
+/** 打开歌单界面配置弹窗 */
+export const openPlaylistPageManager = async () => {
+  const { default: PlaylistPageManager } =
+    await import("@/components/Modal/Setting/PlaylistPageManager.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "歌单界面配置",
+    content: () => {
+      return h(PlaylistPageManager);
+    },
+  });
+};
+
+/** 打开全屏播放器配置弹窗 */
+export const openFullscreenPlayerManager = async () => {
+  const { default: FullscreenPlayerManager } =
+    await import("@/components/Modal/Setting/FullscreenPlayerManager.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "全屏播放器配置",
+    content: () => {
+      return h(FullscreenPlayerManager);
+    },
+  });
+};
+
+/** 打开右键菜单配置弹窗 */
+export const openContextMenuManager = async () => {
+  const { default: ContextMenuManager } =
+    await import("@/components/Modal/Setting/ContextMenuManager.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "右键菜单配置",
+    content: () => {
+      return h(ContextMenuManager);
+    },
+  });
+};
+
 // 用户登录
-export const openUserLogin = async (showTip: boolean = false) => {
+export const openUserLogin = async (
+  showTip: boolean = false,
+  force: boolean = false,
+  onSuccess?: () => void,
+  disableUid: boolean = false,
+) => {
   if (showTip) window.$message.warning("请登录后使用");
   const { default: Login } = await import("@/components/Modal/Login/Login.vue");
   const modal = window.$modal.create({
@@ -81,7 +134,15 @@ export const openUserLogin = async (showTip: boolean = false) => {
     closable: false,
     style: { width: "400px" },
     content: () => {
-      return h(Login, { onClose: () => modal.destroy() });
+      return h(Login, {
+        force,
+        disableUid,
+        onClose: () => modal.destroy(),
+        onSuccess: () => {
+          modal.destroy();
+          if (onSuccess) onSuccess();
+        },
+      });
     },
   });
 };
@@ -194,11 +255,18 @@ export const openCreatePlaylist = async (isLocal: boolean = false) => {
   });
 };
 
-// 编辑歌单
+/**
+ * 编辑歌单
+ * @param id 歌单 id
+ * @param data 歌单信息
+ * @param func 回调函数
+ * @param isLocal 是否为本地歌单
+ */
 export const openUpdatePlaylist = async (
   id: number,
   data: CoverType,
   func: () => Promise<void>,
+  isLocal: boolean = false,
 ) => {
   const { default: UpdatePlaylist } = await import("@/components/Modal/UpdatePlaylist.vue");
   const modal = window.$modal.create({
@@ -206,11 +274,12 @@ export const openUpdatePlaylist = async (
     transformOrigin: "center",
     autoFocus: false,
     style: { width: "600px" },
-    title: "编辑歌单",
+    title: isLocal ? "编辑本地歌单" : "编辑歌单",
     content: () => {
       return h(UpdatePlaylist, {
         id,
         data,
+        isLocal,
         onSuccess: () => {
           modal.destroy();
           // 触发回调
@@ -300,21 +369,6 @@ export const openUpdateApp = async (data: UpdateInfoType) => {
   });
 };
 
-// 歌词排除内容
-export const openLyricExclude = async () => {
-  const { default: ExcludeLyrics } = await import("@/components/Modal/Setting/ExcludeLyrics.vue");
-  window.$modal.create({
-    preset: "card",
-    transformOrigin: "center",
-    autoFocus: false,
-    style: { width: "600px" },
-    title: "歌词排除内容",
-    content: () => {
-      return h(ExcludeLyrics);
-    },
-  });
-};
-
 /** 打开播放速度弹窗 */
 export const openChangeRate = async () => {
   const { default: ChangeRate } = await import("@/components/Modal/ChangeRate.vue");
@@ -341,6 +395,21 @@ export const openAutoClose = async () => {
     title: "自动关闭",
     content: () => {
       return h(AutoClose);
+    },
+  });
+};
+
+/** 打开 AB 循环弹窗 */
+export const openABLoop = async () => {
+  const { default: ABLoop } = await import("@/components/Modal/ABLoop.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "AB 循环",
+    content: () => {
+      return h(ABLoop);
     },
   });
 };
@@ -416,6 +485,21 @@ export const openSidebarHideManager = async () => {
   });
 };
 
+/** 打开封面隐藏配置弹窗 */
+export const openCoverManager = async () => {
+  const { default: CoverManager } = await import("@/components/Modal/Setting/CoverManager.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "封面隐藏配置",
+    content: () => {
+      return h(CoverManager);
+    },
+  });
+};
+
 /** 打开首页栏目配置弹窗 */
 export const openHomePageSectionManager = async () => {
   const { default: HomePageSectionManager } =
@@ -443,6 +527,24 @@ export const openCopyLyrics = async () => {
     title: "复制歌词",
     content: () => {
       return h(CopyLyrics, {
+        onClose: () => modal.destroy(),
+      });
+    },
+  });
+};
+
+/** 打开歌曲详情复制弹窗 */
+export const openCopySongInfo = async (songId: number) => {
+  const { default: CopySongInfo } = await import("@/components/Modal/CopySongInfo.vue");
+  const modal = window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "500px" },
+    title: "歌曲详情复制",
+    content: () => {
+      return h(CopySongInfo, {
+        songId,
         onClose: () => modal.destroy(),
       });
     },
@@ -564,6 +666,58 @@ export const openScalingModal = async () => {
     title: "界面缩放",
     content: () => {
       return h(ScalingModal);
+    },
+  });
+};
+
+/** 打开本地音乐目录管理弹窗 */
+export const openLocalMusicDirectoryModal = async () => {
+  const { default: LocalMusicDirectory } =
+    await import("@/components/Modal/Setting/LocalMusicDirectory.vue");
+  window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    maskClosable: false,
+    closeOnEsc: false,
+    style: { width: "600px" },
+    title: "目录管理",
+    content: () => {
+      return h(LocalMusicDirectory);
+    },
+  });
+};
+
+/** 打开歌词排除弹窗 */
+export const openExcludeLyric = async () => {
+  const { default: ExcludeLyrics } = await import("@/components/Modal/Setting/ExcludeLyrics.vue");
+  const modal = window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "600px" },
+    title: "歌词排除",
+    content: () => {
+      return h(ExcludeLyrics, {
+        onClose: () => modal.destroy(),
+      });
+    },
+  });
+};
+
+/** 打开评论排除弹窗 */
+export const openExcludeComment = async () => {
+  const { default: ExcludeComment } = await import("@/components/Modal/Setting/ExcludeComment.vue");
+  const modal = window.$modal.create({
+    preset: "card",
+    transformOrigin: "center",
+    autoFocus: false,
+    style: { width: "600px" },
+    title: "评论排除",
+    content: () => {
+      return h(ExcludeComment, {
+        onClose: () => modal.destroy(),
+      });
     },
   });
 };

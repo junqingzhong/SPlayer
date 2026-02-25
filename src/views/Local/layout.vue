@@ -148,7 +148,7 @@
     <n-flex v-else align="center" justify="center" vertical class="router-view">
       <n-empty size="large" description="当前本地歌曲为空">
         <template #extra>
-          <n-button type="primary" strong secondary @click="localPathShow = true">
+          <n-button type="primary" strong secondary @click="openLocalMusicDirectoryModal">
             <template #icon>
               <SvgIcon name="FolderCog" />
             </template>
@@ -157,60 +157,19 @@
         </template>
       </n-empty>
     </n-flex>
-    <!-- 目录管理 -->
-    <n-modal
-      v-model:show="localPathShow"
-      :close-on-esc="false"
-      :mask-closable="false"
-      preset="card"
-      title="目录管理"
-      transform-origin="center"
-      style="width: 600px"
-    >
-      <n-text class="local-list-tip">
-        请选择本地音乐文件夹，将自动扫描您添加的目录，歌曲增删实时同步
-      </n-text>
-      <n-scrollbar style="max-height: 50vh">
-        <n-list class="local-list" hoverable clickable bordered>
-          <n-list-item v-for="(item, index) in settingStore.localFilesPath" :key="index">
-            <template #prefix>
-              <SvgIcon :size="20" name="Folder" />
-            </template>
-            <template #suffix>
-              <n-button :focusable="false" quaternary @click="changeLocalMusicPath(index)">
-                <template #icon>
-                  <SvgIcon :size="20" name="Delete" />
-                </template>
-              </n-button>
-            </template>
-            <n-thing :title="item" />
-          </n-list-item>
-        </n-list>
-      </n-scrollbar>
-      <template #footer>
-        <n-flex justify="center">
-          <n-button class="add-path" strong secondary @click="changeLocalMusicPath()">
-            <template #icon>
-              <SvgIcon name="FolderPlus" />
-            </template>
-            添加文件夹
-          </n-button>
-        </n-flex>
-      </template>
-    </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { SongType } from "@/types/main";
-import type { DropdownOption, MessageReactive } from "naive-ui";
-import { useLocalStore, useSettingStore } from "@/stores";
 import { useMobile } from "@/composables/useMobile";
-import { formatSongsList } from "@/utils/format";
-import { debounce } from "lodash-es";
-import { changeLocalMusicPath, fuzzySearch, renderIcon } from "@/utils/helper";
-import { openBatchList, openCreatePlaylist } from "@/utils/modal";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { useLocalStore, useSettingStore } from "@/stores";
+import type { SongType } from "@/types/main";
+import { formatSongsList } from "@/utils/format";
+import { fuzzySearch, renderIcon } from "@/utils/helper";
+import { openBatchList, openCreatePlaylist, openLocalMusicDirectoryModal } from "@/utils/modal";
+import { debounce } from "lodash-es";
+import type { DropdownOption, MessageReactive } from "naive-ui";
 
 const router = useRouter();
 const localStore = useLocalStore();
@@ -253,9 +212,6 @@ const folderOptions = computed(() => {
 // 模糊搜索数据
 const searchValue = ref<string>("");
 const filteredSearchResult = ref<SongType[]>([]);
-
-// 目录管理
-const localPathShow = ref<boolean>(false);
 
 // 获取基于文件夹过滤后的数据
 const getFilteredData = (): SongType[] => {
@@ -349,10 +305,10 @@ const getMusicFolder = async (): Promise<string[]> => {
   return paths.filter((p) => p && p.trim() !== "");
 };
 
-// 全部音乐大小（基于筛选后的数据）
+// 全部音乐大小
 const allMusicSize = computed<number>(() => {
-  const total = listData.value.reduce((total, song) => (total += song?.size || 0), 0);
-  return Number((total / 1024).toFixed(2));
+  const totalBytes = listData.value.reduce((total, song) => (total += song?.size || 0), 0);
+  return Number((totalBytes / (1024 * 1024 * 1024)).toFixed(2));
 });
 
 // 更多操作
@@ -361,7 +317,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     label: "本地目录管理",
     key: "folder",
     props: {
-      onClick: () => (localPathShow.value = true),
+      onClick: () => openLocalMusicDirectoryModal(),
     },
     icon: renderIcon("FolderCog"),
   },
@@ -396,24 +352,11 @@ const tabDropdownOptions = computed<DropdownOption[]>(() => [
 // 当前 Tab 标签
 const currentTabLabel = computed(() => tabLabels[localType.value] || "单曲");
 
-/** 主进程发送的Track数据类型 */
-interface MusicTrackData {
-  id: string;
-  path: string;
-  title: string;
-  artist: string;
-  album: string;
-  duration: number;
-  cover?: string;
-  mtime: number;
-  size: number;
-  bitrate?: number;
-}
-
 /** 同步完成事件类型 */
 interface SyncCompleteData {
   success: boolean;
   message?: string;
+  tracks?: Record<string, unknown>[];
 }
 
 // 获取全部路径歌曲（流式接收）
@@ -443,13 +386,13 @@ const getAllLocalMusic = debounce(
     // 记录初始歌曲数量，用于计算新增数量
     const initialSongCount = localStore.localSongs.length;
     // 累积接收到的tracks
-    const receivedTracks: MusicTrackData[] = [];
+    const receivedTracks: Record<string, unknown>[] = [];
     let isCompleted = false;
     // 清理之前的监听器
     window.electron.ipcRenderer.removeAllListeners("music-sync-tracks-batch");
     window.electron.ipcRenderer.removeAllListeners("music-sync-complete");
     // 监听批量track数据
-    const tracksBatchHandler = (_event: unknown, tracks: MusicTrackData[]) => {
+    const tracksBatchHandler = (_event: unknown, tracks: Record<string, unknown>[]) => {
       if (!loading.value || isCompleted) return;
       // 批量添加tracks
       receivedTracks.push(...tracks);
@@ -470,24 +413,9 @@ const getAllLocalMusic = debounce(
         window.electron.ipcRenderer.removeAllListeners("music-sync-complete");
         return;
       }
-      const adaptedDataList = receivedTracks.map((track) => {
-        // 将字节转换为 MB，保留两位小数
-        const sizeMB =
-          track.size && track.size > 0 ? Number((track.size / (1024 * 1024)).toFixed(2)) : 0;
-        return {
-          id: track.id,
-          name: track.title,
-          artists: track.artist,
-          cover: track.cover,
-          album: track.album,
-          duration: track.duration,
-          size: sizeMB,
-          path: track.path,
-          quality: track.bitrate ?? 0,
-        };
-      });
-      // 批量格式化
-      const finalSongs = formatSongsList(adaptedDataList);
+      const sourceTracks = data.tracks && data.tracks.length > 0 ? data.tracks : receivedTracks;
+      // 直接格式化
+      const finalSongs = formatSongsList(sourceTracks);
       localStore.updateLocalSong(finalSongs);
       // 更新搜索数据
       if (searchValue.value) {

@@ -1,14 +1,14 @@
 import { heartRateList } from "@/api/playlist";
 import { useDataStore, useMusicStore, useStatusStore } from "@/stores";
-import { type SongType } from "@/types/main";
-import { RepeatModeType, ShuffleModeType } from "@/types/shared";
+import type { SongType } from "@/types/main";
+import type { RepeatModeType, ShuffleModeType } from "@/types/shared/play-mode";
 import { isLogin } from "@/utils/auth";
 import { isElectron } from "@/utils/env";
 import { formatSongsList } from "@/utils/format";
 import { shuffleArray } from "@/utils/helper";
 import { openUserLogin } from "@/utils/modal";
 import axios from "axios";
-import { MessageReactive } from "naive-ui";
+import type { MessageReactive } from "naive-ui";
 import * as playerIpc from "./PlayerIpc";
 
 /**
@@ -53,12 +53,12 @@ export class PlayModeManager {
 
     this.syncMediaPlayMode();
 
-    // const modeText: Record<RepeatModeType, string> = {
-    //   list: "列表循环",
-    //   one: "单曲循环",
-    //   off: "不循环",
-    // };
-    // window.$message.success(`已切换至：${modeText[statusStore.repeatMode]}`);
+    const modeText: Record<RepeatModeType, string> = {
+      list: "列表循环",
+      one: "单曲循环",
+      off: "不循环",
+    };
+    window.$message.success(modeText[statusStore.repeatMode], { showIcon: false });
   }
 
   /**
@@ -107,6 +107,8 @@ export class PlayModeManager {
     // 修正当前播放索引
     const idx = shuffled.findIndex((s) => s.id === musicStore.playSong?.id);
     if (idx !== -1) statusStore.playIndex = idx;
+
+    window.$message.success("随机播放已开启", { showIcon: false });
   }
 
   /**
@@ -225,6 +227,8 @@ export class PlayModeManager {
     } else {
       await dataStore.setPlayList(dataStore.playList);
     }
+
+    window.$message.success("随机播放已关闭", { showIcon: false });
   }
 
   /**

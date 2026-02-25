@@ -1,17 +1,20 @@
 <template>
-  <div :class="['player-data', settingStore.playerType, { center, light }]">
+  <div
+    :class="['player-data', settingStore.playerType, { center, light }]"
+    :style="{ marginLeft: leftMargin }"
+  >
     <!-- 名称 -->
     <div class="name">
       <span class="name-text text-hidden">
         {{
-          settingStore.hideLyricBrackets
+          settingStore.hideBracketedContent
             ? removeBrackets(musicStore.playSong.name)
             : musicStore.playSong.name || "未知曲目"
         }}
       </span>
       <!-- 额外信息 -->
       <n-flex
-        v-if="statusStore.playUblock || musicStore.playSong.pc"
+        v-if="statusStore.isUnlocked || musicStore.playSong.pc"
         class="extra-info"
         align="center"
       >
@@ -35,7 +38,7 @@
     </div>
     <!-- 别名 -->
     <span
-      v-if="musicStore.playSong.alia && !settingStore.hideLyricBrackets"
+      v-if="musicStore.playSong.alia && !settingStore.hideBracketedContent"
       class="alia text-hidden"
     >
       {{ musicStore.playSong.alia }}
@@ -53,9 +56,29 @@
           {{ !statusStore.songQuality ? "未知音质" : statusStore.songQuality }}
         </span>
         <!-- 歌词模式 -->
-        <span class="meta-item">{{ lyricMode }}</span>
-        <!-- 是否在线 -->
-        <span class="meta-item">
+        <n-popselect
+          v-if="lyricSourceOptions.length > 1"
+          trigger="click"
+          :value="settingStore.lyricPriority"
+          :options="lyricSourceOptions"
+          @update:value="(val) => lyricManager.switchLyricSource(val)"
+        >
+          <span class="meta-item clickable">{{ lyricMode }}</span>
+        </n-popselect>
+        <span v-else class="meta-item">{{ lyricMode }}</span>
+        <!-- 音源状态 -->
+        <n-popselect
+          v-if="audioSourceOptions.length > 1 && canSwitchSource"
+          trigger="click"
+          :value="statusStore.audioSource"
+          :options="audioSourceOptions"
+          @update:value="(val) => player.switchAudioSource(val)"
+        >
+          <span class="meta-item clickable">
+            {{ audioSourceText }}
+          </span>
+        </n-popselect>
+        <span v-else class="meta-item">
           {{ audioSourceText }}
         </span>
       </n-flex>
@@ -69,11 +92,15 @@
             class="ar"
             @click="jumpPage({ name: 'artist', query: { id: ar.id } })"
           >
-            {{ ar.name }}
+            {{ settingStore.hideBracketedContent ? removeBrackets(ar.name) : ar.name }}
           </span>
         </div>
         <div v-else class="ar-list">
-          <span class="ar">{{ musicStore.playSong.artists || "未知艺术家" }}</span>
+          <span class="ar">{{
+            settingStore.hideBracketedContent
+              ? removeBrackets(musicStore.playSong.artists)
+              : musicStore.playSong.artists || "未知艺术家"
+          }}</span>
         </div>
       </div>
       <div v-else class="artists">
@@ -90,10 +117,18 @@
           class="name-text text-hidden"
           @click="jumpPage({ name: 'album', query: { id: musicStore.playSong.album.id } })"
         >
-          {{ musicStore.playSong.album?.name || "未知专辑" }}
+          {{
+            (settingStore.hideBracketedContent
+              ? removeBrackets(musicStore.playSong.album?.name)
+              : musicStore.playSong.album?.name) || "未知专辑"
+          }}
         </span>
         <span v-else class="name-text text-hidden">
-          {{ musicStore.playSong.album || "未知专辑" }}
+          {{
+            (settingStore.hideBracketedContent
+              ? removeBrackets(musicStore.playSong.album)
+              : musicStore.playSong.album) || "未知专辑"
+          }}
         </span>
       </div>
       <!-- 电台 -->
@@ -115,10 +150,12 @@ import { useMusicStore, useStatusStore, useSettingStore } from "@/stores";
 import { debounce, isObject } from "lodash-es";
 import { removeBrackets } from "@/utils/format";
 import { SongUnlockServer } from "@/core/player/SongManager";
-
-defineProps<{
+import { useLyricManager } from "@/core/player/LyricManager";
+import { usePlayerController } from "@/core/player/PlayerController";
+const props = defineProps<{
+  /** 数据居中 */
   center?: boolean;
-  // 少量数据模式
+  /** 少量数据模式 */
   light?: boolean;
 }>();
 
@@ -126,10 +163,12 @@ const router = useRouter();
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
 const settingStore = useSettingStore();
+const lyricManager = useLyricManager();
+const player = usePlayerController();
 
 // 当前歌词模式
 const lyricMode = computed(() => {
-  if (settingStore.showYrc) {
+  if (settingStore.showWordLyrics) {
     if (statusStore.usingTTMLLyric) return "TTML";
     if (musicStore.isHasYrc) {
       // 如果是从QQ音乐获取的歌词，显示QRC
@@ -139,21 +178,67 @@ const lyricMode = computed(() => {
   return musicStore.isHasLrc ? "LRC" : "NO-LRC";
 });
 
-/** 歌曲解锁服务器名称映射 */
+const lyricSourceOptions = computed(() => {
+  const options = [
+    { label: "自动", value: "auto" },
+    { label: "官方优先", value: "official" },
+  ];
+  if (settingStore.enableQQMusicLyric) {
+    options.push({ label: "QM 优先", value: "qm" });
+  }
+  if (settingStore.enableOnlineTTMLLyric) {
+    options.push({ label: "TTML 优先", value: "ttml" });
+  }
+  return options;
+});
+
+// 左侧外边距
+const leftMargin = computed(() => {
+  if (props.center || !props.light) return "0px";
+  const offset = settingStore.lyricHorizontalOffset;
+  return settingStore.useAMLyrics ? `${offset + 40}px` : `${offset + 10}px`;
+});
+
+/** 音频源选项 */
+const audioSourceOptions = computed(() => {
+  const options = [{ label: "自动", value: "auto" }];
+  settingStore.songUnlockServer.forEach((server) => {
+    if (server.enabled) {
+      options.push({
+        label: sourceMap[server.key] || server.key.toUpperCase(),
+        value: server.key,
+      });
+    }
+  });
+  return options;
+});
+
+/** 是否可以切换音频源 */
+const canSwitchSource = computed(() => {
+  const song = musicStore.playSong;
+  return !song.path && song.type === "song" && !song.pc;
+});
+
+/** 音频源名称映射 */
 const sourceMap: Record<string, string> = {
+  official: "Official",
   [SongUnlockServer.NETEASE]: "Netease",
   [SongUnlockServer.KUWO]: "Kuwo",
   [SongUnlockServer.BODIAN]: "Bodian",
   [SongUnlockServer.GEQUBAO]: "Gequbao",
+  local: "Local",
+  streaming: "Streaming",
 };
 
+/** 音频源名称 */
 const audioSourceText = computed(() => {
-  if (musicStore.playSong.path) return "LOCAL";
-  if (musicStore.playSong.type === "streaming") return "STREAMING";
+  if (musicStore.playSong.path) return "本地";
+  if (musicStore.playSong.type === "streaming") return "流媒体";
+  if (musicStore.playSong.pc) return "云盘";
   if (statusStore.audioSource) {
     return sourceMap[statusStore.audioSource] || statusStore.audioSource.toUpperCase();
   }
-  return "ONLINE";
+  return "Netease";
 });
 
 const jumpPage = debounce(
@@ -178,6 +263,7 @@ const jumpPage = debounce(
   max-width: 50vh;
   margin-top: 24px;
   padding: 0 2px;
+  mix-blend-mode: plus-lighter;
   .n-icon {
     color: rgb(var(--main-cover-color));
   }
@@ -300,7 +386,7 @@ const jumpPage = debounce(
   }
   &.center {
     align-items: center;
-    padding: 0 2px;
+    padding: 0 40px;
     .name {
       text-align: center;
     }
