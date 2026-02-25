@@ -293,7 +293,7 @@ onBeforeUnmount(() => {
       height: 100%;
       display: flex;
       flex-direction: column;
-      mix-blend-mode: plus-lighter;
+      mix-blend-mode: v-bind('settingStore.lyricsBlendMode');
       transition:
         width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
         opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
