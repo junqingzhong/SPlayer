@@ -254,7 +254,11 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       this.isCrossfading = false;
       this.bindEngineEvents();
       // 触发 UI 切换回调
-      options.onSwitch?.();
+      try {
+        options.onSwitch?.();
+      } catch (e) {
+        console.error("🔀 [AudioManager] onSwitch callback failed:", e);
+      }
       // 触发一次 update 事件以刷新 UI 进度和播放状态
       this.dispatch(AUDIO_EVENTS.TIME_UPDATE, undefined);
       this.dispatch(AUDIO_EVENTS.PLAY, undefined);
@@ -272,7 +276,7 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
       commitSwitch();
     }
     // 销毁旧引擎
-    setTimeout(oldEngine.destroy, options.duration * 1000 + 1000);
+    setTimeout(() => oldEngine.destroy(), options.duration * 1000 + 1000);
   }
 
   /**

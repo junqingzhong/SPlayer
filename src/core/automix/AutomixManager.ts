@@ -77,6 +77,7 @@ export class AutomixManager {
     this.nextTransitionInFlight = null;
     this.nextTransitionProposal = null;
     this.automixLogTimestamps.clear();
+    this.automixGain = 1.0;
   }
 
   /**
@@ -215,11 +216,10 @@ export class AutomixManager {
       if (isAudioAnalysis(raw)) {
         return { analysis: raw, analysisKind: analysisMode };
       }
-    } catch (e: any) {
-      if (e.message !== "EXPIRED") {
-        console.warn("[Automix] 分析失败:", e);
-      }
-      throw e;
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "EXPIRED") throw e;
+      console.warn("[Automix] 分析失败:", e);
+      return { analysis: null, analysisKind: "none" };
     }
     return { analysis: null, analysisKind: "none" };
   }
@@ -425,12 +425,14 @@ export class AutomixManager {
     const playerController = usePlayerController();
     const audioManager = useAudioManager();
     const settingStore = useSettingStore();
+    const statusStore = useStatusStore();
 
     if (
       !settingStore.enableAutomix ||
       audioManager.engineType === "mpv" ||
       audioManager.paused ||
-      playerController.isTransitioning
+      playerController.isTransitioning ||
+      statusStore.personalFmMode
     ) {
       if (this.automixState !== "IDLE") this.resetAutomixScheduling("IDLE");
       return;
@@ -510,17 +512,6 @@ export class AutomixManager {
     if (!duration || duration <= 0) return;
     let rawTime = audioManager.currentTime;
     if (!Number.isFinite(rawTime) || rawTime < 0) return;
-
-    if (audioManager.engineType === "ffmpeg") {
-      if (!audioManager.paused) {
-        const ctxTime = getSharedAudioContext().currentTime;
-        if ((audioManager as any).engine._lastSyncCtxTime !== undefined) {
-          const delta = ctxTime - (audioManager as any).engine._lastSyncCtxTime;
-          rawTime += delta * audioManager.getRate();
-        }
-      }
-    }
-
     const timeLeft = duration - rawTime;
     if (timeLeft < 0) return;
 
@@ -1054,7 +1045,12 @@ export class AutomixManager {
         },
         options.initialRate,
       );
-    } catch (e) {
+    } catch (e: unknown) {
+      if (e instanceof Error && e.message === "EXPIRED") {
+        // Token 过期意味着有新的播放请求已接管，静默忽略
+        console.log("[Automix] Transition cancelled (new request)");
+        return;
+      }
       console.error("Automix failed, fallback to normal play", e);
       if (requestToken === playerController.currentRequestToken) {
         playerController.isTransitioning = false;
