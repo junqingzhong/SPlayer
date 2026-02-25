@@ -212,6 +212,125 @@ export const useNetworkSettings = (): SettingConfig => {
     onActivate,
     groups: [
       {
+        title: "API 设置",
+        items: [
+          {
+            key: "useOnlineService",
+            label: "启用在线服务",
+            type: "switch",
+            description: "关闭后将仅使用本地功能，隐藏所有在线内容",
+            value: computed({
+              get: () => settingStore.useOnlineService,
+              set: (v) => (settingStore.useOnlineService = v),
+            }),
+          },
+          {
+            key: "musicApiUrl",
+            label: "网易云音乐 API",
+            type: "text-input",
+            description: "默认为内置 API，如需使用自建 API 请在此处填写",
+            disabled: computed(() => !settingStore.useOnlineService),
+            componentProps: { placeholder: "例如：http://localhost:3000" },
+            value: computed({
+              get: () => settingStore.musicApiUrl,
+              set: (v) => (settingStore.musicApiUrl = v),
+            }),
+          },
+          {
+            key: "activitiesApiBaseUrl",
+            label: "活动列表 API",
+            type: "text-input",
+            description: "活动列表数据源 API 地址",
+            disabled: computed(() => !settingStore.useOnlineService),
+            componentProps: { placeholder: "请输入 API 地址" },
+            value: computed({
+              get: () => settingStore.activitiesApiBaseUrl,
+              set: (v) => (settingStore.activitiesApiBaseUrl = v),
+            }),
+          },
+          {
+            key: "autoLoginCookie",
+            label: "自动登录 Cookie",
+            type: "text-input",
+            description: "用于自动登录的 Cookie 字符串",
+            disabled: computed(() => !settingStore.useOnlineService),
+            componentProps: {
+              placeholder: "请输入 Cookie",
+              type: "password",
+              showPasswordOn: "click",
+            },
+            value: computed({
+              get: () => settingStore.autoLoginCookie,
+              set: (v) => (settingStore.autoLoginCookie = v),
+            }),
+          },
+          {
+            key: "apiCookie",
+            label: "网易云 Cookie",
+            type: "text-input",
+            description: "用于 API 请求的 Cookie（修改此项会影响当前登录状态）",
+            disabled: computed(() => !settingStore.useOnlineService),
+            componentProps: {
+              placeholder: "请输入 Cookie",
+              type: "password",
+              showPasswordOn: "click",
+            },
+            value: computed({
+              get: () => settingStore.apiCookie,
+              set: (v) => (settingStore.apiCookie = v),
+            }),
+            extraButton: {
+              label: "保存并更新登录状态",
+              action: () => {
+                if (!settingStore.apiCookie) {
+                  window.$message.warning("Cookie 不能为空");
+                  return;
+                }
+                // 1. 写入 document.cookie (用于当前会话)
+                const cookieStr = settingStore.apiCookie;
+                const cookies = cookieStr.split(";");
+                cookies.forEach((cookie) => {
+                  const parts = cookie.split("=");
+                  const name = parts[0]?.trim();
+                  const value = parts.slice(1).join("=").trim();
+                  if (name && value) {
+                    const date = new Date();
+                    date.setFullYear(date.getFullYear() + 1);
+                    document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/`;
+                  }
+                });
+
+                // 2. 更新 localStorage (用于持久化)
+                if (cookieStr.includes("MUSIC_U")) {
+                   const match = cookieStr.match(/MUSIC_U=([^;]+)/);
+                   if (match && match[1]) {
+                     localStorage.setItem("cookie-MUSIC_U", match[1]);
+                   }
+                }
+                if (cookieStr.includes("__csrf")) {
+                   const match = cookieStr.match(/__csrf=([^;]+)/);
+                   if (match && match[1]) {
+                     localStorage.setItem("cookie-__csrf", match[1]);
+                   }
+                }
+
+                // 3. 触发用户数据更新 (重新获取用户信息)
+                import("@/utils/auth").then(({ updateUserData }) => {
+                   updateUserData().then(() => {
+                      window.$message.success("Cookie 已更新并成功登录");
+                   }).catch(() => {
+                      window.$message.error("Cookie 更新成功，但获取用户信息失败，请检查 Cookie 是否有效");
+                   });
+                });
+              },
+              type: "primary",
+              secondary: false,
+              strong: true,
+            },
+          },
+        ],
+      },
+      {
         title: "流媒体服务",
         items: [
           {

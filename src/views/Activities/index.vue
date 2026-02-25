@@ -229,6 +229,15 @@
     <n-modal v-model:show="showDeleteModal" preset="dialog" title="确认删除" content="确定要删除这个活动吗？此操作不可恢复。"
       positive-text="确定" negative-text="取消" @positive-click="confirmDelete"
       @negative-click="() => { showDeleteModal = false; deleteId = null; }" />
+    <!-- 分类管理弹窗 -->
+    <n-modal v-model:show="showCategoryModal" preset="card" title="分类管理" class="management-modal" :style="{ width: '800px', height: '600px' }">
+      <CategoryManagement />
+    </n-modal>
+
+    <!-- 用户管理弹窗 -->
+    <n-modal v-model:show="showUserModal" preset="card" title="用户管理" class="management-modal" :style="{ width: '800px', height: '600px' }">
+      <UserManagement />
+    </n-modal>
   </div>
 </template>
 
@@ -248,12 +257,18 @@ import { updateUserData } from "@/utils/auth";
 const message = useMessage();
 const router = useRouter();
 
+import CategoryManagement from "@/views/CategoryManagement/index.vue";
+import UserManagement from "@/views/UserManagement/index.vue";
+
+const showCategoryModal = ref(false);
+const showUserModal = ref(false);
+
 const goToCategoryManagement = () => {
-  router.push({ name: "category-management" });
+  showCategoryModal.value = true;
 };
 
 const goToUserManagement = () => {
-  router.push({ name: "UserManagement" });
+  showUserModal.value = true;
 };
 
 // 状态管理

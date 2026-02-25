@@ -2,13 +2,12 @@
  * @Author: ZJQ
  * @Date: 2025-05-23 10:50:52
  * @LastEditors: zjq zjq@xkb.com.cn
- * @LastEditTime: 2026-01-26 16:54:18
+ * @LastEditTime: 2026-02-25 17:15:32
  * @FilePath: \tea\src\App.vue
  * @Description:
  *
  * Copyright (c) 2026 by ${git_name_email}, All Rights Reserved.
 -->
-<template>
 <template>
   <div id="app-wrapper" :class="{ 'mobile-mode': !isDesktop }" v-if="!isDesktopLyric">
     <Provider>

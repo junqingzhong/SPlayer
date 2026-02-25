@@ -493,6 +493,8 @@ export interface SettingState {
   activitiesApiBaseUrl: string;
   /** 网易云自动登录 Cookie（原始字符串） */
   autoLoginCookie: string;
+  /** 网易云 API Cookie（用于请求） */
+  apiCookie: string;
   /** 启用自动混音 */
   enableAutomix: boolean;
   /** 自动混音最大分析时间 (秒) */
@@ -535,6 +537,7 @@ export const useSettingStore = defineStore("setting", {
     layoutMode: "auto",
     activitiesApiBaseUrl: "",
     autoLoginCookie: "",
+    apiCookie: "",
     useOnlineService: true,
     shareUrlFormat: "web",
     showCloseAppTip: true,
