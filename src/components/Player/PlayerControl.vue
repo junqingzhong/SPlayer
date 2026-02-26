@@ -39,18 +39,22 @@
           >
             <SvgIcon name="Download" />
           </div>
-          <!-- 显示评论 -->
-          <div
-            v-if="
-              !musicStore.playSong.path &&
-              !statusStore.pureLyricMode &&
-              settingStore.fullscreenPlayerElements.comments
-            "
-            class="menu-icon"
-            @click.stop="statusStore.showPlayerComment = !statusStore.showPlayerComment"
+          <n-badge
+            :value="formatCommentCount"
+            :show="settingStore.showCommentCount !== 'off' && statusStore.songCommentCount > 0"
           >
-            <SvgIcon :depth="statusStore.showPlayerComment ? 1 : 3" name="Message" />
-          </div>
+            <div
+              v-if="
+                !musicStore.playSong.path &&
+                !statusStore.pureLyricMode &&
+                settingStore.fullscreenPlayerElements.comments
+              "
+              class="menu-icon"
+              @click.stop="statusStore.showPlayerComment = !statusStore.showPlayerComment"
+            >
+              <SvgIcon :depth="statusStore.showPlayerComment ? 1 : 3" name="Message" />
+            </div>
+          </n-badge>
         </n-flex>
         <div class="center">
           <div class="btn">
@@ -151,6 +155,7 @@ import { useDataStore, useMusicStore, useStatusStore, useSettingStore } from "@/
 import { toLikeSong } from "@/utils/auth";
 import { useTimeFormat } from "@/composables/useTimeFormat";
 import { openDownloadSong, openPlaylistAdd } from "@/utils/modal";
+import { getComment } from "@/api/comment";
 
 const dataStore = useDataStore();
 const musicStore = useMusicStore();
@@ -161,6 +166,53 @@ const songManager = useSongManager();
 const player = usePlayerController();
 
 const { timeDisplay, toggleTimeFormat } = useTimeFormat();
+
+// 格式化评论数量
+const formatCommentCount = computed(() => {
+  const count = statusStore.songCommentCount;
+  if (settingStore.showCommentCount === "full") {
+    return count;
+  }
+  // compact mode
+  if (count >= 10000) {
+    return `${(count / 10000).toFixed(1).replace(/\.0$/, '')}W+`;
+  }
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}K+`;
+  }
+  return count;
+});
+
+// 获取评论数量
+const fetchCommentCount = async () => {
+  if (settingStore.showCommentCount === "off") return;
+  const id = musicStore.playSong.id;
+  if (!id || typeof id !== "number" || musicStore.playSong.path) return;
+  try {
+    const type = musicStore.playSong.type === "radio" ? 4 : 0;
+    const result = await getComment(id, type as 0 | 4, 1, 1);
+    if (result.data?.totalCount != null) {
+      statusStore.songCommentCount = result.data.totalCount;
+    }
+  } catch {
+    // 忽略错误
+  }
+};
+
+// 歌曲变化时获取评论数量
+watch(
+  () => musicStore.playSong.id,
+  () => {
+    statusStore.songCommentCount = 0;
+    fetchCommentCount();
+  },
+);
+
+onMounted(() => {
+  if (musicStore.playSong.id && !musicStore.playSong.path) {
+    fetchCommentCount();
+  }
+});
 
 const showAutomixFx = ref(false);
 let automixFxTimer: number | null = null;
@@ -272,6 +324,12 @@ onBeforeUnmount(() => {
       }
       &:active {
         transform: scale(1);
+      }
+    }
+    :deep(.n-badge-sup) {
+      background-color: rgba(var(--main-cover-color), 0.14);
+      .n-base-slot-machine {
+        color: rgb(var(--main-cover-color));
       }
     }
     :deep(.right-menu) {
