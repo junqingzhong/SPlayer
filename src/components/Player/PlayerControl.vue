@@ -175,10 +175,12 @@ const formatCommentCount = computed(() => {
   }
   // compact mode
   if (count >= 10000) {
-    return `${(count / 10000).toFixed(1).replace(/\.0$/, '')}W+`;
+    const val = Math.floor(count / 1000) / 10;
+    return `${val % 1 === 0 ? val.toFixed(0) : val}W+`;
   }
   if (count >= 1000) {
-    return `${(count / 1000).toFixed(1).replace(/\.0$/, '')}K+`;
+    const val = Math.floor(count / 100) / 10;
+    return `${val % 1 === 0 ? val.toFixed(0) : val}K+`;
   }
   return count;
 });
