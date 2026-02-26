@@ -214,7 +214,12 @@
                     {{ detailData?.count }}
                   </n-text>
                 </n-tab>
-                <n-tab name="comments"> 评论 </n-tab>
+                <n-tab name="comments">
+                  评论
+                  <n-text v-if="detailData?.commentCount" class="count" depth="3">
+                    {{ detailData?.commentCount }}
+                  </n-text>
+                </n-tab>
               </n-tabs>
             </n-flex>
           </n-flex>

@@ -25,6 +25,7 @@
             <div class="title">
               <SvgIcon name="Message" />
               <span>全部评论</span>
+              <span v-if="commentTotalCount > 0" class="count">{{ commentTotalCount }}</span>
             </div>
           </div>
           <CommentList
@@ -62,6 +63,10 @@ const props = withDefaults(
   {},
 );
 
+const emit = defineEmits<{
+  "update:commentCount": [count: number];
+}>();
+
 const commentListRef = ref<HTMLElement | null>(null);
 
 // 列表高度
@@ -73,6 +78,7 @@ const commentData = ref<CommentType[]>([]);
 const commentHotData = ref<CommentType[] | null>(null);
 const commentPage = ref<number>(1);
 const commentHasMore = ref<boolean>(true);
+const commentTotalCount = ref<number>(0);
 
 // 获取热门评论
 const getHotCommentData = async () => {
@@ -106,6 +112,11 @@ const getCommentData = async (clean: boolean = true) => {
         : undefined;
     // 获取评论
     const result = await getComment(props.id, props.type, commentPage.value, 20, 3, cursor);
+    // 更新评论总数
+    if (result.data?.totalCount != null) {
+      commentTotalCount.value = result.data.totalCount;
+      emit("update:commentCount", result.data.totalCount);
+    }
     if (isEmpty(result.data?.comments)) {
       commentHasMore.value = false;
       commentLoading.value = false;
@@ -140,6 +151,7 @@ watch(
       commentHotData.value = null;
       commentPage.value = 1;
       commentHasMore.value = true;
+      commentTotalCount.value = 0;
       getCommentData();
     }
   },
@@ -168,6 +180,12 @@ watch(
     .n-icon {
       margin-right: 8px;
       font-size: 20px;
+    }
+    .count {
+      margin-left: 6px;
+      font-size: 13px;
+      font-weight: normal;
+      opacity: 0.6;
     }
   }
 }
