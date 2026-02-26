@@ -235,7 +235,7 @@ class PlayerController {
       const playTitle = `${name} - ${artist}`;
       playerIpc.sendSongChange(playTitle, name || "", artist || "", album || "");
       if (isMac) {
-        playerIpc.sendTaskbarProgressData({
+        playerIpc.sendMacStatusBarProgress({
           currentTime: startSeek,
           duration: song.duration,
           offset: statusStore.getSongOffset(song.id),
