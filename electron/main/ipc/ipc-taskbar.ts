@@ -4,7 +4,7 @@ import type EventEmitter from "node:events";
 import { useStore } from "../store";
 import { getMainTray } from "../tray";
 import mainWindow from "../windows/main-window";
-import taskbarLyricWindow from "../windows/taskbar-lyric-window";
+import taskbarLyricManager from "../windows/taskbar-lyric-manager";
 
 let cachedIsPlaying = false;
 
@@ -41,11 +41,11 @@ const updateWindowVisibility = (config: TaskbarConfig) => {
 
   const shouldBeVisible = config.enabled && (cachedIsPlaying || config.showWhenPaused);
 
-  taskbarLyricWindow.setVisibility(shouldBeVisible);
+  taskbarLyricManager.setVisibility(shouldBeVisible);
 };
 
 const updateWindowLayout = (animate: boolean = true) => {
-  taskbarLyricWindow.updateLayout(animate);
+  taskbarLyricManager.updateLayout(animate);
 };
 
 const initTaskbarIpc = () => {
@@ -54,9 +54,13 @@ const initTaskbarIpc = () => {
 
   const initialConfig = getTaskbarConfig();
   if (initialConfig.enabled) {
-    taskbarLyricWindow.create();
+    taskbarLyricManager.create(initialConfig.mode);
     updateWindowVisibility(initialConfig);
   }
+
+  ipcMain.on("taskbar:set-width", (_event, width: number) => {
+    taskbarLyricManager.setContentWidth(width);
+  });
 
   ipcMain.on(
     TASKBAR_IPC_CHANNELS.UPDATE_CONFIG,
@@ -69,30 +73,43 @@ const initTaskbarIpc = () => {
 
       const newConfig = getTaskbarConfig();
 
-      if (newConfig.enabled && !oldConfig.enabled) {
-        taskbarLyricWindow.create();
+      const modeChanged = newConfig.mode !== oldConfig.mode;
+
+      if (modeChanged) {
+        taskbarLyricManager.close(false);
+      }
+
+      if (newConfig.enabled && (!oldConfig.enabled || modeChanged)) {
+        taskbarLyricManager.create(newConfig.mode);
       }
 
       if (
         newConfig.enabled !== oldConfig.enabled ||
-        newConfig.showWhenPaused !== oldConfig.showWhenPaused
+        newConfig.showWhenPaused !== oldConfig.showWhenPaused ||
+        modeChanged
       ) {
         updateWindowVisibility(newConfig);
       }
 
       if (newConfig.enabled) {
-        if (
-          newConfig.maxWidth !== oldConfig.maxWidth ||
-          newConfig.position !== oldConfig.position ||
-          newConfig.autoShrink !== oldConfig.autoShrink ||
-          newConfig.margin !== oldConfig.margin ||
-          newConfig.minWidth !== oldConfig.minWidth
-        ) {
-          updateWindowLayout(true);
+        if (newConfig.mode === "taskbar") {
+          if (
+            newConfig.maxWidth !== oldConfig.maxWidth ||
+            newConfig.position !== oldConfig.position ||
+            newConfig.autoShrink !== oldConfig.autoShrink ||
+            newConfig.margin !== oldConfig.margin ||
+            newConfig.minWidth !== oldConfig.minWidth
+          ) {
+            updateWindowLayout(true);
+          }
+        } else {
+          if (newConfig.maxWidth !== oldConfig.maxWidth || modeChanged) {
+            updateWindowLayout(false);
+          }
         }
       }
 
-      taskbarLyricWindow.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
+      taskbarLyricManager.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
         type: "config-update",
         data: partialConfig,
       } as SyncStatePayload);
@@ -112,11 +129,11 @@ const initTaskbarIpc = () => {
       updateWindowVisibility(getTaskbarConfig());
     }
 
-    taskbarLyricWindow.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, payload);
+    taskbarLyricManager.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, payload);
   });
 
   ipcMain.on(TASKBAR_IPC_CHANNELS.SYNC_TICK, (_event, payload) => {
-    taskbarLyricWindow.send(TASKBAR_IPC_CHANNELS.SYNC_TICK, payload);
+    taskbarLyricManager.send(TASKBAR_IPC_CHANNELS.SYNC_TICK, payload);
   });
 
   ipcMain.on(TASKBAR_IPC_CHANNELS.REQUEST_DATA, () => {
@@ -125,27 +142,28 @@ const initTaskbarIpc = () => {
       mainWin.webContents.send(TASKBAR_IPC_CHANNELS.REQUEST_DATA);
     }
 
-    taskbarLyricWindow.updateLayout(false);
+    taskbarLyricManager.updateLayout(false);
 
     const isDark = nativeTheme.shouldUseDarkColors;
-    taskbarLyricWindow.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
+    taskbarLyricManager.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
       type: "system-theme",
       data: { isDark },
     } as SyncStatePayload);
   });
 
   ipcMain.on("taskbar:fade-done", () => {
-    taskbarLyricWindow.handleFadeDone();
+    taskbarLyricManager.handleFadeDone();
   });
 
   // 把事件发射到 app 里不太好，但是我觉得也没有必要为了这一个事件创建一个事件总线
   // TODO: 如果有了事件总线，通过那个事件总线发射这个事件
   (app as EventEmitter).on("explorer-restarted", () => {
     const currentEnabled = store.get("taskbar.enabled");
-    if (currentEnabled) {
-      taskbarLyricWindow.close(false);
+    const currentMode = store.get("taskbar.mode", "taskbar");
+    if (currentEnabled && currentMode === "taskbar") {
+      taskbarLyricManager.close(false);
       setTimeout(() => {
-        taskbarLyricWindow.create();
+        taskbarLyricManager.create("taskbar");
       }, 500);
     }
   });
