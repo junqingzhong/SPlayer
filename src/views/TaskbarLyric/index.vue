@@ -3,6 +3,8 @@
     class="taskbar-lyric"
     :class="{ dark: state.isDark, 'layout-reverse': !state.isCenter, floating: isFloating }"
     :style="rootStyle"
+    @mouseenter="handleMouseEnter"
+    @mouseleave="handleMouseLeave"
   >
     <div class="cover-wrapper" v-if="coverSrc && settingStore.taskbarLyricShowCover">
       <Transition name="cross-fade">
@@ -10,10 +12,24 @@
       </Transition>
     </div>
 
+    <Transition name="controls-expand">
+      <div class="media-controls" v-if="showControls">
+        <div class="control-btn" @click.stop="controlAction('playPrev')">
+          <SvgIcon name="SkipPrev" />
+        </div>
+        <div class="control-btn" @click.stop="controlAction('playOrPause')">
+          <SvgIcon :name="state.isPlaying ? 'Pause' : 'Play'" />
+        </div>
+        <div class="control-btn" @click.stop="controlAction('playNext')">
+          <SvgIcon name="SkipNext" />
+        </div>
+      </div>
+    </Transition>
+
     <div class="content" :style="contentStyle">
       <Transition :name="settingStore.taskbarLyricAnimationMode" mode="out-in">
         <TransitionGroup tag="div" class="lyric-list-wrapper" name="lyric-list" :key="transitionKey">
-              <div
+          <div
             v-for="item in displayItems"
             :key="item.key"
             class="lyric-item"
@@ -57,6 +73,8 @@ import LyricScroll from "./LyricScroll.vue";
 const settingStore = useSettingStore();
 const route = useRoute();
 const isFloating = computed(() => route.query.mode === "floating");
+const isHovering = ref(false);
+const showControls = computed(() => !isFloating.value && isHovering.value);
 
 /**
  * 只有当 IPC 时间与本地时间误差超过 250ms 时，才同步 IPC 的时间
@@ -137,6 +155,25 @@ const lyricFontFamily = computed(() => {
     settingStore.LyricFont === "follow" ? settingStore.globalFont : settingStore.LyricFont;
   return font === "default" ? "inherit" : font;
 });
+
+const handleMouseEnter = () => {
+  if (!isFloating.value) isHovering.value = true;
+};
+
+const handleMouseLeave = () => {
+  isHovering.value = false;
+};
+
+const controlAction = (action: "playPrev" | "playOrPause" | "playNext") => {
+  const ipc = window.electron?.ipcRenderer;
+  if (!ipc) return;
+
+  if (action === "playOrPause") {
+    state.isPlaying = !state.isPlaying;
+  }
+
+  ipc.send("send-to-main-win", action);
+};
 
 const transitionKey = computed(() => {
   if (!currentLyricText.value) {
@@ -597,6 +634,11 @@ $radius: 4px;
     font-size: clamp(12px, 29vh, 26px);
     -webkit-app-region: drag;
 
+    .media-controls,
+    .control-btn {
+      -webkit-app-region: no-drag;
+    }
+
     &:hover,
     &:active {
       background-color: transparent;
@@ -666,7 +708,7 @@ $radius: 4px;
   );
   --mask-horizontal: linear-gradient(
     to right,
-    transparent 0,
+    transparent 0%,
     black var(--mask-gap),
     black calc(100% - var(--mask-gap)),
     transparent 100%
@@ -823,6 +865,66 @@ $radius: 4px;
   &-leave-to {
     opacity: 0;
     transform: translate3d(-5px, 0, 0);
+  }
+}
+
+.media-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  max-width: 8.6em;
+  gap: 0.4em;
+  overflow: hidden;
+  z-index: 10;
+
+  .control-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 4.4em;
+    height: 2.3em;
+    font-size: 1.3em;
+    color: inherit;
+    border-radius: $radius;
+    border: 1px solid rgba(128, 128, 128, 0.4);
+    box-sizing: border-box;
+    transition:
+      background-color 0.2s,
+      transform 0.1s,
+      border-color 0.2s;
+
+    &:hover {
+      background-color: rgba(128, 128, 128, 0.2);
+      border-color: rgba(128, 128, 128, 0.7);
+      opacity: 1;
+    }
+
+    &:active {
+      transform: scale(0.92);
+      background-color: rgba(128, 128, 128, 0.3);
+      border-color: rgba(128, 128, 128, 0.9);
+    }
+  }
+}
+
+.controls-expand {
+  &-enter-active,
+  &-leave-active {
+    transition: all 0.4s var(--lyric-ease);
+  }
+
+  &-enter-from,
+  &-leave-to {
+    max-width: 0;
+    opacity: 0;
+    margin: 0;
+  }
+
+  &-enter-to,
+  &-leave-from {
+    max-width: 8.6em;
+    opacity: 1;
   }
 }
 </style>
