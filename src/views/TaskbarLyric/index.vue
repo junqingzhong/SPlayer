@@ -596,6 +596,16 @@ $radius: 4px;
   &.floating {
     font-size: clamp(12px, 29vh, 26px);
     -webkit-app-region: drag;
+
+    &:hover,
+    &:active {
+      background-color: transparent;
+    }
+
+    .cover-wrapper,
+    .content {
+      pointer-events: none;
+    }
   }
 }
 
