@@ -4,7 +4,7 @@ import type EventEmitter from "node:events";
 import { useStore } from "../store";
 import { getMainTray } from "../tray";
 import mainWindow from "../windows/main-window";
-import taskbarLyricManager from "../windows/taskbar-lyric-manager";
+import taskbarLyricManager from "../utils/taskbar-lyric-manager";
 
 let cachedIsPlaying = false;
 

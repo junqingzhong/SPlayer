@@ -806,8 +806,8 @@ export const useLyricSettings = (): SettingConfig => {
         ],
       },
       {
-        title: "任务栏歌词",
-        show: isElectron && isWin,
+        title: isWin ? "任务栏歌词" : "悬浮歌词",
+        show: isElectron,
         items: [
           {
             key: "showTaskbarLyric",

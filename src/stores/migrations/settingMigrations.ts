@@ -6,7 +6,7 @@ import type { SettingState } from "../setting";
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 13;
+export const CURRENT_SETTING_SCHEMA_VERSION = 11;
 
 /**
  * 迁移函数类型
@@ -189,19 +189,6 @@ export const settingMigrations: Record<number, MigrationFunction> = {
   11: () => {
     return {
       uncensorMaskedProfanity: false,
-    };
-  },
-  12: () => {
-    return {
-      taskbarLyricMode: "taskbar",
-    };
-  },
-  13: () => {
-    return {
-      taskbarLyricFloatingAlign: "right",
-      taskbarLyricFloatingAutoWidth: true,
-      taskbarLyricFloatingWidth: 300,
-      taskbarLyricFloatingHeight: 48,
     };
   },
 };

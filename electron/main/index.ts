@@ -15,7 +15,7 @@ import { trySendCustomProtocol } from "./utils/protocol";
 import { initSingleLock } from "./utils/single-lock";
 import loadWindow from "./windows/load-window";
 import mainWindow from "./windows/main-window";
-import taskbarLyricManager from "./windows/taskbar-lyric-manager";
+import taskbarLyricManager from "./utils/taskbar-lyric-manager";
 
 // 屏蔽报错
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";

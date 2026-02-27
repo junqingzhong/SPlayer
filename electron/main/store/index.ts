@@ -43,6 +43,7 @@ export interface StoreType {
   taskbar: {
     /** 是否启用 */
     enabled: boolean;
+    /** 模式 */
     mode?: "taskbar" | "floating";
     /** 最大宽度 */
     maxWidth?: number;
@@ -64,6 +65,7 @@ export interface StoreType {
     floatingAutoWidth?: boolean;
     floatingWidth?: number;
     floatingHeight?: number;
+    floatingAlwaysOnTop?: boolean;
   };
   /** 代理 */
   proxy: string;
@@ -133,6 +135,7 @@ export const useStore = () => {
         floatingAutoWidth: true,
         floatingWidth: 300,
         floatingHeight: 48,
+        floatingAlwaysOnTop: false,
       },
       macos: {
         statusBarLyric: {

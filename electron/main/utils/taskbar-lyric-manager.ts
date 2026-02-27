@@ -1,5 +1,5 @@
-import floatingTaskbarLyricWindow from "./floating-taskbar-lyric-window";
-import taskbarLyricWindow from "./taskbar-lyric-window";
+import floatingTaskbarLyricWindow from "../windows/floating-taskbar-lyric-window";
+import taskbarLyricWindow from "../windows/taskbar-lyric-window";
 
 export type TaskbarLyricMode = "taskbar" | "floating";
 
