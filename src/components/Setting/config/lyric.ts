@@ -822,6 +822,17 @@ export const useLyricSettings = (): SettingConfig => {
             }),
           },
           {
+            key: "taskbarLyricMode",
+            label: "显示模式",
+            type: "select",
+            description: "依附任务栏或独立悬浮显示",
+            options: [
+              { label: "依附任务栏", value: "taskbar" },
+              { label: "独立窗口", value: "floating" },
+            ],
+            value: toRef(settingStore, "taskbarLyricMode"),
+          },
+          {
             key: "taskbarLyricShowWhenPaused",
             label: "暂停时显示",
             type: "switch",

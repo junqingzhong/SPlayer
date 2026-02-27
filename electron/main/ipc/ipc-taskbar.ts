@@ -11,6 +11,7 @@ let cachedIsPlaying = false;
 const getTaskbarConfig = (): TaskbarConfig => {
   const store = useStore();
   return {
+    mode: store.get("taskbar.mode", "taskbar"),
     maxWidth: store.get("taskbar.maxWidth", 300),
     position: store.get("taskbar.position", "automatic"),
     autoShrink: store.get("taskbar.autoShrink", false),

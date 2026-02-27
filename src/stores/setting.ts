@@ -44,6 +44,7 @@ export interface SettingState {
   closeAppMethod: "exit" | "hide";
   /** 显示任务栏进度 */
   showTaskbarProgress: boolean;
+  taskbarLyricMode: "taskbar" | "floating";
   /** 任务栏歌词显示封面 */
   taskbarLyricShowCover: boolean;
   /** 任务栏歌词最大宽度 */
@@ -524,6 +525,7 @@ export const useSettingStore = defineStore("setting", {
     showCloseAppTip: true,
     closeAppMethod: "hide",
     showTaskbarProgress: false,
+    taskbarLyricMode: "taskbar",
     taskbarLyricShowCover: true,
     taskbarLyricMaxWidth: 30,
     taskbarLyricPosition: "automatic",

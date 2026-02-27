@@ -118,6 +118,7 @@ export const useInit = () => {
 
       watch(
         () => [
+          settingStore.taskbarLyricMode,
           settingStore.taskbarLyricShowCover,
           settingStore.themeMode,
           settingStore.LyricFont,
@@ -132,6 +133,7 @@ export const useInit = () => {
         ],
         () => {
           updateTaskbarConfig({
+            mode: settingStore.taskbarLyricMode,
             showCover: settingStore.taskbarLyricShowCover,
             themeMode: settingStore.themeMode,
             fontFamily: settingStore.LyricFont,

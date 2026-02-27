@@ -43,6 +43,7 @@ export interface StoreType {
   taskbar: {
     /** 是否启用 */
     enabled: boolean;
+    mode?: "taskbar" | "floating";
     /** 最大宽度 */
     maxWidth?: number;
     /** 显示封面 */
@@ -112,6 +113,7 @@ export const useStore = () => {
       },
       taskbar: {
         enabled: false,
+        mode: "taskbar",
         maxWidth: 30,
         showCover: true,
         position: "automatic",

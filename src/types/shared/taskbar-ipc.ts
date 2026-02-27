@@ -3,6 +3,7 @@ import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 export type Milliseconds = number;
 
 export interface TaskbarConfig {
+  mode: "taskbar" | "floating";
   maxWidth: number;
   position: "automatic" | "left" | "right";
   autoShrink: boolean;
