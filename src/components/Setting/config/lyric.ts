@@ -898,7 +898,7 @@ export const useLyricSettings = (): SettingConfig => {
             description: "调整窗口高度",
             show: () => settingStore.taskbarLyricMode === "floating",
             min: 30,
-            max: 100,
+            max: 600,
             step: 1,
             suffix: "px",
             value: computed({
