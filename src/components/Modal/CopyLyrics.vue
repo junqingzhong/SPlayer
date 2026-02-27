@@ -26,6 +26,8 @@
             <n-checkbox value="translation" label="翻译" />
             <n-checkbox value="romaji" label="音译" />
             <n-checkbox value="emptyLine" label="空行" title="在每行歌词之间加入空行分隔" />
+            <n-checkbox value="songName" label="歌名" />
+            <n-checkbox value="artist" label="歌手" />
           </n-flex>
         </n-checkbox-group>
       </n-flex>
@@ -47,7 +49,7 @@ const props = defineProps<{ onClose: () => void }>();
 
 const musicStore = useMusicStore();
 
-const selectedFilters = ref<string[]>(["translation", "romaji", "emptyLine"]);
+const selectedFilters = ref<string[]>(["translation", "romaji", "emptyLine", "songName", "artist"]);
 const selectedLines = ref<number[]>([]);
 
 const rawLyrics = computed(() => {
@@ -84,7 +86,7 @@ const selectAll = () => {
  * 复制歌词
  */
 const handleCopy = async () => {
-  const linesToCopy = displayLyrics.value
+  let linesToCopy = displayLyrics.value
     .filter((l) => selectedLines.value.includes(l.index))
     .map((l) => {
       const parts: string[] = [];
@@ -95,6 +97,26 @@ const handleCopy = async () => {
     })
     .filter((s) => s)
     .join(selectedFilters.value.includes("emptyLine") ? "\n\n" : "\n");
+
+  const showSongName = selectedFilters.value.includes("songName");
+  const showArtist = selectedFilters.value.includes("artist");
+
+  if (showSongName || showArtist) {
+    const songName = musicStore.playSong.name;
+    const artistName = Array.isArray(musicStore.playSong.artists)
+      ? musicStore.playSong.artists.map((ar) => ar.name).join("/")
+      : musicStore.playSong.artists;
+
+    let suffix = "\n\n——";
+    if (showSongName && showArtist) {
+      suffix += `《${songName}》 - ${artistName}`;
+    } else if (showSongName) {
+      suffix += `《${songName}》`;
+    } else if (showArtist) {
+      suffix += ` ${artistName}`;
+    }
+    linesToCopy += suffix;
+  }
 
   if (linesToCopy) {
     await copyData(linesToCopy);
