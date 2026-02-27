@@ -833,6 +833,60 @@ export const useLyricSettings = (): SettingConfig => {
             value: toRef(settingStore, "taskbarLyricMode"),
           },
           {
+            key: "taskbarLyricFloatingAlign",
+            label: "悬浮对齐",
+            type: "select",
+            description: "控制封面位置与文字对齐方向",
+            show: () => settingStore.taskbarLyricMode === "floating",
+            options: [
+              { label: "左对齐", value: "left" },
+              { label: "右对齐", value: "right" },
+            ],
+            value: toRef(settingStore, "taskbarLyricFloatingAlign"),
+          },
+          {
+            key: "taskbarLyricFloatingAutoWidth",
+            label: "悬浮自动宽度",
+            type: "switch",
+            description: "开启后窗口宽度将随歌词内容变化",
+            show: () => settingStore.taskbarLyricMode === "floating",
+            value: toRef(settingStore, "taskbarLyricFloatingAutoWidth"),
+          },
+          {
+            key: "taskbarLyricFloatingWidth",
+            label: "悬浮宽度",
+            type: "input-number",
+            description: "关闭自动宽度后可手动设置",
+            show: () =>
+              settingStore.taskbarLyricMode === "floating" &&
+              settingStore.taskbarLyricFloatingAutoWidth === false,
+            min: 100,
+            max: 5000,
+            step: 10,
+            suffix: "px",
+            value: computed({
+              get: () => settingStore.taskbarLyricFloatingWidth,
+              set: (v) => (settingStore.taskbarLyricFloatingWidth = v ?? 300),
+            }),
+            defaultValue: 300,
+          },
+          {
+            key: "taskbarLyricFloatingHeight",
+            label: "悬浮高度",
+            type: "input-number",
+            description: "调整窗口高度",
+            show: () => settingStore.taskbarLyricMode === "floating",
+            min: 30,
+            max: 100,
+            step: 1,
+            suffix: "px",
+            value: computed({
+              get: () => settingStore.taskbarLyricFloatingHeight,
+              set: (v) => (settingStore.taskbarLyricFloatingHeight = v ?? 48),
+            }),
+            defaultValue: 48,
+          },
+          {
             key: "taskbarLyricShowWhenPaused",
             label: "暂停时显示",
             type: "switch",
@@ -869,6 +923,7 @@ export const useLyricSettings = (): SettingConfig => {
             label: "最小宽度",
             type: "slider",
             description: "任务栏歌词可用空间低于此比例时自动隐藏",
+            show: () => settingStore.taskbarLyricMode === "taskbar",
             min: 0,
             max: 50,
             step: 1,
@@ -895,6 +950,7 @@ export const useLyricSettings = (): SettingConfig => {
             label: "自动收缩",
             type: "switch",
             description: "关闭后将固定占据设置的最大宽度",
+            show: () => settingStore.taskbarLyricMode === "taskbar",
             value: computed({
               get: () => settingStore.taskbarLyricAutoShrink,
               set: (v) => {
@@ -919,6 +975,7 @@ export const useLyricSettings = (): SettingConfig => {
             label: "显示位置",
             type: "select",
             description: "任务栏歌词的显示位置",
+            show: () => settingStore.taskbarLyricMode === "taskbar",
             options: [
               { label: "自动", value: "automatic" },
               { label: "左侧", value: "left" },

@@ -60,6 +60,10 @@ export interface StoreType {
     minWidth?: number;
     floatingX?: number;
     floatingY?: number;
+    floatingAlign?: "left" | "right";
+    floatingAutoWidth?: boolean;
+    floatingWidth?: number;
+    floatingHeight?: number;
   };
   /** 代理 */
   proxy: string;
@@ -125,6 +129,10 @@ export const useStore = () => {
         minWidth: 10,
         floatingX: screenData.workArea.x + screenData.workArea.width / 2 - 150,
         floatingY: screenData.workArea.y + screenData.workArea.height - 120,
+        floatingAlign: "right",
+        floatingAutoWidth: true,
+        floatingWidth: 300,
+        floatingHeight: 48,
       },
       macos: {
         statusBarLyric: {

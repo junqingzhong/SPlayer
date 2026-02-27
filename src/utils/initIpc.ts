@@ -101,6 +101,10 @@ const initIpc = () => {
         autoShrink: settingStore.taskbarLyricAutoShrink,
         margin: settingStore.taskbarLyricMargin,
         minWidth: settingStore.taskbarLyricMinWidth,
+        floatingAlign: settingStore.taskbarLyricFloatingAlign,
+        floatingAutoWidth: settingStore.taskbarLyricFloatingAutoWidth,
+        floatingWidth: settingStore.taskbarLyricFloatingWidth,
+        floatingHeight: settingStore.taskbarLyricFloatingHeight,
 
         // 行为
         enabled: statusStore.showTaskbarLyric,

@@ -1,5 +1,6 @@
 import { TASKBAR_IPC_CHANNELS } from "@shared";
 import { type BrowserWindow, nativeTheme, screen } from "electron";
+import { debounce } from "lodash-es";
 import { useStore } from "../store";
 import { isDev, port } from "../utils/config";
 import { createWindow } from "./index";
@@ -15,6 +16,15 @@ class FloatingTaskbarLyricWindow {
   private contentWidth = 300;
   private shouldBeVisible = false;
   private isFadingOut = false;
+  private lastFloatingAlign: "left" | "right" | null = null;
+
+  private debouncedSaveBounds = debounce((bounds: Electron.Rectangle) => {
+    const store = useStore();
+    store.set("taskbar.floatingX", bounds.x);
+    store.set("taskbar.floatingY", bounds.y);
+    store.set("taskbar.floatingWidth", bounds.width);
+    store.set("taskbar.floatingHeight", bounds.height);
+  }, 200);
 
   create(): BrowserWindow | null {
     if (this.win && !this.win.isDestroyed()) {
@@ -28,10 +38,12 @@ class FloatingTaskbarLyricWindow {
 
     const x = store.get("taskbar.floatingX", Math.round(workArea.x + workArea.width / 2 - 150));
     const y = store.get("taskbar.floatingY", Math.round(workArea.y + workArea.height - 120));
+    const height = store.get("taskbar.floatingHeight", 48);
+    const width = store.get("taskbar.floatingWidth", 300);
 
     this.win = createWindow({
-      width: 300,
-      height: 48,
+      width,
+      height,
       minWidth: 100,
       minHeight: 30,
       maxWidth: workArea.width,
@@ -48,7 +60,7 @@ class FloatingTaskbarLyricWindow {
       minimizable: false,
       maximizable: false,
       fullscreenable: false,
-      resizable: false,
+      resizable: true,
       movable: true,
       webPreferences: {
         zoomFactor: 1.0,
@@ -82,13 +94,19 @@ class FloatingTaskbarLyricWindow {
       }
       this.updateLayout(false);
       sendTheme();
+      this.sendFloatingAlign(true);
     });
 
     this.win.on("move", () => {
       if (!this.win || this.win.isDestroyed()) return;
-      const { x, y } = this.win.getBounds();
-      store.set("taskbar.floatingX", x);
-      store.set("taskbar.floatingY", y);
+      const bounds = this.win.getBounds();
+      this.debouncedSaveBounds(bounds);
+    });
+
+    this.win.on("resize", () => {
+      if (!this.win || this.win.isDestroyed()) return;
+      const bounds = this.win.getBounds();
+      this.debouncedSaveBounds(bounds);
     });
 
     this.win.on("closed", () => {
@@ -111,21 +129,54 @@ class FloatingTaskbarLyricWindow {
     return Math.min(Math.max(maxWidthSetting, 10), 100);
   }
 
+  private getWorkAreaForWindow() {
+    if (!this.win || this.win.isDestroyed()) {
+      return screen.getPrimaryDisplay().workArea;
+    }
+    const bounds = this.win.getBounds();
+    return screen.getDisplayMatching(bounds).workArea;
+  }
+
+  private sendFloatingAlign(force: boolean) {
+    if (!this.win || this.win.isDestroyed()) return;
+    const store = useStore();
+    const floatingAlign = store.get("taskbar.floatingAlign", "right");
+    if (!force && this.lastFloatingAlign === floatingAlign) return;
+    this.lastFloatingAlign = floatingAlign;
+
+    this.win.webContents.send("taskbar:update-layout", {
+      isCenter: floatingAlign === "left",
+    });
+  }
+
   updateLayout(_animate: boolean = false) {
     if (!this.win || this.win.isDestroyed()) return;
 
-    const primaryDisplay = screen.getPrimaryDisplay();
-    const maxWidthPercent = this.getMaxWidthPercent(primaryDisplay.workAreaSize.width);
-    const maxWidth = Math.round((primaryDisplay.workAreaSize.width * maxWidthPercent) / 100);
+    const store = useStore();
+    const workArea = this.getWorkAreaForWindow();
+    const maxWidthPercent = this.getMaxWidthPercent(workArea.width);
+    const maxWidth = Math.round((workArea.width * maxWidthPercent) / 100);
+    const floatingAutoWidth = store.get("taskbar.floatingAutoWidth", true);
+    const floatingWidth = store.get("taskbar.floatingWidth", 300);
+    const floatingHeight = store.get("taskbar.floatingHeight", 48);
 
-    const nextWidth = Math.min(Math.max(Math.round(this.contentWidth), 100), maxWidth);
+    const nextWidth = Math.min(
+      Math.max(Math.round(floatingAutoWidth ? this.contentWidth : floatingWidth), 100),
+      maxWidth,
+    );
+    const nextHeight = Math.min(Math.max(Math.round(floatingHeight), 30), 100);
+
     const bounds = this.win.getBounds();
-    if (bounds.width !== nextWidth) {
-      this.win.setBounds({ width: nextWidth });
-    }
+    const shouldUpdate = bounds.width !== nextWidth || bounds.height !== nextHeight;
+    if (shouldUpdate) this.win.setBounds({ width: nextWidth, height: nextHeight });
+
+    this.sendFloatingAlign(false);
   }
 
   setContentWidth(width: number) {
+    const store = useStore();
+    const floatingAutoWidth = store.get("taskbar.floatingAutoWidth", true);
+    if (!floatingAutoWidth) return;
     if (this.contentWidth !== width) {
       this.contentWidth = width;
       this.updateLayout(false);
@@ -167,6 +218,7 @@ class FloatingTaskbarLyricWindow {
   }
 
   destroy() {
+    this.debouncedSaveBounds.cancel();
     if (this.themeListener) {
       nativeTheme.removeListener("updated", this.themeListener);
       this.themeListener = null;
@@ -181,4 +233,3 @@ class FloatingTaskbarLyricWindow {
 }
 
 export default new FloatingTaskbarLyricWindow();
-

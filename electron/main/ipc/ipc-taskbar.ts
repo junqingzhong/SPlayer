@@ -18,6 +18,11 @@ const getTaskbarConfig = (): TaskbarConfig => {
     margin: store.get("taskbar.margin", 10),
     minWidth: store.get("taskbar.minWidth", 10),
     enabled: store.get("taskbar.enabled", false),
+    floatingAlign: store.get("taskbar.floatingAlign", "right"),
+    floatingAutoWidth: store.get("taskbar.floatingAutoWidth", true),
+    floatingWidth: store.get("taskbar.floatingWidth", 300),
+    floatingHeight: store.get("taskbar.floatingHeight", 48),
+
     showWhenPaused: store.get("taskbar.showWhenPaused", true),
     showCover: store.get("taskbar.showCover", true),
     themeMode: store.get("taskbar.themeMode", "auto"),
@@ -103,7 +108,16 @@ const initTaskbarIpc = () => {
             updateWindowLayout(true);
           }
         } else {
-          if (newConfig.maxWidth !== oldConfig.maxWidth || modeChanged) {
+          const floatingWidthChanged =
+            newConfig.floatingAutoWidth === false && newConfig.floatingWidth !== oldConfig.floatingWidth;
+          if (
+            newConfig.maxWidth !== oldConfig.maxWidth ||
+            newConfig.floatingAlign !== oldConfig.floatingAlign ||
+            newConfig.floatingAutoWidth !== oldConfig.floatingAutoWidth ||
+            floatingWidthChanged ||
+            newConfig.floatingHeight !== oldConfig.floatingHeight ||
+            modeChanged
+          ) {
             updateWindowLayout(false);
           }
         }

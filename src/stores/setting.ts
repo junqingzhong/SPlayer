@@ -57,6 +57,10 @@ export interface SettingState {
   taskbarLyricMargin: number;
   /** 任务栏歌词最小宽度 */
   taskbarLyricMinWidth: number;
+  taskbarLyricFloatingAlign: "left" | "right";
+  taskbarLyricFloatingAutoWidth: boolean;
+  taskbarLyricFloatingWidth: number;
+  taskbarLyricFloatingHeight: number;
   /** 暂停时显示任务栏歌词 */
   taskbarLyricShowWhenPaused: boolean;
   /** 任务栏歌词动画模式 */
@@ -532,6 +536,10 @@ export const useSettingStore = defineStore("setting", {
     taskbarLyricAutoShrink: false,
     taskbarLyricMargin: 10,
     taskbarLyricMinWidth: 10,
+    taskbarLyricFloatingAlign: "right",
+    taskbarLyricFloatingAutoWidth: true,
+    taskbarLyricFloatingWidth: 300,
+    taskbarLyricFloatingHeight: 48,
     taskbarLyricShowWhenPaused: true,
     taskbarLyricAnimationMode: "slide-blur",
     taskbarLyricSingleLineMode: false,

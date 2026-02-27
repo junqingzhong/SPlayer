@@ -10,6 +10,11 @@ export interface TaskbarConfig {
   margin: number;
   minWidth: number;
 
+  floatingAlign: "left" | "right";
+  floatingAutoWidth: boolean;
+  floatingWidth: number;
+  floatingHeight: number;
+
   enabled: boolean;
   showWhenPaused: boolean;
 

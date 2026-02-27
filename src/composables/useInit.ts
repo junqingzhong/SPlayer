@@ -130,6 +130,10 @@ export const useInit = () => {
           settingStore.showRoma,
           settingStore.taskbarLyricShowWordLyrics,
           settingStore.taskbarLyricShowWhenPaused,
+          settingStore.taskbarLyricFloatingAlign,
+          settingStore.taskbarLyricFloatingAutoWidth,
+          settingStore.taskbarLyricFloatingWidth,
+          settingStore.taskbarLyricFloatingHeight,
         ],
         () => {
           updateTaskbarConfig({
@@ -145,6 +149,10 @@ export const useInit = () => {
             showTranslation: settingStore.showTran,
             showRomaji: settingStore.showRoma,
             showWordLyrics: settingStore.taskbarLyricShowWordLyrics,
+            floatingAlign: settingStore.taskbarLyricFloatingAlign,
+            floatingAutoWidth: settingStore.taskbarLyricFloatingAutoWidth,
+            floatingWidth: settingStore.taskbarLyricFloatingWidth,
+            floatingHeight: settingStore.taskbarLyricFloatingHeight,
           });
         },
       );
