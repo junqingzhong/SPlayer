@@ -5,6 +5,25 @@ import { handleSongQuality } from "./helper";
 import { msToTime } from "./time";
 
 /**
+ * 格式化评论数量
+ * @param count 评论数量
+ * @param mode 显示模式（"full" 显示完整数值，"compact" 缩减显示）
+ * @returns 格式化后的评论数量
+ */
+export const formatCommentCount = (count: number, mode: "full" | "compact" = "compact"): string | number => {
+  if (mode === "full") return count;
+  if (count >= 10000) {
+    const val = Math.floor(count / 1000) / 10;
+    return `${val % 1 === 0 ? val.toFixed(0) : val}W+`;
+  }
+  if (count >= 1000) {
+    const val = Math.floor(count / 100) / 10;
+    return `${val % 1 === 0 ? val.toFixed(0) : val}K+`;
+  }
+  return count;
+};
+
+/**
  * 移除文本中的括号内容（支持中英文括号）
  * @param text 原始文本
  * @returns 处理后的文本

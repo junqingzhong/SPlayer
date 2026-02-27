@@ -173,7 +173,7 @@ export const useAppearanceSettings = (): SettingConfig => {
             key: "showCommentCount",
             label: "显示评论数量",
             type: "select",
-            description: "在全屏播放器评论按钮上显示评论数量",
+            description: "在评论按钮上显示评论数量",
             options: [
               { label: "关闭", value: "off" },
               { label: "缩减", value: "compact" },
