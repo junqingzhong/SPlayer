@@ -880,12 +880,12 @@ export const useLyricSettings = (): SettingConfig => {
           },
           {
             key: "taskbarLyricFloatingHeight",
-            label: "悬浮高度",
+            label: "窗口高度",
             type: "input-number",
             description: "调整窗口高度",
             show: () => settingStore.taskbarLyricMode === "floating",
-            min: 30,
-            max: 600,
+            min: 48,
+            max: 100,
             step: 1,
             suffix: "px",
             value: computed({

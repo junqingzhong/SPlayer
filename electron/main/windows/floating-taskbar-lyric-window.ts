@@ -36,19 +36,20 @@ class FloatingTaskbarLyricWindow {
     const store = useStore();
     const primaryDisplay = screen.getPrimaryDisplay();
     const workArea = primaryDisplay.workArea;
+    const maxHeight = Math.min(100, workArea.height);
 
     const x = store.get("taskbar.floatingX", Math.round(workArea.x + workArea.width / 2 - 150));
     const y = store.get("taskbar.floatingY", Math.round(workArea.y + workArea.height - 120));
-    const height = store.get("taskbar.floatingHeight", 48);
+    const height = Math.min(store.get("taskbar.floatingHeight", 48), maxHeight);
     const width = store.get("taskbar.floatingWidth", 300);
 
     this.win = createWindow({
       width,
       height,
       minWidth: 100,
-      minHeight: 30,
+      minHeight: 48,
       maxWidth: workArea.width,
-      maxHeight: workArea.height,
+      maxHeight,
       x,
       y,
       type: "toolbar",
@@ -91,10 +92,10 @@ class FloatingTaskbarLyricWindow {
 
     this.win.once("ready-to-show", () => {
       if (!this.win || this.win.isDestroyed()) return;
+      this.updateLayout(false);
       if (this.shouldBeVisible) {
         this.win.show();
       }
-      this.updateLayout(false);
       sendTheme();
       this.sendFloatingAlign(true);
     });
@@ -181,7 +182,8 @@ class FloatingTaskbarLyricWindow {
       Math.max(Math.round(floatingAutoWidth ? this.contentWidth : floatingWidth), 100),
       maxWidth,
     );
-    const nextHeight = Math.min(Math.max(Math.round(floatingHeight), 30), workArea.height);
+    const maxHeight = Math.min(100, workArea.height);
+    const nextHeight = Math.min(Math.max(Math.round(floatingHeight), 48), maxHeight);
 
     const bounds = this.win.getBounds();
     let anchorX = bounds.x;
