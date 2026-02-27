@@ -17,6 +17,7 @@ class FloatingTaskbarLyricWindow {
   private shouldBeVisible = false;
   private isFadingOut = false;
   private lastFloatingAlign: "left" | "right" | null = null;
+  private lastAlwaysOnTop: boolean | null = null;
 
   private debouncedSaveBounds = debounce((bounds: Electron.Rectangle) => {
     const store = useStore();
@@ -47,7 +48,7 @@ class FloatingTaskbarLyricWindow {
       minWidth: 100,
       minHeight: 30,
       maxWidth: workArea.width,
-      maxHeight: 100,
+      maxHeight: workArea.height,
       x,
       y,
       type: "toolbar",
@@ -70,6 +71,7 @@ class FloatingTaskbarLyricWindow {
 
     if (!this.win) return null;
 
+    this.applyAlwaysOnTop(true);
     this.win.loadURL(floatingTaskbarLyricUrl);
 
     const sendTheme = () => {
@@ -149,6 +151,19 @@ class FloatingTaskbarLyricWindow {
     });
   }
 
+  private applyAlwaysOnTop(force: boolean) {
+    if (!this.win || this.win.isDestroyed()) return;
+    const store = useStore();
+    const floatingAlwaysOnTop = store.get("taskbar.floatingAlwaysOnTop", false);
+    if (!force && this.lastAlwaysOnTop === floatingAlwaysOnTop) return;
+    this.lastAlwaysOnTop = floatingAlwaysOnTop;
+    if (floatingAlwaysOnTop) {
+      this.win.setAlwaysOnTop(true, "screen-saver");
+    } else {
+      this.win.setAlwaysOnTop(false);
+    }
+  }
+
   updateLayout(_animate: boolean = false) {
     if (!this.win || this.win.isDestroyed()) return;
 
@@ -159,17 +174,45 @@ class FloatingTaskbarLyricWindow {
     const floatingAutoWidth = store.get("taskbar.floatingAutoWidth", true);
     const floatingWidth = store.get("taskbar.floatingWidth", 300);
     const floatingHeight = store.get("taskbar.floatingHeight", 48);
+    const floatingAnchor = store.get("taskbar.floatingAnchor", "center");
 
     const nextWidth = Math.min(
       Math.max(Math.round(floatingAutoWidth ? this.contentWidth : floatingWidth), 100),
       maxWidth,
     );
-    const nextHeight = Math.min(Math.max(Math.round(floatingHeight), 30), 100);
+    const nextHeight = Math.min(Math.max(Math.round(floatingHeight), 30), workArea.height);
 
     const bounds = this.win.getBounds();
-    const shouldUpdate = bounds.width !== nextWidth || bounds.height !== nextHeight;
-    if (shouldUpdate) this.win.setBounds({ width: nextWidth, height: nextHeight });
+    let anchorX = bounds.x;
+    if (floatingAnchor === "center") {
+      anchorX = bounds.x + bounds.width / 2;
+    } else if (floatingAnchor === "right") {
+      anchorX = bounds.x + bounds.width;
+    }
 
+    let nextX = bounds.x;
+    if (floatingAnchor === "center") {
+      nextX = Math.round(anchorX - nextWidth / 2);
+    } else if (floatingAnchor === "right") {
+      nextX = Math.round(anchorX - nextWidth);
+    }
+
+    const minX = workArea.x;
+    const maxX = workArea.x + workArea.width - nextWidth;
+    nextX = Math.min(Math.max(nextX, minX), maxX);
+
+    const minY = workArea.y;
+    const maxY = workArea.y + workArea.height - nextHeight;
+    const nextY = Math.min(Math.max(bounds.y, minY), maxY);
+
+    const shouldUpdate =
+      bounds.x !== nextX ||
+      bounds.y !== nextY ||
+      bounds.width !== nextWidth ||
+      bounds.height !== nextHeight;
+    if (shouldUpdate) this.win.setBounds({ x: nextX, y: nextY, width: nextWidth, height: nextHeight });
+
+    this.applyAlwaysOnTop(false);
     this.sendFloatingAlign(false);
   }
 
