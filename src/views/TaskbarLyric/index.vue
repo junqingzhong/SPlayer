@@ -1,7 +1,7 @@
 <template>
   <div
     class="taskbar-lyric"
-    :class="{ dark: state.isDark, 'layout-reverse': !state.isCenter }"
+    :class="{ dark: state.isDark, 'layout-reverse': !state.isCenter, floating: isFloating }"
     :style="rootStyle"
     @mouseenter="isHovering = true"
     @mouseleave="isHovering = false"
@@ -81,9 +81,12 @@ import {
 } from "@/types/shared";
 import type { LyricLine, LyricWord } from "@applemusic-like-lyrics/lyric";
 import type { CSSProperties } from "vue";
+import { useRoute } from "vue-router";
 import LyricScroll from "./LyricScroll.vue";
 
 const settingStore = useSettingStore();
+const route = useRoute();
+const isFloating = computed(() => route.query.mode === "floating");
 
 /**
  * 只有当 IPC 时间与本地时间误差超过 250ms 时，才同步 IPC 的时间
@@ -661,6 +664,15 @@ $radius: 4px;
 
   &:not(:has(.control-btn:active)):active {
     background-color: rgba(0, 0, 0, 0.2);
+  }
+
+  &.floating {
+    -webkit-app-region: drag;
+
+    .media-controls,
+    .control-btn {
+      -webkit-app-region: no-drag;
+    }
   }
 }
 
