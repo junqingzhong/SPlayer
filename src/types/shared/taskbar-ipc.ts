@@ -14,6 +14,8 @@ export interface TaskbarConfig {
   floatingAutoWidth: boolean;
   floatingWidth: number;
   floatingHeight: number;
+  floatingAlwaysOnTop: boolean;
+  floatingAnchor: "left" | "center" | "right";
 
   enabled: boolean;
   showWhenPaused: boolean;

@@ -845,6 +845,27 @@ export const useLyricSettings = (): SettingConfig => {
             value: toRef(settingStore, "taskbarLyricFloatingAlign"),
           },
           {
+            key: "taskbarLyricFloatingAlwaysOnTop",
+            label: "悬浮置顶",
+            type: "switch",
+            description: "是否让悬浮窗口始终显示在最前",
+            show: () => settingStore.taskbarLyricMode === "floating",
+            value: toRef(settingStore, "taskbarLyricFloatingAlwaysOnTop"),
+          },
+          {
+            key: "taskbarLyricFloatingAnchor",
+            label: "锚定位置",
+            type: "select",
+            description: "自动宽度变化时按锚点保持窗口位置",
+            show: () => settingStore.taskbarLyricMode === "floating",
+            options: [
+              { label: "靠左", value: "left" },
+              { label: "居中", value: "center" },
+              { label: "靠右", value: "right" },
+            ],
+            value: toRef(settingStore, "taskbarLyricFloatingAnchor"),
+          },
+          {
             key: "taskbarLyricFloatingAutoWidth",
             label: "悬浮自动宽度",
             type: "switch",

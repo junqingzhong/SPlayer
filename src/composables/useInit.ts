@@ -134,6 +134,8 @@ export const useInit = () => {
           settingStore.taskbarLyricFloatingAutoWidth,
           settingStore.taskbarLyricFloatingWidth,
           settingStore.taskbarLyricFloatingHeight,
+          settingStore.taskbarLyricFloatingAlwaysOnTop,
+          settingStore.taskbarLyricFloatingAnchor,
         ],
         () => {
           updateTaskbarConfig({
@@ -153,6 +155,8 @@ export const useInit = () => {
             floatingAutoWidth: settingStore.taskbarLyricFloatingAutoWidth,
             floatingWidth: settingStore.taskbarLyricFloatingWidth,
             floatingHeight: settingStore.taskbarLyricFloatingHeight,
+            floatingAlwaysOnTop: settingStore.taskbarLyricFloatingAlwaysOnTop,
+            floatingAnchor: settingStore.taskbarLyricFloatingAnchor,
           });
         },
       );
