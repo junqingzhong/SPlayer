@@ -62,7 +62,6 @@ export interface SettingState {
   taskbarLyricFloatingWidth: number;
   taskbarLyricFloatingHeight: number;
   taskbarLyricFloatingAlwaysOnTop: boolean;
-  taskbarLyricFloatingAnchor: "left" | "center" | "right";
   /** 暂停时显示任务栏歌词 */
   taskbarLyricShowWhenPaused: boolean;
   /** 任务栏歌词动画模式 */
@@ -543,7 +542,6 @@ export const useSettingStore = defineStore("setting", {
     taskbarLyricFloatingWidth: 300,
     taskbarLyricFloatingHeight: 48,
     taskbarLyricFloatingAlwaysOnTop: false,
-    taskbarLyricFloatingAnchor: "center",
     taskbarLyricShowWhenPaused: true,
     taskbarLyricAnimationMode: "slide-blur",
     taskbarLyricSingleLineMode: false,

@@ -174,7 +174,8 @@ class FloatingTaskbarLyricWindow {
     const floatingAutoWidth = store.get("taskbar.floatingAutoWidth", true);
     const floatingWidth = store.get("taskbar.floatingWidth", 300);
     const floatingHeight = store.get("taskbar.floatingHeight", 48);
-    const floatingAnchor = store.get("taskbar.floatingAnchor", "center");
+    const floatingAlign = store.get("taskbar.floatingAlign", "right");
+    const floatingAnchor = floatingAlign === "left" ? "left" : "right";
 
     const nextWidth = Math.min(
       Math.max(Math.round(floatingAutoWidth ? this.contentWidth : floatingWidth), 100),
@@ -184,16 +185,12 @@ class FloatingTaskbarLyricWindow {
 
     const bounds = this.win.getBounds();
     let anchorX = bounds.x;
-    if (floatingAnchor === "center") {
-      anchorX = bounds.x + bounds.width / 2;
-    } else if (floatingAnchor === "right") {
+    if (floatingAnchor === "right") {
       anchorX = bounds.x + bounds.width;
     }
 
     let nextX = bounds.x;
-    if (floatingAnchor === "center") {
-      nextX = Math.round(anchorX - nextWidth / 2);
-    } else if (floatingAnchor === "right") {
+    if (floatingAnchor === "right") {
       nextX = Math.round(anchorX - nextWidth);
     }
 

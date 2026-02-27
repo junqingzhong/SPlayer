@@ -23,7 +23,6 @@ const getTaskbarConfig = (): TaskbarConfig => {
     floatingWidth: store.get("taskbar.floatingWidth", 300),
     floatingHeight: store.get("taskbar.floatingHeight", 48),
     floatingAlwaysOnTop: store.get("taskbar.floatingAlwaysOnTop", false),
-    floatingAnchor: store.get("taskbar.floatingAnchor", "center"),
 
     showWhenPaused: store.get("taskbar.showWhenPaused", true),
     showCover: store.get("taskbar.showCover", true),
@@ -119,7 +118,6 @@ const initTaskbarIpc = () => {
             floatingWidthChanged ||
             newConfig.floatingHeight !== oldConfig.floatingHeight ||
             newConfig.floatingAlwaysOnTop !== oldConfig.floatingAlwaysOnTop ||
-            newConfig.floatingAnchor !== oldConfig.floatingAnchor ||
             modeChanged
           ) {
             updateWindowLayout(false);

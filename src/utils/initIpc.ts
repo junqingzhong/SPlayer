@@ -106,7 +106,6 @@ const initIpc = () => {
         floatingWidth: settingStore.taskbarLyricFloatingWidth,
         floatingHeight: settingStore.taskbarLyricFloatingHeight,
         floatingAlwaysOnTop: settingStore.taskbarLyricFloatingAlwaysOnTop,
-        floatingAnchor: settingStore.taskbarLyricFloatingAnchor,
 
         // 行为
         enabled: statusStore.showTaskbarLyric,
