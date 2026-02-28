@@ -545,6 +545,45 @@ export const usePlaySettings = (): SettingConfig => {
             }),
           },
           {
+            key: "audioLatencyHint",
+            label: "Web Audio 延迟策略",
+            type: "select",
+            tags: [{ text: "Beta", type: "warning" }],
+            description:
+              "调整 Web Audio 的延迟策略，修改后需重启。<br>" +
+              "“低延迟模式（interactive）”延迟更低但可能不稳定；<br>" +
+              "“高效能模式（playback）”延迟偏高但播放更稳定。<br>" +
+              "已针对“高效能模式（playback）”补偿了音频输出延迟，理论上不会造成歌词与音频不同步的问题。",
+            options: [
+              { label: "低延迟模式（interactive）", value: "interactive" },
+              { label: "高能效模式（playback）", value: "playback" },
+            ],
+            value: computed({
+              get: () => settingStore.audioLatencyHint,
+              set: (v) => {
+                window.$dialog.warning({
+                  title: "更改延迟策略",
+                  content: "此操作需要重启应用才能生效，是否立即重启？",
+                  positiveText: "重启",
+                  negativeText: "取消",
+                  onPositiveClick: () => {
+                    settingStore.audioLatencyHint = v;
+                    if (isElectron) {
+                      window.electron.ipcRenderer.send("win-restart");
+                    } else {
+                      window.location.reload();
+                    }
+                  },
+                });
+              },
+            }),
+            show: computed(
+              () =>
+                settingStore.playbackEngine === "web-audio" &&
+                settingStore.audioEngine === "element",
+            ),
+          },
+          {
             key: "playSongDemo",
             label: "播放试听",
             type: "switch",

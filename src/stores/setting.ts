@@ -188,6 +188,8 @@ export interface SettingState {
   playDevice: "default" | string;
   /** 音频引擎: element (原生) 或 ffmpeg */
   audioEngine: "element" | "ffmpeg";
+  /** Web Audio 延迟策略 */
+  audioLatencyHint: "interactive" | "playback";
   /** 自动播放 */
   autoPlay: boolean;
   /** 预载下一首 */
@@ -563,6 +565,7 @@ export const useSettingStore = defineStore("setting", {
     songLevel: "exhigh",
     playDevice: "default",
     audioEngine: "element",
+    audioLatencyHint: "interactive",
     autoPlay: false,
     useNextPrefetch: true,
     songVolumeFade: true,
