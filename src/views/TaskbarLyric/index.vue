@@ -453,7 +453,7 @@ const updateLyric = () => {
     state.currentTime + firstLineCompensation,
     mainLyrics.value,
     state.offset,
-    2,
+    1,
   );
   if (newMainIndex !== mainLyricIndex.value) {
     mainLyricIndex.value = newMainIndex;
