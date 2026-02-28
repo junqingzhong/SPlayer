@@ -214,6 +214,7 @@ const createMetadataItems = (title: string, artist: string): DisplayItem[] => {
 
 const mainLyrics = ref<LyricLine[]>([]);
 const mainToRawIndex = ref<number[]>([]);
+const mainSafeEnds = ref<number[]>([]);
 const mainLyricIndex = ref(-1);
 const bgCache = ref<{ line: LyricLine; rawIndex: number } | null>(null);
 
@@ -226,8 +227,13 @@ const rebuildMainLyrics = (lyrics: LyricLine[]) => {
       map.push(idx);
     }
   });
+  const safeEnds = mains.map((_, idx) => {
+    const v = getSafeEndTime(mains, idx);
+    return v > 0 ? v : Infinity;
+  });
   mainLyrics.value = mains;
   mainToRawIndex.value = map;
+  mainSafeEnds.value = safeEnds;
   mainLyricIndex.value = -1;
   state.lyricIndex = -1;
   bgCache.value = null;
@@ -274,35 +280,27 @@ const updateBgCache = () => {
 
   const currentMain = mainLyrics.value[idx];
   const mainStart = currentMain.startTime;
-  const safeEnd = getSafeEndTime(mainLyrics.value, idx);
+  const safeEnd = mainSafeEnds.value[idx] ?? Infinity;
+  const prevSafeEnd = idx > 0 ? (mainSafeEnds.value[idx - 1] ?? -Infinity) : -Infinity;
   const nextMainStart = mainLyrics.value[idx + 1]?.startTime ?? Infinity;
   const mainEnd = Math.min(safeEnd || Infinity, nextMainStart);
 
-  let foundPreRoll: { line: LyricLine; rawIndex: number } | null = null;
-  let foundNormal: { line: LyricLine; rawIndex: number } | null = null;
+  let found: { line: LyricLine; rawIndex: number } | null = null;
   for (let i = 0; i < state.lyrics.length; i++) {
     const line = state.lyrics[i];
     if (!line.isBG) continue;
     const bgStart = Number(line.startTime);
     const bgEndRaw = Number(line.endTime);
     const hasValidEnd = Number.isFinite(bgEndRaw) && bgEndRaw > bgStart;
-    const preRoll = bgStart < mainStart;
     const bgEnd = hasValidEnd ? bgEndRaw : bgStart;
-    const inWindowPreRoll = hasValidEnd
-      ? bgEnd > mainStart && bgEnd <= mainEnd
-      : bgStart < mainEnd && bgEnd > mainStart;
-    const inWindowNormal = bgStart >= mainStart && bgStart < mainEnd;
-
-    if (!preRoll && inWindowNormal && !foundNormal) {
-      foundNormal = { line, rawIndex: i };
-      continue;
-    }
-
-    if (preRoll && inWindowPreRoll && !foundPreRoll) {
-      foundPreRoll = { line, rawIndex: i };
+    const ownedByCurrent = bgEnd > prevSafeEnd && bgEnd <= safeEnd;
+    const overlapsDisplay = bgStart < mainEnd && bgEnd > mainStart;
+    if (ownedByCurrent && overlapsDisplay) {
+      found = { line, rawIndex: i };
+      break;
     }
   }
-  bgCache.value = foundNormal ?? foundPreRoll;
+  bgCache.value = found;
 };
 
 watch(mainLyricIndex, () => updateBgCache());
