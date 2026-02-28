@@ -54,7 +54,7 @@
       </template>
       <!-- 评论 -->
       <template v-else>
-        <ListComment :id="albumId" :type="3" :height="songListHeight" />
+        <ListComment :id="albumId" :type="3" :height="songListHeight" @update:comment-count="handleCommentCount" />
       </template>
     </Transition>
   </div>
@@ -64,6 +64,7 @@
 import type { DropdownOption } from "naive-ui";
 import { songDetail } from "@/api/song";
 import { albumDetail } from "@/api/album";
+import { getComment } from "@/api/comment";
 import { formatCoverList, formatSongsList } from "@/utils/format";
 import { renderIcon, copyData, getShareUrl } from "@/utils/helper";
 import { openBatchList } from "@/utils/modal";
@@ -194,6 +195,8 @@ const getAlbumDetail = async (id: number, refresh: boolean = false) => {
       setListData(cached.songs);
       setLoading(false);
 
+      // 获取专辑评论数量（专辑API不返回commentCount）
+      fetchAlbumCommentCount(id);
       // 后台检查更新
       backgroundCheck(id, cached);
       return;
@@ -208,6 +211,8 @@ const getAlbumDetail = async (id: number, refresh: boolean = false) => {
   // 检查是否仍然是当前请求的专辑
   if (currentRequestId.value !== id) return;
   setDetailData(formatCoverList(detail.album)[0]);
+  // 获取专辑评论数量（专辑API不返回commentCount）
+  fetchAlbumCommentCount(id);
   // 获取专辑歌曲
   const ids: number[] = detail.songs.map((song: any) => song.id as number);
   const result = await songDetail(ids);
@@ -249,6 +254,25 @@ const handleSearchUpdate = (val: string) => {
 // 处理 tab 切换
 const handleTabChange = (value: "songs" | "comments") => {
   currentTab.value = value;
+};
+
+// 更新评论数量（从 ListComment emit 回调）
+const handleCommentCount = (count: number) => {
+  if (detailData.value) {
+    detailData.value.commentCount = count;
+  }
+};
+
+// 主动获取专辑评论数量
+const fetchAlbumCommentCount = async (id: number) => {
+  try {
+    const result = await getComment(id, 3, 1, 1);
+    if (result.data?.totalCount != null && detailData.value?.id === id) {
+      detailData.value.commentCount = result.data.totalCount;
+    }
+  } catch {
+    // 忽略错误
+  }
 };
 
 // 播放全部歌曲
