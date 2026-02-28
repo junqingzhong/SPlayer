@@ -65,6 +65,8 @@ export abstract class BaseAudioPlayer
   /** 输入节点 (子类将源连接到此处) */
   protected inputNode: GainNode | null = null;
 
+  protected compensatedLatency = 0;
+
   protected effectManager: AudioEffectManager | null = null;
 
   /** 初始化状态 */
@@ -102,6 +104,13 @@ export abstract class BaseAudioPlayer
       const processedNode = this.effectManager.connect(this.inputNode);
       processedNode.connect(this.gainNode);
       this.gainNode.connect(getSharedMasterInput());
+
+      if (this.audioCtx.latencyHint === "playback") {
+        this.compensatedLatency =
+          (this.audioCtx.outputLatency || 0) + (this.audioCtx.baseLatency || 0);
+      } else {
+        this.compensatedLatency = 0;
+      }
 
       // 应用初始音量
       this.gainNode.gain.value = this.volume;
