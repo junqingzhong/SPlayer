@@ -284,10 +284,11 @@ const updateBgCache = () => {
     if (!line.isBG) continue;
     const bgStart = Number(line.startTime);
     const bgEndRaw = Number(line.endTime);
-    const bgEnd = Number.isFinite(bgEndRaw) && bgEndRaw > bgStart ? bgEndRaw : bgStart;
-    const inWindowByEnd = bgEnd > mainStart && bgEnd <= mainEnd;
-    const inWindowByStart = bgStart >= mainStart && bgStart < mainEnd;
-    if (inWindowByEnd || inWindowByStart) {
+    const hasValidEnd = Number.isFinite(bgEndRaw) && bgEndRaw > bgStart;
+    const inWindow = hasValidEnd
+      ? bgEndRaw > mainStart && bgEndRaw <= mainEnd
+      : bgStart >= mainStart && bgStart < mainEnd;
+    if (inWindow) {
       found = { line, rawIndex: i };
       break;
     }
