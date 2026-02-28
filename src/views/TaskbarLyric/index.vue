@@ -45,9 +45,9 @@
               :text="item.text"
               :words="item.words"
               :currentTime="state.currentTime"
-              :isActive="item.isPrimary"
+              :isActive="item.isActive"
               :mode="item.itemType === 'main' && !currentLyricText ? 'line' : state.lyricType"
-              :progress="item.itemType === 'main' ? currentLineProgress : 0"
+              :progress="item.progress"
               @resize-width="(w) => handleLyricResize(item.key, w)"
             />
           </div>
@@ -65,6 +65,7 @@ import {
   type SyncTickPayload,
   type TaskbarConfig,
 } from "@/types/shared";
+import { calculateLyricIndex, getSafeEndTime } from "@/utils/calc";
 import type { LyricLine, LyricWord } from "@applemusic-like-lyrics/lyric";
 import type { CSSProperties } from "vue";
 import { useRoute } from "vue-router";
@@ -88,8 +89,10 @@ interface DisplayItem {
   key: string | number;
   text: string;
   isPrimary: boolean;
+  isActive: boolean;
   itemType: "main" | "sub" | "next";
   words?: LyricWord[];
+  progress: number;
 }
 
 const state = reactive({
@@ -189,7 +192,9 @@ const createMetadataItems = (title: string, artist: string): DisplayItem[] => {
       key: `meta-title-${title}`,
       text: title || "SPlayer",
       isPrimary: true,
+      isActive: true,
       itemType: "main",
+      progress: 0,
     },
   ];
 
@@ -198,64 +203,163 @@ const createMetadataItems = (title: string, artist: string): DisplayItem[] => {
       key: `meta-artist-${artist}`,
       text: artist,
       isPrimary: false,
+      isActive: false,
       itemType: "sub",
+      progress: 0,
     });
   }
 
   return items;
 };
 
+const mainLyrics = ref<LyricLine[]>([]);
+const mainToRawIndex = ref<number[]>([]);
+const mainLyricIndex = ref(-1);
+const bgCache = ref<{ line: LyricLine; rawIndex: number } | null>(null);
+
+const rebuildMainLyrics = (lyrics: LyricLine[]) => {
+  const mains: LyricLine[] = [];
+  const map: number[] = [];
+  lyrics.forEach((line, idx) => {
+    if (!line.isBG) {
+      mains.push(line);
+      map.push(idx);
+    }
+  });
+  mainLyrics.value = mains;
+  mainToRawIndex.value = map;
+  mainLyricIndex.value = -1;
+  state.lyricIndex = -1;
+  bgCache.value = null;
+};
+
+watch(
+  () => state.lyrics,
+  (lyrics) => rebuildMainLyrics(lyrics),
+  { immediate: true },
+);
+
+const getLineText = (line: LyricLine | undefined) => {
+  return (
+    line?.words
+      ?.map((w) => w.word)
+      .join("")
+      .trim() || ""
+  );
+};
+
+const getLineProgress = (line: LyricLine | undefined) => {
+  if (!line) return 0;
+  if (state.lyricType !== "word") return 0;
+  const startTime = line.startTime;
+  const endTime = line.endTime;
+  const totalDuration = endTime - startTime;
+  if (totalDuration <= 0) return 1;
+  const BUFFER_RATIO = 0.2;
+  const activeScrollDuration = totalDuration * (1 - BUFFER_RATIO);
+  const elapsed = state.currentTime - startTime;
+  if (activeScrollDuration <= 10) {
+    return elapsed >= activeScrollDuration ? 1 : 0;
+  }
+  const rawProgress = elapsed / activeScrollDuration;
+  return Math.max(0, Math.min(rawProgress, 1));
+};
+
+const updateBgCache = () => {
+  const idx = mainLyricIndex.value;
+  if (!state.lyrics.length || idx < 0 || idx >= mainLyrics.value.length) {
+    bgCache.value = null;
+    return;
+  }
+
+  const currentMain = mainLyrics.value[idx];
+  const mainStart = currentMain.startTime;
+  const safeEnd = getSafeEndTime(mainLyrics.value, idx);
+  const nextMainStart = mainLyrics.value[idx + 1]?.startTime ?? Infinity;
+  const mainEnd = Math.min(safeEnd || Infinity, nextMainStart);
+
+  let found: { line: LyricLine; rawIndex: number } | null = null;
+  for (let i = 0; i < state.lyrics.length; i++) {
+    const line = state.lyrics[i];
+    if (!line.isBG) continue;
+    const t = line.startTime;
+    if (t >= mainStart && t < mainEnd) {
+      found = { line, rawIndex: i };
+      break;
+    }
+  }
+  bgCache.value = found;
+};
+
+watch(mainLyricIndex, () => updateBgCache());
+
 const displayItems = computed<DisplayItem[]>(() => {
   if (!currentLyricText.value) {
     return createMetadataItems(state.title, state.artist);
   }
 
-  if (!state.lyrics.length || state.lyricIndex < 0) return [];
+  if (!mainLyrics.value.length || mainLyricIndex.value < 0) return [];
 
-  const currentLine = state.lyrics[state.lyricIndex];
-  const currentText =
-    currentLine.words
-      ?.map((w) => w.word)
-      .join("")
-      .trim() || "";
+  const currentLine = mainLyrics.value[mainLyricIndex.value];
+  const currentRawIndex = mainToRawIndex.value[mainLyricIndex.value] ?? -1;
+  if (currentRawIndex < 0) return [];
+  const currentText = getLineText(currentLine);
 
+  const shouldShowWords = settingStore.taskbarLyricShowWordLyrics && state.lyricType === "word";
+  const bgLine = bgCache.value?.line;
+  const hasBg = !!bgLine;
   let subText = "";
-  if (settingStore.showTran && currentLine.translatedLyric) {
-    subText = currentLine.translatedLyric;
-  } else if (settingStore.showRoma && currentLine.romanLyric) {
-    subText = currentLine.romanLyric;
+  if (!hasBg) {
+    if (settingStore.showTran && currentLine.translatedLyric) {
+      subText = currentLine.translatedLyric;
+    } else if (settingStore.showRoma && currentLine.romanLyric) {
+      subText = currentLine.romanLyric;
+    }
   }
 
   const items: DisplayItem[] = [];
 
   items.push({
-    key: `${currentLine.startTime}-${state.lyricIndex}-main`,
+    key: `${currentLine.startTime}-${currentRawIndex}-main`,
     text: currentText,
     isPrimary: true,
+    isActive: true,
     itemType: "main",
-    words: settingStore.taskbarLyricShowWordLyrics ? currentLine.words : undefined,
+    words: shouldShowWords ? currentLine.words : undefined,
+    progress: currentLineProgress.value,
   });
 
-  if (subText) {
+  if (hasBg) {
     items.push({
-      key: `${currentLine.startTime}-${state.lyricIndex}-sub`,
+      key: `${currentLine.startTime}-${currentRawIndex}-sub`,
+      text: getLineText(bgLine),
+      isPrimary: false,
+      isActive: shouldShowWords && !!bgLine?.words?.length,
+      itemType: "sub",
+      words: shouldShowWords ? bgLine?.words : undefined,
+      progress: getLineProgress(bgLine),
+    });
+  } else if (subText) {
+    items.push({
+      key: `${currentLine.startTime}-${currentRawIndex}-sub`,
       text: subText,
       isPrimary: false,
+      isActive: false,
       itemType: "sub",
+      progress: 0,
     });
   } else if (!settingStore.taskbarLyricSingleLineMode) {
-    const nextLine = state.lyrics[state.lyricIndex + 1];
+    const nextLine = mainLyrics.value[mainLyricIndex.value + 1];
     if (nextLine) {
-      const nextText =
-        nextLine.words
-          ?.map((w) => w.word)
-          .join("")
-          .trim() || "";
+      const nextRawIndex = mainToRawIndex.value[mainLyricIndex.value + 1] ?? -1;
+      const nextText = getLineText(nextLine);
       items.push({
-        key: `${nextLine.startTime}-${state.lyricIndex + 1}-main`,
+        key: `${nextLine.startTime}-${nextRawIndex}-main`,
         text: nextText,
         isPrimary: false,
+        isActive: false,
         itemType: "next",
+        progress: 0,
       });
     }
   }
@@ -334,42 +438,26 @@ const currentLyricText = computed(() => {
   return state.lyrics[state.lyricIndex]?.words?.map((w) => w.word).join("") || "";
 });
 
-const findLyricIndex = (currentTime: number, lyrics: LyricLine[], offset: number = 0): number => {
-  const targetTime = currentTime - offset;
-  let low = 0;
-  let high = lyrics.length - 1;
-  let index = -1;
-  while (low <= high) {
-    const mid = (low + high) >> 1;
-    const lineTime = lyrics[mid].startTime;
-    if (lineTime <= targetTime) {
-      index = mid;
-      low = mid + 1;
-    } else {
-      high = mid - 1;
-    }
-  }
-  return index;
-};
-
 let rafId: number | null = null;
 let lastTimestamp = 0;
-const LYRIC_LOOKAHEAD = 300;
 const jumpCount = ref(0);
 
 const updateLyric = () => {
-  if (state.lyrics.length) {
-    // 提前 0.4s 以便让歌词进场动画跑完
-    const firstLineCompensation = state.lyricIndex === -1 ? 400 : 0;
-
-    const newIndex = findLyricIndex(
-      state.currentTime + LYRIC_LOOKAHEAD + firstLineCompensation,
-      state.lyrics,
-      state.offset,
-    );
-    if (newIndex !== state.lyricIndex) {
-      state.lyricIndex = newIndex;
-    }
+  if (!mainLyrics.value.length) {
+    mainLyricIndex.value = -1;
+    state.lyricIndex = -1;
+    return;
+  }
+  const firstLineCompensation = mainLyricIndex.value === -1 ? 400 : 0;
+  const newMainIndex = calculateLyricIndex(
+    state.currentTime + firstLineCompensation,
+    mainLyrics.value,
+    state.offset,
+    2,
+  );
+  if (newMainIndex !== mainLyricIndex.value) {
+    mainLyricIndex.value = newMainIndex;
+    state.lyricIndex = newMainIndex >= 0 ? mainToRawIndex.value[newMainIndex] ?? -1 : -1;
   }
 };
 
@@ -398,7 +486,7 @@ const stopLoop = () => {
 };
 
 watch(
-  () => state.lyricIndex,
+  () => mainLyricIndex.value,
   (newIndex, oldIndex) => {
     if (oldIndex === -1 || newIndex === -1) return;
     if (newIndex !== oldIndex + 1) {
@@ -464,6 +552,7 @@ onMounted(() => {
         state.lyrics = lyrics.lines;
         state.lyricType = lyrics.type;
         state.lyricIndex = -1;
+        mainLyricIndex.value = -1;
         jumpCount.value = 0;
 
         state.isPlaying = playback.isPlaying;
@@ -498,6 +587,7 @@ onMounted(() => {
         state.lyrics = data.lines;
         state.lyricType = data.type;
         state.lyricIndex = -1;
+        mainLyricIndex.value = -1;
         state.currentTime = 0;
         jumpCount.value = 0;
         coverLoadFailed.value = false;

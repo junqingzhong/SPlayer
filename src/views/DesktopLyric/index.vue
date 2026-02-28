@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { LyricLine, LyricWord } from "@applemusic-like-lyrics/lyric";
+import { LyricWord } from "@applemusic-like-lyrics/lyric";
 import { calculateLyricIndex, getSafeEndTime } from "@/utils/calc";
 import { LyricConfig, LyricData, RenderLine } from "@/types/desktop-lyric";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
