@@ -282,8 +282,12 @@ const updateBgCache = () => {
   for (let i = 0; i < state.lyrics.length; i++) {
     const line = state.lyrics[i];
     if (!line.isBG) continue;
-    const t = line.startTime;
-    if (t >= mainStart && t < mainEnd) {
+    const bgStart = Number(line.startTime);
+    const bgEndRaw = Number(line.endTime);
+    const bgEnd = Number.isFinite(bgEndRaw) && bgEndRaw > bgStart ? bgEndRaw : bgStart;
+    const inWindowByEnd = bgEnd > mainStart && bgEnd <= mainEnd;
+    const inWindowByStart = bgStart >= mainStart && bgStart < mainEnd;
+    if (inWindowByEnd || inWindowByStart) {
       found = { line, rawIndex: i };
       break;
     }
