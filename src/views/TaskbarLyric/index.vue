@@ -285,8 +285,10 @@ const updateBgCache = () => {
     const bgStart = Number(line.startTime);
     const bgEndRaw = Number(line.endTime);
     const hasValidEnd = Number.isFinite(bgEndRaw) && bgEndRaw > bgStart;
-    const inWindow = hasValidEnd
-      ? bgEndRaw > mainStart && bgEndRaw <= mainEnd
+    const preRoll = bgStart < mainStart;
+    const bgEnd = hasValidEnd ? bgEndRaw : bgStart;
+    const inWindow = preRoll
+      ? (hasValidEnd ? bgEnd > mainStart && bgEnd <= mainEnd : bgStart < mainEnd && bgEnd > mainStart)
       : bgStart >= mainStart && bgStart < mainEnd;
     if (inWindow) {
       found = { line, rawIndex: i };
