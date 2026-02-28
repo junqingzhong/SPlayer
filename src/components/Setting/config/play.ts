@@ -556,7 +556,7 @@ export const usePlaySettings = (): SettingConfig => {
               "已针对“高效能模式（playback）”补偿了音频输出延迟，理论上不会造成歌词与音频不同步的问题。",
             options: [
               { label: "低延迟模式（interactive）", value: "interactive" },
-              { label: "高能效模式（playback）", value: "playback" },
+              { label: "高效能模式（playback）", value: "playback" },
             ],
             value: computed({
               get: () => settingStore.audioLatencyHint,
