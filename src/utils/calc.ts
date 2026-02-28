@@ -71,3 +71,14 @@ export const calculateLyricIndex = (
   const concurrent = activeCandidates.slice(-keepCount);
   return concurrent[0];
 };
+
+export const getSafeEndTime = (lyrics: LyricLine[], idx: number) => {
+  const cur = lyrics?.[idx];
+  const next = lyrics?.[idx + 1];
+  const curEnd = Number(cur?.endTime);
+  const curStart = Number(cur?.startTime);
+  if (Number.isFinite(curEnd) && curEnd > curStart) return curEnd;
+  const nextStart = Number(next?.startTime);
+  if (Number.isFinite(nextStart) && nextStart > curStart) return nextStart;
+  return 0;
+};
