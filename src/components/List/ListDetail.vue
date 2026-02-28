@@ -217,7 +217,7 @@
                 <n-tab name="comments">
                   评论
                   <n-text v-if="settingStore.showCommentCount !== 'off' && detailData?.commentCount" class="count" depth="3">
-                    {{ formatCommentCount(detailData.commentCount, settingStore.showCommentCount === "full" ? "full" : "compact") }}
+                    {{ formatCommentCount(detailData.commentCount) }}
                   </n-text>
                 </n-tab>
               </n-tabs>

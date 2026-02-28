@@ -40,7 +40,7 @@
             <SvgIcon name="Download" />
           </div>
           <n-badge
-            :value="formattedCommentCount"
+            :value="formatCommentCount(statusStore.songCommentCount)"
             :show="settingStore.showCommentCount !== 'off' && statusStore.songCommentCount > 0"
           >
             <div
@@ -167,13 +167,6 @@ const songManager = useSongManager();
 const player = usePlayerController();
 
 const { timeDisplay, toggleTimeFormat } = useTimeFormat();
-
-// 格式化评论数量
-const formattedCommentCount = computed(() => {
-  const count = statusStore.songCommentCount;
-  const mode = settingStore.showCommentCount === "full" ? "full" : "compact";
-  return formatCommentCount(count, mode);
-});
 
 // 获取评论数量
 const fetchCommentCount = async () => {
