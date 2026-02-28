@@ -44,6 +44,8 @@ export interface SettingState {
   closeAppMethod: "exit" | "hide";
   /** 显示任务栏进度 */
   showTaskbarProgress: boolean;
+  /** 任务栏歌词模式 */
+  taskbarLyricMode: "taskbar" | "floating";
   /** 任务栏歌词显示封面 */
   taskbarLyricShowCover: boolean;
   /** 任务栏歌词最大宽度 */
@@ -56,6 +58,16 @@ export interface SettingState {
   taskbarLyricMargin: number;
   /** 任务栏歌词最小宽度 */
   taskbarLyricMinWidth: number;
+  /** 任务栏歌词悬浮对齐 **/
+  taskbarLyricFloatingAlign: "left" | "right";
+  /** 任务栏歌词悬浮自动宽度 **/
+  taskbarLyricFloatingAutoWidth: boolean;
+  /** 任务栏歌词悬浮宽度 **/
+  taskbarLyricFloatingWidth: number;
+  /** 任务栏歌词悬浮高度 **/
+  taskbarLyricFloatingHeight: number;
+  /** 任务栏歌词悬浮置顶 **/
+  taskbarLyricFloatingAlwaysOnTop: boolean;
   /** 暂停时显示任务栏歌词 */
   taskbarLyricShowWhenPaused: boolean;
   /** 任务栏歌词动画模式 */
@@ -110,6 +122,7 @@ export interface SettingState {
   hideBracketedContent: boolean;
   /** 替换歌词括号内容 */
   replaceLyricBrackets: boolean;
+  /** 把歌词里的屏蔽词还原为原词 **/
   uncensorMaskedProfanity: boolean;
   /** 歌词括号替换预设 */
   bracketReplacementPreset: "dash" | "angleBrackets" | "cornerBrackets" | "custom";
@@ -526,12 +539,18 @@ export const useSettingStore = defineStore("setting", {
     showCloseAppTip: true,
     closeAppMethod: "hide",
     showTaskbarProgress: false,
+    taskbarLyricMode: "taskbar",
     taskbarLyricShowCover: true,
     taskbarLyricMaxWidth: 30,
     taskbarLyricPosition: "automatic",
     taskbarLyricAutoShrink: false,
     taskbarLyricMargin: 10,
     taskbarLyricMinWidth: 10,
+    taskbarLyricFloatingAlign: "right",
+    taskbarLyricFloatingAutoWidth: true,
+    taskbarLyricFloatingWidth: 300,
+    taskbarLyricFloatingHeight: 48,
+    taskbarLyricFloatingAlwaysOnTop: false,
     taskbarLyricShowWhenPaused: true,
     taskbarLyricAnimationMode: "slide-blur",
     taskbarLyricSingleLineMode: false,
