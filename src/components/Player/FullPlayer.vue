@@ -5,6 +5,7 @@
         v-if="statusStore.showFullPlayer"
         :style="{
           cursor: statusStore.playerMetaShow || isShowComment ? 'auto' : 'none',
+          '--lyric-blend-mode': settingStore.lyricsBlendMode,
         }"
         :class="['full-player', { 'show-comment': isShowComment && !statusStore.pureLyricMode }]"
         @mouseleave="playerLeave"
@@ -293,7 +294,7 @@ onBeforeUnmount(() => {
       height: 100%;
       display: flex;
       flex-direction: column;
-      mix-blend-mode: v-bind('settingStore.lyricsBlendMode');
+      mix-blend-mode: var(--lyric-blend-mode);
       transition:
         width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
         opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
