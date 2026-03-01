@@ -325,7 +325,7 @@ class LyricManager {
       if (!ttmlContent || typeof ttmlContent !== "string") return;
       const sorted = this.cleanTTMLTranslations(ttmlContent);
       const parsed = parseTTML(sorted);
-      const lines = this.attachTtmlBgLines(sorted, parsed?.lines || []);
+      const lines = parsed?.lines || [];
       if (!lines.length) return;
 
       // 只有当没有 YRC 数据或优先级为 TTML 或 自动模式(TTML > QM) 时才覆盖
@@ -462,7 +462,7 @@ class LyricManager {
       if (format === "ttml") {
         const sorted = this.cleanTTMLTranslations(lyric);
         const ttml = parseTTML(sorted);
-        const lines = this.attachTtmlBgLines(sorted, ttml?.lines || []);
+        const lines = ttml?.lines || [];
         return {
           data: { lrcData: [], yrcData: lines },
           meta: { usingTTMLLyric: true, usingQRCLyric: false },
@@ -758,7 +758,7 @@ class LyricManager {
         if (ttmlContent) {
           const cleaned = this.cleanTTMLTranslations(ttmlContent);
           const raw = parseTTML(cleaned).lines || [];
-          ttmlLines = this.attachTtmlBgLines(cleaned, raw);
+          ttmlLines = raw;
           console.log("检测到本地TTML歌词覆盖", ttmlLines);
         }
       } catch (err) {
@@ -1142,6 +1142,26 @@ class LyricManager {
     } catch (e) {
       console.warn(`Lyrics prefetch failed: [${song.id}]`, e);
     }
+  }
+
+  /**
+   * 获取原始 TTML 文本（如果存在）
+   * @param id 歌曲 ID
+   */
+  public async getRawTtml(id: number | string): Promise<string | null> {
+    if (typeof id !== "number") return null;
+    const ttml = await this.getRawLyricCache(id, "ttml");
+    if (ttml) return this.cleanTTMLTranslations(ttml);
+    return null;
+  }
+
+  /**
+   * 为任务栏歌词处理 TTML（注入 BG）
+   * @param lines 原始解析后的歌词行
+   * @param ttml 原始 TTML 文本
+   */
+  public processTtmlForTaskbar(lines: LyricLine[], ttml: string): LyricLine[] {
+    return this.attachTtmlBgLines(ttml, cloneDeep(lines));
   }
 }
 

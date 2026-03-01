@@ -1,5 +1,7 @@
-import { useSettingStore } from "@/stores/setting";
+import { toRaw } from "vue";
+import { useMusicStore, useSettingStore } from "@/stores";
 import type { SongLyric } from "@/types/lyric";
+import { useLyricManager } from "./LyricManager";
 import {
   TASKBAR_IPC_CHANNELS,
   type SyncStatePayload,
@@ -147,14 +149,30 @@ export const sendTaskbarMetadata = (payload: TaskbarMetadataPayload) => {
  * 如果存在逐字歌词 (yrcData) 则优先使用逐字渲染，否则降级到普通行歌词 (lrcData)
  * @param lyrics 原始歌词对象模型（含 yrcData 和 lrcData 等）
  */
-export const sendTaskbarLyrics = (lyrics: SongLyric) => {
+export const sendTaskbarLyrics = async (lyrics: SongLyric) => {
   if (!isElectron) return;
 
   const yrcData = lyrics.yrcData ?? [];
   const lrcData = lyrics.lrcData ?? [];
   const hasYrc = yrcData.length > 0;
 
-  const taskbarLyrics = hasYrc ? yrcData : lrcData;
+  let taskbarLyrics = hasYrc ? yrcData : lrcData;
+
+  // 如果是 TTML 逐字歌词，尝试注入 BG (仅用于任务栏显示)
+  if (hasYrc) {
+    const musicStore = useMusicStore();
+    const songId = musicStore.playSong?.id;
+    if (songId) {
+      const lyricManager = useLyricManager();
+      // 获取缓存的原始 TTML
+      const rawTtml = await lyricManager.getRawTtml(songId);
+      if (rawTtml) {
+        // 使用专门的任务栏处理逻辑注入 BG
+        // 注意：这里返回的是一个新的数组，不会污染原始 lyrics 对象
+        taskbarLyrics = lyricManager.processTtmlForTaskbar(taskbarLyrics, rawTtml);
+      }
+    }
+  }
 
   broadcastTaskbarState({
     type: "lyrics-loaded",
