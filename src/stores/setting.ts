@@ -234,8 +234,6 @@ export interface SettingState {
   progressAdjustLyric: boolean;
   /** 显示播放列表数量 */
   showPlaylistCount: boolean;
-  /** 显示评论数量 */
-  showCommentCount: "off" | "compact" | "full";
   /** 是否显示音乐频谱 */
   showSpectrums: boolean;
   /** 是否开启系统音频集成 */
@@ -592,7 +590,6 @@ export const useSettingStore = defineStore("setting", {
     progressTooltipShow: true,
     progressAdjustLyric: false,
     showPlaylistCount: true,
-    showCommentCount: "compact",
     showSpectrums: false,
     smtcOpen: true,
     playSongDemo: false,
