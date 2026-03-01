@@ -546,6 +546,9 @@ const configMap: Partial<Record<keyof TaskbarConfig, keyof typeof settingStore>>
   showWordLyrics: "taskbarLyricShowWordLyrics",
   showWhenPaused: "taskbarLyricShowWhenPaused",
   lineHeight: "taskbarLyricLineHeight",
+  fontSize: "taskbarLyricFontSize",
+  mainScale: "taskbarLyricMainScale",
+  subScale: "taskbarLyricSubScale",
 };
 
 const applyConfigToStore = (config: Partial<TaskbarConfig>) => {
@@ -721,7 +724,7 @@ $radius: 4px;
   user-select: none;
   font-family: v-bind(lyricFontFamily);
   font-weight: v-bind("settingStore.taskbarLyricFontWeight");
-  font-size: 14px;
+  font-size: v-bind("`${settingStore.taskbarLyricFontSize}px`");
 
   will-change: opacity, filter;
   transition:
@@ -887,7 +890,7 @@ $radius: 4px;
       transform 0.4s var(--lyric-ease),
       opacity 0.4s var(--lyric-ease);
     will-change: transform, opacity;
-    transform: scale(1);
+    transform: scale(v-bind("settingStore.taskbarLyricMainScale"));
 
     &.single {
       font-size: 1em;
@@ -897,14 +900,14 @@ $radius: 4px;
   &.is-sub {
     .line-text {
       opacity: 0.7;
-      transform: scale(0.8);
+      transform: scale(v-bind("settingStore.taskbarLyricSubScale"));
     }
   }
 
   &.is-next {
     .line-text {
       opacity: 0.7;
-      transform: scale(0.8);
+      transform: scale(v-bind("settingStore.taskbarLyricSubScale"));
     }
   }
 }

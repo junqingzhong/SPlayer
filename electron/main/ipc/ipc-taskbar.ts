@@ -36,6 +36,9 @@ const getTaskbarConfig = (): TaskbarConfig => {
     showRomaji: store.get("taskbar.showRomaji", true),
     showWordLyrics: store.get("taskbar.showWordLyrics", true),
     lineHeight: store.get("taskbar.lineHeight", 1.1),
+    fontSize: store.get("taskbar.fontSize", 14),
+    mainScale: store.get("taskbar.mainScale", 1.0),
+    subScale: store.get("taskbar.subScale", 0.8),
   };
 };
 

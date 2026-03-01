@@ -30,6 +30,9 @@ export interface TaskbarConfig {
   showTranslation: boolean;
   showRomaji: boolean;
   lineHeight: number;
+  fontSize: number;
+  mainScale: number;
+  subScale: number;
 }
 
 export interface TrackData {
