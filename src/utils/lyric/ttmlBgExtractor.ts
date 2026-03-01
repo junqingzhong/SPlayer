@@ -68,18 +68,6 @@ const createWord = (word: string, startTime: number, endTime: number): LyricWord
   romanWord: "",
 });
 
-const normalizeBgBracket = (words: LyricWord[]): LyricWord[] => {
-  if (!words.length) return words;
-  const text = words.map((w) => w.word).join("").trim();
-  const isWrapped =
-    (text.startsWith("(") && text.endsWith(")")) || (text.startsWith("（") && text.endsWith("）"));
-  if (isWrapped) return words;
-  const out = words.map((w) => ({ ...w }));
-  out[0].word = `(${out[0].word}`;
-  out[out.length - 1].word = `${out[out.length - 1].word})`;
-  return out;
-};
-
 const getFirstInnerTextByRole = (root: Element, role: string): string => {
   const nodes = root.querySelectorAll(`span[ttm\\:role="${role}"],span[role="${role}"]`);
   if (!nodes.length) return "";
@@ -148,7 +136,6 @@ export const extractTtmlBgWithOwner = (ttml: string): TtmlBgExtractResult[] => {
       if (!text) continue;
       finalWords = [createWord(text, startTime, startTime)];
     }
-    finalWords = normalizeBgBracket(finalWords);
 
     const line: LyricLine = {
       words: finalWords,

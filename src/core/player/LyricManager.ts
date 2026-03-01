@@ -626,18 +626,6 @@ class LyricManager {
       return -1;
     };
 
-    const normalizeBgLineBracket = (line: LyricLine): LyricLine => {
-      const text = getLineText(line);
-      const isWrapped =
-        (text.startsWith("(") && text.endsWith(")")) || (text.startsWith("（") && text.endsWith("）"));
-      if (isWrapped) return line;
-      if (!line.words?.length) return line;
-      const words = line.words.map((w) => ({ ...w }));
-      words[0].word = `(${words[0].word}`;
-      words[words.length - 1].word = `${words[words.length - 1].word})`;
-      return { ...line, words };
-    };
-
     const extractedMap = new Map<string, typeof extracted>();
     for (const r of extracted) {
       const key = `${r.line.startTime}|${r.line.endTime}|${getLineText(r.line)}`;
@@ -646,7 +634,7 @@ class LyricManager {
       extractedMap.set(key, arr);
     }
 
-    const existingBg = lines.filter((l) => !!l.isBG).map((l) => normalizeBgLineBracket(l));
+    const existingBg = lines.filter((l) => !!l.isBG);
     const shouldInjectNew = !existingBg.length && hasExtracted;
 
     type AssignedBg = { line: LyricLine; order: number; startTime: number; endTime: number };
