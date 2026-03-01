@@ -27,36 +27,62 @@
     </Transition>
 
     <div class="content" :style="contentStyle">
-      <Transition :name="settingStore.taskbarLyricAnimationMode" mode="out-in">
-        <TransitionGroup
-          tag="div"
-          class="lyric-list-wrapper"
-          name="lyric-list"
-          :key="transitionKey"
-        >
-          <div
-            v-for="item in displayItems"
-            :key="item.key"
-            class="lyric-item"
-            :class="{
-              'is-primary': item.isPrimary,
-              'is-sub': item.itemType === 'sub',
-              'is-next': item.itemType === 'next',
-            }"
-          >
-            <LyricScroll
-              class="line-text"
-              :style="{ transformOrigin: state.isCenter ? 'center left' : 'center right' }"
-              :text="item.text"
-              :words="item.words"
-              :currentTime="state.currentTime"
-              :isActive="item.isActive"
-              :mode="item.itemType === 'main' && !currentLyricText ? 'line' : state.lyricType"
-              :progress="item.progress"
-              @resize-width="(w) => handleLyricResize(item.key, w)"
-            />
+      <Transition name="content-switch" mode="out-in">
+        <div :key="viewKey" class="lyric-view-container">
+          <div v-if="isHovering" class="lyric-list-wrapper metadata-mode">
+            <div
+              v-for="item in hoverMetadataItems"
+              :key="item.key"
+              class="lyric-item"
+              :class="{
+                'is-primary': item.isPrimary,
+                'is-sub': item.itemType === 'sub',
+              }"
+            >
+              <LyricScroll
+                class="line-text"
+                :style="{ transformOrigin: state.isCenter ? 'center left' : 'center right' }"
+                :text="item.text"
+                :currentTime="state.currentTime"
+                :isActive="item.isActive"
+                mode="line"
+                :progress="0"
+                @resize-width="(w) => handleLyricResize(item.key, w)"
+              />
+            </div>
           </div>
-        </TransitionGroup>
+          <Transition v-else :name="settingStore.taskbarLyricAnimationMode" mode="out-in">
+            <TransitionGroup
+              tag="div"
+              class="lyric-list-wrapper"
+              name="lyric-list"
+              :key="transitionKey"
+            >
+              <div
+                v-for="item in displayItems"
+                :key="item.key"
+                class="lyric-item"
+                :class="{
+                  'is-primary': item.isPrimary,
+                  'is-sub': item.itemType === 'sub',
+                  'is-next': item.itemType === 'next',
+                }"
+              >
+                <LyricScroll
+                  class="line-text"
+                  :style="{ transformOrigin: state.isCenter ? 'center left' : 'center right' }"
+                  :text="item.text"
+                  :words="item.words"
+                  :currentTime="state.currentTime"
+                  :isActive="item.isActive"
+                  :mode="item.itemType === 'main' && !currentLyricText ? 'line' : state.lyricType"
+                  :progress="item.progress"
+                  @resize-width="(w) => handleLyricResize(item.key, w)"
+                />
+              </div>
+            </TransitionGroup>
+          </Transition>
+        </div>
       </Transition>
     </div>
   </div>
@@ -191,6 +217,11 @@ const transitionKey = computed(() => {
   return `lyric-group-${jumpCount.value}`;
 });
 
+const hoverMetadataItems = computed<DisplayItem[]>(() =>
+  createMetadataItems(state.title, state.artist),
+);
+const viewKey = computed(() => (isHovering.value ? "hover-meta-view" : "lyric-view"));
+
 const createMetadataItems = (title: string, artist: string): DisplayItem[] => {
   const items: DisplayItem[] = [
     {
@@ -259,16 +290,32 @@ const getLineText = (line: LyricLine | undefined) => {
   );
 };
 
-const getLineProgress = (line: LyricLine | undefined) => {
-  if (!line) return 0;
-  if (state.lyricType !== "word") return 0;
-  const startTime = line.startTime;
-  const endTime = line.endTime;
+/**
+ * 解析歌词行的安全结束时间
+ * 优先使用行内 endTime，无效时回退到安全结束时间计算
+ */
+const resolveLineSafeEnd = (line: LyricLine, lineIndex?: number): number | null => {
+  const startTime = Number(line.startTime);
+  if (!Number.isFinite(startTime)) return null;
+  const endTime = Number(line.endTime);
+  if (Number.isFinite(endTime) && endTime > startTime) return endTime;
+  const idx = lineIndex ?? state.lyrics.indexOf(line);
+  if (idx < 0) return null;
+  const safeEnd = getSafeEndTime(state.lyrics, idx);
+  return Number.isFinite(safeEnd) && safeEnd > startTime ? safeEnd : null;
+};
+
+/**
+ * 计算逐字滚动进度
+ * 仅在有效时长内返回 0~1 的进度值
+ */
+const calcScrollProgress = (startTime: number, endTime: number | null, currentTime: number) => {
+  if (endTime === null) return 0;
   const totalDuration = endTime - startTime;
-  if (totalDuration <= 0) return 1;
+  if (totalDuration <= 0) return 0;
   const BUFFER_RATIO = 0.2;
   const activeScrollDuration = totalDuration * (1 - BUFFER_RATIO);
-  const elapsed = state.currentTime - startTime;
+  const elapsed = currentTime - startTime;
   if (activeScrollDuration <= 10) {
     return elapsed >= activeScrollDuration ? 1 : 0;
   }
@@ -276,6 +323,21 @@ const getLineProgress = (line: LyricLine | undefined) => {
   return Math.max(0, Math.min(rawProgress, 1));
 };
 
+/**
+ * 获取指定歌词行的滚动进度
+ * 非逐字模式或无有效时间窗口时返回 0
+ */
+const getLineProgress = (line: LyricLine | undefined, lineIndex?: number) => {
+  if (!line) return 0;
+  if (state.lyricType !== "word") return 0;
+  const safeEnd = resolveLineSafeEnd(line, lineIndex);
+  return calcScrollProgress(Number(line.startTime), safeEnd, state.currentTime);
+};
+
+/**
+ * 更新当前主歌词对应的 BG 行缓存
+ * 按归属区间与显示重叠规则选出最优 BG 行
+ */
 const updateBgCache = () => {
   const idx = mainLyricIndex.value;
   if (!state.lyrics.length || idx < 0 || idx >= mainLyrics.value.length) {
@@ -288,7 +350,7 @@ const updateBgCache = () => {
   const safeEnd = mainSafeEnds.value[idx] ?? Infinity;
   const prevSafeEnd = idx > 0 ? (mainSafeEnds.value[idx - 1] ?? -Infinity) : -Infinity;
   const nextMainStart = mainLyrics.value[idx + 1]?.startTime ?? Infinity;
-  const mainEnd = Math.min(safeEnd || Infinity, nextMainStart);
+  const mainEnd = Math.min(safeEnd, nextMainStart);
 
   let found: { line: LyricLine; rawIndex: number } | null = null;
   let bestScore: [number, number, number, number] | null = null;
@@ -299,8 +361,9 @@ const updateBgCache = () => {
     const bgEndRaw = Number(line.endTime);
     const hasValidEnd = Number.isFinite(bgEndRaw) && bgEndRaw > bgStart;
     const bgEnd = hasValidEnd ? bgEndRaw : bgStart;
+    const bgDisplayEnd = hasValidEnd ? bgEndRaw : mainEnd;
     const ownedByCurrent = bgEnd > prevSafeEnd && bgEnd <= safeEnd;
-    const overlapsDisplay = bgStart < mainEnd && bgEnd > mainStart;
+    const overlapsDisplay = bgStart < mainEnd && bgDisplayEnd > mainStart;
     if (ownedByCurrent && overlapsDisplay) {
       const startsInside = bgStart >= mainStart && bgStart < mainEnd;
       const score: [number, number, number, number] = [startsInside ? 0 : 1, bgStart, bgEnd, i];
@@ -326,7 +389,7 @@ const updateBgCache = () => {
   bgCache.value = found;
 };
 
-watch(mainLyricIndex, () => updateBgCache());
+watch(mainLyricIndex, updateBgCache);
 
 const displayItems = computed<DisplayItem[]>(() => {
   if (!currentLyricText.value) {
@@ -372,7 +435,7 @@ const displayItems = computed<DisplayItem[]>(() => {
       isActive: shouldShowWords && !!bgLine?.words?.length,
       itemType: "sub",
       words: shouldShowWords ? bgLine?.words : undefined,
-      progress: getLineProgress(bgLine),
+      progress: getLineProgress(bgLine, bgCache.value?.rawIndex),
     });
   } else if (subText) {
     items.push({
@@ -407,25 +470,8 @@ const currentLineProgress = computed(() => {
   if (state.lyricType !== "word") return 0;
 
   const currentLine = state.lyrics[state.lyricIndex];
-  const startTime = currentLine.startTime;
-  const endTime = currentLine.endTime;
-  const totalDuration = endTime - startTime;
-
-  if (totalDuration <= 0) return 1;
-
-  const BUFFER_RATIO = 0.2;
-
-  const activeScrollDuration = totalDuration * (1 - BUFFER_RATIO);
-
-  const elapsed = state.currentTime - startTime;
-
-  if (activeScrollDuration <= 10) {
-    return elapsed >= activeScrollDuration ? 1 : 0;
-  }
-
-  const rawProgress = elapsed / activeScrollDuration;
-
-  return Math.max(0, Math.min(rawProgress, 1));
+  const safeEnd = resolveLineSafeEnd(currentLine, state.lyricIndex);
+  return calcScrollProgress(Number(currentLine.startTime), safeEnd, state.currentTime);
 });
 
 const lyricsWidthMap = new Map<string | number, number>();
@@ -821,9 +867,11 @@ $radius: 4px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: 100%;
+  flex: 1 1 auto;
+  width: auto;
   height: 100%;
   min-width: 0;
+  overflow: hidden;
   box-sizing: border-box;
   transition: opacity 0.3s ease;
 
@@ -868,6 +916,24 @@ $radius: 4px;
 
   &.metadata-mode {
     justify-content: center;
+
+    .line-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+.content-switch {
+  &-enter-active,
+  &-leave-active {
+    transition: opacity 0.25s var(--lyric-ease);
+  }
+
+  &-enter-from,
+  &-leave-to {
+    opacity: 0;
   }
 }
 
@@ -999,11 +1065,12 @@ $radius: 4px;
 
 .media-controls {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  height: 100%;
-  max-width: 8.6em;
-  gap: 0.4em;
+  height: auto;
+  max-width: 6.6em;
+  gap: 0.25em;
   overflow: hidden;
   z-index: 10;
 
@@ -1011,26 +1078,24 @@ $radius: 4px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 4.4em;
-    height: 2.3em;
-    font-size: 1.3em;
+    width: 2em;
+    height: 2em;
+    aspect-ratio: 1 / 1;
+    font-size: 1em;
     color: inherit;
-    border-radius: $radius;
+    border-radius: 4px;
     border: 1px solid rgba(128, 128, 128, 0.4);
     box-sizing: border-box;
     transition:
       background-color 0.2s,
-      transform 0.1s,
       border-color 0.2s;
 
     &:hover {
       background-color: rgba(128, 128, 128, 0.2);
       border-color: rgba(128, 128, 128, 0.7);
-      opacity: 1;
     }
 
     &:active {
-      transform: scale(0.92);
       background-color: rgba(128, 128, 128, 0.3);
       border-color: rgba(128, 128, 128, 0.9);
     }
@@ -1052,7 +1117,7 @@ $radius: 4px;
 
   &-enter-to,
   &-leave-from {
-    max-width: 8.6em;
+    max-width: 6.6em;
     opacity: 1;
   }
 }

@@ -16,10 +16,10 @@ import {
 } from "@/utils/lyric/lyricParser";
 import { stripLyricMetadata } from "@/utils/lyric/lyricStripper";
 import { parseLrc } from "@/utils/lyric/parseLrc";
-import { extractTtmlBgWithOwner } from "@/utils/lyric/ttmlBgExtractor";
 import { getConverter } from "@/utils/opencc";
 import { type LyricLine, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
 import { cloneDeep, isEmpty } from "lodash-es";
+import { attachTtmlBgLines, cleanTTMLTranslations } from "@/utils/lyric/parseTTML";
 
 interface LyricFetchResult {
   data: SongLyric;
@@ -323,7 +323,7 @@ class LyricManager {
         }
       }
       if (!ttmlContent || typeof ttmlContent !== "string") return;
-      const sorted = this.cleanTTMLTranslations(ttmlContent);
+      const sorted = cleanTTMLTranslations(ttmlContent);
       const parsed = parseTTML(sorted);
       const lines = parsed?.lines || [];
       if (!lines.length) return;
@@ -460,7 +460,7 @@ class LyricManager {
       }
       // TTML 直接返回
       if (format === "ttml") {
-        const sorted = this.cleanTTMLTranslations(lyric);
+        const sorted = cleanTTMLTranslations(lyric);
         const ttml = parseTTML(sorted);
         const lines = ttml?.lines || [];
         return {
@@ -499,215 +499,6 @@ class LyricManager {
     } catch {
       return defaultResult;
     }
-  }
-
-  /**
-   * 清洗 TTML 中不需要的翻译
-   * @param ttmlContent 原始 TTML 内容
-   * @returns 清洗后的 TTML 内容
-   */
-  // 当支持 i18n 之后，需要对其中的部分函数进行修改，使其优选逻辑能够根据用户界面语言变化
-  private cleanTTMLTranslations(
-    // 一般没有多种音译，故不对音译部分进行清洗，如果需要请另写处理函数
-    ttmlContent: string,
-  ): string {
-    const lang_counter = (ttml_text: string) => {
-      // 使用正则匹配所有 xml:lang="xx-XX" 格式的字符串
-      const langRegex = /(?<=<(span|translation)[^<>]+)xml:lang="([^"]+)"/g;
-      const matches = ttml_text.matchAll(langRegex);
-
-      // 提取匹配结果并去重
-      const langSet = new Set<string>();
-      for (const match of matches) {
-        if (match[2]) langSet.add(match[2]);
-      }
-
-      return Array.from(langSet);
-    };
-
-    const lang_filter = (langs: string[]): string | null => {
-      if (langs.length <= 1) return null;
-
-      const lang_matcher = (target: string) => {
-        return langs.find((lang) => {
-          try {
-            return new Intl.Locale(lang).maximize().script === target;
-          } catch {
-            return false;
-          }
-        });
-      };
-
-      const hans_matched = lang_matcher("Hans");
-      if (hans_matched) return hans_matched;
-
-      const hant_matched = lang_matcher("Hant");
-      if (hant_matched) return hant_matched;
-
-      const major = langs.find((key) => key.startsWith("zh"));
-      if (major) return major;
-
-      return langs[0];
-    };
-
-    const ttml_cleaner = (ttml_text: string, major_lang: string | null): string => {
-      // 如果没有指定主语言，直接返回原文本（或者根据需求返回空）
-      if (major_lang === null) return ttml_text;
-
-      /**
-       * 替换逻辑回调函数
-       * @param match 完整匹配到的标签字符串 (例如 <code><span ...>...<\/span></code>)
-       * @param lang 正则中第一个捕获组匹配到的语言代码 (例如 "ja-JP")
-       */
-      const replacer = (match: string, lang: string) => (lang === major_lang ? match : "");
-      const translationRegex = /<translation[^>]+xml:lang="([^"]+)"[^>]*>[\s\S]*?<\/translation>/g;
-      const spanRegex = /<span[^>]+xml:lang="([^" ]+)"[^>]*>[\s\S]*?<\/span>/g;
-      return ttml_text.replace(translationRegex, replacer).replace(spanRegex, replacer);
-    };
-
-    const context_lang = lang_counter(ttmlContent);
-    const major = lang_filter(context_lang);
-    const cleaned_ttml = ttml_cleaner(ttmlContent, major);
-
-    return cleaned_ttml.replace(/\n\s*/g, "");
-  }
-
-  private attachTtmlBgLines(ttml: string, lines: LyricLine[]): LyricLine[] {
-    if (!lines.length) return lines;
-    const extracted = extractTtmlBgWithOwner(ttml);
-    const hasExtracted = extracted.length > 0;
-
-    const mainEntries = lines
-      .map((line, idx) => ({ line, idx }))
-      .filter(({ line }) => !line.isBG);
-
-    const getLineText = (line: LyricLine) => line.words?.map((w) => w.word).join("").trim() || "";
-
-    const mains = mainEntries.map((e) => e.line);
-    const TOLERANCE_MS = 50;
-
-    const findOwnerMainIndex = (bgStart: number) => {
-      if (!mains.length) return -1;
-      if (bgStart < mains[0].startTime) return 0;
-      for (let i = 0; i < mains.length; i++) {
-        const cur = mains[i];
-        const nextStart = mains[i + 1]?.startTime ?? Infinity;
-        if (bgStart >= cur.startTime && bgStart < nextStart) return i;
-      }
-      return mains.length - 1;
-    };
-
-    const findOwnerByAnchor = (pBeginMs: number | null, pEndMs: number | null) => {
-      if (!mains.length) return -1;
-      if (pBeginMs !== null) {
-        let bestIdx = -1;
-        let bestDist = Infinity;
-        for (let i = 0; i < mains.length; i++) {
-          const d = Math.abs(mains[i].startTime - pBeginMs);
-          if (d <= TOLERANCE_MS && d < bestDist) {
-            bestDist = d;
-            bestIdx = i;
-          }
-        }
-        if (bestIdx >= 0) return bestIdx;
-      }
-      if (pEndMs !== null) {
-        let bestIdx = -1;
-        let bestDist = Infinity;
-        for (let i = 0; i < mains.length; i++) {
-          const d = Math.abs(mains[i].endTime - pEndMs);
-          if (d <= TOLERANCE_MS && d < bestDist) {
-            bestDist = d;
-            bestIdx = i;
-          }
-        }
-        if (bestIdx >= 0) return bestIdx;
-      }
-      return -1;
-    };
-
-    const extractedMap = new Map<string, typeof extracted>();
-    for (const r of extracted) {
-      const key = `${r.line.startTime}|${r.line.endTime}|${getLineText(r.line)}`;
-      const arr = extractedMap.get(key) || [];
-      arr.push(r);
-      extractedMap.set(key, arr);
-    }
-
-    const existingBg = lines.filter((l) => !!l.isBG);
-    const shouldInjectNew = !existingBg.length && hasExtracted;
-
-    type AssignedBg = { line: LyricLine; order: number; startTime: number; endTime: number };
-    const groups = new Map<number, AssignedBg[]>();
-
-    const pushAssigned = (owner: number, item: AssignedBg) => {
-      const arr = groups.get(owner) || [];
-      arr.push(item);
-      groups.set(owner, arr);
-    };
-
-    for (let i = 0; i < existingBg.length; i++) {
-      const bg = existingBg[i];
-      const key = `${bg.startTime}|${bg.endTime}|${getLineText(bg)}`;
-      const candidates = extractedMap.get(key) || [];
-      const matched = candidates.length ? candidates.shift() : null;
-      if (matched) extractedMap.set(key, candidates);
-      const owner =
-        matched ? findOwnerByAnchor(matched.owner.pBeginMs, matched.owner.pEndMs) : -1;
-      const finalOwner = owner >= 0 ? owner : findOwnerMainIndex(bg.startTime);
-      pushAssigned(finalOwner, {
-        line: bg,
-        order: matched?.order ?? i,
-        startTime: bg.startTime,
-        endTime: bg.endTime,
-      });
-    }
-
-    if (shouldInjectNew) {
-      for (const r of extracted) {
-        const bg = r.line;
-        const owner = findOwnerByAnchor(r.owner.pBeginMs, r.owner.pEndMs);
-        const finalOwner = owner >= 0 ? owner : findOwnerMainIndex(bg.startTime);
-        pushAssigned(finalOwner, {
-          line: bg,
-          order: r.order,
-          startTime: bg.startTime,
-          endTime: bg.endTime,
-        });
-      }
-    }
-
-    if (!groups.size) return existingBg.length ? [...mains, ...existingBg] : lines;
-
-    const output: LyricLine[] = [];
-    let mainCursor = 0;
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      if (line.isBG) continue;
-      output.push(line);
-      if (!line.isBG && mainEntries[mainCursor]?.idx === i) {
-        const injected = groups.get(mainCursor) || [];
-        injected.sort(
-          (a, b) =>
-            a.order - b.order ||
-            a.startTime - b.startTime ||
-            a.endTime - b.endTime,
-        );
-        output.push(...injected.map((x) => x.line));
-        mainCursor++;
-      }
-    }
-
-    const tail = groups.get(-1) || [];
-    if (tail.length) {
-      tail.sort(
-        (a, b) =>
-          a.order - b.order || a.startTime - b.startTime || a.endTime - b.endTime,
-      );
-      output.push(...tail.map((x) => x.line));
-    }
-
-    return output;
   }
 
   /**
@@ -756,7 +547,7 @@ class LyricManager {
       try {
         const ttmlContent = typeof ttml === "string" ? ttml : "";
         if (ttmlContent) {
-          const cleaned = this.cleanTTMLTranslations(ttmlContent);
+          const cleaned = cleanTTMLTranslations(ttmlContent);
           const raw = parseTTML(cleaned).lines || [];
           ttmlLines = raw;
           console.log("检测到本地TTML歌词覆盖", ttmlLines);
@@ -1151,7 +942,7 @@ class LyricManager {
   public async getRawTtml(id: number | string): Promise<string | null> {
     if (typeof id !== "number") return null;
     const ttml = await this.getRawLyricCache(id, "ttml");
-    if (ttml) return this.cleanTTMLTranslations(ttml);
+    if (ttml) return cleanTTMLTranslations(ttml);
     return null;
   }
 
@@ -1161,7 +952,7 @@ class LyricManager {
    * @param ttml 原始 TTML 文本
    */
   public processTtmlForTaskbar(lines: LyricLine[], ttml: string): LyricLine[] {
-    return this.attachTtmlBgLines(ttml, cloneDeep(lines));
+    return attachTtmlBgLines(ttml, cloneDeep(lines));
   }
 }
 
