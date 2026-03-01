@@ -2,6 +2,18 @@ import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 
 type LyricWord = { word: string; startTime: number; endTime: number; romanWord: string };
 
+export type TtmlBgOwnerAnchor = {
+  pBeginMs: number | null;
+  pEndMs: number | null;
+  pKey: string;
+};
+
+export type TtmlBgExtractResult = {
+  line: LyricLine;
+  owner: TtmlBgOwnerAnchor;
+  order: number;
+};
+
 const parseTtmlTimeToMs = (raw: string | null): number | null => {
   if (!raw) return null;
   const value = raw.trim();
@@ -74,7 +86,16 @@ const getFirstInnerTextByRole = (root: Element, role: string): string => {
   return (nodes[0]?.textContent || "").trim();
 };
 
-export const extractTtmlBgLines = (ttml: string): LyricLine[] => {
+const findClosestP = (el: Element): Element | null => {
+  let cur: Element | null = el;
+  while (cur) {
+    if (cur.tagName.toLowerCase() === "p") return cur;
+    cur = cur.parentElement;
+  }
+  return null;
+};
+
+export const extractTtmlBgWithOwner = (ttml: string): TtmlBgExtractResult[] => {
   if (!ttml.trim()) return [];
   const doc = new DOMParser().parseFromString(ttml, "application/xml");
   if (doc.getElementsByTagName("parsererror").length) return [];
@@ -85,11 +106,17 @@ export const extractTtmlBgLines = (ttml: string): LyricLine[] => {
   if (!bgSpans.length) return [];
 
   const skipRoles = new Set(["x-translation", "x-roman"]);
-  const result: LyricLine[] = [];
+  const result: TtmlBgExtractResult[] = [];
 
-  for (const bgSpan of bgSpans) {
+  for (let order = 0; order < bgSpans.length; order++) {
+    const bgSpan = bgSpans[order];
     const translatedLyric = getFirstInnerTextByRole(bgSpan, "x-translation");
     const romanLyric = getFirstInnerTextByRole(bgSpan, "x-roman");
+
+    const p = findClosestP(bgSpan);
+    const pBeginMs = p ? parseTtmlTimeToMs(p.getAttribute("begin")) : null;
+    const pEndMs = p ? parseTtmlTimeToMs(p.getAttribute("end")) : null;
+    const pKey = p?.getAttribute("itunes:key")?.trim() || "";
 
     const wordEls = Array.from(bgSpan.querySelectorAll("span")).filter((el) => {
       const role = getRole(el);
@@ -123,7 +150,7 @@ export const extractTtmlBgLines = (ttml: string): LyricLine[] => {
     }
     finalWords = normalizeBgBracket(finalWords);
 
-    result.push({
+    const line: LyricLine = {
       words: finalWords,
       startTime,
       endTime,
@@ -131,9 +158,17 @@ export const extractTtmlBgLines = (ttml: string): LyricLine[] => {
       romanLyric,
       isBG: true,
       isDuet: false,
+    };
+    result.push({
+      line,
+      owner: { pBeginMs, pEndMs, pKey },
+      order,
     });
   }
 
   return result;
 };
 
+export const extractTtmlBgLines = (ttml: string): LyricLine[] => {
+  return extractTtmlBgWithOwner(ttml).map((r) => r.line);
+};

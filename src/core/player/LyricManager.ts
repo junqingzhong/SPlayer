@@ -16,7 +16,7 @@ import {
 } from "@/utils/lyric/lyricParser";
 import { stripLyricMetadata } from "@/utils/lyric/lyricStripper";
 import { parseLrc } from "@/utils/lyric/parseLrc";
-import { extractTtmlBgLines } from "@/utils/lyric/ttmlBgExtractor";
+import { extractTtmlBgWithOwner } from "@/utils/lyric/ttmlBgExtractor";
 import { getConverter } from "@/utils/opencc";
 import { type LyricLine, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
 import { cloneDeep, isEmpty } from "lodash-es";
@@ -574,19 +574,17 @@ class LyricManager {
 
   private attachTtmlBgLines(ttml: string, lines: LyricLine[]): LyricLine[] {
     if (!lines.length) return lines;
-    if (lines.some((l) => !!l.isBG)) return lines;
-    const bgLines = extractTtmlBgLines(ttml);
-    if (!bgLines.length) return lines;
+    const extracted = extractTtmlBgWithOwner(ttml);
+    const hasExtracted = extracted.length > 0;
 
     const mainEntries = lines
       .map((line, idx) => ({ line, idx }))
       .filter(({ line }) => !line.isBG);
 
     const getLineText = (line: LyricLine) => line.words?.map((w) => w.word).join("").trim() || "";
-    const existed = new Set(lines.map((l) => `${l.startTime}|${l.endTime}|${getLineText(l)}`));
 
-    const groups = new Map<number, LyricLine[]>();
     const mains = mainEntries.map((e) => e.line);
+    const TOLERANCE_MS = 50;
 
     const findOwnerMainIndex = (bgStart: number) => {
       if (!mains.length) return -1;
@@ -599,35 +597,127 @@ class LyricManager {
       return mains.length - 1;
     };
 
-    for (const bg of bgLines) {
-      const key = `${bg.startTime}|${bg.endTime}|${getLineText(bg)}`;
-      if (existed.has(key)) continue;
-      existed.add(key);
-      const owner = findOwnerMainIndex(bg.startTime);
-      const arr = groups.get(owner) || [];
-      arr.push(bg);
-      groups.set(owner, arr);
+    const findOwnerByAnchor = (pBeginMs: number | null, pEndMs: number | null) => {
+      if (!mains.length) return -1;
+      if (pBeginMs !== null) {
+        let bestIdx = -1;
+        let bestDist = Infinity;
+        for (let i = 0; i < mains.length; i++) {
+          const d = Math.abs(mains[i].startTime - pBeginMs);
+          if (d <= TOLERANCE_MS && d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        }
+        if (bestIdx >= 0) return bestIdx;
+      }
+      if (pEndMs !== null) {
+        let bestIdx = -1;
+        let bestDist = Infinity;
+        for (let i = 0; i < mains.length; i++) {
+          const d = Math.abs(mains[i].endTime - pEndMs);
+          if (d <= TOLERANCE_MS && d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        }
+        if (bestIdx >= 0) return bestIdx;
+      }
+      return -1;
+    };
+
+    const normalizeBgLineBracket = (line: LyricLine): LyricLine => {
+      const text = getLineText(line);
+      const isWrapped =
+        (text.startsWith("(") && text.endsWith(")")) || (text.startsWith("（") && text.endsWith("）"));
+      if (isWrapped) return line;
+      if (!line.words?.length) return line;
+      const words = line.words.map((w) => ({ ...w }));
+      words[0].word = `(${words[0].word}`;
+      words[words.length - 1].word = `${words[words.length - 1].word})`;
+      return { ...line, words };
+    };
+
+    const extractedMap = new Map<string, typeof extracted>();
+    for (const r of extracted) {
+      const key = `${r.line.startTime}|${r.line.endTime}|${getLineText(r.line)}`;
+      const arr = extractedMap.get(key) || [];
+      arr.push(r);
+      extractedMap.set(key, arr);
     }
 
-    if (!groups.size) return lines;
+    const existingBg = lines.filter((l) => !!l.isBG).map((l) => normalizeBgLineBracket(l));
+    const shouldInjectNew = !existingBg.length && hasExtracted;
+
+    type AssignedBg = { line: LyricLine; order: number; startTime: number; endTime: number };
+    const groups = new Map<number, AssignedBg[]>();
+
+    const pushAssigned = (owner: number, item: AssignedBg) => {
+      const arr = groups.get(owner) || [];
+      arr.push(item);
+      groups.set(owner, arr);
+    };
+
+    for (let i = 0; i < existingBg.length; i++) {
+      const bg = existingBg[i];
+      const key = `${bg.startTime}|${bg.endTime}|${getLineText(bg)}`;
+      const candidates = extractedMap.get(key) || [];
+      const matched = candidates.length ? candidates.shift() : null;
+      if (matched) extractedMap.set(key, candidates);
+      const owner =
+        matched ? findOwnerByAnchor(matched.owner.pBeginMs, matched.owner.pEndMs) : -1;
+      const finalOwner = owner >= 0 ? owner : findOwnerMainIndex(bg.startTime);
+      pushAssigned(finalOwner, {
+        line: bg,
+        order: matched?.order ?? i,
+        startTime: bg.startTime,
+        endTime: bg.endTime,
+      });
+    }
+
+    if (shouldInjectNew) {
+      for (const r of extracted) {
+        const bg = r.line;
+        const owner = findOwnerByAnchor(r.owner.pBeginMs, r.owner.pEndMs);
+        const finalOwner = owner >= 0 ? owner : findOwnerMainIndex(bg.startTime);
+        pushAssigned(finalOwner, {
+          line: bg,
+          order: r.order,
+          startTime: bg.startTime,
+          endTime: bg.endTime,
+        });
+      }
+    }
+
+    if (!groups.size) return existingBg.length ? [...mains, ...existingBg] : lines;
 
     const output: LyricLine[] = [];
     let mainCursor = 0;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
+      if (line.isBG) continue;
       output.push(line);
       if (!line.isBG && mainEntries[mainCursor]?.idx === i) {
         const injected = groups.get(mainCursor) || [];
-        if (injected.length) {
-          injected.sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime);
-          output.push(...injected);
-        }
+        injected.sort(
+          (a, b) =>
+            a.order - b.order ||
+            a.startTime - b.startTime ||
+            a.endTime - b.endTime,
+        );
+        output.push(...injected.map((x) => x.line));
         mainCursor++;
       }
     }
 
     const tail = groups.get(-1) || [];
-    if (tail.length) output.push(...tail);
+    if (tail.length) {
+      tail.sort(
+        (a, b) =>
+          a.order - b.order || a.startTime - b.startTime || a.endTime - b.endTime,
+      );
+      output.push(...tail.map((x) => x.line));
+    }
 
     return output;
   }
