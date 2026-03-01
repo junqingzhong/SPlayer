@@ -416,6 +416,7 @@ export interface SettingState {
     copyLyric: boolean;
     lyricOffset: boolean;
     lyricSettings: boolean;
+    commentCount: boolean;
   };
   /** 右键菜单显示配置 */
   contextMenuOptions: {
@@ -725,6 +726,7 @@ export const useSettingStore = defineStore("setting", {
       copyLyric: true,
       lyricOffset: true,
       lyricSettings: true,
+      commentCount: false,
     },
     contextMenuOptions: {
       play: true,

@@ -110,7 +110,8 @@ const initTaskbarIpc = () => {
           }
         } else {
           const floatingWidthChanged =
-            newConfig.floatingAutoWidth === false && newConfig.floatingWidth !== oldConfig.floatingWidth;
+            newConfig.floatingAutoWidth === false &&
+            newConfig.floatingWidth !== oldConfig.floatingWidth;
           if (
             newConfig.maxWidth !== oldConfig.maxWidth ||
             newConfig.floatingAlign !== oldConfig.floatingAlign ||

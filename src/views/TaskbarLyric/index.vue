@@ -28,7 +28,12 @@
 
     <div class="content" :style="contentStyle">
       <Transition :name="settingStore.taskbarLyricAnimationMode" mode="out-in">
-        <TransitionGroup tag="div" class="lyric-list-wrapper" name="lyric-list" :key="transitionKey">
+        <TransitionGroup
+          tag="div"
+          class="lyric-list-wrapper"
+          name="lyric-list"
+          :key="transitionKey"
+        >
           <div
             v-for="item in displayItems"
             :key="item.key"
@@ -469,7 +474,7 @@ const updateLyric = () => {
   );
   if (newMainIndex !== mainLyricIndex.value) {
     mainLyricIndex.value = newMainIndex;
-    state.lyricIndex = newMainIndex >= 0 ? mainToRawIndex.value[newMainIndex] ?? -1 : -1;
+    state.lyricIndex = newMainIndex >= 0 ? (mainToRawIndex.value[newMainIndex] ?? -1) : -1;
   }
 };
 

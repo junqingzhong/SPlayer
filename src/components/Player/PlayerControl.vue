@@ -41,7 +41,11 @@
           </div>
           <n-badge
             :value="formatCommentCount(statusStore.songCommentCount)"
-            :show="settingStore.showCommentCount !== 'off' && statusStore.songCommentCount > 0"
+            :show="
+              settingStore.showCommentCount !== 'off' &&
+              statusStore.songCommentCount > 0 &&
+              settingStore.fullscreenPlayerElements.commentCount
+            "
           >
             <div
               v-if="

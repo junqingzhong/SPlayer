@@ -54,7 +54,12 @@
       </template>
       <!-- 评论 -->
       <template v-else>
-        <ListComment :id="albumId" :type="3" :height="songListHeight" @update:comment-count="handleCommentCount" />
+        <ListComment
+          :id="albumId"
+          :type="3"
+          :height="songListHeight"
+          @update:comment-count="handleCommentCount"
+        />
       </template>
     </Transition>
   </div>
