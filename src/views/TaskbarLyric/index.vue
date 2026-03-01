@@ -291,6 +291,7 @@ const updateBgCache = () => {
   const mainEnd = Math.min(safeEnd || Infinity, nextMainStart);
 
   let found: { line: LyricLine; rawIndex: number } | null = null;
+  let bestScore: [number, number, number, number] | null = null;
   for (let i = 0; i < state.lyrics.length; i++) {
     const line = state.lyrics[i];
     if (!line.isBG) continue;
@@ -301,8 +302,25 @@ const updateBgCache = () => {
     const ownedByCurrent = bgEnd > prevSafeEnd && bgEnd <= safeEnd;
     const overlapsDisplay = bgStart < mainEnd && bgEnd > mainStart;
     if (ownedByCurrent && overlapsDisplay) {
-      found = { line, rawIndex: i };
-      break;
+      const startsInside = bgStart >= mainStart && bgStart < mainEnd;
+      const score: [number, number, number, number] = [startsInside ? 0 : 1, bgStart, bgEnd, i];
+      if (!bestScore) {
+        bestScore = score;
+        found = { line, rawIndex: i };
+      } else {
+        const better =
+          score[0] < bestScore[0] ||
+          (score[0] === bestScore[0] && score[1] < bestScore[1]) ||
+          (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] < bestScore[2]) ||
+          (score[0] === bestScore[0] &&
+            score[1] === bestScore[1] &&
+            score[2] === bestScore[2] &&
+            score[3] < bestScore[3]);
+        if (better) {
+          bestScore = score;
+          found = { line, rawIndex: i };
+        }
+      }
     }
   }
   bgCache.value = found;

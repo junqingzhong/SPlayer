@@ -217,7 +217,7 @@
                 <n-tab name="comments">
                   评论
                   <n-text
-                    v-if="settingStore.showCommentCount !== 'off' && detailData?.commentCount"
+                    v-if="detailData?.commentCount"
                     class="count"
                     depth="3"
                   >
