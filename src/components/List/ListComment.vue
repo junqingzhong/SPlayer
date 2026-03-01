@@ -63,10 +63,6 @@ const props = withDefaults(
   {},
 );
 
-const emit = defineEmits<{
-  "update:commentCount": [count: number];
-}>();
-
 const commentListRef = ref<HTMLElement | null>(null);
 
 // 列表高度
@@ -115,7 +111,6 @@ const getCommentData = async (clean: boolean = true) => {
     // 更新评论总数
     if (result.data?.totalCount != null) {
       commentTotalCount.value = result.data.totalCount;
-      emit("update:commentCount", result.data.totalCount);
     }
     if (isEmpty(result.data?.comments)) {
       commentHasMore.value = false;
