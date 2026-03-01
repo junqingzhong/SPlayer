@@ -16,6 +16,7 @@ import {
 } from "@/utils/lyric/lyricParser";
 import { stripLyricMetadata } from "@/utils/lyric/lyricStripper";
 import { parseLrc } from "@/utils/lyric/parseLrc";
+import { extractTtmlBgLines } from "@/utils/lyric/ttmlBgExtractor";
 import { getConverter } from "@/utils/opencc";
 import { type LyricLine, parseTTML, parseYrc } from "@applemusic-like-lyrics/lyric";
 import { cloneDeep, isEmpty } from "lodash-es";
@@ -324,7 +325,7 @@ class LyricManager {
       if (!ttmlContent || typeof ttmlContent !== "string") return;
       const sorted = this.cleanTTMLTranslations(ttmlContent);
       const parsed = parseTTML(sorted);
-      const lines = parsed?.lines || [];
+      const lines = this.attachTtmlBgLines(sorted, parsed?.lines || []);
       if (!lines.length) return;
 
       // 只有当没有 YRC 数据或优先级为 TTML 或 自动模式(TTML > QM) 时才覆盖
@@ -461,7 +462,7 @@ class LyricManager {
       if (format === "ttml") {
         const sorted = this.cleanTTMLTranslations(lyric);
         const ttml = parseTTML(sorted);
-        const lines = ttml?.lines || [];
+        const lines = this.attachTtmlBgLines(sorted, ttml?.lines || []);
         return {
           data: { lrcData: [], yrcData: lines },
           meta: { usingTTMLLyric: true, usingQRCLyric: false },
@@ -571,6 +572,66 @@ class LyricManager {
     return cleaned_ttml.replace(/\n\s*/g, "");
   }
 
+  private attachTtmlBgLines(ttml: string, lines: LyricLine[]): LyricLine[] {
+    if (!lines.length) return lines;
+    if (lines.some((l) => !!l.isBG)) return lines;
+    const bgLines = extractTtmlBgLines(ttml);
+    if (!bgLines.length) return lines;
+
+    const mainEntries = lines
+      .map((line, idx) => ({ line, idx }))
+      .filter(({ line }) => !line.isBG);
+
+    const getLineText = (line: LyricLine) => line.words?.map((w) => w.word).join("").trim() || "";
+    const existed = new Set(lines.map((l) => `${l.startTime}|${l.endTime}|${getLineText(l)}`));
+
+    const groups = new Map<number, LyricLine[]>();
+    const mains = mainEntries.map((e) => e.line);
+
+    const findOwnerMainIndex = (bgStart: number) => {
+      if (!mains.length) return -1;
+      if (bgStart < mains[0].startTime) return 0;
+      for (let i = 0; i < mains.length; i++) {
+        const cur = mains[i];
+        const nextStart = mains[i + 1]?.startTime ?? Infinity;
+        if (bgStart >= cur.startTime && bgStart < nextStart) return i;
+      }
+      return mains.length - 1;
+    };
+
+    for (const bg of bgLines) {
+      const key = `${bg.startTime}|${bg.endTime}|${getLineText(bg)}`;
+      if (existed.has(key)) continue;
+      existed.add(key);
+      const owner = findOwnerMainIndex(bg.startTime);
+      const arr = groups.get(owner) || [];
+      arr.push(bg);
+      groups.set(owner, arr);
+    }
+
+    if (!groups.size) return lines;
+
+    const output: LyricLine[] = [];
+    let mainCursor = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      output.push(line);
+      if (!line.isBG && mainEntries[mainCursor]?.idx === i) {
+        const injected = groups.get(mainCursor) || [];
+        if (injected.length) {
+          injected.sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime);
+          output.push(...injected);
+        }
+        mainCursor++;
+      }
+    }
+
+    const tail = groups.get(-1) || [];
+    if (tail.length) output.push(...tail);
+
+    return output;
+  }
+
   /**
    * 检测本地歌词覆盖
    * @param id 歌曲 ID
@@ -617,7 +678,9 @@ class LyricManager {
       try {
         const ttmlContent = typeof ttml === "string" ? ttml : "";
         if (ttmlContent) {
-          ttmlLines = parseTTML(this.cleanTTMLTranslations(ttmlContent)).lines || [];
+          const cleaned = this.cleanTTMLTranslations(ttmlContent);
+          const raw = parseTTML(cleaned).lines || [];
+          ttmlLines = this.attachTtmlBgLines(cleaned, raw);
           console.log("检测到本地TTML歌词覆盖", ttmlLines);
         }
       } catch (err) {
