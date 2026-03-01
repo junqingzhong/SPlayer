@@ -1026,6 +1026,16 @@ export const useLyricSettings = (): SettingConfig => {
             step: 100,
             value: toRef(settingStore, "taskbarLyricFontWeight"),
           },
+          {
+            key: "taskbarLyricLineHeight",
+            label: "行间距",
+            type: "input-number",
+            description: "设置任务栏歌词的行高（倍数），默认为 1.1",
+            min: 0.8,
+            max: 3.0,
+            step: 0.1,
+            value: toRef(settingStore, "taskbarLyricLineHeight"),
+          },
         ],
       },
       {

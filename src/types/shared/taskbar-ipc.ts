@@ -29,6 +29,7 @@ export interface TaskbarConfig {
   showWordLyrics: boolean;
   showTranslation: boolean;
   showRomaji: boolean;
+  lineHeight: number;
 }
 
 export interface TrackData {

@@ -545,6 +545,7 @@ const configMap: Partial<Record<keyof TaskbarConfig, keyof typeof settingStore>>
   showRomaji: "showRoma",
   showWordLyrics: "taskbarLyricShowWordLyrics",
   showWhenPaused: "taskbarLyricShowWhenPaused",
+  lineHeight: "taskbarLyricLineHeight",
 };
 
 const applyConfigToStore = (config: Partial<TaskbarConfig>) => {
@@ -875,7 +876,7 @@ $radius: 4px;
   min-height: 1.1em;
   padding: 0 0.3em;
   box-sizing: border-box;
-  line-height: 1.1;
+  line-height: v-bind("settingStore.taskbarLyricLineHeight");
   transition: all 0.4s var(--lyric-ease);
 
   .line-text {

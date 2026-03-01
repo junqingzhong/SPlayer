@@ -80,6 +80,8 @@ export interface SettingState {
   taskbarLyricUseThemeColor: boolean;
   /** 任务栏歌词字重 */
   taskbarLyricFontWeight: number;
+  /** 任务栏歌词行间距 */
+  taskbarLyricLineHeight: number;
   /** 是否使用在线服务 */
   useOnlineService: boolean;
   /** 分享链接格式 */
@@ -556,6 +558,7 @@ export const useSettingStore = defineStore("setting", {
     taskbarLyricShowWordLyrics: true,
     taskbarLyricUseThemeColor: false,
     taskbarLyricFontWeight: 400,
+    taskbarLyricLineHeight: 1.1,
     checkUpdateOnStart: true,
     preventSleep: false,
     useKeepAlive: true,

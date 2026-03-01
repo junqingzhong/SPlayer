@@ -35,6 +35,7 @@ const getTaskbarConfig = (): TaskbarConfig => {
     showTranslation: store.get("taskbar.showTranslation", true),
     showRomaji: store.get("taskbar.showRomaji", true),
     showWordLyrics: store.get("taskbar.showWordLyrics", true),
+    lineHeight: store.get("taskbar.lineHeight", 1.1),
   };
 };
 

@@ -107,6 +107,7 @@ export const useInit = () => {
         showWordLyrics: settingStore.taskbarLyricShowWordLyrics,
         showTranslation: settingStore.showTran,
         showRomaji: settingStore.showRoma,
+        lineHeight: settingStore.taskbarLyricLineHeight,
       });
 
       // 显示桌面歌词
@@ -165,6 +166,7 @@ export const useInit = () => {
           settingStore.taskbarLyricFloatingWidth,
           settingStore.taskbarLyricFloatingHeight,
           settingStore.taskbarLyricFloatingAlwaysOnTop,
+          settingStore.taskbarLyricLineHeight,
         ],
         () => {
           updateTaskbarConfig({
@@ -185,6 +187,7 @@ export const useInit = () => {
             floatingWidth: settingStore.taskbarLyricFloatingWidth,
             floatingHeight: settingStore.taskbarLyricFloatingHeight,
             floatingAlwaysOnTop: settingStore.taskbarLyricFloatingAlwaysOnTop,
+            lineHeight: settingStore.taskbarLyricLineHeight,
           });
         },
       );
