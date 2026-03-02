@@ -27,63 +27,46 @@
     </Transition>
 
     <div class="content" :style="contentStyle">
-      <Transition name="content-switch" mode="out-in">
-        <div :key="viewKey" class="lyric-view-container">
-          <div v-if="isHovering" class="lyric-list-wrapper metadata-mode">
+      <div class="lyric-view-container">
+        <Transition :name="settingStore.taskbarLyricAnimationMode" mode="out-in">
+          <TransitionGroup
+            tag="div"
+            class="lyric-list-wrapper"
+            :class="{ 'metadata-mode': isHovering }"
+            name="lyric-list"
+            :key="transitionKey"
+          >
             <div
-              v-for="item in hoverMetadataItems"
+              v-for="item in itemsToRender"
               :key="item.key"
               class="lyric-item"
               :class="{
                 'is-primary': item.isPrimary,
                 'is-sub': item.itemType === 'sub',
+                'is-next': item.itemType === 'next',
               }"
             >
               <LyricScroll
                 class="line-text"
                 :style="{ transformOrigin: state.isCenter ? 'center left' : 'center right' }"
                 :text="item.text"
+                :words="item.words"
                 :currentTime="state.currentTime"
                 :isActive="item.isActive"
-                mode="line"
-                :progress="0"
+                :mode="
+                  isHovering
+                    ? 'line'
+                    : item.itemType === 'main' && !currentLyricText
+                      ? 'line'
+                      : state.lyricType
+                "
+                :progress="item.progress"
                 @resize-width="(w) => handleLyricResize(item.key, w)"
               />
             </div>
-          </div>
-          <Transition v-else :name="settingStore.taskbarLyricAnimationMode" mode="out-in">
-            <TransitionGroup
-              tag="div"
-              class="lyric-list-wrapper"
-              name="lyric-list"
-              :key="transitionKey"
-            >
-              <div
-                v-for="item in displayItems"
-                :key="item.key"
-                class="lyric-item"
-                :class="{
-                  'is-primary': item.isPrimary,
-                  'is-sub': item.itemType === 'sub',
-                  'is-next': item.itemType === 'next',
-                }"
-              >
-                <LyricScroll
-                  class="line-text"
-                  :style="{ transformOrigin: state.isCenter ? 'center left' : 'center right' }"
-                  :text="item.text"
-                  :words="item.words"
-                  :currentTime="state.currentTime"
-                  :isActive="item.isActive"
-                  :mode="item.itemType === 'main' && !currentLyricText ? 'line' : state.lyricType"
-                  :progress="item.progress"
-                  @resize-width="(w) => handleLyricResize(item.key, w)"
-                />
-              </div>
-            </TransitionGroup>
-          </Transition>
-        </div>
-      </Transition>
+          </TransitionGroup>
+        </Transition>
+      </div>
     </div>
   </div>
 </template>
@@ -216,11 +199,6 @@ const transitionKey = computed(() => {
 
   return `lyric-group-${jumpCount.value}`;
 });
-
-const hoverMetadataItems = computed<DisplayItem[]>(() =>
-  createMetadataItems(state.title, state.artist),
-);
-const viewKey = computed(() => (isHovering.value ? "hover-meta-view" : "lyric-view"));
 
 const createMetadataItems = (title: string, artist: string): DisplayItem[] => {
   const items: DisplayItem[] = [
@@ -463,6 +441,13 @@ const displayItems = computed<DisplayItem[]>(() => {
   }
 
   return items;
+});
+
+const itemsToRender = computed<DisplayItem[]>(() => {
+  if (isHovering.value) {
+    return createMetadataItems(state.title, state.artist);
+  }
+  return displayItems.value;
 });
 
 const currentLineProgress = computed(() => {
@@ -787,6 +772,11 @@ $radius: 4px;
       margin-right: 0;
       margin-left: 0.6em;
     }
+
+    .content {
+      margin-left: 0;
+      margin-right: 0.4em;
+    }
   }
 
   &.dark {
@@ -874,6 +864,7 @@ $radius: 4px;
   overflow: hidden;
   box-sizing: border-box;
   transition: opacity 0.3s ease;
+  margin-left: 0.4em;
 
   --mask-gap: 0.4em;
   --mask-vertical: linear-gradient(
@@ -922,18 +913,6 @@ $radius: 4px;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-  }
-}
-
-.content-switch {
-  &-enter-active,
-  &-leave-active {
-    transition: opacity 0.25s var(--lyric-ease);
-  }
-
-  &-enter-from,
-  &-leave-to {
-    opacity: 0;
   }
 }
 
