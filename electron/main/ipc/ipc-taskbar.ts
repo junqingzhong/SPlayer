@@ -49,7 +49,13 @@ const updateWindowVisibility = (config: TaskbarConfig) => {
     tray.setTaskbarLyricShow(config.enabled);
   }
 
-  const shouldBeVisible = config.enabled && (cachedIsPlaying || config.showWhenPaused);
+  if (!config.enabled) {
+    // 关闭时直接销毁任务栏歌词窗口和相关原生服务
+    taskbarLyricManager.close(false);
+    return;
+  }
+
+  const shouldBeVisible = cachedIsPlaying || config.showWhenPaused;
 
   taskbarLyricManager.setVisibility(shouldBeVisible);
 };
