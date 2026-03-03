@@ -37,6 +37,8 @@ export interface TaskbarConfig {
   fontFamily: string;
   /** 字重 */
   fontWeight: number;
+  /** 字体缩放 */
+  fontScale: number;
   /** 动画模式 */
   animationMode: "slide-blur" | "left-sm";
   /** 单行模式 */
@@ -45,22 +47,12 @@ export interface TaskbarConfig {
   showWordLyrics: boolean;
   /** 显示翻译 */
   showTranslation: boolean;
-  /** 任务栏模式行间距 */
-  taskbarLineHeight: number;
-  /** 独立窗口行间距 */
-  floatingLineHeight: number;
-  /** 任务栏模式字体大小 */
-  taskbarFontSize: number;
-  /** 独立窗口字体大小 */
-  floatingFontSize: number;
-  /** 任务栏模式主歌词缩放比例 */
-  taskbarMainScale: number;
-  /** 独立窗口主歌词缩放比例 */
-  floatingMainScale: number;
-  /** 任务栏模式副歌词缩放比例 */
-  taskbarSubScale: number;
-  /** 独立窗口副歌词缩放比例 */
-  floatingSubScale: number;
+  /** 行间距 */
+  lineHeight: number;
+  /** 主歌词缩放比例 */
+  mainScale: number;
+  /** 副歌词缩放比例 */
+  subScale: number;
 }
 
 export interface TrackData {
@@ -144,18 +136,14 @@ export const DEFAULT_TASKBAR_CONFIG: TaskbarConfig = {
   themeMode: "auto",
   fontFamily: "system-ui",
   fontWeight: 400,
+  fontScale: 1.0,
   animationMode: "slide-blur",
   singleLineMode: false,
   showWordLyrics: true,
   showTranslation: true,
-  taskbarLineHeight: 1.1,
-  floatingLineHeight: 1.1,
-  taskbarFontSize: 14,
-  floatingFontSize: 14,
-  taskbarMainScale: 1.0,
-  floatingMainScale: 1.0,
-  taskbarSubScale: 0.8,
-  floatingSubScale: 0.8,
+  lineHeight: 1.1,
+  mainScale: 1.0,
+  subScale: 0.8,
 };
 
 export const TASKBAR_IPC_CHANNELS = {

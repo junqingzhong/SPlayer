@@ -4,11 +4,7 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { useSettingStore, useStatusStore } from "@/stores";
 import type { LyricConfig } from "@/types/desktop-lyric";
 import type { SettingConfig } from "@/types/settings";
-import {
-  DEFAULT_TASKBAR_CONFIG,
-  TASKBAR_IPC_CHANNELS,
-  type TaskbarConfig,
-} from "@/types/shared";
+import { DEFAULT_TASKBAR_CONFIG, TASKBAR_IPC_CHANNELS, type TaskbarConfig } from "@/types/shared";
 import { isElectron, isWin, isMac } from "@/utils/env";
 import { descMultiline } from "@/utils/format";
 import { openAMLLServer, openExcludeLyric, openFontManager } from "@/utils/modal";
@@ -903,7 +899,9 @@ export const useLyricSettings = (): SettingConfig => {
               get: () => taskbarLyricConfig.floatingAlwaysOnTop,
               set: (v) => {
                 taskbarLyricConfig.floatingAlwaysOnTop = v ?? false;
-                saveTaskbarLyricConfig({ floatingAlwaysOnTop: taskbarLyricConfig.floatingAlwaysOnTop });
+                saveTaskbarLyricConfig({
+                  floatingAlwaysOnTop: taskbarLyricConfig.floatingAlwaysOnTop,
+                });
               },
             }),
           },
@@ -1006,9 +1004,11 @@ export const useLyricSettings = (): SettingConfig => {
               get: () => taskbarLyricConfig.maxWidth,
               set: (v) => {
                 taskbarLyricConfig.maxWidth = v ?? 30;
-                saveTaskbarLyricConfig({ maxWidth: taskbarLyricConfig.maxWidth });
               },
             }),
+            action: () => {
+              saveTaskbarLyricConfig({ maxWidth: taskbarLyricConfig.maxWidth });
+            },
             suffix: "%",
           },
           {
@@ -1024,9 +1024,11 @@ export const useLyricSettings = (): SettingConfig => {
               get: () => taskbarLyricConfig.minWidth,
               set: (v) => {
                 taskbarLyricConfig.minWidth = v ?? 10;
-                saveTaskbarLyricConfig({ minWidth: taskbarLyricConfig.minWidth });
               },
             }),
+            action: () => {
+              saveTaskbarLyricConfig({ minWidth: taskbarLyricConfig.minWidth });
+            },
             suffix: "%",
           },
           {
@@ -1166,80 +1168,54 @@ export const useLyricSettings = (): SettingConfig => {
             }),
           },
           {
+            key: "taskbarLyricFontScale",
+            label: "文字缩放",
+            type: "input-number",
+            description: "在自适应字体大小的基础上进行缩放",
+            min: 0.5,
+            max: 2.0,
+            step: 0.1,
+            value: computed({
+              get: () => taskbarLyricConfig.fontScale,
+              set: (v) => {
+                taskbarLyricConfig.fontScale = v ?? 1.0;
+                saveTaskbarLyricConfig({ fontScale: taskbarLyricConfig.fontScale });
+              },
+            }),
+            defaultValue: 1.0,
+          },
+          {
             key: "taskbarLyricLineHeight",
             label: "行间距",
             type: "input-number",
-            description: "只作用于当前显示模式的行高（倍数）",
+            description: "歌词行高",
             min: 0.8,
             max: 3.0,
             step: 0.1,
             value: computed({
-              get: () =>
-                taskbarLyricConfig.mode === "floating"
-                  ? taskbarLyricConfig.floatingLineHeight
-                  : taskbarLyricConfig.taskbarLineHeight,
+              get: () => taskbarLyricConfig.lineHeight,
               set: (v) => {
                 const next = v ?? 1.1;
-                if (taskbarLyricConfig.mode === "floating") {
-                  taskbarLyricConfig.floatingLineHeight = next;
-                  saveTaskbarLyricConfig({ floatingLineHeight: next });
-                } else {
-                  taskbarLyricConfig.taskbarLineHeight = next;
-                  saveTaskbarLyricConfig({ taskbarLineHeight: next });
-                }
+                taskbarLyricConfig.lineHeight = next;
+                saveTaskbarLyricConfig({ lineHeight: next });
               },
             }),
             defaultValue: 1.1,
           },
           {
-            key: "taskbarLyricFontSize",
-            label: "文字大小",
-            type: "input-number",
-            description: "只作用于当前显示模式的基准文字大小",
-            min: 10,
-            max: 30,
-            step: 1,
-            suffix: "px",
-            value: computed({
-              get: () =>
-                taskbarLyricConfig.mode === "floating"
-                  ? taskbarLyricConfig.floatingFontSize
-                  : taskbarLyricConfig.taskbarFontSize,
-              set: (v) => {
-                const next = v ?? 14;
-                if (taskbarLyricConfig.mode === "floating") {
-                  taskbarLyricConfig.floatingFontSize = next;
-                  saveTaskbarLyricConfig({ floatingFontSize: next });
-                } else {
-                  taskbarLyricConfig.taskbarFontSize = next;
-                  saveTaskbarLyricConfig({ taskbarFontSize: next });
-                }
-              },
-            }),
-            defaultValue: 14,
-          },
-          {
             key: "taskbarLyricMainScale",
             label: "主歌词缩放",
             type: "input-number",
-            description: "只作用于当前显示模式的主歌词缩放比例",
+            description: "主歌词缩放比例",
             min: 0.5,
             max: 1.5,
             step: 0.05,
             value: computed({
-              get: () =>
-                taskbarLyricConfig.mode === "floating"
-                  ? taskbarLyricConfig.floatingMainScale
-                  : taskbarLyricConfig.taskbarMainScale,
+              get: () => taskbarLyricConfig.mainScale,
               set: (v) => {
                 const next = v ?? 1.0;
-                if (taskbarLyricConfig.mode === "floating") {
-                  taskbarLyricConfig.floatingMainScale = next;
-                  saveTaskbarLyricConfig({ floatingMainScale: next });
-                } else {
-                  taskbarLyricConfig.taskbarMainScale = next;
-                  saveTaskbarLyricConfig({ taskbarMainScale: next });
-                }
+                taskbarLyricConfig.mainScale = next;
+                saveTaskbarLyricConfig({ mainScale: next });
               },
             }),
             defaultValue: 1.0,
@@ -1248,24 +1224,16 @@ export const useLyricSettings = (): SettingConfig => {
             key: "taskbarLyricSubScale",
             label: "副歌词缩放",
             type: "input-number",
-            description: "只作用于当前显示模式的副歌词缩放比例",
+            description: "副歌词缩放比例",
             min: 0.5,
             max: 1.0,
             step: 0.05,
             value: computed({
-              get: () =>
-                taskbarLyricConfig.mode === "floating"
-                  ? taskbarLyricConfig.floatingSubScale
-                  : taskbarLyricConfig.taskbarSubScale,
+              get: () => taskbarLyricConfig.subScale,
               set: (v) => {
                 const next = v ?? 0.8;
-                if (taskbarLyricConfig.mode === "floating") {
-                  taskbarLyricConfig.floatingSubScale = next;
-                  saveTaskbarLyricConfig({ floatingSubScale: next });
-                } else {
-                  taskbarLyricConfig.taskbarSubScale = next;
-                  saveTaskbarLyricConfig({ taskbarSubScale: next });
-                }
+                taskbarLyricConfig.subScale = next;
+                saveTaskbarLyricConfig({ subScale: next });
               },
             }),
             defaultValue: 0.8,

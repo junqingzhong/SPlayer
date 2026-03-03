@@ -87,7 +87,6 @@ import { useRoute } from "vue-router";
 import LyricScroll from "./LyricScroll.vue";
 
 const route = useRoute();
-// 由 IPC 推送的配置，与 Pinia 无关
 const taskbarConfig = reactive<TaskbarConfig>({ ...DEFAULT_TASKBAR_CONFIG });
 const isFloating = computed(() => route.query.mode === "floating");
 const isHovering = ref(false);
@@ -157,19 +156,15 @@ const onCoverError = () => {
 };
 
 const rootStyle = computed<CSSProperties>(() => {
-  const fontSize = isFloating.value ? taskbarConfig.floatingFontSize : taskbarConfig.taskbarFontSize;
-  const lineHeight = isFloating.value ? taskbarConfig.floatingLineHeight : taskbarConfig.taskbarLineHeight;
-  const mainScale = isFloating.value ? taskbarConfig.floatingMainScale : taskbarConfig.taskbarMainScale;
-  const subScale = isFloating.value ? taskbarConfig.floatingSubScale : taskbarConfig.taskbarSubScale;
   const style: CSSProperties = {
     "--dynamic-opacity": state.opacity,
     "--dynamic-blur": `${state.blurVal}px`,
     "--lyric-font-family": lyricFontFamily.value,
     "--lyric-font-weight": String(taskbarConfig.fontWeight),
-    "--lyric-font-size": `${fontSize}px`,
-    "--lyric-line-height": String(lineHeight),
-    "--lyric-main-scale": String(mainScale),
-    "--lyric-sub-scale": String(subScale),
+    "--lyric-font-scale": String(taskbarConfig.fontScale),
+    "--lyric-line-height": String(taskbarConfig.lineHeight),
+    "--lyric-main-scale": String(taskbarConfig.mainScale),
+    "--lyric-sub-scale": String(taskbarConfig.subScale),
   };
 
   if (state.themeColor) {
@@ -741,7 +736,7 @@ $radius: 4px;
   width: 100vw;
   height: 100vh;
   margin: 5px 0;
-  padding: 0 0.7em;
+  padding: 0 0.9em;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -755,7 +750,7 @@ $radius: 4px;
   user-select: none;
   font-family: var(--lyric-font-family, inherit);
   font-weight: var(--lyric-font-weight, 400);
-  font-size: var(--lyric-font-size, 14px);
+  font-size: calc(clamp(12px, 30vh, 16px) * var(--lyric-font-scale, 1));
 
   will-change: opacity, filter;
   transition:
@@ -767,16 +762,6 @@ $radius: 4px;
 
   &.layout-reverse {
     flex-direction: row-reverse;
-
-    .cover-wrapper {
-      margin-right: 0;
-      margin-left: 0.6em;
-    }
-
-    .content {
-      margin-left: 0;
-      margin-right: 0.4em;
-    }
   }
 
   &.dark {
@@ -796,7 +781,7 @@ $radius: 4px;
   }
 
   &.floating {
-    font-size: clamp(12px, 29vh, 26px);
+    font-size: calc(clamp(12px, 29vh, 26px) * var(--lyric-font-scale, 1));
     -webkit-app-region: drag;
 
     .media-controls,
@@ -820,7 +805,7 @@ $radius: 4px;
   position: relative;
   height: 80%;
   aspect-ratio: 1 / 1;
-  margin-right: 0.6em;
+  margin-left: 0.4em;
   border-radius: $radius;
   overflow: hidden;
   flex-shrink: 0;
@@ -864,7 +849,6 @@ $radius: 4px;
   overflow: hidden;
   box-sizing: border-box;
   transition: opacity 0.3s ease;
-  margin-left: 0.4em;
 
   --mask-gap: 0.4em;
   --mask-vertical: linear-gradient(
@@ -1051,6 +1035,7 @@ $radius: 4px;
   max-width: 6.6em;
   gap: 0.25em;
   overflow: hidden;
+  margin: 0 0.2em;
   z-index: 10;
 
   .control-btn {
@@ -1098,6 +1083,7 @@ $radius: 4px;
   &-leave-from {
     max-width: 6.6em;
     opacity: 1;
+    margin: 0 0.2em;
   }
 }
 </style>

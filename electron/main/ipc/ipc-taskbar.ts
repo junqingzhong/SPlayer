@@ -8,46 +8,12 @@ import taskbarLyricManager from "../utils/taskbar-lyric-manager";
 
 let cachedIsPlaying = false;
 
+/** 读取完整任务栏配置 */
 const getTaskbarConfig = (): TaskbarConfig => {
-  const store = useStore();
-  const legacyLineHeight = store.get("taskbar.lineHeight", 1.1);
-  const legacyFontSize = store.get("taskbar.fontSize", 14);
-  const legacyMainScale = store.get("taskbar.mainScale", 1.0);
-  const legacySubScale = store.get("taskbar.subScale", 0.8);
-  return {
-    mode: store.get("taskbar.mode", "taskbar"),
-    maxWidth: store.get("taskbar.maxWidth", 300),
-    position: store.get("taskbar.position", "automatic"),
-    autoShrink: store.get("taskbar.autoShrink", false),
-    margin: store.get("taskbar.margin", 10),
-    minWidth: store.get("taskbar.minWidth", 10),
-    enabled: store.get("taskbar.enabled", false),
-    floatingAlign: store.get("taskbar.floatingAlign", "right"),
-    floatingAutoWidth: store.get("taskbar.floatingAutoWidth", true),
-    floatingWidth: store.get("taskbar.floatingWidth", 300),
-    floatingHeight: store.get("taskbar.floatingHeight", 48),
-    floatingAlwaysOnTop: store.get("taskbar.floatingAlwaysOnTop", false),
-
-    showWhenPaused: store.get("taskbar.showWhenPaused", true),
-    showCover: store.get("taskbar.showCover", true),
-    themeMode: store.get("taskbar.themeMode", "auto"),
-    fontFamily: store.get("taskbar.fontFamily", "system-ui"),
-    fontWeight: store.get("taskbar.fontWeight", 0),
-    animationMode: store.get("taskbar.animationMode", "slide-blur"),
-    singleLineMode: store.get("taskbar.singleLineMode", false),
-    showWordLyrics: store.get("taskbar.showWordLyrics", true),
-    showTranslation: store.get("taskbar.showTranslation", true),
-    taskbarLineHeight: store.get("taskbar.taskbarLineHeight", legacyLineHeight),
-    floatingLineHeight: store.get("taskbar.floatingLineHeight", legacyLineHeight),
-    taskbarFontSize: store.get("taskbar.taskbarFontSize", legacyFontSize),
-    floatingFontSize: store.get("taskbar.floatingFontSize", legacyFontSize),
-    taskbarMainScale: store.get("taskbar.taskbarMainScale", legacyMainScale),
-    floatingMainScale: store.get("taskbar.floatingMainScale", legacyMainScale),
-    taskbarSubScale: store.get("taskbar.taskbarSubScale", legacySubScale),
-    floatingSubScale: store.get("taskbar.floatingSubScale", legacySubScale),
-  };
+  return useStore().get("taskbar");
 };
 
+/** 根据配置更新窗口可见性 */
 const updateWindowVisibility = (config: TaskbarConfig) => {
   const tray = getMainTray();
   if (tray) tray.setTaskbarLyricShow(config.enabled);
@@ -58,29 +24,6 @@ const updateWindowVisibility = (config: TaskbarConfig) => {
   taskbarLyricManager.create(config.mode);
   const shouldBeVisible = cachedIsPlaying || config.showWhenPaused;
   taskbarLyricManager.setVisibility(shouldBeVisible);
-};
-
-const updateWindowLayout = (animate: boolean = true) => {
-  taskbarLyricManager.updateLayout(animate);
-};
-
-const applyTaskbarOption = (option: Partial<TaskbarConfig>, pushToWindow: boolean) => {
-  const store = useStore();
-  const prev = getTaskbarConfig();
-  const next = { ...prev, ...option };
-  Object.entries(next).forEach(([key, value]) => {
-    store.set(`taskbar.${key}`, value);
-  });
-  if (pushToWindow) {
-    taskbarLyricManager.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
-      type: "config-update",
-      data: option,
-    } as SyncStatePayload);
-  }
-  updateWindowVisibility(next);
-  if (next.enabled) {
-    updateWindowLayout(false);
-  }
 };
 
 const initTaskbarIpc = () => {
@@ -97,10 +40,30 @@ const initTaskbarIpc = () => {
 
   ipcMain.handle(TASKBAR_IPC_CHANNELS.GET_OPTION, () => getTaskbarConfig());
 
-  ipcMain.on(TASKBAR_IPC_CHANNELS.SET_OPTION, (_event, option: Partial<TaskbarConfig>, pushToWindow = true) => {
-    if (!option) return;
-    applyTaskbarOption(option, pushToWindow);
-  });
+  // 设置配置（增量合并）
+  ipcMain.on(
+    TASKBAR_IPC_CHANNELS.SET_OPTION,
+    (_event, option: Partial<TaskbarConfig>, pushToWindow = true) => {
+      if (!option) return;
+      // 增量更新
+      const prev = getTaskbarConfig();
+      const next = { ...prev, ...option };
+      Object.entries(option).forEach(([key, value]) => {
+        store.set(`taskbar.${key}`, value);
+      });
+      // 推送到歌词窗口
+      if (pushToWindow) {
+        taskbarLyricManager.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
+          type: "config-update",
+          data: option,
+        } as SyncStatePayload);
+      }
+      updateWindowVisibility(next);
+      if (next.enabled) {
+        taskbarLyricManager.updateLayout(false);
+      }
+    },
+  );
 
   ipcMain.on(TASKBAR_IPC_CHANNELS.SYNC_STATE, (_event, payload: SyncStatePayload) => {
     if (payload.type === "playback-state") {
@@ -144,9 +107,8 @@ const initTaskbarIpc = () => {
   // 把事件发射到 app 里不太好，但是我觉得也没有必要为了这一个事件创建一个事件总线
   // TODO: 如果有了事件总线，通过那个事件总线发射这个事件
   (app as EventEmitter).on("explorer-restarted", () => {
-    const currentEnabled = store.get("taskbar.enabled");
-    const currentMode = store.get("taskbar.mode", "taskbar");
-    if (currentEnabled && currentMode === "taskbar") {
+    const currentConfig = getTaskbarConfig();
+    if (currentConfig.enabled && currentConfig.mode === "taskbar") {
       taskbarLyricManager.close(false);
       setTimeout(() => {
         taskbarLyricManager.create("taskbar");
