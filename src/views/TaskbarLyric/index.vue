@@ -35,6 +35,7 @@
             :class="{ 'metadata-mode': isHovering }"
             name="lyric-list"
             :key="transitionKey"
+            @before-leave="onBeforeLeave"
           >
             <div
               v-for="item in itemsToRender"
@@ -207,6 +208,23 @@ const transitionKey = computed(() => {
 
   return `lyric-group-${jumpCount.value}`;
 });
+
+const onBeforeLeave = (el: Element) => {
+  const element = el as HTMLElement;
+  const parent = element.parentElement;
+  if (!parent) return;
+
+  const elementRect = element.getBoundingClientRect();
+  const parentRect = parent.getBoundingClientRect();
+  const top = elementRect.top - parentRect.top;
+  const left = elementRect.left - parentRect.left;
+
+  element.style.position = "absolute";
+  element.style.top = `${top}px`;
+  element.style.left = `${left}px`;
+  element.style.width = `${elementRect.width}px`;
+  element.style.height = `${elementRect.height}px`;
+};
 
 const createMetadataItems = (title: string, artist: string): DisplayItem[] => {
   const items: DisplayItem[] = [
