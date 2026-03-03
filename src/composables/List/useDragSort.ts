@@ -47,8 +47,15 @@ export const useDragSort = (options: DragSortOptions) => {
 
   // ---- 核心拖拽逻辑 ----
 
+  const getPointerPos = (e: MouseEvent | TouchEvent) => {
+    if ("touches" in e && e.touches.length > 0) {
+      return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+    return { x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY };
+  };
+
   const activateDrag = (e: MouseEvent | TouchEvent, index: number, labelText: string) => {
-    if (e.type === "mousedown") {
+    if (e.cancelable) {
       e.preventDefault();
     }
 
@@ -83,7 +90,7 @@ export const useDragSort = (options: DragSortOptions) => {
     }
 
     if (!listRect) return;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
+    const { y: clientY } = getPointerPos(e);
 
     handleAutoScroll(clientY, listRect);
     calculateTargetIndex(clientY);
@@ -153,11 +160,9 @@ export const useDragSort = (options: DragSortOptions) => {
   };
 
   const updateDragLabelPosition = (e: MouseEvent | TouchEvent) => {
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-
-    dragLabelPosition.left = clientX;
-    dragLabelPosition.top = clientY;
+    const { x, y } = getPointerPos(e);
+    dragLabelPosition.left = x;
+    dragLabelPosition.top = y;
   };
 
   // ---- 自动滚动 ----
@@ -220,10 +225,9 @@ export const useDragSort = (options: DragSortOptions) => {
   };
 
   const handleLongPressMove = (e: MouseEvent | TouchEvent) => {
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    const dx = clientX - pointerStartX;
-    const dy = clientY - pointerStartY;
+    const { x, y } = getPointerPos(e);
+    const dx = x - pointerStartX;
+    const dy = y - pointerStartY;
 
     if (Math.sqrt(dx * dx + dy * dy) > MOVE_THRESHOLD) {
       cancelLongPress();
@@ -251,10 +255,9 @@ export const useDragSort = (options: DragSortOptions) => {
     }
 
     // 长按模式
-    const clientX = "touches" in e ? e.touches[0].clientX : e.clientX;
-    const clientY = "touches" in e ? e.touches[0].clientY : e.clientY;
-    pointerStartX = clientX;
-    pointerStartY = clientY;
+    const { x, y } = getPointerPos(e);
+    pointerStartX = x;
+    pointerStartY = y;
     pendingIndex = index;
     pendingLabelText = labelText;
 
