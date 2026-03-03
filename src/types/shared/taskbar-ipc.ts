@@ -45,14 +45,22 @@ export interface TaskbarConfig {
   showWordLyrics: boolean;
   /** 显示翻译 */
   showTranslation: boolean;
-  /** 行间距 */
-  lineHeight: number;
-  /** 字体大小 */
-  fontSize: number;
-  /** 主歌词缩放比例 */
-  mainScale: number;
-  /** 副歌词缩放比例 */
-  subScale: number;
+  /** 任务栏模式行间距 */
+  taskbarLineHeight: number;
+  /** 独立窗口行间距 */
+  floatingLineHeight: number;
+  /** 任务栏模式字体大小 */
+  taskbarFontSize: number;
+  /** 独立窗口字体大小 */
+  floatingFontSize: number;
+  /** 任务栏模式主歌词缩放比例 */
+  taskbarMainScale: number;
+  /** 独立窗口主歌词缩放比例 */
+  floatingMainScale: number;
+  /** 任务栏模式副歌词缩放比例 */
+  taskbarSubScale: number;
+  /** 独立窗口副歌词缩放比例 */
+  floatingSubScale: number;
 }
 
 export interface TrackData {
@@ -140,10 +148,14 @@ export const DEFAULT_TASKBAR_CONFIG: TaskbarConfig = {
   singleLineMode: false,
   showWordLyrics: true,
   showTranslation: true,
-  lineHeight: 1.1,
-  fontSize: 14,
-  mainScale: 1.0,
-  subScale: 0.8,
+  taskbarLineHeight: 1.1,
+  floatingLineHeight: 1.1,
+  taskbarFontSize: 14,
+  floatingFontSize: 14,
+  taskbarMainScale: 1.0,
+  floatingMainScale: 1.0,
+  taskbarSubScale: 0.8,
+  floatingSubScale: 0.8,
 };
 
 export const TASKBAR_IPC_CHANNELS = {

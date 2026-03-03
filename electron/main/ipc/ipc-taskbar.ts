@@ -10,6 +10,10 @@ let cachedIsPlaying = false;
 
 const getTaskbarConfig = (): TaskbarConfig => {
   const store = useStore();
+  const legacyLineHeight = store.get("taskbar.lineHeight", 1.1);
+  const legacyFontSize = store.get("taskbar.fontSize", 14);
+  const legacyMainScale = store.get("taskbar.mainScale", 1.0);
+  const legacySubScale = store.get("taskbar.subScale", 0.8);
   return {
     mode: store.get("taskbar.mode", "taskbar"),
     maxWidth: store.get("taskbar.maxWidth", 300),
@@ -33,10 +37,14 @@ const getTaskbarConfig = (): TaskbarConfig => {
     singleLineMode: store.get("taskbar.singleLineMode", false),
     showWordLyrics: store.get("taskbar.showWordLyrics", true),
     showTranslation: store.get("taskbar.showTranslation", true),
-    lineHeight: store.get("taskbar.lineHeight", 1.1),
-    fontSize: store.get("taskbar.fontSize", 14),
-    mainScale: store.get("taskbar.mainScale", 1.0),
-    subScale: store.get("taskbar.subScale", 0.8),
+    taskbarLineHeight: store.get("taskbar.taskbarLineHeight", legacyLineHeight),
+    floatingLineHeight: store.get("taskbar.floatingLineHeight", legacyLineHeight),
+    taskbarFontSize: store.get("taskbar.taskbarFontSize", legacyFontSize),
+    floatingFontSize: store.get("taskbar.floatingFontSize", legacyFontSize),
+    taskbarMainScale: store.get("taskbar.taskbarMainScale", legacyMainScale),
+    floatingMainScale: store.get("taskbar.floatingMainScale", legacyMainScale),
+    taskbarSubScale: store.get("taskbar.taskbarSubScale", legacySubScale),
+    floatingSubScale: store.get("taskbar.floatingSubScale", legacySubScale),
   };
 };
 

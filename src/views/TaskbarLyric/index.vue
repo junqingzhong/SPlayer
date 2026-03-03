@@ -157,15 +157,19 @@ const onCoverError = () => {
 };
 
 const rootStyle = computed<CSSProperties>(() => {
+  const fontSize = isFloating.value ? taskbarConfig.floatingFontSize : taskbarConfig.taskbarFontSize;
+  const lineHeight = isFloating.value ? taskbarConfig.floatingLineHeight : taskbarConfig.taskbarLineHeight;
+  const mainScale = isFloating.value ? taskbarConfig.floatingMainScale : taskbarConfig.taskbarMainScale;
+  const subScale = isFloating.value ? taskbarConfig.floatingSubScale : taskbarConfig.taskbarSubScale;
   const style: CSSProperties = {
     "--dynamic-opacity": state.opacity,
     "--dynamic-blur": `${state.blurVal}px`,
     "--lyric-font-family": lyricFontFamily.value,
     "--lyric-font-weight": String(taskbarConfig.fontWeight),
-    "--lyric-font-size": `${taskbarConfig.fontSize}px`,
-    "--lyric-line-height": String(taskbarConfig.lineHeight),
-    "--lyric-main-scale": String(taskbarConfig.mainScale),
-    "--lyric-sub-scale": String(taskbarConfig.subScale),
+    "--lyric-font-size": `${fontSize}px`,
+    "--lyric-line-height": String(lineHeight),
+    "--lyric-main-scale": String(mainScale),
+    "--lyric-sub-scale": String(subScale),
   };
 
   if (state.themeColor) {

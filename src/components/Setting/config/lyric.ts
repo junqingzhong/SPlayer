@@ -1169,15 +1169,24 @@ export const useLyricSettings = (): SettingConfig => {
             key: "taskbarLyricLineHeight",
             label: "行间距",
             type: "input-number",
-            description: "设置任务栏歌词的行高（倍数）",
+            description: "只作用于当前显示模式的行高（倍数）",
             min: 0.8,
             max: 3.0,
             step: 0.1,
             value: computed({
-              get: () => taskbarLyricConfig.lineHeight,
+              get: () =>
+                taskbarLyricConfig.mode === "floating"
+                  ? taskbarLyricConfig.floatingLineHeight
+                  : taskbarLyricConfig.taskbarLineHeight,
               set: (v) => {
-                taskbarLyricConfig.lineHeight = v ?? 1.1;
-                saveTaskbarLyricConfig({ lineHeight: taskbarLyricConfig.lineHeight });
+                const next = v ?? 1.1;
+                if (taskbarLyricConfig.mode === "floating") {
+                  taskbarLyricConfig.floatingLineHeight = next;
+                  saveTaskbarLyricConfig({ floatingLineHeight: next });
+                } else {
+                  taskbarLyricConfig.taskbarLineHeight = next;
+                  saveTaskbarLyricConfig({ taskbarLineHeight: next });
+                }
               },
             }),
             defaultValue: 1.1,
@@ -1186,34 +1195,51 @@ export const useLyricSettings = (): SettingConfig => {
             key: "taskbarLyricFontSize",
             label: "文字大小",
             type: "input-number",
-            description: "设置任务栏歌词的基准文字大小",
+            description: "只作用于当前显示模式的基准文字大小",
             min: 10,
             max: 30,
             step: 1,
             suffix: "px",
             value: computed({
-              get: () => taskbarLyricConfig.fontSize,
+              get: () =>
+                taskbarLyricConfig.mode === "floating"
+                  ? taskbarLyricConfig.floatingFontSize
+                  : taskbarLyricConfig.taskbarFontSize,
               set: (v) => {
-                taskbarLyricConfig.fontSize = v ?? 14;
-                saveTaskbarLyricConfig({ fontSize: taskbarLyricConfig.fontSize });
+                const next = v ?? 14;
+                if (taskbarLyricConfig.mode === "floating") {
+                  taskbarLyricConfig.floatingFontSize = next;
+                  saveTaskbarLyricConfig({ floatingFontSize: next });
+                } else {
+                  taskbarLyricConfig.taskbarFontSize = next;
+                  saveTaskbarLyricConfig({ taskbarFontSize: next });
+                }
               },
             }),
-            show: () => taskbarLyricConfig.mode === "taskbar",
             defaultValue: 14,
           },
           {
             key: "taskbarLyricMainScale",
             label: "主歌词缩放",
             type: "input-number",
-            description: "设置主歌词的缩放比例",
+            description: "只作用于当前显示模式的主歌词缩放比例",
             min: 0.5,
             max: 1.5,
             step: 0.05,
             value: computed({
-              get: () => taskbarLyricConfig.mainScale,
+              get: () =>
+                taskbarLyricConfig.mode === "floating"
+                  ? taskbarLyricConfig.floatingMainScale
+                  : taskbarLyricConfig.taskbarMainScale,
               set: (v) => {
-                taskbarLyricConfig.mainScale = v ?? 1.0;
-                saveTaskbarLyricConfig({ mainScale: taskbarLyricConfig.mainScale });
+                const next = v ?? 1.0;
+                if (taskbarLyricConfig.mode === "floating") {
+                  taskbarLyricConfig.floatingMainScale = next;
+                  saveTaskbarLyricConfig({ floatingMainScale: next });
+                } else {
+                  taskbarLyricConfig.taskbarMainScale = next;
+                  saveTaskbarLyricConfig({ taskbarMainScale: next });
+                }
               },
             }),
             defaultValue: 1.0,
@@ -1222,15 +1248,24 @@ export const useLyricSettings = (): SettingConfig => {
             key: "taskbarLyricSubScale",
             label: "副歌词缩放",
             type: "input-number",
-            description: "设置副歌词（翻译/下一句）的缩放比例",
+            description: "只作用于当前显示模式的副歌词缩放比例",
             min: 0.5,
             max: 1.0,
             step: 0.05,
             value: computed({
-              get: () => taskbarLyricConfig.subScale,
+              get: () =>
+                taskbarLyricConfig.mode === "floating"
+                  ? taskbarLyricConfig.floatingSubScale
+                  : taskbarLyricConfig.taskbarSubScale,
               set: (v) => {
-                taskbarLyricConfig.subScale = v ?? 0.8;
-                saveTaskbarLyricConfig({ subScale: taskbarLyricConfig.subScale });
+                const next = v ?? 0.8;
+                if (taskbarLyricConfig.mode === "floating") {
+                  taskbarLyricConfig.floatingSubScale = next;
+                  saveTaskbarLyricConfig({ floatingSubScale: next });
+                } else {
+                  taskbarLyricConfig.taskbarSubScale = next;
+                  saveTaskbarLyricConfig({ taskbarSubScale: next });
+                }
               },
             }),
             defaultValue: 0.8,
