@@ -1556,7 +1556,7 @@ class PlayerController {
     const statusStore = useStatusStore();
     if (statusStore.showTaskbarLyric === show) return;
     statusStore.showTaskbarLyric = show;
-    playerIpc.updateTaskbarConfig({ enabled: show });
+    playerIpc.setTaskbarLyricShow(show);
     window.$message.success(`${show ? "已开启" : "已关闭"}任务栏歌词`);
   }
 

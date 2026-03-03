@@ -27,14 +27,12 @@ const getTaskbarConfig = (): TaskbarConfig => {
     showWhenPaused: store.get("taskbar.showWhenPaused", true),
     showCover: store.get("taskbar.showCover", true),
     themeMode: store.get("taskbar.themeMode", "auto"),
-    fontFamily: store.get("taskbar.fontFamily", ""),
-    globalFont: store.get("taskbar.globalFont", ""),
+    fontFamily: store.get("taskbar.fontFamily", "system-ui"),
     fontWeight: store.get("taskbar.fontWeight", 0),
     animationMode: store.get("taskbar.animationMode", "slide-blur"),
     singleLineMode: store.get("taskbar.singleLineMode", false),
-    showTranslation: store.get("taskbar.showTranslation", true),
-    showRomaji: store.get("taskbar.showRomaji", true),
     showWordLyrics: store.get("taskbar.showWordLyrics", true),
+    showTranslation: store.get("taskbar.showTranslation", true),
     lineHeight: store.get("taskbar.lineHeight", 1.1),
     fontSize: store.get("taskbar.fontSize", 14),
     mainScale: store.get("taskbar.mainScale", 1.0),
@@ -44,19 +42,13 @@ const getTaskbarConfig = (): TaskbarConfig => {
 
 const updateWindowVisibility = (config: TaskbarConfig) => {
   const tray = getMainTray();
-
-  if (tray) {
-    tray.setTaskbarLyricShow(config.enabled);
-  }
-
+  if (tray) tray.setTaskbarLyricShow(config.enabled);
   if (!config.enabled) {
-    // 关闭时直接销毁任务栏歌词窗口和相关原生服务
     taskbarLyricManager.close(false);
     return;
   }
-
+  taskbarLyricManager.create(config.mode);
   const shouldBeVisible = cachedIsPlaying || config.showWhenPaused;
-
   taskbarLyricManager.setVisibility(shouldBeVisible);
 };
 
@@ -64,10 +56,27 @@ const updateWindowLayout = (animate: boolean = true) => {
   taskbarLyricManager.updateLayout(animate);
 };
 
-const initTaskbarIpc = () => {
-  // 在函数内部获取 store，确保在 app ready 事件之后
+const applyTaskbarOption = (option: Partial<TaskbarConfig>, pushToWindow: boolean) => {
   const store = useStore();
+  const prev = getTaskbarConfig();
+  const next = { ...prev, ...option };
+  Object.entries(next).forEach(([key, value]) => {
+    store.set(`taskbar.${key}`, value);
+  });
+  if (pushToWindow) {
+    taskbarLyricManager.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
+      type: "config-update",
+      data: option,
+    } as SyncStatePayload);
+  }
+  updateWindowVisibility(next);
+  if (next.enabled) {
+    updateWindowLayout(false);
+  }
+};
 
+const initTaskbarIpc = () => {
+  const store = useStore();
   const initialConfig = getTaskbarConfig();
   if (initialConfig.enabled) {
     taskbarLyricManager.create(initialConfig.mode);
@@ -78,70 +87,12 @@ const initTaskbarIpc = () => {
     taskbarLyricManager.setContentWidth(width);
   });
 
-  ipcMain.on(
-    TASKBAR_IPC_CHANNELS.UPDATE_CONFIG,
-    (_event, partialConfig: Partial<TaskbarConfig>) => {
-      const oldConfig = getTaskbarConfig();
+  ipcMain.handle(TASKBAR_IPC_CHANNELS.GET_OPTION, () => getTaskbarConfig());
 
-      Object.entries(partialConfig).forEach(([key, value]) => {
-        store.set(`taskbar.${key}`, value);
-      });
-
-      const newConfig = getTaskbarConfig();
-
-      const modeChanged = newConfig.mode !== oldConfig.mode;
-
-      if (modeChanged) {
-        taskbarLyricManager.close(false);
-      }
-
-      if (newConfig.enabled && (!oldConfig.enabled || modeChanged)) {
-        taskbarLyricManager.create(newConfig.mode);
-      }
-
-      if (
-        newConfig.enabled !== oldConfig.enabled ||
-        newConfig.showWhenPaused !== oldConfig.showWhenPaused ||
-        modeChanged
-      ) {
-        updateWindowVisibility(newConfig);
-      }
-
-      if (newConfig.enabled) {
-        if (newConfig.mode === "taskbar") {
-          if (
-            newConfig.maxWidth !== oldConfig.maxWidth ||
-            newConfig.position !== oldConfig.position ||
-            newConfig.autoShrink !== oldConfig.autoShrink ||
-            newConfig.margin !== oldConfig.margin ||
-            newConfig.minWidth !== oldConfig.minWidth
-          ) {
-            updateWindowLayout(true);
-          }
-        } else {
-          const floatingWidthChanged =
-            newConfig.floatingAutoWidth === false &&
-            newConfig.floatingWidth !== oldConfig.floatingWidth;
-          if (
-            newConfig.maxWidth !== oldConfig.maxWidth ||
-            newConfig.floatingAlign !== oldConfig.floatingAlign ||
-            newConfig.floatingAutoWidth !== oldConfig.floatingAutoWidth ||
-            floatingWidthChanged ||
-            newConfig.floatingHeight !== oldConfig.floatingHeight ||
-            newConfig.floatingAlwaysOnTop !== oldConfig.floatingAlwaysOnTop ||
-            modeChanged
-          ) {
-            updateWindowLayout(false);
-          }
-        }
-      }
-
-      taskbarLyricManager.send(TASKBAR_IPC_CHANNELS.SYNC_STATE, {
-        type: "config-update",
-        data: partialConfig,
-      } as SyncStatePayload);
-    },
-  );
+  ipcMain.on(TASKBAR_IPC_CHANNELS.SET_OPTION, (_event, option: Partial<TaskbarConfig>, pushToWindow = true) => {
+    if (!option) return;
+    applyTaskbarOption(option, pushToWindow);
+  });
 
   ipcMain.on(TASKBAR_IPC_CHANNELS.SYNC_STATE, (_event, payload: SyncStatePayload) => {
     if (payload.type === "playback-state") {

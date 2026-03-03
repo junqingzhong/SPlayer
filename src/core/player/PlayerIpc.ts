@@ -5,7 +5,6 @@ import {
   TASKBAR_IPC_CHANNELS,
   type SyncStatePayload,
   type SyncTickPayload,
-  type TaskbarConfig,
 } from "@/types/shared";
 import type { PlayModePayload, RepeatModeType, ShuffleModeType } from "@/types/shared/play-mode";
 import { isElectron, isMac } from "@/utils/env";
@@ -100,11 +99,11 @@ export const sendLikeStatus = (isLiked: boolean) => sendIpc("like-status-change"
 export const toggleDesktopLyric = (show: boolean) => sendIpc("desktop-lyric:toggle", show);
 
 /**
- * 更新任务栏歌词的配置信息（如是否开启）
- * @param config 任务栏配置的增量更新负载
+ * 设置任务栏歌词显示
+ * @param show 是否显示
  */
-export const updateTaskbarConfig = (config: Partial<TaskbarConfig>) =>
-  sendIpc(TASKBAR_IPC_CHANNELS.UPDATE_CONFIG, config);
+export const setTaskbarLyricShow = (show: boolean) =>
+  sendIpc(TASKBAR_IPC_CHANNELS.SET_OPTION, { enabled: show }, true);
 
 /**
  * 向歌词任务栏等外部窗口广播通用的播放状态事件

@@ -6,7 +6,7 @@
     @mouseenter="handleMouseEnter"
     @mouseleave="handleMouseLeave"
   >
-    <div class="cover-wrapper" v-if="coverSrc && settingStore.taskbarLyricShowCover">
+    <div class="cover-wrapper" v-if="coverSrc && taskbarConfig.showCover">
       <Transition name="cross-fade">
         <img :key="coverSrc" :src="coverSrc" class="cover" alt="cover" @error="onCoverError" />
       </Transition>
@@ -28,7 +28,7 @@
 
     <div class="content" :style="contentStyle">
       <div class="lyric-view-container">
-        <Transition :name="settingStore.taskbarLyricAnimationMode" mode="out-in">
+        <Transition :name="taskbarConfig.animationMode" mode="out-in">
           <TransitionGroup
             tag="div"
             class="lyric-list-wrapper"
@@ -72,8 +72,8 @@
 </template>
 
 <script setup lang="ts">
-import { useSettingStore } from "@/stores";
 import {
+  DEFAULT_TASKBAR_CONFIG,
   TASKBAR_IPC_CHANNELS,
   type SyncStatePayload,
   type SyncTickPayload,
@@ -85,8 +85,9 @@ import type { CSSProperties } from "vue";
 import { useRoute } from "vue-router";
 import LyricScroll from "./LyricScroll.vue";
 
-const settingStore = useSettingStore();
 const route = useRoute();
+// 由 IPC 推送的配置，与 Pinia 无关
+const taskbarConfig = reactive<TaskbarConfig>({ ...DEFAULT_TASKBAR_CONFIG });
 const isFloating = computed(() => route.query.mode === "floating");
 const isHovering = ref(false);
 const showControls = computed(() => !isFloating.value && isHovering.value);
@@ -158,6 +159,12 @@ const rootStyle = computed<CSSProperties>(() => {
   const style: CSSProperties = {
     "--dynamic-opacity": state.opacity,
     "--dynamic-blur": `${state.blurVal}px`,
+    "--lyric-font-family": lyricFontFamily.value,
+    "--lyric-font-weight": String(taskbarConfig.fontWeight),
+    "--lyric-font-size": `${taskbarConfig.fontSize}px`,
+    "--lyric-line-height": String(taskbarConfig.lineHeight),
+    "--lyric-main-scale": String(taskbarConfig.mainScale),
+    "--lyric-sub-scale": String(taskbarConfig.subScale),
   };
 
   if (state.themeColor) {
@@ -168,9 +175,10 @@ const rootStyle = computed<CSSProperties>(() => {
 });
 
 const lyricFontFamily = computed(() => {
-  const font =
-    settingStore.LyricFont === "follow" ? settingStore.globalFont : settingStore.LyricFont;
-  return font === "default" ? "inherit" : font;
+  const raw = taskbarConfig.fontFamily || "system-ui";
+  if (raw === "follow") return "system-ui";
+  if (raw === "default") return "inherit";
+  return raw;
 });
 
 const handleMouseEnter = () => {
@@ -381,15 +389,13 @@ const displayItems = computed<DisplayItem[]>(() => {
   if (currentRawIndex < 0) return [];
   const currentText = getLineText(currentLine);
 
-  const shouldShowWords = settingStore.taskbarLyricShowWordLyrics && state.lyricType === "word";
+  const shouldShowWords = taskbarConfig.showWordLyrics && state.lyricType === "word";
   const bgLine = bgCache.value?.line;
   const hasBg = !!bgLine;
   let subText = "";
   if (!hasBg) {
-    if (settingStore.showTran && currentLine.translatedLyric) {
+    if (taskbarConfig.showTranslation && currentLine.translatedLyric) {
       subText = currentLine.translatedLyric;
-    } else if (settingStore.showRoma && currentLine.romanLyric) {
-      subText = currentLine.romanLyric;
     }
   }
 
@@ -424,7 +430,7 @@ const displayItems = computed<DisplayItem[]>(() => {
       itemType: "sub",
       progress: 0,
     });
-  } else if (!settingStore.taskbarLyricSingleLineMode) {
+  } else if (!taskbarConfig.singleLineMode) {
     const nextLine = mainLyrics.value[mainLyricIndex.value + 1];
     if (nextLine) {
       const nextRawIndex = mainToRawIndex.value[mainLyricIndex.value + 1] ?? -1;
@@ -565,38 +571,10 @@ const contentStyle = computed<CSSProperties>(() => ({
   textAlign: state.isCenter ? "left" : "right",
 }));
 
-const configMap: Partial<Record<keyof TaskbarConfig, keyof typeof settingStore>> = {
-  showCover: "taskbarLyricShowCover",
-  animationMode: "taskbarLyricAnimationMode",
-  singleLineMode: "taskbarLyricSingleLineMode",
-  fontFamily: "LyricFont",
-  globalFont: "globalFont",
-  fontWeight: "taskbarLyricFontWeight",
-  showTranslation: "showTran",
-  showRomaji: "showRoma",
-  showWordLyrics: "taskbarLyricShowWordLyrics",
-  showWhenPaused: "taskbarLyricShowWhenPaused",
-  lineHeight: "taskbarLyricLineHeight",
-  fontSize: "taskbarLyricFontSize",
-  mainScale: "taskbarLyricMainScale",
-  subScale: "taskbarLyricSubScale",
-};
+const applyConfig = (config: Partial<TaskbarConfig>) => {
+  if (Object.keys(config).length === 0) return;
 
-const applyConfigToStore = (config: Partial<TaskbarConfig>) => {
-  const patches: Record<string, unknown> = {};
-
-  (Object.keys(config) as Array<keyof TaskbarConfig>).forEach((key) => {
-    const storeKey = configMap[key];
-    const value = config[key];
-
-    if (storeKey && value !== undefined) {
-      patches[storeKey] = value;
-    }
-  });
-
-  if (Object.keys(patches).length > 0) {
-    settingStore.$patch(patches);
-  }
+  Object.assign(taskbarConfig, config);
 
   if (config.themeMode !== undefined) {
     state.isDark =
@@ -629,7 +607,7 @@ onMounted(() => {
         state.currentTime = playback.tick[0];
         state.offset = playback.tick[2] || 0;
 
-        applyConfigToStore(config);
+        applyConfig(config);
         state.themeColor = themeColor;
 
         lastTimestamp = performance.now();
@@ -673,7 +651,7 @@ onMounted(() => {
       }
 
       case "config-update": {
-        applyConfigToStore(payload.data);
+        applyConfig(payload.data);
         break;
       }
 
@@ -753,9 +731,9 @@ $radius: 4px;
   color: $base-color;
   border-radius: $radius;
   user-select: none;
-  font-family: v-bind(lyricFontFamily);
-  font-weight: v-bind("settingStore.taskbarLyricFontWeight");
-  font-size: v-bind("`${settingStore.taskbarLyricFontSize}px`");
+  font-family: var(--lyric-font-family, inherit);
+  font-weight: var(--lyric-font-weight, 400);
+  font-size: var(--lyric-font-size, 14px);
 
   will-change: opacity, filter;
   transition:
@@ -924,7 +902,7 @@ $radius: 4px;
   min-height: 1.1em;
   padding: 0 0.3em;
   box-sizing: border-box;
-  line-height: v-bind("settingStore.taskbarLyricLineHeight");
+  line-height: var(--lyric-line-height, 1.1);
   transition: all 0.4s var(--lyric-ease);
 
   .line-text {
@@ -935,7 +913,7 @@ $radius: 4px;
       transform 0.4s var(--lyric-ease),
       opacity 0.4s var(--lyric-ease);
     will-change: transform, opacity;
-    transform: scale(v-bind("settingStore.taskbarLyricMainScale"));
+    transform: scale(var(--lyric-main-scale, 1));
 
     &.single {
       font-size: 1em;
@@ -945,14 +923,14 @@ $radius: 4px;
   &.is-sub {
     .line-text {
       opacity: 0.7;
-      transform: scale(v-bind("settingStore.taskbarLyricSubScale"));
+      transform: scale(var(--lyric-sub-scale, 0.8));
     }
   }
 
   &.is-next {
     .line-text {
       opacity: 0.7;
-      transform: scale(v-bind("settingStore.taskbarLyricSubScale"));
+      transform: scale(var(--lyric-sub-scale, 0.8));
     }
   }
 }
