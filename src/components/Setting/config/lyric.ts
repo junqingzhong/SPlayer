@@ -84,7 +84,7 @@ export const useLyricSettings = (): SettingConfig => {
 
   const saveTaskbarLyricConfig = (patch?: Partial<TaskbarConfig>) => {
     if (!isElectron) return;
-    const toSave = patch ? { ...taskbarLyricConfig, ...patch } : { ...taskbarLyricConfig };
+    const toSave = cloneDeep(patch ? { ...taskbarLyricConfig, ...patch } : taskbarLyricConfig);
     window.electron.ipcRenderer.send(TASKBAR_IPC_CHANNELS.SET_OPTION, toSave, true);
   };
 
