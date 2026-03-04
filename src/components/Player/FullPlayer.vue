@@ -121,9 +121,7 @@ const noLrc = computed<boolean>(() => {
 });
 
 /** 是否处于纯净模式 */
-const pureLyricMode = computed<boolean>(
-  () => statusStore.pureLyricMode && musicStore.isHasLrc,
-);
+const pureLyricMode = computed<boolean>(() => statusStore.pureLyricMode && musicStore.isHasLrc);
 
 /* 是否显示全屏封面 */
 const showFullScreenCover = computed<boolean>(
@@ -293,7 +291,7 @@ onBeforeUnmount(() => {
       height: 100%;
       display: flex;
       flex-direction: column;
-      mix-blend-mode: v-bind('settingStore.lyricsBlendMode');
+      mix-blend-mode: v-bind("settingStore.lyricsBlendMode");
       transition:
         width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
         opacity 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);

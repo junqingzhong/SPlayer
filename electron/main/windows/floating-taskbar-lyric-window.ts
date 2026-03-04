@@ -209,7 +209,8 @@ class FloatingTaskbarLyricWindow {
       bounds.y !== nextY ||
       bounds.width !== nextWidth ||
       bounds.height !== nextHeight;
-    if (shouldUpdate) this.win.setBounds({ x: nextX, y: nextY, width: nextWidth, height: nextHeight });
+    if (shouldUpdate)
+      this.win.setBounds({ x: nextX, y: nextY, width: nextWidth, height: nextHeight });
 
     this.applyAlwaysOnTop(false);
     this.sendFloatingAlign(false);

@@ -41,7 +41,9 @@
           </div>
           <n-badge
             :value="formatCommentCount(statusStore.songCommentCount)"
-            :show="settingStore.showCommentCount !== 'off' && statusStore.songCommentCount > 0"
+            :show="
+              statusStore.songCommentCount > 0 && settingStore.fullscreenPlayerElements.commentCount
+            "
           >
             <div
               v-if="
@@ -170,7 +172,7 @@ const { timeDisplay, toggleTimeFormat } = useTimeFormat();
 
 // 获取评论数量
 const fetchCommentCount = async () => {
-  if (settingStore.showCommentCount === "off") return;
+  if (!settingStore.fullscreenPlayerElements.commentCount) return;
   const id = musicStore.playSong.id;
   if (!id || typeof id !== "number" || musicStore.playSong.path) return;
   try {
@@ -190,6 +192,15 @@ watch(
   () => {
     statusStore.songCommentCount = 0;
     fetchCommentCount();
+  },
+);
+
+watch(
+  () => settingStore.fullscreenPlayerElements.commentCount,
+  (val) => {
+    if (val && statusStore.songCommentCount === 0) {
+      fetchCommentCount();
+    }
   },
 );
 
