@@ -272,6 +272,15 @@ export const cleanTTMLTranslations = (ttmlContent: string): string => {
 };
 
 /**
+ * 获取歌词行的文本内容
+ */
+export const getLineText = (line: LyricLine | undefined) =>
+  line?.words
+    ?.map((w) => w.word)
+    .join("")
+    .trim() || "";
+
+/**
  * 为歌词行注入 TTML BG 行
  * 解决 BG 行的归属问题，仅用于任务栏歌词显示
  * @param ttml TTML 文本
@@ -284,12 +293,6 @@ export const attachTtmlBgLines = (ttml: string, lines: LyricLine[]): LyricLine[]
   const hasExtracted = extracted.length > 0;
 
   const mainEntries = lines.map((line, idx) => ({ line, idx })).filter(({ line }) => !line.isBG);
-
-  const getLineText = (line: LyricLine) =>
-    line.words
-      ?.map((w) => w.word)
-      .join("")
-      .trim() || "";
 
   const mains = mainEntries.map((e) => e.line);
   const TOLERANCE_MS = 50;

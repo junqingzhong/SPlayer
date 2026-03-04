@@ -81,6 +81,7 @@ import {
   type TaskbarConfig,
 } from "@/types/shared";
 import { calculateLyricIndex, getSafeEndTime } from "@/utils/calc";
+import { getLineText } from "@/utils/lyric/parseTTML";
 import type { LyricLine, LyricWord } from "@applemusic-like-lyrics/lyric";
 import type { CSSProperties } from "vue";
 import { useRoute } from "vue-router";
@@ -256,23 +257,33 @@ const mainToRawIndex = ref<number[]>([]);
 const mainSafeEnds = ref<number[]>([]);
 const mainLyricIndex = ref(-1);
 const bgCache = ref<{ line: LyricLine; rawIndex: number } | null>(null);
+const mainBgMap = ref<Map<number, { line: LyricLine; rawIndex: number }>>(new Map());
 
 const rebuildMainLyrics = (lyrics: LyricLine[]) => {
   const mains: LyricLine[] = [];
   const map: number[] = [];
-  lyrics.forEach((line, idx) => {
+  const bgMap = new Map<number, { line: LyricLine; rawIndex: number }>();
+
+  let currentMainIdx = -1;
+  lyrics.forEach((line, rawIdx) => {
     if (!line.isBG) {
       mains.push(line);
-      map.push(idx);
+      map.push(rawIdx);
+      currentMainIdx = mains.length - 1;
+    } else if (currentMainIdx >= 0 && !bgMap.has(currentMainIdx)) {
+      bgMap.set(currentMainIdx, { line, rawIndex: rawIdx });
     }
   });
+
   const safeEnds = mains.map((_, idx) => {
     const v = getSafeEndTime(mains, idx);
     return v > 0 ? v : Infinity;
   });
+
   mainLyrics.value = mains;
   mainToRawIndex.value = map;
   mainSafeEnds.value = safeEnds;
+  mainBgMap.value = bgMap;
   mainLyricIndex.value = -1;
   state.lyricIndex = -1;
   bgCache.value = null;
@@ -283,15 +294,6 @@ watch(
   (lyrics) => rebuildMainLyrics(lyrics),
   { immediate: true },
 );
-
-const getLineText = (line: LyricLine | undefined) => {
-  return (
-    line?.words
-      ?.map((w) => w.word)
-      .join("")
-      .trim() || ""
-  );
-};
 
 /**
  * 解析歌词行的安全结束时间
@@ -339,57 +341,15 @@ const getLineProgress = (line: LyricLine | undefined, lineIndex?: number) => {
 
 /**
  * 更新当前主歌词对应的 BG 行缓存
- * 按归属区间与显示重叠规则选出最优 BG 行
+ * 直接从预计算的 mainBgMap 中 O(1) 查找
  */
 const updateBgCache = () => {
   const idx = mainLyricIndex.value;
-  if (!state.lyrics.length || idx < 0 || idx >= mainLyrics.value.length) {
+  if (idx < 0 || idx >= mainLyrics.value.length) {
     bgCache.value = null;
     return;
   }
-
-  const currentMain = mainLyrics.value[idx];
-  const mainStart = currentMain.startTime;
-  const safeEnd = mainSafeEnds.value[idx] ?? Infinity;
-  const prevSafeEnd = idx > 0 ? (mainSafeEnds.value[idx - 1] ?? -Infinity) : -Infinity;
-  const nextMainStart = mainLyrics.value[idx + 1]?.startTime ?? Infinity;
-  const mainEnd = Math.min(safeEnd, nextMainStart);
-
-  let found: { line: LyricLine; rawIndex: number } | null = null;
-  let bestScore: [number, number, number, number] | null = null;
-  for (let i = 0; i < state.lyrics.length; i++) {
-    const line = state.lyrics[i];
-    if (!line.isBG) continue;
-    const bgStart = Number(line.startTime);
-    const bgEndRaw = Number(line.endTime);
-    const hasValidEnd = Number.isFinite(bgEndRaw) && bgEndRaw > bgStart;
-    const bgEnd = hasValidEnd ? bgEndRaw : bgStart;
-    const bgDisplayEnd = hasValidEnd ? bgEndRaw : mainEnd;
-    const ownedByCurrent = bgEnd > prevSafeEnd && bgEnd <= safeEnd;
-    const overlapsDisplay = bgStart < mainEnd && bgDisplayEnd > mainStart;
-    if (ownedByCurrent && overlapsDisplay) {
-      const startsInside = bgStart >= mainStart && bgStart < mainEnd;
-      const score: [number, number, number, number] = [startsInside ? 0 : 1, bgStart, bgEnd, i];
-      if (!bestScore) {
-        bestScore = score;
-        found = { line, rawIndex: i };
-      } else {
-        const better =
-          score[0] < bestScore[0] ||
-          (score[0] === bestScore[0] && score[1] < bestScore[1]) ||
-          (score[0] === bestScore[0] && score[1] === bestScore[1] && score[2] < bestScore[2]) ||
-          (score[0] === bestScore[0] &&
-            score[1] === bestScore[1] &&
-            score[2] === bestScore[2] &&
-            score[3] < bestScore[3]);
-        if (better) {
-          bestScore = score;
-          found = { line, rawIndex: i };
-        }
-      }
-    }
-  }
-  bgCache.value = found;
+  bgCache.value = mainBgMap.value.get(idx) ?? null;
 };
 
 watch(mainLyricIndex, updateBgCache);
