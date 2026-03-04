@@ -162,23 +162,32 @@ class MediaSessionManager {
     if (this.shouldUseNativeMedia() && settingStore.smtcOpen) {
       try {
         let coverBuffer: Uint8Array | undefined;
-        // 获取封面数据
-        if (
-          !coverBuffer &&
+        // 本地文件且封面不是 Blob URL
+        if (song.path && !metadata.coverUrl.startsWith("blob:")) {
+          try {
+            const coverData = await window.electron.ipcRenderer.invoke(
+              "get-music-cover",
+              song.path,
+            );
+            if (coverData?.data && !signal.aborted) {
+              coverBuffer = new Uint8Array(coverData.data);
+            }
+          } catch {
+            // 忽略读取失败
+          }
+        }
+        // 在线歌曲
+        else if (
           metadata.coverUrl &&
-          (metadata.coverUrl.startsWith("http") ||
-            metadata.coverUrl.startsWith("blob:") ||
-            metadata.coverUrl.startsWith("file://"))
+          (metadata.coverUrl.startsWith("http") || metadata.coverUrl.startsWith("blob:"))
         ) {
           try {
             const resp = await fetch(metadata.coverUrl, { signal });
-            const buf = await resp.arrayBuffer();
-            coverBuffer = new Uint8Array(buf);
+            coverBuffer = new Uint8Array(await resp.arrayBuffer());
           } catch {
             // 忽略下载失败
           }
         }
-
         sendMediaMetadata({
           songName: metadata.title,
           authorName: metadata.artist,
