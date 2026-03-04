@@ -3,7 +3,6 @@ import { isElectron } from "@/utils/env";
 import { getPlaySongData } from "@/utils/format";
 import { msToS } from "@/utils/time";
 import type { SystemMediaEvent } from "@emi";
-import axios from "axios";
 import { throttle } from "lodash-es";
 import { usePlayerController } from "./PlayerController";
 import {
@@ -113,7 +112,6 @@ class MediaSessionManager {
             ? "Track"
             : "None";
       sendMediaPlayMode(shuffle, repeat);
-
       player.syncMediaPlayMode();
 
       // 同步初始播放速率
@@ -147,47 +145,35 @@ class MediaSessionManager {
 
   /**
    * 更新元数据
-   * @param coverBuffer 封面数据（可选，避免重复下载）
    */
-  public async updateMetadata(coverBuffer?: Uint8Array) {
+  public async updateMetadata() {
     if (!("mediaSession" in navigator) && !isElectron) return;
-
     const musicStore = useMusicStore();
     const settingStore = useSettingStore();
     const song = getPlaySongData();
-
     if (!song) return;
-
     if (this.metadataAbortController) {
       this.metadataAbortController.abort();
     }
-
     this.metadataAbortController = new AbortController();
     const { signal } = this.metadataAbortController;
-
     const metadata = this.buildMetadata(song);
-
     // 原生插件
     if (this.shouldUseNativeMedia() && settingStore.smtcOpen) {
       try {
+        let coverBuffer: Uint8Array | undefined;
         // 获取封面数据
         if (
           !coverBuffer &&
           metadata.coverUrl &&
-          (metadata.coverUrl.startsWith("http") || metadata.coverUrl.startsWith("blob:"))
+          (metadata.coverUrl.startsWith("http") ||
+            metadata.coverUrl.startsWith("blob:") ||
+            metadata.coverUrl.startsWith("file://"))
         ) {
           try {
-            if (metadata.coverUrl.startsWith("blob:")) {
-              const resp = await fetch(metadata.coverUrl, { signal });
-              const buf = await resp.arrayBuffer();
-              coverBuffer = new Uint8Array(buf);
-            } else {
-              const resp = await axios.get(metadata.coverUrl, {
-                responseType: "arraybuffer",
-                signal,
-              });
-              coverBuffer = new Uint8Array(resp.data);
-            }
+            const resp = await fetch(metadata.coverUrl, { signal });
+            const buf = await resp.arrayBuffer();
+            coverBuffer = new Uint8Array(buf);
           } catch {
             // 忽略下载失败
           }
@@ -203,7 +189,7 @@ class MediaSessionManager {
           ncmId: typeof song.id === "number" ? song.id : undefined,
         });
       } catch (e) {
-        if (!axios.isCancel(e)) {
+        if (!(e instanceof DOMException && e.name === "AbortError")) {
           console.error("[Media] 更新元数据失败", e);
         }
       } finally {
