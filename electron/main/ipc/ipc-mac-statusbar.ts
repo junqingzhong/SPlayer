@@ -1,5 +1,6 @@
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
 import {
+  DEFAULT_TASKBAR_CONFIG,
   TASKBAR_IPC_CHANNELS,
   type SyncStatePayload,
   type SyncTickPayload,
@@ -161,8 +162,14 @@ export const initMacStatusBarIpc = () => {
 
   ipcMain.on(TASKBAR_IPC_CHANNELS.SET_OPTION, (_event, option: Partial<TaskbarConfig>) => {
     if (!option) return;
+
+    // 安全过滤：仅允许写入 DEFAULT_TASKBAR_CONFIG 中定义的合法键
+    const allowedKeys = Object.keys(DEFAULT_TASKBAR_CONFIG);
+
     Object.entries(option).forEach(([key, value]) => {
-      store.set(`taskbar.${key}`, value);
+      if (allowedKeys.includes(key)) {
+        store.set(`taskbar.${key}`, value);
+      }
     });
     // macOS 模式下不处理窗口可见性，仅同步配置
   });
