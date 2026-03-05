@@ -97,8 +97,8 @@
               <!-- 歌手 -->
               <div v-else class="artists">
                 <TextContainer :speed="0.5" class="artists-container">
-                  <n-text v-if="musicStore.playSong.type === 'radio'" class="ar-item">
-                    播客电台
+                  <n-text v-if="musicStore.playSong.type === 'radio'" class="ar-item" @click="showCreatorTip">
+                    {{ musicStore.playSong.dj?.creator || "未知艺术家" }}
                   </n-text>
                   <template v-else-if="Array.isArray(musicStore.playSong.artists)">
                     <n-text
@@ -424,6 +424,9 @@ const instantLyrics = computed(() => {
     ? `${contentStr}（ ${content?.translatedLyric} ）`
     : contentStr || "";
 });
+
+// 暂不支持查看主播主页
+const showCreatorTip = () => window.$message.info("暂不支持查看主播主页");
 </script>
 
 <style lang="scss" scoped>
