@@ -381,6 +381,7 @@ export interface SettingState {
     lyricOffset: boolean;
     lyricSettings: boolean;
     commentCount: boolean;
+    commentHalfScreen: boolean;
   };
   /** 右键菜单显示配置 */
   contextMenuOptions: {
@@ -673,6 +674,7 @@ export const useSettingStore = defineStore("setting", {
       lyricOffset: true,
       lyricSettings: true,
       commentCount: false,
+      commentHalfScreen: false,
     },
     contextMenuOptions: {
       play: true,
