@@ -4,10 +4,10 @@
       <div
         v-if="statusStore.showFullPlayer"
         :style="{
-          cursor: statusStore.playerMetaShow || isShowComment ? 'auto' : 'none',
+          cursor: statusStore.playerMetaShow || showComment ? 'auto' : 'none',
           '--lyric-blend-mode': settingStore.lyricsBlendMode,
         }"
-        :class="['full-player', { 'show-comment': isShowComment && !statusStore.pureLyricMode }]"
+        :class="['full-player', { 'fullscreen-comment': showFullScreenComment }]"
         @mouseleave="playerLeave"
         @mousemove="playerMove"
         @click="playerMove"
@@ -20,11 +20,7 @@
         <template v-else>
           <!-- 独立歌词 -->
           <Transition name="fade" mode="out-in">
-            <div
-              v-if="isShowComment && !statusStore.pureLyricMode"
-              :key="instantLyrics.content"
-              class="lrc-instant"
-            >
+            <div v-if="showFullScreenComment" :key="instantLyrics.content" class="lrc-instant">
               <span class="lrc">{{ instantLyrics.content }}</span>
               <span v-if="instantLyrics.tran" class="lrc-tran">{{ instantLyrics.tran }}</span>
             </div>
@@ -47,9 +43,14 @@
               ]"
               @mousemove="playerMove"
             >
+              <!-- 左侧的封面和数据 -->
               <Transition name="zoom">
                 <div
-                  v-if="!pureLyricMode && settingStore.playerType !== 'fullscreen'"
+                  v-if="
+                    !showHalfScreenComment &&
+                    !pureLyricMode &&
+                    settingStore.playerType !== 'fullscreen'
+                  "
                   :key="musicStore.playSong.id"
                   class="content-left"
                   :style="layoutStyles.left"
@@ -59,6 +60,14 @@
                   <!-- 数据 -->
                   <PlayerData :center="playerDataCenter" />
                 </div>
+              </Transition>
+              <!-- 左侧的半屏评论 -->
+              <Transition name="zoom" mode="out-in">
+                <PlayerComment
+                  v-if="showHalfScreenComment"
+                  class="content-left"
+                  :style="layoutStyles.left"
+                />
               </Transition>
               <!-- 歌词 -->
               <div class="content-right" :style="layoutStyles.right">
@@ -78,7 +87,7 @@
           </Transition>
           <!-- 评论 -->
           <Transition name="zoom" mode="out-in">
-            <PlayerComment v-show="isShowComment && !statusStore.pureLyricMode" />
+            <PlayerComment v-if="showFullScreenComment" />
           </Transition>
           <!-- 控制中心 -->
           <PlayerControl @mouseenter.stop="stopHide" @mouseleave.stop="playerMove" />
@@ -109,10 +118,23 @@ const { isTablet } = useMobile();
 /** 封面主颜色 */
 const mainCoverColor = useCssVar("--main-cover-color", document.documentElement);
 
-// 是否显示评论
-const isShowComment = computed<boolean>(
-  () => !musicStore.playSong.path && statusStore.showPlayerComment && !isTablet.value,
+/** 是否显示评论 */
+const showComment = computed<boolean>(
+  () =>
+    statusStore.showPlayerComment &&
+    !musicStore.playSong.path &&
+    !statusStore.pureLyricMode &&
+    !isTablet.value,
 );
+/** 评论是否半屏显示 */
+const commentHalfScreen = computed<boolean>(
+  () => settingStore.fullscreenPlayerElements.commentHalfScreen && !noLrc.value,
+);
+/** 显示全屏评论 */
+const showFullScreenComment = computed<boolean>(
+  () => showComment.value && !commentHalfScreen.value,
+);
+const showHalfScreenComment = computed<boolean>(() => showComment.value && commentHalfScreen.value);
 
 /** 没有歌词 */
 const noLrc = computed<boolean>(() => {
@@ -124,9 +146,9 @@ const noLrc = computed<boolean>(() => {
 /** 是否处于纯净模式 */
 const pureLyricMode = computed<boolean>(() => statusStore.pureLyricMode && musicStore.isHasLrc);
 
-/* 是否显示全屏封面 */
+/** 是否显示全屏封面 */
 const showFullScreenCover = computed<boolean>(
-  () => settingStore.playerType === "fullscreen" && !pureLyricMode.value && !isShowComment.value,
+  () => settingStore.playerType === "fullscreen" && !pureLyricMode.value && !showComment.value,
 );
 
 // 主内容 key
@@ -332,7 +354,7 @@ onBeforeUnmount(() => {
       }
     }
   }
-  &.show-comment {
+  &.fullscreen-comment {
     .player-content {
       &:not(.pure) {
         transform: scale(0.95);

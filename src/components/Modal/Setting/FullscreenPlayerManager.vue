@@ -48,6 +48,11 @@ const items = computed<Item[]>(() => [
     key: "commentCount",
     disabled: !settingStore.fullscreenPlayerElements.comments,
   },
+  {
+    label: "评论页半屏显示（左侧）",
+    key: "commentHalfScreen",
+    disabled: !settingStore.fullscreenPlayerElements.comments,
+  },
 ]);
 
 const updateSetting = (key: FullscreenPlayerElementKey, val: boolean) => {
