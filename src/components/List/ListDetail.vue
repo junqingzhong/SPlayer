@@ -296,6 +296,14 @@ const settingStore = useSettingStore();
 // 当前 tab
 const currentTab = ref<"songs" | "comments">("songs");
 
+// 切换资源时重置 tab
+watch(
+  () => props.detailData?.id,
+  () => {
+    currentTab.value = "songs";
+  },
+);
+
 // 标题文本
 const titleText = computed(() => {
   if (props.titleText) return props.titleText;

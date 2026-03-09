@@ -44,21 +44,26 @@
       </div>
     </n-flex>
     <n-scrollbar ref="commentScroll" class="comment-scroll">
-      <template v-if="filteredCommentHotData && filteredCommentHotData.length > 0">
-        <div class="placeholder">
-          <div class="title">
-            <SvgIcon name="Fire" />
-            <span>热门评论</span>
+      <Transition name="fade">
+        <div
+          v-if="filteredCommentHotData && filteredCommentHotData.length > 0"
+          class="hot-comments"
+        >
+          <div class="placeholder">
+            <div class="title">
+              <SvgIcon name="Fire" />
+              <span>热门评论</span>
+            </div>
           </div>
+          <CommentList
+            :data="filteredCommentHotData"
+            :loading="false"
+            :type="songType"
+            :res-id="songId"
+            transparent
+          />
         </div>
-        <CommentList
-          :data="filteredCommentHotData"
-          :loading="commentHotData?.length === 0"
-          :type="songType"
-          :res-id="songId"
-          transparent
-        />
-      </template>
+      </Transition>
       <div class="placeholder">
         <div class="title">
           <SvgIcon name="Message" />
@@ -112,7 +117,7 @@ const songType = computed<0 | 1 | 7 | 2 | 3 | 4 | 5 | 6>(() =>
 // 评论数据
 const commentLoading = ref<boolean>(true);
 const commentData = ref<CommentType[]>([]);
-const commentHotData = ref<CommentType[] | null>([]);
+const commentHotData = ref<CommentType[] | null>(null);
 const commentPage = ref<number>(1);
 const commentHasMore = ref<boolean>(true);
 
@@ -149,11 +154,14 @@ const filteredCommentData = computed(() => filterComments(commentData.value));
 const filteredCommentHotData = computed(() => filterComments(commentHotData.value));
 
 // 获取热门评论
-const getHotCommentData = async () => {
+const getHotCommentData = async (id?: number) => {
+  const targetId = id ?? songId.value;
   // 本地歌曲无法获取评论
-  if (!songId.value || typeof songId.value !== "number") return;
+  if (!targetId || typeof targetId !== "number") return;
   // 获取评论
-  const result = await getHotComment(songId.value);
+  const result = await getHotComment(targetId);
+  // 确保返回时歌曲未再次变化
+  if (targetId !== songId.value) return;
   // 处理数据
   const formatData = formatCommentList(result.hotComments);
   commentHotData.value = formatData?.length > 0 ? formatData : null;
@@ -162,17 +170,31 @@ const getHotCommentData = async () => {
 };
 
 // 获取歌曲评论
-const getAllComment = async () => {
+const getAllComment = async (id?: number, reset?: boolean) => {
+  const targetId = id ?? songId.value;
   // 本地歌曲无法获取评论
-  if (!songId.value || typeof songId.value !== "number") return;
-  commentLoading.value = true;
+  if (!targetId || typeof targetId !== "number") return;
+  // 仅在首次加载时显示骨架屏（追加分页不显示）
+  if (reset || commentData.value.length === 0) {
+    commentLoading.value = true;
+  }
   // 分页参数
+  const page = reset ? 1 : commentPage.value;
   const cursor =
-    commentPage.value > 1 && commentData.value?.length > 0
+    !reset && page > 1 && commentData.value?.length > 0
       ? commentData.value[commentData.value.length - 1]?.time
       : undefined;
   // 获取评论
-  const result = await getComment(songId.value, songType.value, commentPage.value, 20, 3, cursor);
+  const result = await getComment(
+    targetId,
+    musicStore.playSong.type === "radio" ? 4 : 0,
+    page,
+    20,
+    3,
+    cursor,
+  );
+  // 确保返回时歌曲未再次变化
+  if (targetId !== songId.value) return;
   // 更新评论总数
   if (result.data?.totalCount != null) {
     statusStore.songCommentCount = result.data.totalCount;
@@ -180,11 +202,12 @@ const getAllComment = async () => {
   if (isEmpty(result.data?.comments)) {
     commentHasMore.value = false;
     commentLoading.value = false;
+    if (reset) commentData.value = [];
     return;
   }
   // 处理数据
   const formatData = formatCommentList(result.data.comments);
-  commentData.value = commentData.value.concat(formatData);
+  commentData.value = reset ? formatData : commentData.value.concat(formatData);
   // 是否还有
   commentHasMore.value = result.data.hasMore;
   commentLoading.value = false;
@@ -196,18 +219,31 @@ const loadMoreComment = () => {
   getAllComment();
 };
 
+// 重置并加载评论
+const resetAndFetch = (id?: number | string) => {
+  const targetId = id ?? songId.value;
+  commentPage.value = 1;
+  commentHasMore.value = true;
+  statusStore.songCommentCount = 0;
+  getHotCommentData(typeof targetId === "number" ? targetId : undefined);
+  getAllComment(typeof targetId === "number" ? targetId : undefined, true);
+};
+
 // 歌曲id变化
 watch(
   () => songId.value,
-  () => {
-    commentData.value = [];
-    commentHotData.value = [];
-    commentPage.value = 1;
-    commentHasMore.value = true;
-    statusStore.songCommentCount = 0;
-    if (!isShowComment.value) return;
-    getHotCommentData();
-    getAllComment();
+  (newId) => {
+    if (!isShowComment.value) {
+      // 不在评论页时，仅标记数据过期，打开时再加载
+      commentData.value = [];
+      commentHotData.value = null;
+      commentPage.value = 1;
+      commentHasMore.value = true;
+      commentLoading.value = true;
+      statusStore.songCommentCount = 0;
+      return;
+    }
+    resetAndFetch(newId);
   },
 );
 
@@ -218,16 +254,14 @@ watch(
     if (!newVal) return;
     // 若不存在数据，重新获取
     if (!commentData.value?.length) {
-      getHotCommentData();
-      getAllComment();
+      resetAndFetch();
     }
   },
 );
 
 onMounted(() => {
   if (!isShowComment.value) return;
-  getHotCommentData();
-  getAllComment();
+  resetAndFetch();
 });
 </script>
 
