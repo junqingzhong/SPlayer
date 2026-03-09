@@ -367,12 +367,12 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   }
 
   /**
-   * 设置歌词同步偏移量
+   * 设置音频延迟手动补偿
    * @param offset 偏移量 (毫秒)
    */
-  public setSyncOffset(offset: number): void {
+  public setAudioDelayCompensation(offset: number): void {
     // FFmpeg 和 MPV 引擎可能没有实现此方法
-    this.engine.setSyncOffset?.(offset);
+    this.engine.setAudioDelayCompensation?.(offset);
   }
 
   /**
@@ -514,11 +514,11 @@ export const useAudioManager = (): AudioManager => {
       settingStore.audioEngine,
     );
 
-    // 监听歌词同步偏移量变化
+    // 监听音频延迟补偿变化
     watch(
-      () => settingStore.lyricSyncOffset,
+      () => settingStore.audioDelayCompensation,
       (offset) => {
-        win[AUDIO_MANAGER_KEY]?.setSyncOffset(offset);
+        win[AUDIO_MANAGER_KEY]?.setAudioDelayCompensation(offset);
       },
       { immediate: true }, // 立即执行一次以应用初始值
     );

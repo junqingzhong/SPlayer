@@ -368,21 +368,6 @@ export const useLyricSettings = (): SettingConfig => {
             }),
             defaultValue: 500,
           },
-          {
-            key: "lyricSyncOffset",
-            label: "歌词同步微调",
-            type: "input-number",
-            description: "手动调整歌词与声音的同步，正值歌词提前，负值歌词延后。",
-            min: -1000,
-            max: 1000,
-            step: 10,
-            suffix: "ms",
-            value: computed({
-              get: () => settingStore.lyricSyncOffset,
-              set: (v) => (settingStore.lyricSyncOffset = v || 0),
-            }),
-            defaultValue: 0,
-          },
         ],
       },
       {

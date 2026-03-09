@@ -67,8 +67,8 @@ export abstract class BaseAudioPlayer
 
   protected compensatedLatency = 0;
 
-  /** 用户手动设置的歌词同步偏移量 (毫秒) */
-  protected syncOffset = 0;
+  /** 用户手动设置的音频延迟补偿 (毫秒) */
+  protected audioDelayCompensation = 0;
 
   protected effectManager: AudioEffectManager | null = null;
 
@@ -494,8 +494,8 @@ export abstract class BaseAudioPlayer
    * 设置歌词同步偏移
    * @param offset 偏移量 (毫秒)
    */
-  public setSyncOffset(offset: number): void {
-    this.syncOffset = offset;
+  public setAudioDelayCompensation(offset: number): void {
+    this.audioDelayCompensation = offset;
   }
 
   /** 加载资源 */

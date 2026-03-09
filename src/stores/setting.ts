@@ -260,8 +260,8 @@ export interface SettingState {
   wordFadeWidth: number;
   /** 歌词时延调节步长（毫秒） */
   lyricOffsetStep: number;
-  /** 歌词同步微调（毫秒） */
-  lyricSyncOffset: number;
+  /** 音频延迟手动补偿（毫秒） */
+  audioDelayCompensation: number;
   /** 启用在线 TTML 歌词 */
   enableOnlineTTMLLyric: boolean;
   /** 启用 QM 歌词 */
@@ -612,7 +612,7 @@ export const useSettingStore = defineStore("setting", {
     hidePassedLines: false,
     wordFadeWidth: 0.5,
     lyricOffsetStep: 500,
-    lyricSyncOffset: 0,
+    audioDelayCompensation: 0,
     enableOnlineTTMLLyric: false,
     enableQQMusicLyric: false,
     lyricPriority: "auto",

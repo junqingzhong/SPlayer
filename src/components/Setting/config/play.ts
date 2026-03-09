@@ -584,6 +584,24 @@ export const usePlaySettings = (): SettingConfig => {
             ),
           },
           {
+            key: "audioDelayCompensation",
+            label: "音频与歌词同步补偿",
+            type: "input-number",
+            description:
+              "手动补偿音频与歌词进度延迟。<br>正值歌词变快，负值歌词进度变慢。<br>适用于移动端等自动延迟检测不准的设备。",
+            tags: [{ text: "Beta", type: "warning" }],
+            show: computed(() => settingStore.audioLatencyHint === "playback"),
+            min: -1000,
+            max: 1000,
+            step: 10,
+            suffix: "ms",
+            value: computed({
+              get: () => settingStore.audioDelayCompensation,
+              set: (v) => (settingStore.audioDelayCompensation = v ?? 0),
+            }),
+            defaultValue: 0,
+          },
+          {
             key: "playSongDemo",
             label: "播放试听",
             type: "switch",

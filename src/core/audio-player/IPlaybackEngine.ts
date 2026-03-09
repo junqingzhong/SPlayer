@@ -137,10 +137,10 @@ export interface IPlaybackEngine {
   getRate(): number;
 
   /**
-   * 设置歌词同步偏移量
+   * 设置音频延迟手动补偿
    * @param offset 偏移量 (毫秒)
    */
-  setSyncOffset(offset: number): void;
+  setAudioDelayCompensation(offset: number): void;
 
   /**
    * 设置音频输出设备
