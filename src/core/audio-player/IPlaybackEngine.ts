@@ -137,6 +137,12 @@ export interface IPlaybackEngine {
   getRate(): number;
 
   /**
+   * 设置歌词同步偏移量
+   * @param offset 偏移量 (毫秒)
+   */
+  setSyncOffset(offset: number): void;
+
+  /**
    * 设置音频输出设备
    * @param deviceId 设备 ID
    */

@@ -367,6 +367,15 @@ class AudioManager extends TypedEventTarget<AudioEventMap> implements IPlaybackE
   }
 
   /**
+   * 设置歌词同步偏移量
+   * @param offset 偏移量 (毫秒)
+   */
+  public setSyncOffset(offset: number): void {
+    // FFmpeg 和 MPV 引擎可能没有实现此方法
+    this.engine.setSyncOffset?.(offset);
+  }
+
+  /**
    * 设置输出设备
    */
   public async setSinkId(deviceId: string): Promise<void> {
@@ -504,6 +513,16 @@ export const useAudioManager = (): AudioManager => {
       settingStore.playbackEngine,
       settingStore.audioEngine,
     );
+
+    // 监听歌词同步偏移量变化
+    watch(
+      () => settingStore.lyricSyncOffset,
+      (offset) => {
+        win[AUDIO_MANAGER_KEY]?.setSyncOffset(offset);
+      },
+      { immediate: true }, // 立即执行一次以应用初始值
+    );
+
     console.log(`[AudioManager] 创建新实例, engine: ${win[AUDIO_MANAGER_KEY].engineType}`);
   }
   return win[AUDIO_MANAGER_KEY];

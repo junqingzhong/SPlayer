@@ -67,6 +67,9 @@ export abstract class BaseAudioPlayer
 
   protected compensatedLatency = 0;
 
+  /** 用户手动设置的歌词同步偏移量 (毫秒) */
+  protected syncOffset = 0;
+
   protected effectManager: AudioEffectManager | null = null;
 
   /** 初始化状态 */
@@ -485,6 +488,14 @@ export abstract class BaseAudioPlayer
   /** 获取滤波器增益 */
   public getFilterGains(): number[] {
     return this.effectManager ? this.effectManager.getFilterGains() : [];
+  }
+
+  /**
+   * 设置歌词同步偏移
+   * @param offset 偏移量 (毫秒)
+   */
+  public setSyncOffset(offset: number): void {
+    this.syncOffset = offset;
   }
 
   /** 加载资源 */
