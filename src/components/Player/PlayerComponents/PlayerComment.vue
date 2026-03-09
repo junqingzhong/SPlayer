@@ -1,7 +1,7 @@
 <!-- 播放器 - 评论 -->
 <template>
-  <div class="player-comment">
-    <n-flex :wrap="false" align="center" class="song-data">
+  <div class="player-comment" :class="{ 'no-song-data': hideSongData }">
+    <n-flex v-if="!hideSongData" :wrap="false" align="center" class="song-data">
       <n-image
         :src="musicStore.songCover"
         :alt="musicStore.songCover"
@@ -96,6 +96,14 @@ import { formatCommentList, removeBrackets } from "@/utils/format";
 import { NScrollbar } from "naive-ui";
 import { coverLoaded } from "@/utils/helper";
 import { openExcludeComment } from "@/utils/modal";
+
+const props = withDefaults(
+  defineProps<{
+    /** 隐藏顶部歌曲卡片 */
+    hideSongData?: boolean;
+  }>(),
+  { hideSongData: false },
+);
 
 const musicStore = useMusicStore();
 const statusStore = useStatusStore();
@@ -316,6 +324,11 @@ onMounted(() => {
     }
   }
 
+  &.no-song-data {
+    :deep(.comment-scroll) {
+      height: calc(100vh - 160px);
+    }
+  }
   :deep(.comment-scroll) {
     height: calc(100vh - 262px);
     filter: drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.2));

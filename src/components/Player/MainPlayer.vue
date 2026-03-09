@@ -389,10 +389,9 @@ const songMoreOptions = computed<DropdownOption[]>(() => {
       show: !isLocal,
       props: {
         onClick: () => {
-          statusStore.$patch({
-            showFullPlayer: true,
-            showPlayerComment: true,
-          });
+          const id = musicStore.playSong.id;
+          const type = musicStore.playSong.type === "radio" ? 4 : 0;
+          router.push({ name: "comment", query: { id, type } });
         },
       },
       icon: renderIcon("Message"),

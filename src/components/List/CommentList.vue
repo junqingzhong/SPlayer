@@ -291,7 +291,7 @@ const handleHug = debounce(async (item: CommentType) => {
         border-radius: 8px;
         font-size: 13px;
         margin-top: 6px;
-        background-color: rgba(var(--main-cover-color), 0.12);
+        background-color: rgba(var(--main-cover-color, var(--primary)), 0.12);
         .text {
           white-space: pre-wrap;
           user-select: text;
@@ -338,7 +338,7 @@ const handleHug = debounce(async (item: CommentType) => {
   &.transparent {
     .comments {
       border-color: transparent;
-      background-color: rgba(var(--main-cover-color), 0.08);
+      background-color: rgba(var(--main-cover-color, var(--primary)), 0.08);
       .content {
         font-size: 16px;
       }
