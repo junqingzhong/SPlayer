@@ -97,7 +97,7 @@ import { NScrollbar } from "naive-ui";
 import { coverLoaded } from "@/utils/helper";
 import { openExcludeComment } from "@/utils/modal";
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     /** 隐藏顶部歌曲卡片 */
     hideSongData?: boolean;
