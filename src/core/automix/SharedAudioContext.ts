@@ -25,7 +25,6 @@ export const getSharedAudioContext = (): IExtendedAudioContext => {
     sharedContext = new AudioContextClass({
       latencyHint: settingStore.audioLatencyHint,
     }) as IExtendedAudioContext;
-    sharedContext.latencyHint = settingStore.audioLatencyHint;
   }
   return sharedContext;
 };

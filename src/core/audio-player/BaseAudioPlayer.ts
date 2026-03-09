@@ -1,3 +1,4 @@
+import { useSettingStore } from "@/stores";
 import { TypedEventTarget } from "@/utils/TypedEventTarget";
 import type { IExtendedAudioContext } from "@/types/audio/context";
 import { AudioEffectManager } from "./AudioEffectManager";
@@ -108,7 +109,8 @@ export abstract class BaseAudioPlayer
       processedNode.connect(this.gainNode);
       this.gainNode.connect(getSharedMasterInput());
 
-      if (this.audioCtx.latencyHint === "playback") {
+      const settingStore = useSettingStore();
+      if (settingStore.audioLatencyHint === "playback") {
         this.compensatedLatency =
           (this.audioCtx.outputLatency || 0) + (this.audioCtx.baseLatency || 0);
       } else {
