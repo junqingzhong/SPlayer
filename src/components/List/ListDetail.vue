@@ -1,7 +1,7 @@
 <!-- 通用列表详情 -->
 <template>
   <div :class="['list-detail', { small: listScrolling }]">
-    <Transition name="fade" mode="out-in">
+    <Transition name="fade">
       <div v-if="detailData" class="detail">
         <div class="cover" v-if="!settingStore.hiddenCovers.list">
           <n-image
