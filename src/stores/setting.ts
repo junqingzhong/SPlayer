@@ -154,6 +154,8 @@ export interface SettingState {
   playDevice: "default" | string;
   /** 音频引擎: element (原生) 或 ffmpeg */
   audioEngine: "element" | "ffmpeg";
+  /** Web Audio 延迟策略 */
+  audioLatencyHint: "interactive" | "playback";
   /** 自动播放 */
   autoPlay: boolean;
   /** 预载下一首 */
@@ -224,6 +226,8 @@ export interface SettingState {
   wordFadeWidth: number;
   /** 歌词时延调节步长（毫秒） */
   lyricOffsetStep: number;
+  /** 音频延迟手动补偿（毫秒） */
+  audioDelayCompensation: number;
   /** 启用在线 TTML 歌词 */
   enableOnlineTTMLLyric: boolean;
   /** 启用 QM 歌词 */
@@ -513,6 +517,7 @@ export const useSettingStore = defineStore("setting", {
     songLevel: "exhigh",
     playDevice: "default",
     audioEngine: "element",
+    audioLatencyHint: "interactive",
     autoPlay: false,
     useNextPrefetch: true,
     songVolumeFade: true,
@@ -557,6 +562,7 @@ export const useSettingStore = defineStore("setting", {
     hidePassedLines: false,
     wordFadeWidth: 0.5,
     lyricOffsetStep: 500,
+    audioDelayCompensation: 0,
     enableOnlineTTMLLyric: false,
     enableQQMusicLyric: false,
     lyricPriority: "auto",
