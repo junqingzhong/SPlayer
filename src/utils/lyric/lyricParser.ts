@@ -96,7 +96,7 @@ export const detectLrcFormat = (content: string): LrcFormat => {
 export const parseWordByWordLrc = (content: string): LyricLine[] => {
   const result: LyricLine[] = [];
   let prevLine: LyricLine | null = null;
-  const WORD_BY_WORD_PATTERN = /\[(\d{2}):(\d{2})\.(\d{1,})\]([^[\\]]*)/g;
+  const WORD_BY_WORD_PATTERN = /\[(\d{2}):(\d{2})\.(\d{1,})\]([^[\]]*)/g;
 
   for (const rawLine of content.split(/\r?\n/)) {
     const line = rawLine.trim();
