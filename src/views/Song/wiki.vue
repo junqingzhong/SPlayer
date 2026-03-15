@@ -73,7 +73,7 @@
                 <n-text class="text-hidden">{{ publishTime }}</n-text>
               </div>
             </div>
-            <div class="actions">
+            <n-flex class="actions">
               <n-button
                 type="primary"
                 strong
@@ -87,7 +87,18 @@
                 </template>
                 播放
               </n-button>
-            </div>
+              <n-dropdown
+                :options="currentSong ? getMenuOptions(currentSong) : []"
+                trigger="click"
+                placement="bottom-start"
+              >
+                <n-button :focusable="false" class="more" circle strong secondary>
+                  <template #icon>
+                    <SvgIcon name="List" />
+                  </template>
+                </n-button>
+              </n-dropdown>
+            </n-flex>
           </div>
         </div>
         <!-- 数据展示区域 -->
@@ -301,11 +312,14 @@ import {
 import { formatSongsList, removeBrackets } from "@/utils/format";
 import { useSettingStore } from "@/stores";
 import dayjs from "dayjs";
+import { useSongMenu } from "@/composables/useSongMenu";
 import { formatTimestamp } from "@/utils/time";
 
 const route = useRoute();
 const player = usePlayerController();
 const settingStore = useSettingStore();
+
+const { getMenuOptions } = useSongMenu();
 
 const loading = ref(true);
 const currentSongId = ref<number>(0);
@@ -591,8 +605,10 @@ onActivated(() => {
         margin-top: auto;
         :deep(.n-button) {
           height: 40px;
-          padding: 0 24px;
-          font-size: 16px;
+          transition: all 0.3s var(--n-bezier);
+        }
+        .more {
+          width: 40px;
         }
         @media (max-width: 768px) {
           :deep(.n-button) {
