@@ -8,17 +8,14 @@
               :src="currentSong.cover"
               class="cover-img"
               object-fit="cover"
+              :previewed-img-props="{ style: { borderRadius: '8px' } }"
               :render-toolbar="renderToolbar"
-              :img-props="{
-                style: { width: '100%', height: '100%', borderRadius: '8px' },
-                alt: 'detail-cover',
-              }"
             />
             <n-image
               class="cover-shadow"
               preview-disabled
               :src="currentSong.cover"
-              :img-props="{ alt: 'cover-shadow' }"
+              object-fit="cover"
             />
           </div>
           <div class="data">
@@ -546,12 +543,17 @@ onActivated(() => {
       flex-shrink: 0;
       margin-right: 20px;
       position: relative;
+      :deep(img) {
+        width: 100%;
+        height: 100%;
+      }
       .cover-img {
         position: relative;
         z-index: 1;
         border-radius: 8px;
         width: 100%;
         height: 100%;
+        overflow: hidden;
       }
       .cover-shadow {
         position: absolute;
