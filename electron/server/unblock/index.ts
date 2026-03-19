@@ -51,12 +51,21 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       return reply.send(result);
     },
   );
-  // 构造匹配信息
-  const buildMatchInfo = (query: { [key: string]: string }) => ({
-    keyword: query.keyword || "",
-    songName: query.songName || query.keyword?.split("-")?.[0]?.trim() || "",
-    artist: query.artist || "",
-  });
+  // 构造匹配信息（fallback 用 lastIndexOf 兼容歌名含连字符的情况）
+  const buildMatchInfo = (query: { [key: string]: string }) => {
+    let songName = query.songName || "";
+    let artist = query.artist || "";
+    if (!songName && query.keyword) {
+      const lastIdx = query.keyword.lastIndexOf("-");
+      if (lastIdx > 0) {
+        songName = query.keyword.slice(0, lastIdx).trim();
+        artist = artist || query.keyword.slice(lastIdx + 1).trim();
+      } else {
+        songName = query.keyword.trim();
+      }
+    }
+    return { keyword: query.keyword || "", songName, artist };
+  };
   // kuwo
   fastify.get(
     "/unblock/kuwo",
