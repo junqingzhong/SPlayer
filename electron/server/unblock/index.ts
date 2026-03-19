@@ -51,6 +51,12 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       return reply.send(result);
     },
   );
+  // 构造匹配信息
+  const buildMatchInfo = (query: { [key: string]: string }) => ({
+    keyword: query.keyword || "",
+    songName: query.songName || query.keyword?.split("-")?.[0]?.trim() || "",
+    artist: query.artist || "",
+  });
   // kuwo
   fastify.get(
     "/unblock/kuwo",
@@ -58,8 +64,7 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const { keyword } = req.query;
-      const result = await getKuwoSongUrl(keyword);
+      const result = await getKuwoSongUrl(buildMatchInfo(req.query));
       return reply.send(result);
     },
   );
@@ -70,8 +75,7 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const { keyword } = req.query;
-      const result = await getBodianSongUrl(keyword);
+      const result = await getBodianSongUrl(buildMatchInfo(req.query));
       return reply.send(result);
     },
   );
@@ -82,8 +86,7 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const { keyword } = req.query;
-      const result = await getGequbaoSongUrl(keyword);
+      const result = await getGequbaoSongUrl(buildMatchInfo(req.query));
       return reply.send(result);
     },
   );
