@@ -324,6 +324,7 @@ const currentSong = ref<SongType | null>(null);
 const viewModel = ref<WikiViewModel | null>(null);
 const similarSongsList = ref<SongType[]>([]);
 const sheetLoading = ref<Record<number, boolean>>({});
+const currentRequestToken = ref(0);
 
 const publishTime = computed(() => {
   const createTime = currentSong.value?.createTime;
@@ -423,9 +424,10 @@ const normalizeWikiData = (
 };
 
 // 获取歌曲信息
-const fetchData = async () => {
-  const id = Number(route.query.id);
+const fetchData = async (id?: number) => {
+  id = id ?? Number(route.query.id);
   if (!id || id === currentSongId.value) return;
+  const token = ++currentRequestToken.value;
   loading.value = true;
   currentSongId.value = id;
   viewModel.value = null;
@@ -434,12 +436,14 @@ const fetchData = async () => {
   try {
     const detailRes = await songDetail(id);
     if (!detailRes.songs?.[0]) throw new Error("Song not found");
+    if (token !== currentRequestToken.value) return;
     currentSong.value = formatSongsList(detailRes.songs)[0];
     const [wikiRes, listenRes, sheetRes] = await Promise.allSettled([
       songWikiSummary(id),
       songFirstListenInfo(id),
       songSheetList(id),
     ]);
+    if (token !== currentRequestToken.value) return;
     // 获取歌曲信息
     const wikiData = wikiRes.status === "fulfilled" ? wikiRes.value.data || wikiRes.value : {};
     const listenData =
@@ -453,6 +457,7 @@ const fetchData = async () => {
     if (viewModel.value.similarSongs.length > 0) {
       try {
         const sims = await songDetail(viewModel.value.similarSongs);
+        if (token !== currentRequestToken.value) return;
         if (sims.songs) similarSongsList.value = formatSongsList(sims.songs);
       } catch (e) {
         console.warn("Failed to load similar songs", e);
@@ -462,7 +467,9 @@ const fetchData = async () => {
     console.error("Fetch wiki failed", error);
     window.$message.error("加载信息失败");
   } finally {
-    loading.value = false;
+    if (token === currentRequestToken.value) {
+      loading.value = false;
+    }
   }
 };
 
@@ -491,11 +498,11 @@ const handlePlay = () => {
   if (currentSong.value) player.addNextSong(currentSong.value, true);
 };
 
-onActivated(() => {
-  const id = Number(route.query.id);
-  if (id && id !== currentSongId.value) {
-    fetchData();
-  }
+onActivated(() => fetchData());
+
+// 监听路由更新
+onBeforeRouteUpdate((to) => {
+  fetchData(Number(to.query.id));
 });
 </script>
 
