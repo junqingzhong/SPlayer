@@ -34,26 +34,30 @@ export const isSongMatch = (
 ): boolean => {
   const normalizedResult = normalizeName(resultName);
   const normalizedOriginal = normalizeName(match.songName);
-  // 空字符串保护：避免 includes("") 恒为 true
-  if (!normalizedResult || !normalizedOriginal) return false;
-  // 歌名：双向 includes（兼容一方带后缀的情况）
-  if (
-    !normalizedResult.includes(normalizedOriginal) &&
-    !normalizedOriginal.includes(normalizedResult)
-  ) {
-    return false;
+  // songName 为空时跳过歌名检查（保持旧行为：不传 songName 则不限制歌名匹配）
+  // normalizedResult 为空则视为无效结果，直接拒绝
+  if (!normalizedResult) return false;
+  if (normalizedOriginal) {
+    // 歌名：双向 includes（兼容一方带后缀的情况）
+    if (
+      !normalizedResult.includes(normalizedOriginal) &&
+      !normalizedOriginal.includes(normalizedResult)
+    ) {
+      return false;
+    }
   }
   // 艺术家：归一化分隔符后双向 includes
   if (resultArtist && match.artist) {
     const normalizedResultArtist = normalizeArtist(resultArtist);
     const normalizedOriginalArtist = normalizeArtist(match.artist);
-    // 空字符串保护
-    if (!normalizedResultArtist || !normalizedOriginalArtist) return false;
-    if (
-      !normalizedResultArtist.includes(normalizedOriginalArtist) &&
-      !normalizedOriginalArtist.includes(normalizedResultArtist)
-    ) {
-      return false;
+    // 任一归一化后为空则跳过艺术家检查
+    if (normalizedResultArtist && normalizedOriginalArtist) {
+      if (
+        !normalizedResultArtist.includes(normalizedOriginalArtist) &&
+        !normalizedOriginalArtist.includes(normalizedResultArtist)
+      ) {
+        return false;
+      }
     }
   }
   return true;
