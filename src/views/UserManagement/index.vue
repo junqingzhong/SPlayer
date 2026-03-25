@@ -20,63 +20,101 @@
 
     <!-- 用户列表 -->
     <div class="table-wrapper">
-      <n-data-table :columns="columns" :data="users" :pagination="pagination" :bordered="false" :loading="loading"
-        striped />
+      <n-data-table
+        :columns="columns"
+        :data="users"
+        :pagination="pagination"
+        :bordered="false"
+        :loading="loading"
+        striped
+      />
     </div>
 
     <!-- 添加/编辑用户弹窗 -->
-    <n-modal v-model:show="showAddUserModal" preset="card" :title="isEditing ? '编辑用户' : '添加用户'" class="user-modal"
-      :mask-closable="false">
-      <n-form ref="formRef" :model="userForm" :rules="rules" label-placement="left" label-width="auto"
-        require-mark-placement="right-hanging">
+    <n-modal
+      v-model:show="showAddUserModal"
+      preset="card"
+      :title="isEditing ? '编辑用户' : '添加用户'"
+      class="user-modal"
+      :mask-closable="false"
+    >
+      <n-form
+        ref="formRef"
+        :model="userForm"
+        :rules="rules"
+        label-placement="left"
+        label-width="auto"
+        require-mark-placement="right-hanging"
+      >
         <n-form-item label="用户名" path="username">
           <n-input v-model:value="userForm.username" placeholder="请输入用户名" />
         </n-form-item>
         <n-form-item label="背景图" path="backgroundImage">
-          <n-upload :default-upload="false" :max="1" :on-before-upload="beforeUpload" @change="handleUploadChange">
+          <n-upload
+            :default-upload="false"
+            :max="1"
+            :on-before-upload="beforeUpload"
+            @change="handleUploadChange"
+          >
             <template #default>
               <n-upload-dragger>
                 <div style="padding: 20px 0">
                   <n-icon size="48" :depth="3">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                      <path fill="currentColor"
-                        d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5c0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4c0-2.05 1.53-3.76 3.56-3.97l1.07-.11l.5-.95A5.469 5.469 0 0 1 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5l1.53.11A2.98 2.98 0 0 1 22 15c0 1.65-1.35 3-3 3zm-5-5h-2v3h-2v-3H8l4-4l4 4z" />
+                      <path
+                        fill="currentColor"
+                        d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5c0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4c0-2.05 1.53-3.76 3.56-3.97l1.07-.11l.5-.95A5.469 5.469 0 0 1 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5l1.53.11A2.98 2.98 0 0 1 22 15c0 1.65-1.35 3-3 3zm-5-5h-2v3h-2v-3H8l4-4l4 4z"
+                      />
                     </svg>
                   </n-icon>
                   <p>点击或拖动文件到此区域上传</p>
-                  <p style="margin: 8px 0 0 0">
-                    支持单个或批量上传，严禁上传非图片文件
-                  </p>
+                  <p style="margin: 8px 0 0 0">支持单个或批量上传，严禁上传非图片文件</p>
                 </div>
               </n-upload-dragger>
               <n-button>选择文件</n-button>
             </template>
           </n-upload>
           <div v-if="userForm.settings.backgroundImage" class="preview-image">
-            <n-image object-fit="cover" height="190" alt="背景图预览" :src="userForm.settings.backgroundImage" />
-            <n-button @click="if (userForm.settings) { userForm.settings.backgroundImage = ''; }">清除背景图</n-button>
+            <n-image
+              object-fit="cover"
+              height="190"
+              alt="背景图预览"
+              :src="userForm.settings.backgroundImage"
+            />
+            <n-button
+              @click="
+                if (userForm.settings) {
+                  userForm.settings.backgroundImage = '';
+                }
+              "
+              >清除背景图</n-button
+            >
           </div>
         </n-form-item>
         <n-form-item label="cookie" path="cookie">
           <n-input v-model:value="userForm.cookie" placeholder="请输入cookie" />
-          <template #help>
-            可以手动设置cookie，也可以留空系统自动生成
-          </template>
+          <template #help> 可以手动设置cookie，也可以留空系统自动生成 </template>
         </n-form-item>
       </n-form>
       <template #footer>
         <n-space justify="end">
           <n-button @click="showAddUserModal = false">取消</n-button>
-          <n-button type="primary" @click="submitUser" :loading="submitting">
-            确定
-          </n-button>
+          <n-button type="primary" @click="submitUser" :loading="submitting"> 确定 </n-button>
         </n-space>
       </template>
     </n-modal>
 
     <!-- 删除确认弹窗 -->
-    <n-modal v-model:show="showDeleteModal" preset="dialog" title="确认删除" content="确定要删除这个用户吗？此操作不可恢复，且会删除该用户的所有活动数据。"
-      positive-text="确定" negative-text="取消" @positive-click="confirmDelete" @negative-click="cancelDelete" />
+    <n-modal
+      v-model:show="showDeleteModal"
+      preset="dialog"
+      title="确认删除"
+      content="确定要删除这个用户吗？此操作不可恢复，且会删除该用户的所有活动数据。"
+      positive-text="确定"
+      negative-text="取消"
+      @positive-click="confirmDelete"
+      @negative-click="cancelDelete"
+    />
   </div>
 </template>
 
@@ -150,7 +188,7 @@ const rules: FormRules = {
     required: true,
     message: "请输入用户名",
     trigger: ["blur", "input"],
-  }
+  },
 };
 
 // 检查是否有token
@@ -167,13 +205,13 @@ const createColumns = (): DataTableColumns<User> => {
       title: "ID",
       key: "id",
       width: 80,
-      resizable: true
+      resizable: true,
     },
     {
       title: "用户名",
       key: "username",
       width: 120,
-      resizable: true
+      resizable: true,
     },
     {
       title: "Cookie",
@@ -182,13 +220,13 @@ const createColumns = (): DataTableColumns<User> => {
       ellipsis: {
         tooltip: true,
       },
-      resizable: true
+      resizable: true,
     },
     {
       title: "最后更新时间",
       key: "updatedAt",
       width: 180,
-      resizable: true
+      resizable: true,
     },
     {
       title: "背景图",
@@ -198,12 +236,12 @@ const createColumns = (): DataTableColumns<User> => {
         // 确保 row.settings 存在且 backgroundImage 存在
         return row.settings && row.settings.backgroundImage
           ? h(NImage, {
-            src: row.settings.backgroundImage,
-            style: 'width: 50px; height: 50px; object-fit: cover; border-radius: 4px;',
-          })
-          : '无';
+              src: row.settings.backgroundImage,
+              style: "width: 50px; height: 50px; object-fit: cover; border-radius: 4px;",
+            })
+          : "无";
       },
-      resizable: true
+      resizable: true,
     },
     {
       title: "操作",
@@ -222,7 +260,7 @@ const createColumns = (): DataTableColumns<User> => {
                   type: "info",
                   onClick: () => editUser(row),
                 },
-                { default: () => "编辑" }
+                { default: () => "编辑" },
               ),
               h(
                 NButton,
@@ -231,13 +269,13 @@ const createColumns = (): DataTableColumns<User> => {
                   type: "error",
                   onClick: () => deleteUser(row.id),
                 },
-                { default: () => "删除" }
+                { default: () => "删除" },
               ),
             ],
-          }
+          },
         );
       },
-      resizable: true
+      resizable: true,
     },
   ];
 };
@@ -261,7 +299,7 @@ const fetchUsers = async () => {
     const apiUrl = `${activitiesApiBaseUrl}/users`;
 
     const headers: Record<string, string> = {
-      'Authorization': `Bearer ${cookie}`
+      Authorization: `Bearer ${cookie}`,
     };
 
     const response = await axios.get(apiUrl, { headers });
@@ -284,13 +322,13 @@ const fetchUsers = async () => {
 const beforeUpload = (data: { file: UploadFileInfo }) => {
   const { file } = data;
   // 检查文件类型
-  if (!file.file?.type.startsWith('image/')) {
-    message.error('只能上传图片文件');
+  if (!file.file?.type.startsWith("image/")) {
+    message.error("只能上传图片文件");
     return false;
   }
   // 检查文件大小（限制为2MB）
   if (file.file.size > 10 * 1024 * 1024) {
-    message.error('图片大小不能超过10MB');
+    message.error("图片大小不能超过10MB");
     return false;
   }
   return true;
@@ -300,7 +338,7 @@ const beforeUpload = (data: { file: UploadFileInfo }) => {
 const handleUploadChange = async (options: { fileList: UploadFileInfo[] }) => {
   const { fileList } = options;
   if (fileList.length === 0) {
-    userForm.value.settings.backgroundImage = ''; // 修改此处
+    userForm.value.settings.backgroundImage = ""; // 修改此处
     return;
   }
 
@@ -317,13 +355,13 @@ const handleUploadChange = async (options: { fileList: UploadFileInfo[] }) => {
     }
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     const response = await axios.post(`${activitiesApiBaseUrl}/upload`, formData, {
       headers: {
-        'Authorization': `Bearer ${cookie}`,
-        'Content-Type': 'multipart/form-data'
-      }
+        Authorization: `Bearer ${cookie}`,
+        "Content-Type": "multipart/form-data",
+      },
     });
 
     if (response.data.status === 200 || response.data.data.url) {
@@ -357,27 +395,35 @@ const submitUser = () => {
       }
 
       const headers = {
-        'Authorization': `Bearer ${cookie}`,
-        'Content-Type': 'application/json'
+        Authorization: `Bearer ${cookie}`,
+        "Content-Type": "application/json",
       };
 
       let response;
       if (isEditing.value && userForm.value.id) {
         // 更新用户
         const apiUrl = `${activitiesApiBaseUrl}/users/${userForm.value.id}`;
-        response = await axios.put(apiUrl, {
+        response = await axios.put(
+          apiUrl,
+          {
             username: userForm.value.username,
             cookie: userForm.value.cookie,
             settings: userForm.value.settings, // 修改此处
-        }, { headers });
+          },
+          { headers },
+        );
       } else {
         // 创建用户
         const apiUrl = `${activitiesApiBaseUrl}/register`;
-        response = await axios.post(apiUrl, {
-          username: userForm.value.username,
-          cookie: userForm.value.cookie,
-          settings: userForm.value.settings, // 修改此处
-        }, { headers });
+        response = await axios.post(
+          apiUrl,
+          {
+            username: userForm.value.username,
+            cookie: userForm.value.cookie,
+            settings: userForm.value.settings, // 修改此处
+          },
+          { headers },
+        );
       }
 
       if (response.data.status === 200 || response.data.status === 201) {
@@ -385,11 +431,14 @@ const submitUser = () => {
         showAddUserModal.value = false;
         fetchUsers();
       } else {
-        message.error(response.data.data.message || (isEditing.value ? "更新用户失败" : "创建用户失败"));
+        message.error(
+          response.data.data.message || (isEditing.value ? "更新用户失败" : "创建用户失败"),
+        );
       }
     } catch (error: any) {
       console.error("提交用户信息失败:", error);
-      const errorMsg = error.response?.data?.data?.message || (isEditing.value ? "更新用户失败" : "创建用户失败");
+      const errorMsg =
+        error.response?.data?.data?.message || (isEditing.value ? "更新用户失败" : "创建用户失败");
       message.error(errorMsg);
     } finally {
       submitting.value = false;
@@ -404,7 +453,7 @@ const editUser = (user: User) => {
     id: user.id,
     username: user.username,
     cookie: user.cookie || "",
-    settings: user.settings || { backgroundImage: '' }, // 修改此处，确保settings存在
+    settings: user.settings || { backgroundImage: "" }, // 修改此处，确保settings存在
   };
   showAddUserModal.value = true;
 };
@@ -430,8 +479,8 @@ const confirmDelete = async () => {
       const apiUrl = `${activitiesApiBaseUrl}/deluser/${deleteId.value}`;
       const response = await axios.delete(apiUrl, {
         headers: {
-          'Authorization': `Bearer ${cookie}`
-        }
+          Authorization: `Bearer ${cookie}`,
+        },
       });
 
       if (response.data.status === 200) {

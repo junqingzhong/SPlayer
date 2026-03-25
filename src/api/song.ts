@@ -36,8 +36,22 @@ export const songUrl = (
     | "hires"
     | "jyeffect"
     | "sky"
+    | "dolby"
     | "jymaster" = "exhigh",
 ) => {
+  // 杜比全景声使用旧版接口，并传入特殊参数
+  if (level === "dolby") {
+    return request({
+      url: "/song/url",
+      params: {
+        id,
+        br: 999000,
+        immerseType: "c51",
+        timestamp: Date.now(),
+      },
+    });
+  }
+
   return request({
     url: "/song/url/v1",
     params: {
@@ -52,7 +66,15 @@ export const unlockSongUrl = (
   id: number,
   keyword: string,
   server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili" | "bodian" | "gequbao",
-  level: "standard" | "higher" | "exhigh" | "lossless" | "hires" | "jyeffect" | "sky" | "jymaster" = "exhigh",
+  level:
+    | "standard"
+    | "higher"
+    | "exhigh"
+    | "lossless"
+    | "hires"
+    | "jyeffect"
+    | "sky"
+    | "jymaster" = "exhigh",
 ) => {
   // 音质映射
   const levelMap = {
@@ -69,7 +91,7 @@ export const unlockSongUrl = (
   const params = server === "netease" ? { id } : { keyword };
   if (server === "qq") {
     // 如果是 QQ 音乐，尝试从环境变量中获取 cookie
-    const qqCookie = localStorage.getItem('qq-cookie') || "";
+    const qqCookie = localStorage.getItem("qq-cookie") || "";
     if (qqCookie) {
       Object.assign(params, { cookie: qqCookie });
     }

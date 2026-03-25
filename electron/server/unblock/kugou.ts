@@ -4,7 +4,6 @@ import { SongUrlResult } from "./unblock";
 import { filterByDuration } from "./index";
 import { serverLog } from "../../main/logger";
 
-
 // 格式化搜索结果
 const format = (song: any) => ({
   id: song["hash"],
@@ -89,7 +88,7 @@ export const getKugouSongUrl = async (keyword: string): Promise<SongUrlResult> =
         return filterByDuration({
           code: 200,
           url: playUrl,
-          duration: song.duration // 已经在 format 函数中转换为毫秒
+          duration: song.duration, // 已经在 format 函数中转换为毫秒
         });
       }
     }

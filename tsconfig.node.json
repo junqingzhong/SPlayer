@@ -15,10 +15,7 @@
     "src/types/shared",
     "scripts/*"
   ],
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/**/*.spec.ts"
-  ],
+  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"],
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"],

@@ -302,25 +302,29 @@ export const useNetworkSettings = (): SettingConfig => {
 
                 // 2. 更新 localStorage (用于持久化)
                 if (cookieStr.includes("MUSIC_U")) {
-                   const match = cookieStr.match(/MUSIC_U=([^;]+)/);
-                   if (match && match[1]) {
-                     localStorage.setItem("cookie-MUSIC_U", match[1]);
-                   }
+                  const match = cookieStr.match(/MUSIC_U=([^;]+)/);
+                  if (match && match[1]) {
+                    localStorage.setItem("cookie-MUSIC_U", match[1]);
+                  }
                 }
                 if (cookieStr.includes("__csrf")) {
-                   const match = cookieStr.match(/__csrf=([^;]+)/);
-                   if (match && match[1]) {
-                     localStorage.setItem("cookie-__csrf", match[1]);
-                   }
+                  const match = cookieStr.match(/__csrf=([^;]+)/);
+                  if (match && match[1]) {
+                    localStorage.setItem("cookie-__csrf", match[1]);
+                  }
                 }
 
                 // 3. 触发用户数据更新 (重新获取用户信息)
                 import("@/utils/auth").then(({ updateUserData }) => {
-                   updateUserData().then(() => {
+                  updateUserData()
+                    .then(() => {
                       window.$message.success("Cookie 已更新并成功登录");
-                   }).catch(() => {
-                      window.$message.error("Cookie 更新成功，但获取用户信息失败，请检查 Cookie 是否有效");
-                   });
+                    })
+                    .catch(() => {
+                      window.$message.error(
+                        "Cookie 更新成功，但获取用户信息失败，请检查 Cookie 是否有效",
+                      );
+                    });
                 });
               },
               type: "primary",

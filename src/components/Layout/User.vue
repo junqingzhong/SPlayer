@@ -1,11 +1,7 @@
 <template>
   <n-popover
-  <n-popover
     :show="userMenuShow"
     style="padding: 12px; max-width: 240px"
-    trigger="manual"
-    @clickoutside="userMenuShow = false"
-  >
     trigger="manual"
     @clickoutside="userMenuShow = false"
   >

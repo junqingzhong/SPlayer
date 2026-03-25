@@ -475,7 +475,7 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
 @media (max-width: 768px) {
   .cover-list {
     padding: 12px 8px;
-    
+
     .n-grid {
       width: 100% !important;
       max-width: 100vw !important;
@@ -483,20 +483,20 @@ const getListData = async (id: number | string): Promise<SongType[]> => {
       margin: 0 !important;
       box-sizing: border-box !important;
     }
-    
+
     .cover-item {
       width: 100% !important;
       margin-bottom: 16px !important;
-      
+
       .cover {
         height: auto !important;
         aspect-ratio: 1 / 1 !important;
         border-radius: 12px !important;
       }
-      
+
       .cover-data {
         padding: 8px 4px !important;
-        
+
         .name {
           font-size: 14px !important;
           line-height: 1.4 !important;

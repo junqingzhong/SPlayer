@@ -5,7 +5,7 @@
 
 class BlobManager {
   private blobUrls: Map<string, string> = new Map();
-  
+
   /**
    * 创建Blob URL
    * @param data 数据
@@ -16,24 +16,24 @@ class BlobManager {
   createBlobURL(data: ArrayBuffer | Blob, format: string, path: string): string | null {
     try {
       let blob: Blob;
-      
+
       if (data instanceof ArrayBuffer) {
         blob = new Blob([data], { type: format });
       } else {
         blob = data;
       }
-      
+
       const blobUrl = URL.createObjectURL(blob);
       this.blobUrls.set(path, blobUrl);
-      
-      console.log('Created blob URL:', path, blobUrl);
+
+      console.log("Created blob URL:", path, blobUrl);
       return blobUrl;
     } catch (error) {
-      console.error('Failed to create blob URL:', error);
+      console.error("Failed to create blob URL:", error);
       return null;
     }
   }
-  
+
   /**
    * 销毁Blob URL
    * @param path 路径
@@ -43,21 +43,21 @@ class BlobManager {
     if (blobUrl) {
       URL.revokeObjectURL(blobUrl);
       this.blobUrls.delete(path);
-      console.log('Revoked blob URL:', path, blobUrl);
+      console.log("Revoked blob URL:", path, blobUrl);
     }
   }
-  
+
   /**
    * 销毁所有Blob URL
    */
   revokeAllBlobURLs(): void {
     for (const [path, blobUrl] of this.blobUrls) {
       URL.revokeObjectURL(blobUrl);
-      console.log('Revoked blob URL:', path, blobUrl);
+      console.log("Revoked blob URL:", path, blobUrl);
     }
     this.blobUrls.clear();
   }
-  
+
   /**
    * 获取Blob URL
    * @param path 路径
@@ -66,7 +66,7 @@ class BlobManager {
   getBlobURL(path: string): string | undefined {
     return this.blobUrls.get(path);
   }
-  
+
   /**
    * 检查是否有Blob URL
    * @param path 路径

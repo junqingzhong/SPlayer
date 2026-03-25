@@ -20,10 +20,10 @@ export const clearAllCookies = () => {
   }
 
   // 清除 document.cookie
-  const cookies = document.cookie.split(';');
+  const cookies = document.cookie.split(";");
   for (let i = 0; i < cookies.length; i++) {
     const cookie = cookies[i];
-    const eqPos = cookie.indexOf('=');
+    const eqPos = cookie.indexOf("=");
     const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
     document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/;`;
   }
@@ -31,18 +31,18 @@ export const clearAllCookies = () => {
   // 清除 localStorage 中存储的 cookie
   const localStorageKeys = Object.keys(localStorage);
   for (const key of localStorageKeys) {
-    if (key.startsWith('cookie-')) {
+    if (key.startsWith("cookie-")) {
       localStorage.removeItem(key);
     }
   }
 
-  console.log('已清除所有Cookie');
+  console.log("已清除所有Cookie");
 };
 
 // 设置 Cookie
 export const setCookies = (cookieValue: string) => {
-  if (!cookieValue || cookieValue.trim() === '') {
-    console.warn('Cookie值为空，跳过设置');
+  if (!cookieValue || cookieValue.trim() === "") {
+    console.warn("Cookie值为空，跳过设置");
     return;
   }
 

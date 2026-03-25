@@ -8,11 +8,7 @@
     "electron/preload/index.d.ts",
     "dist/lastfm.ts"
   ],
-  "exclude": [
-    "src/**/*.test.ts",
-    "src/**/*.spec.ts",
-    "src/utils/player.ts"
-  ],
+  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts", "src/utils/player.ts"],
   "compilerOptions": {
     "composite": true,
     "esModuleInterop": true,
@@ -22,7 +18,8 @@
       "@/*": ["./src/*"],
       "@emi": ["./native/external-media-integration"],
       "@native/*": ["./native/*"],
-      "@opencc": ["./native/ferrous-opencc-wasm/pkg"]
+      "@opencc": ["./native/ferrous-opencc-wasm/pkg"],
+      "@shared": ["./src/types/shared"]
     },
     "types": ["node", "electron", "electron-vite/node", "./auto-imports.d.ts", "./components.d.ts"],
     "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],

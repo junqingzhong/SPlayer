@@ -64,7 +64,6 @@
 
           <!-- 主控制按钮 -->
           <div class="control-section">
-
             <div class="placeholder"></div>
 
             <!-- 上一曲 -->

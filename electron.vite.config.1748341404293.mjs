@@ -25,10 +25,10 @@ var electron_vite_config_default = defineConfig(({ command, mode }) => {
           input: {
             index: resolve(__electron_vite_injected_dirname, "electron/main/index.ts"),
             lyric: resolve(__electron_vite_injected_dirname, "web/lyric.html"),
-            loading: resolve(__electron_vite_injected_dirname, "web/loading.html")
-          }
-        }
-      }
+            loading: resolve(__electron_vite_injected_dirname, "web/loading.html"),
+          },
+        },
+      },
     },
     // 预加载
     preload: {
@@ -36,10 +36,10 @@ var electron_vite_config_default = defineConfig(({ command, mode }) => {
       build: {
         rollupOptions: {
           input: {
-            index: resolve(__electron_vite_injected_dirname, "electron/preload/index.ts")
-          }
-        }
-      }
+            index: resolve(__electron_vite_injected_dirname, "electron/preload/index.ts"),
+          },
+        },
+      },
     },
     // 渲染进程
     renderer: {
@@ -52,31 +52,31 @@ var electron_vite_config_default = defineConfig(({ command, mode }) => {
             "vue-router",
             "@vueuse/core",
             {
-              "naive-ui": ["useDialog", "useMessage", "useNotification", "useLoadingBar"]
-            }
+              "naive-ui": ["useDialog", "useMessage", "useNotification", "useLoadingBar"],
+            },
           ],
           eslintrc: {
             enabled: true,
-            filepath: "./auto-eslint.mjs"
-          }
+            filepath: "./auto-eslint.mjs",
+          },
         }),
         Components({
-          resolvers: [NaiveUiResolver()]
+          resolvers: [NaiveUiResolver()],
         }),
         viteCompression(),
-        wasm()
+        wasm(),
       ],
       resolve: {
         alias: {
-          "@": resolve(__electron_vite_injected_dirname, "src/")
-        }
+          "@": resolve(__electron_vite_injected_dirname, "src/"),
+        },
       },
       css: {
         preprocessorOptions: {
           scss: {
-            silenceDeprecations: ["legacy-js-api"]
-          }
-        }
+            silenceDeprecations: ["legacy-js-api"],
+          },
+        },
       },
       server: {
         port: webPort,
@@ -85,36 +85,34 @@ var electron_vite_config_default = defineConfig(({ command, mode }) => {
           "/api": {
             target: `http://127.0.0.1:${servePort}`,
             changeOrigin: true,
-            rewrite: (path) => path.replace(/^\/api/, "/api/")
-          }
-        }
+            rewrite: (path) => path.replace(/^\/api/, "/api/"),
+          },
+        },
       },
       preview: {
-        port: webPort
+        port: webPort,
       },
       build: {
         minify: "terser",
         publicDir: resolve(__electron_vite_injected_dirname, "public"),
         rollupOptions: {
           input: {
-            index: resolve(__electron_vite_injected_dirname, "index.html")
+            index: resolve(__electron_vite_injected_dirname, "index.html"),
           },
           output: {
             manualChunks: {
-              stores: ["src/stores/data.ts", "src/stores/index.ts"]
-            }
-          }
+              stores: ["src/stores/data.ts", "src/stores/index.ts"],
+            },
+          },
         },
         terserOptions: {
           compress: {
-            pure_funcs: ["console.log"]
-          }
+            pure_funcs: ["console.log"],
+          },
         },
-        sourcemap: false
-      }
-    }
+        sourcemap: false,
+      },
+    },
   };
 });
-export {
-  electron_vite_config_default as default
-};
+export { electron_vite_config_default as default };

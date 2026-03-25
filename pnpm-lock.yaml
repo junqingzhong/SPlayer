@@ -20,10 +20,10 @@ importers:
         version: 0.3.0
       '@electron-toolkit/preload':
         specifier: ^3.0.2
-        version: 3.0.2(electron@38.2.2)
+        version: 3.0.2(electron@39.4.0)
       '@electron-toolkit/utils':
         specifier: ^4.0.0
-        version: 4.0.0(electron@38.2.2)
+        version: 4.0.0(electron@39.4.0)
       '@imsyy/color-utils':
         specifier: ^1.0.2
         version: 1.0.2
@@ -194,8 +194,8 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0
       electron:
-        specifier: 38.2.2
-        version: 38.2.2
+        specifier: 39.4.0
+        version: 39.4.0
       electron-builder:
         specifier: ^26.7.0
         version: 26.7.0(electron-builder-squirrel-windows@26.0.12)
@@ -220,6 +220,9 @@ importers:
       naive-ui:
         specifier: ^2.43.2
         version: 2.43.2(vue@3.5.28(typescript@5.9.3))
+      node-taglib-sharp:
+        specifier: ^6.0.1
+        version: 6.0.1
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -3222,8 +3225,8 @@ packages:
     resolution: {integrity: sha512-bO3y10YikuUwUuDUQRM4KfwNkKhnpVO7IPdbsrejwN9/AABJzzTQ4GeHwyzNSrVO+tEH3/Np255a3sVZpZDjvg==}
     engines: {node: '>=8.0.0'}
 
-  electron@38.2.2:
-    resolution: {integrity: sha512-OXSaVNXDlonXDjMRsFNQo1j5tzTKwKXh5/m46IjAFccBcZJZMISI+EjSI07oexIuhvKM8AZLuFuihVn4YjWWrA==}
+  electron@39.4.0:
+    resolution: {integrity: sha512-NCK/FTAqgG/N+09OXFES6bubamgPZs7TEPIjWZIrbEnm8GzEwxC22ZG6SEPid2DmJnJmBurJ6M0G4EShdSc28Q==}
     engines: {node: '>= 12.20.55'}
     hasBin: true
 
@@ -3876,6 +3879,10 @@ packages:
   ini@1.3.8:
     resolution: {integrity: sha512-JV/yugV2uzW5iMRSiZAyDtQd+nxtUnjeLt0acNdw98kKLrvuRVyB80tsREOE7yvGVgalhZ6RNXCmEHkUKBKxew==}
 
+  invert-kv@3.0.1:
+    resolution: {integrity: sha512-CYdFeFexxhv/Bcny+Q0BfOV+ltRlJcd4BBZBYFX/O0u4npJrgZtIcjokegtiSMAvlMTJ+Koq0GBCc//3bueQxw==}
+    engines: {node: '>=8'}
+
   iota-array@1.0.0:
     resolution: {integrity: sha512-pZ2xT+LOHckCatGQ3DcG/a+QuEqvoxqkiL7tvE8nn3uuu+f6i1TtpB5/FtWFbxUuVr5PZCx8KskuGatbJDXOWA==}
 
@@ -4099,6 +4106,10 @@ packages:
 
   lazy-val@1.0.5:
     resolution: {integrity: sha512-0/BnGCCfyUMkBpeDgWihanIAF9JmZhHBgUhEqzvf+adhNGLoP6TaiI5oF8oyb3I45P+PcnrqihSf01M0l0G5+Q==}
+
+  lcid@3.1.1:
+    resolution: {integrity: sha512-M6T051+5QCGLBQb8id3hdvIW8+zeFV2FyBGFS9IEK5H9Wt4MueD4bW1eWikpHgZp+5xR3l5c8pZUkQsIA0BFZg==}
+    engines: {node: '>=8'}
 
   leven@2.1.0:
     resolution: {integrity: sha512-nvVPLpIHUxCUoRLrFqTgSxXJ614d8AgQoWl7zPe/2VadE8+1dpU3LBhowRuBAcuwruWtOdD8oYC9jDNJjXDPyA==}
@@ -4483,6 +4494,10 @@ packages:
   node-releases@2.0.27:
     resolution: {integrity: sha512-nmh3lCkYZ3grZvqcCH+fjmQ7X+H0OeZgP40OierEaAptX4XofMh5kwNbWh7lBduUzCcV/8kZ+NDLCwm2iorIlA==}
 
+  node-taglib-sharp@6.0.1:
+    resolution: {integrity: sha512-Q1TX4W+010JC0140x1PjwuEiylbQyZir0nOwvsQ5dAsS6e/lSq0PEiSqC/Vq5uj6oS44/FA+D4hQInVRIIXQ+Q==}
+    engines: {node: '>=12.16.1'}
+
   node-windows@1.0.0-beta.8:
     resolution: {integrity: sha512-uLekXnSeem3nW5escID224Fd0U/1VtvE796JpSpOY+c73Cslz/Qn2WUHRJyPQJEMrNGAy/FMRFjjhh4z1alZTA==}
 
@@ -4556,6 +4571,10 @@ packages:
   ora@5.4.1:
     resolution: {integrity: sha512-5b6Y85tPxZZ7QytO+BQzysW31HJku27cRIlkbAXaNx+BdcVi+LlRFmVXzeF6a7JCwJpyw5c4b+YSVImQIrBpuQ==}
     engines: {node: '>=10'}
+
+  os-locale@6.0.2:
+    resolution: {integrity: sha512-qIb8bzRqaN/vVqEYZ7lTAg6PonskO7xOmM7OClD28F6eFa4s5XGe4bGpHUHMoCHbNNuR0pDYFeSLiW5bnjWXIA==}
+    engines: {node: '>=12.20'}
 
   p-cancelable@2.1.1:
     resolution: {integrity: sha512-BZOr3nRQHOntUjTrH8+Lh54smKHoHyur8We1V8DSMVrl5A2malOOwuJRnKRDjSnkoeBh4at6BwEnb5I7Jl31wg==}
@@ -5548,6 +5567,10 @@ packages:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
+  uuid@8.3.2:
+    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    hasBin: true
+
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
@@ -6080,17 +6103,17 @@ snapshots:
 
   '@docsearch/js@4.5.4': {}
 
-  '@electron-toolkit/preload@3.0.2(electron@38.2.2)':
+  '@electron-toolkit/preload@3.0.2(electron@39.4.0)':
     dependencies:
-      electron: 38.2.2
+      electron: 39.4.0
 
   '@electron-toolkit/tsconfig@2.0.0(@types/node@24.10.13)':
     dependencies:
       '@types/node': 24.10.13
 
-  '@electron-toolkit/utils@4.0.0(electron@38.2.2)':
+  '@electron-toolkit/utils@4.0.0(electron@39.4.0)':
     dependencies:
-      electron: 38.2.2
+      electron: 39.4.0
 
   '@electron/asar@3.2.18':
     dependencies:
@@ -8882,7 +8905,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  electron@38.2.2:
+  electron@39.4.0:
     dependencies:
       '@electron/get': 2.0.3
       '@types/node': 22.19.11
@@ -9715,6 +9738,8 @@ snapshots:
 
   ini@1.3.8: {}
 
+  invert-kv@3.0.1: {}
+
   iota-array@1.0.0: {}
 
   ip-address@10.1.0: {}
@@ -9939,6 +9964,10 @@ snapshots:
   kolorist@1.8.0: {}
 
   lazy-val@1.0.5: {}
+
+  lcid@3.1.1:
+    dependencies:
+      invert-kv: 3.0.1
 
   leven@2.1.0: {}
 
@@ -10348,6 +10377,12 @@ snapshots:
 
   node-releases@2.0.27: {}
 
+  node-taglib-sharp@6.0.1:
+    dependencies:
+      iconv-lite: 0.6.3
+      os-locale: 6.0.2
+      uuid: 8.3.2
+
   node-windows@1.0.0-beta.8:
     dependencies:
       xml: 1.0.1
@@ -10429,6 +10464,10 @@ snapshots:
       log-symbols: 4.1.0
       strip-ansi: 6.0.1
       wcwidth: 1.0.1
+
+  os-locale@6.0.2:
+    dependencies:
+      lcid: 3.1.1
 
   p-cancelable@2.1.1: {}
 
@@ -11537,6 +11576,8 @@ snapshots:
   util-deprecate@1.0.2: {}
 
   utils-merge@1.0.1: {}
+
+  uuid@8.3.2: {}
 
   vary@1.1.2: {}
 

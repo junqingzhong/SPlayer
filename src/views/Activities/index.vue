@@ -37,64 +37,119 @@
           <template #icon>
             <SvgIcon :name="showCalendar ? 'List' : 'Calendar'" />
           </template>
-          {{ showCalendar ? '列表视图' : '日历视图' }}
+          {{ showCalendar ? "列表视图" : "日历视图" }}
         </n-button>
       </n-space>
     </div>
 
     <!-- 搜索和筛选 -->
     <div class="filter-container">
-      <n-input v-model:value="searchKeyword" placeholder="搜索活动标题或内容" clearable class="search-input"
-        @update:value="handleSearch">
+      <n-input
+        v-model:value="searchKeyword"
+        placeholder="搜索活动标题或内容"
+        clearable
+        class="search-input"
+        @update:value="handleSearch"
+      >
         <template #prefix>
           <SvgIcon name="Search" />
         </template>
       </n-input>
-      <n-select v-model:value="yearFilter" :options="yearOptions" placeholder="年份筛选" clearable class="year-filter" @update:value="handleYearFilterChange" />
-      <n-select v-model:value="categoryFilter" :options="[{ label: '全部分类', value: undefined, type: 'ignored' }, ...categoryOptions]" placeholder="分类筛选" clearable class="category-filter" @update:value="handleCategoryFilterChange" />
-      <n-select v-model:value="statusFilter" :options="[{ label: '全部状态', value: undefined, type: 'ignored' }, ...statusOptions]" placeholder="状态筛选" clearable class="status-filter" @update:value="handleStatusFilterChange" />
+      <n-select
+        v-model:value="yearFilter"
+        :options="yearOptions"
+        placeholder="年份筛选"
+        clearable
+        class="year-filter"
+        @update:value="handleYearFilterChange"
+      />
+      <n-select
+        v-model:value="categoryFilter"
+        :options="[{ label: '全部分类', value: undefined, type: 'ignored' }, ...categoryOptions]"
+        placeholder="分类筛选"
+        clearable
+        class="category-filter"
+        @update:value="handleCategoryFilterChange"
+      />
+      <n-select
+        v-model:value="statusFilter"
+        :options="[{ label: '全部状态', value: undefined, type: 'ignored' }, ...statusOptions]"
+        placeholder="状态筛选"
+        clearable
+        class="status-filter"
+        @update:value="handleStatusFilterChange"
+      />
       <n-button @click="toggleSortOrder" class="sort-button">
         {{ sortText }}
       </n-button>
-      <div class="activity-count">
-        共 {{ filteredActivities.length }} 条记录
-      </div>
+      <div class="activity-count">共 {{ filteredActivities.length }} 条记录</div>
     </div>
 
     <!-- 日历视图 -->
-    <n-modal v-model:show="showCalendar" preset="card" title="活动日历" class="calendar-view" :mask-closable="true"
-      :style="{ width: '80%' }">
-      <n-calendar v-model:value="selectedDate" :style="{ height: '460px' }" #="{ year, month, date }" @update:value="handleDateSelect">
+    <n-modal
+      v-model:show="showCalendar"
+      preset="card"
+      title="活动日历"
+      class="calendar-view"
+      :mask-closable="true"
+      :style="{ width: '80%' }"
+    >
+      <n-calendar
+        v-model:value="selectedDate"
+        :style="{ height: '460px' }"
+        #="{ year, month, date }"
+        @update:value="handleDateSelect"
+      >
         <template v-if="hasActivitiesOnDate(year, month, date)">
           <!-- 查找并显示对应日期的活动名称 -->
-          <div v-for="activity in activities.filter((act) => {
+          <div
+            v-for="activity in activities.filter((act) => {
               const activityDate = getActivityDate(act.date)?.getTime();
               const checkDate = new Date(year, month - 1, date).getTime();
               return activityDate === checkDate;
-            })" :key="activity.id" class="activity-name-ellipsis" :class="{
+            })"
+            :key="activity.id"
+            class="activity-name-ellipsis"
+            :class="{
               'activity-complete': activity.status === '已完成',
               'activity-incomplete': activity.status !== '已完成',
-            }">
+            }"
+          >
             {{ activity.name }}
           </div>
         </template>
       </n-calendar>
 
-      <n-modal v-model:show="isselectedDateActivities" preset="card" :title="selectedDateactivities[0]?.date" :mask-closable="true"
-        :style="{ width: '70%',height:'60%' }">
+      <n-modal
+        v-model:show="isselectedDateActivities"
+        preset="card"
+        :title="selectedDateactivities[0]?.date"
+        :mask-closable="true"
+        :style="{ width: '70%', height: '60%' }"
+      >
         <div class="list-view">
           <n-list hoverable clickable class="list-div">
-            <n-list-item v-for="activity in selectedDateactivities" :key="activity.id"
-              :class="getActivityClass(activity.status)">
-              <n-thing @click="updateActivityStatus(activity.id, activity.status)" :title="activity.name"
-                :description="activity.address">
+            <n-list-item
+              v-for="activity in selectedDateactivities"
+              :key="activity.id"
+              :class="getActivityClass(activity.status)"
+            >
+              <n-thing
+                @click="updateActivityStatus(activity.id, activity.status)"
+                :title="activity.name"
+                :description="activity.address"
+              >
                 <template #header-extra>
                   <n-space>
                     <n-tag :type="getStatusType(activity.status)">
                       {{ activity.status }}
                     </n-tag>
                     <n-tag type="warning">
-                      {{ categories[activity.categoryId] ? categories[activity.categoryId] : '活动后台' }}
+                      {{
+                        categories[activity.categoryId]
+                          ? categories[activity.categoryId]
+                          : "活动后台"
+                      }}
                     </n-tag>
                   </n-space>
                 </template>
@@ -108,22 +163,35 @@
     <!-- 列表视图 -->
     <div class="list-view">
       <n-spin :show="loading" description="正在加载活动数据...">
-        <n-empty v-if="filteredActivities.length === 0 && !loading && hasActiveFilters" description="暂无符合条件的活动数据">
+        <n-empty
+          v-if="filteredActivities.length === 0 && !loading && hasActiveFilters"
+          description="暂无符合条件的活动数据"
+        >
         </n-empty>
         <n-list v-else-if="!loading" hoverable clickable class="list-div">
           <!-- 当没有活跃筛选条件且过滤后数据为空时，显示原始数据 -->
           <template v-if="filteredActivities.length === 0 && !hasActiveFilters">
-            <n-list-item v-for="activity in activities" :key="activity.id"
-              :class="getActivityClass(activity.status)">
-              <n-thing @click="updateActivityStatus(activity.id, activity.status)" :title="activity.name"
-                :description="activity.address">
+            <n-list-item
+              v-for="activity in activities"
+              :key="activity.id"
+              :class="getActivityClass(activity.status)"
+            >
+              <n-thing
+                @click="updateActivityStatus(activity.id, activity.status)"
+                :title="activity.name"
+                :description="activity.address"
+              >
                 <template #header-extra>
                   <n-space>
                     <n-tag :type="getStatusType(activity.status)">
                       {{ activity.status }}
                     </n-tag>
                     <n-tag type="warning">
-                      {{ categories[activity.categoryId] ? categories[activity.categoryId] : '活动后台' }}
+                      {{
+                        categories[activity.categoryId]
+                          ? categories[activity.categoryId]
+                          : "活动后台"
+                      }}
                     </n-tag>
                   </n-space>
                 </template>
@@ -144,34 +212,44 @@
           </template>
           <!-- 当有活跃筛选条件或有过滤后的数据时，显示过滤后的数据 -->
           <template v-else>
-          <n-list-item v-for="activity in filteredActivities" :key="activity.id"
-            :class="getActivityClass(activity.status)">
-            <n-thing @click="updateActivityStatus(activity.id, activity.status)" :title="activity.name"
-              :description="activity.address">
-              <template #header-extra>
+            <n-list-item
+              v-for="activity in filteredActivities"
+              :key="activity.id"
+              :class="getActivityClass(activity.status)"
+            >
+              <n-thing
+                @click="updateActivityStatus(activity.id, activity.status)"
+                :title="activity.name"
+                :description="activity.address"
+              >
+                <template #header-extra>
+                  <n-space>
+                    <n-tag :type="getStatusType(activity.status)">
+                      {{ activity.status }}
+                    </n-tag>
+                    <n-tag type="warning">
+                      {{
+                        categories[activity.categoryId]
+                          ? categories[activity.categoryId]
+                          : "活动后台"
+                      }}
+                    </n-tag>
+                  </n-space>
+                </template>
+                <span>{{ activity.remark }}</span>
+              </n-thing>
+              <n-space justify="space-between">
+                <span>{{ activity.date }}</span>
                 <n-space>
-                  <n-tag :type="getStatusType(activity.status)">
-                    {{ activity.status }}
-                  </n-tag>
-                  <n-tag type="warning">
-                    {{ categories[activity.categoryId] ? categories[activity.categoryId] : '活动后台' }}
-                  </n-tag>
+                  <n-button size="small" type="info" @click="editActivity(activity)">
+                    编辑
+                  </n-button>
+                  <n-button size="small" type="error" @click="deleteActivity(activity.id)">
+                    删除
+                  </n-button>
                 </n-space>
-              </template>
-              <span>{{ activity.remark }}</span>
-            </n-thing>
-            <n-space justify="space-between">
-              <span>{{ activity.date }}</span>
-              <n-space>
-                <n-button size="small" type="info" @click="editActivity(activity)">
-                  编辑
-                </n-button>
-                <n-button size="small" type="error" @click="deleteActivity(activity.id)">
-                  删除
-                </n-button>
               </n-space>
-            </n-space>
-          </n-list-item>
+            </n-list-item>
           </template>
         </n-list>
       </n-spin>
@@ -189,10 +267,21 @@
     </div>
 
     <!-- 添加/编辑活动弹窗 -->
-    <n-modal v-model:show="showAddModal" preset="card" :title="isEditing ? '编辑活动' : '添加活动'" class="activity-modal"
-      :mask-closable="false">
-      <n-form ref="formRef" :model="activityForm" :rules="rules" label-placement="left" label-width="auto"
-        require-mark-placement="right-hanging">
+    <n-modal
+      v-model:show="showAddModal"
+      preset="card"
+      :title="isEditing ? '编辑活动' : '添加活动'"
+      class="activity-modal"
+      :mask-closable="false"
+    >
+      <n-form
+        ref="formRef"
+        :model="activityForm"
+        :rules="rules"
+        label-placement="left"
+        label-width="auto"
+        require-mark-placement="right-hanging"
+      >
         <n-form-item label="标题" path="name">
           <n-input v-model:value="activityForm.name" placeholder="请输入活动标题" />
         </n-form-item>
@@ -200,42 +289,82 @@
           <n-input v-model:value="activityForm.address" placeholder="请输入活动地点" />
         </n-form-item>
         <n-form-item label="备注" path="remark">
-          <n-input v-model:value="activityForm.remark" type="textarea" placeholder="请输入活动备注" :autosize="{
+          <n-input
+            v-model:value="activityForm.remark"
+            type="textarea"
+            placeholder="请输入活动备注"
+            :autosize="{
               minRows: 3,
-              maxRows: 5
-            }" />
+              maxRows: 5,
+            }"
+          />
         </n-form-item>
         <n-form-item label="日期" path="date">
-          <n-date-picker v-model:value="activityForm.date" type="date" clearable style="width: 100%" />
+          <n-date-picker
+            v-model:value="activityForm.date"
+            type="date"
+            clearable
+            style="width: 100%"
+          />
         </n-form-item>
         <n-form-item label="状态" path="status">
-          <n-select v-model:value="activityForm.status" :options="statusOptions" placeholder="请选择活动状态" />
+          <n-select
+            v-model:value="activityForm.status"
+            :options="statusOptions"
+            placeholder="请选择活动状态"
+          />
         </n-form-item>
         <n-form-item label="分类" path="categoryId">
-          <n-select v-model:value="activityForm.categoryId" :options="categoryOptions" placeholder="请选择活动分类" />
+          <n-select
+            v-model:value="activityForm.categoryId"
+            :options="categoryOptions"
+            placeholder="请选择活动分类"
+          />
         </n-form-item>
       </n-form>
       <template #footer>
         <n-space justify="end">
           <n-button @click="showAddModal = false">取消</n-button>
-          <n-button type="primary" @click="submitActivity" :loading="submitting">
-            确定
-          </n-button>
+          <n-button type="primary" @click="submitActivity" :loading="submitting"> 确定 </n-button>
         </n-space>
       </template>
     </n-modal>
 
     <!-- 删除确认弹窗 -->
-    <n-modal v-model:show="showDeleteModal" preset="dialog" title="确认删除" content="确定要删除这个活动吗？此操作不可恢复。"
-      positive-text="确定" negative-text="取消" @positive-click="confirmDelete"
-      @negative-click="() => { showDeleteModal = false; deleteId = null; }" />
+    <n-modal
+      v-model:show="showDeleteModal"
+      preset="dialog"
+      title="确认删除"
+      content="确定要删除这个活动吗？此操作不可恢复。"
+      positive-text="确定"
+      negative-text="取消"
+      @positive-click="confirmDelete"
+      @negative-click="
+        () => {
+          showDeleteModal = false;
+          deleteId = null;
+        }
+      "
+    />
     <!-- 分类管理弹窗 -->
-    <n-modal v-model:show="showCategoryModal" preset="card" title="分类管理" class="management-modal" :style="{ width: '800px', height: '600px' }">
+    <n-modal
+      v-model:show="showCategoryModal"
+      preset="card"
+      title="分类管理"
+      class="management-modal"
+      :style="{ width: '800px', height: '600px' }"
+    >
       <CategoryManagement />
     </n-modal>
 
     <!-- 用户管理弹窗 -->
-    <n-modal v-model:show="showUserModal" preset="card" title="用户管理" class="management-modal" :style="{ width: '800px', height: '600px' }">
+    <n-modal
+      v-model:show="showUserModal"
+      preset="card"
+      title="用户管理"
+      class="management-modal"
+      :style="{ width: '800px', height: '600px' }"
+    >
       <UserManagement />
     </n-modal>
   </div>
@@ -243,11 +372,10 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from "vue";
-import { useRouter } from "vue-router";
 import { useMessage, NButton, NSpace, NTag } from "naive-ui";
 import type { FormInst, FormRules } from "naive-ui";
 import axios from "axios";
-import { useSettingStore, useDataStore} from "@/stores";
+import { useSettingStore, useDataStore } from "@/stores";
 import { formatDate } from "@/utils/helper";
 import * as XLSX from "xlsx-js-style";
 import { setCookies } from "@/utils/cookie";
@@ -255,7 +383,6 @@ import { updateUserData } from "@/utils/auth";
 
 // 全局消息
 const message = useMessage();
-const router = useRouter();
 
 import CategoryManagement from "@/views/CategoryManagement/index.vue";
 import UserManagement from "@/views/UserManagement/index.vue";
@@ -277,7 +404,7 @@ const searchKeyword = ref<string | undefined>(undefined);
 const statusFilter = ref<string | undefined>(undefined);
 const categoryFilter = ref<number | undefined>(undefined);
 const yearFilter = ref<number | undefined>(undefined);
-const sortOrder = ref('desc');
+const sortOrder = ref("desc");
 const loading = ref(false);
 const showAddModal = ref(false);
 const showDeleteModal = ref(false);
@@ -307,9 +434,9 @@ const handleDateSelect = (date: number) => {
     const activityDate = getActivityDate(act.date)?.getTime() ?? 0;
     const checkDate = date;
     return activityDate === checkDate;
-  })
-  if(selectedDateactivities.value.length === 0) {
-    message.warning('该日期没有活动');
+  });
+  if (selectedDateactivities.value.length === 0) {
+    message.warning("该日期没有活动");
     return;
   }
   isselectedDateActivities.value = true;
@@ -320,7 +447,7 @@ const hasActivitiesOnDate = (year: number, month: number, date: number) => {
   const checkDate = new Date(year, month - 1, date);
   checkDate.setHours(0, 0, 0, 0);
   const checkTimestamp = checkDate.getTime();
-  return activities.value.some(activity => {
+  return activities.value.some((activity) => {
     const activityDate = getActivityDate(activity.date)?.getTime() ?? 0;
     return activityDate === checkTimestamp;
   });
@@ -335,7 +462,7 @@ const activityForm = ref({
   date: null as number | null,
   status: "未完成",
   categoryId: null as number | null, // 改为 number 类型
-  userId: null as number | null
+  userId: null as number | null,
 });
 
 // 表单验证规则
@@ -382,7 +509,6 @@ const checkToken = async () => {
       localStorage.setItem("lastLoginTime", Date.now().toString());
       // 获取用户信息
       await updateUserData();
-
     } catch (error: any) {
       console.error("Cookie 登录出错：", error);
     }
@@ -393,25 +519,25 @@ const checkToken = async () => {
 // 小工具：统一解析活动日期字段，返回 Date 或 null
 const getActivityDate = (dateField: any): Date | null => {
   if (!dateField && dateField !== 0) return null;
-  if (typeof dateField === 'number') {
+  if (typeof dateField === "number") {
     try {
       const d = new Date(dateField);
-      d.setHours(0,0,0,0);
+      d.setHours(0, 0, 0, 0);
       return d;
     } catch {
       return null;
     }
   }
-  if (typeof dateField === 'string') {
+  if (typeof dateField === "string") {
     const parsed = parseChineseDate(dateField);
     if (parsed) {
-      parsed.setHours(0,0,0,0);
+      parsed.setHours(0, 0, 0, 0);
     }
     return parsed;
   }
   if (dateField instanceof Date) {
     const copy = new Date(dateField.getTime());
-    copy.setHours(0,0,0,0);
+    copy.setHours(0, 0, 0, 0);
     return copy;
   }
   return null;
@@ -426,7 +552,7 @@ const statusOptions = [
   {
     label: "已完成",
     value: "已完成",
-  }
+  },
 ];
 
 // 年份选项
@@ -435,10 +561,10 @@ const yearOptions = computed(() => {
     const years = new Set<number>();
 
     if (!activities.value || !Array.isArray(activities.value)) {
-      return [{ label: '全部年份', value: undefined, type: 'ignored' as const }];
+      return [{ label: "全部年份", value: undefined, type: "ignored" as const }];
     }
 
-    activities.value.forEach(activity => {
+    activities.value.forEach((activity) => {
       try {
         if (activity && activity.date) {
           const date = getActivityDate(activity.date);
@@ -447,7 +573,7 @@ const yearOptions = computed(() => {
           }
         }
       } catch (dateError: any) {
-        console.warn('解析活动日期失败:', dateError, activity);
+        console.warn("解析活动日期失败:", dateError, activity);
       }
     });
 
@@ -455,12 +581,12 @@ const yearOptions = computed(() => {
     const sortedYears = Array.from(years).sort((a, b) => b - a);
 
     return [
-      { label: '全部年份', value: undefined, type: 'ignored' as const },
-      ...sortedYears.map(year => ({ label: `${year}年`, value: year }))
+      { label: "全部年份", value: undefined, type: "ignored" as const },
+      ...sortedYears.map((year) => ({ label: `${year}年`, value: year })),
     ];
   } catch (error: any) {
-    console.error('生成年份选项失败:', error);
-    return [{ label: '全部年份', value: undefined, type: 'ignored' as const }];
+    console.error("生成年份选项失败:", error);
+    return [{ label: "全部年份", value: undefined, type: "ignored" as const }];
   }
 });
 
@@ -468,7 +594,7 @@ const yearOptions = computed(() => {
 const categoryOptions = computed(() => {
   return categories.value.map((categoryName, index) => ({
     label: categoryName, // 显示分类名称
-    value: index // 绑定数组索引
+    value: index, // 绑定数组索引
   }));
 });
 
@@ -500,9 +626,9 @@ const getActivityClass = (status: string) => {
 const handleSearch = (value) => {
   searchKeyword.value = value;
   // 清除搜索关键词时自动重新筛选，只显示当前命中条件的数据
-  if (!value || value.trim() === '') {
+  if (!value || value.trim() === "") {
     searchKeyword.value = undefined;
-    console.log('搜索关键词已清除，自动重新筛选数据');
+    console.log("搜索关键词已清除，自动重新筛选数据");
   }
 };
 
@@ -510,7 +636,7 @@ const handleSearch = (value) => {
 const scrollToTop = () => {
   window.scrollTo({
     top: 0,
-    behavior: 'smooth'
+    behavior: "smooth",
   });
 };
 
@@ -525,7 +651,7 @@ const handleYearFilterChange = (value) => {
   // 清除条件时自动重新筛选，只显示当前命中条件的数据
   if (value === undefined || value === null) {
     yearFilter.value = undefined;
-    console.log('年份筛选已清除，自动重新筛选数据');
+    console.log("年份筛选已清除，自动重新筛选数据");
   }
 };
 
@@ -535,7 +661,7 @@ const handleCategoryFilterChange = (value) => {
   // 清除条件时自动重新筛选，只显示当前命中条件的数据
   if (value === undefined || value === null) {
     categoryFilter.value = undefined;
-    console.log('分类筛选已清除，自动重新筛选数据');
+    console.log("分类筛选已清除，自动重新筛选数据");
   }
 };
 
@@ -543,29 +669,31 @@ const handleCategoryFilterChange = (value) => {
 const handleStatusFilterChange = (value) => {
   statusFilter.value = value;
   // 清除条件时自动重新筛选，只显示当前命中条件的数据
-  if (value === undefined || value === null || value === '') {
+  if (value === undefined || value === null || value === "") {
     statusFilter.value = undefined;
-    console.log('状态筛选已清除，自动重新筛选数据');
+    console.log("状态筛选已清除，自动重新筛选数据");
   }
 };
 /**
  * 切换排序顺序
  */
 const toggleSortOrder = () => {
-  sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc';
+  sortOrder.value = sortOrder.value === "desc" ? "asc" : "desc";
 };
 
 // 绑定到模板的排序文字
 const sortText = computed(() => {
-  return sortOrder.value === 'desc' ? '按时间正序' : '按时间倒序';
+  return sortOrder.value === "desc" ? "按时间正序" : "按时间倒序";
 });
 
 // 判断是否有活跃的筛选条件
 const hasActiveFilters = computed(() => {
-  return (searchKeyword.value !== undefined && searchKeyword.value !== '') ||
-         yearFilter.value !== undefined ||
-         categoryFilter.value !== undefined ||
-         (statusFilter.value !== undefined && statusFilter.value !== '');
+  return (
+    (searchKeyword.value !== undefined && searchKeyword.value !== "") ||
+    yearFilter.value !== undefined ||
+    categoryFilter.value !== undefined ||
+    (statusFilter.value !== undefined && statusFilter.value !== "")
+  );
 });
 
 // 过滤活动列表
@@ -575,15 +703,16 @@ const filteredActivities = computed(() => {
   // Apply search filter
   if (searchKeyword.value) {
     const keyword = String(searchKeyword.value).toLowerCase();
-    filtered = filtered.filter(activity =>
-      (activity.name || '').toLowerCase().includes(keyword) ||
-      (activity.remark || '').toLowerCase().includes(keyword)
+    filtered = filtered.filter(
+      (activity) =>
+        (activity.name || "").toLowerCase().includes(keyword) ||
+        (activity.remark || "").toLowerCase().includes(keyword),
     );
   }
 
   // Apply year filter
   if (yearFilter.value !== undefined) {
-    filtered = filtered.filter(activity => {
+    filtered = filtered.filter((activity) => {
       const date = getActivityDate(activity.date);
       return date && date.getFullYear() === yearFilter.value;
     });
@@ -591,19 +720,19 @@ const filteredActivities = computed(() => {
 
   // Apply category filter
   if (categoryFilter.value !== undefined) {
-    filtered = filtered.filter(activity => activity.categoryId === categoryFilter.value);
+    filtered = filtered.filter((activity) => activity.categoryId === categoryFilter.value);
   }
 
   // Apply status filter
-  if (statusFilter.value !== undefined && statusFilter.value !== '') {
-    filtered = filtered.filter(activity => activity.status === statusFilter.value);
+  if (statusFilter.value !== undefined && statusFilter.value !== "") {
+    filtered = filtered.filter((activity) => activity.status === statusFilter.value);
   }
 
   // Sort by date 使用 getActivityDate
   filtered.sort((a, b) => {
     const dateA = getActivityDate(a.date)?.getTime() ?? 0;
     const dateB = getActivityDate(b.date)?.getTime() ?? 0;
-    return sortOrder.value === 'desc' ? dateB - dateA : dateA - dateB;
+    return sortOrder.value === "desc" ? dateB - dateA : dateA - dateB;
   });
 
   return filtered;
@@ -626,16 +755,16 @@ const fetchActivities = async (retryCountOrEvent: number | MouseEvent = 0) => {
     // 添加搜索、年份、分类和状态筛选参数
     const params = new URLSearchParams();
     if (searchKeyword.value) {
-      params.append('keyword', String(searchKeyword.value));
+      params.append("keyword", String(searchKeyword.value));
     }
     if (yearFilter.value !== undefined) {
-      params.append('year', String(yearFilter.value));
+      params.append("year", String(yearFilter.value));
     }
     if (categoryFilter.value !== undefined) {
-      params.append('categoryId', String(categoryFilter.value));
+      params.append("categoryId", String(categoryFilter.value));
     }
-    if (statusFilter.value !== undefined && statusFilter.value !== '') {
-      params.append('status', String(statusFilter.value));
+    if (statusFilter.value !== undefined && statusFilter.value !== "") {
+      params.append("status", String(statusFilter.value));
     }
 
     // 如果有参数，添加到URL
@@ -644,8 +773,8 @@ const fetchActivities = async (retryCountOrEvent: number | MouseEvent = 0) => {
     }
     const response = await axios.get(apiUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (response.data.status === 200) {
@@ -653,24 +782,27 @@ const fetchActivities = async (retryCountOrEvent: number | MouseEvent = 0) => {
       if (response.data.data && Array.isArray(response.data.data.activities)) {
         activities.value = response.data.data.activities;
         // 验证分类数据
-        if (response.data.data.user?.settings?.categories && Array.isArray(response.data.data.user.settings.categories)) {
+        if (
+          response.data.data.user?.settings?.categories &&
+          Array.isArray(response.data.data.user.settings.categories)
+        ) {
           categories.value = response.data.data.user.settings.categories;
         } else {
-          console.warn('分类数据格式异常，使用默认值');
-          categories.value = ['活动后台'];
+          console.warn("分类数据格式异常，使用默认值");
+          categories.value = ["活动后台"];
         }
 
         // 验证用户ID
         if (response.data.data.user?.id) {
           userId.value = response.data.data.user.id;
         } else {
-          console.warn('用户ID数据异常');
+          console.warn("用户ID数据异常");
           userId.value = null;
         }
 
         // 如果活动数据为空，给出友好提示
         if (activities.value.length === 0) {
-          message.info('暂无活动数据，可以添加新活动');
+          message.info("暂无活动数据，可以添加新活动");
         } else {
           console.log(`成功获取 ${activities.value.length} 条活动数据`);
           // 初始加载时确保数据按时间倒序排列
@@ -681,8 +813,8 @@ const fetchActivities = async (retryCountOrEvent: number | MouseEvent = 0) => {
           });
         }
       } else {
-        console.error('API返回数据格式异常:', response.data);
-        message.error('数据格式错误，请联系管理员');
+        console.error("API返回数据格式异常:", response.data);
+        message.error("数据格式错误，请联系管理员");
         activities.value = [];
         categories.value = [];
         userId.value = null;
@@ -697,7 +829,10 @@ const fetchActivities = async (retryCountOrEvent: number | MouseEvent = 0) => {
     console.error("获取活动列表失败:", error);
 
     // 网络错误或超时，尝试重试
-    if (retryCount < 2 && (error.code === 'ECONNABORTED' || error.message?.includes('timeout') || !error.response)) {
+    if (
+      retryCount < 2 &&
+      (error.code === "ECONNABORTED" || error.message?.includes("timeout") || !error.response)
+    ) {
       message.warning(`网络连接失败，正在重试(${retryCount + 1}/3)...`);
       setTimeout(() => fetchActivities(retryCount + 1), 1000 * (retryCount + 1));
       return;
@@ -751,14 +886,14 @@ const addActivity = async () => {
       date: formattedDate,
       status: activityForm.value.status,
       categoryId: activityForm.value.categoryId,
-      userId: userId.value
+      userId: userId.value,
     };
 
     const response = await axios.post(apiUrl, payload, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
 
     // 添加活动成功后刷新列表
@@ -767,8 +902,7 @@ const addActivity = async () => {
       await fetchActivities();
       resetForm();
       return true;
-    }
-    else {
+    } else {
       message.error(response.data.data.message || "添加活动失败");
       return false;
     }
@@ -806,14 +940,14 @@ const updateActivity = async () => {
       date: formattedDate,
       status: activityForm.value.status,
       categoryId: activityForm.value.categoryId,
-      userId: userId.value
+      userId: userId.value,
     };
 
     const response = await axios.put(apiUrl, payload, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
 
     // 更新活动成功后刷新列表
@@ -822,8 +956,7 @@ const updateActivity = async () => {
       await fetchActivities();
       resetForm();
       return true;
-    }
-    else {
+    } else {
       message.error(response.data.data.message || "更新活动失败");
       return false;
     }
@@ -848,17 +981,21 @@ const updateActivityStatus = async (id: number, currentStatus: string) => {
     const { activitiesApiBaseUrl } = useSettingStore();
     const apiUrl = `${activitiesApiBaseUrl}/update_activity_status/${id}?status=${encodeURIComponent(newStatus)}`;
 
-    const response = await axios.put(apiUrl, {}, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+    const response = await axios.put(
+      apiUrl,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
 
     // 更新活动状态成功后刷新列表
     if (response.data.status === 200) {
       message.success("活动状态更新成功");
       // 查找并更新 activities 数组中对应的活动状态
-      const index = activities.value.findIndex(activity => activity.id === id);
+      const index = activities.value.findIndex((activity) => activity.id === id);
       if (index !== -1) {
         activities.value[index].status = newStatus;
       } else {
@@ -908,7 +1045,7 @@ const resetForm = () => {
     date: null,
     status: "未完成",
     categoryId: null,
-    userId: null
+    userId: null,
   };
   isEditing.value = false;
 };
@@ -925,7 +1062,7 @@ const parseChineseDate = (dateString: string): Date | null => {
     const month = parseInt(match[2], 10) - 1; // 月份是0-11
     const day = parseInt(match[3], 10);
     const d = new Date(year, month, day);
-    d.setHours(0,0,0,0);
+    d.setHours(0, 0, 0, 0);
     return d;
   }
   return null;
@@ -934,9 +1071,9 @@ const parseChineseDate = (dateString: string): Date | null => {
 // 编辑活动
 const editActivity = (activity: any) => {
   let parsedDate: Date | null = null;
-  if (typeof activity.date === 'string') {
+  if (typeof activity.date === "string") {
     parsedDate = parseChineseDate(activity.date);
-  } else if (typeof activity.date === 'number') {
+  } else if (typeof activity.date === "number") {
     parsedDate = new Date(activity.date);
   } else if (activity.date instanceof Date) {
     parsedDate = activity.date;
@@ -950,7 +1087,7 @@ const editActivity = (activity: any) => {
     date: parsedDate ? parsedDate.getTime() : null, // 使用解析后的日期时间戳
     status: activity.status,
     categoryId: activity.categoryId, // 将分类名称转换为索引
-    userId: activity.userId
+    userId: activity.userId,
   };
   isEditing.value = true;
   showAddModal.value = true;
@@ -969,13 +1106,13 @@ const openAddModal = () => {
   // 重置表单数据
   activityForm.value = {
     id: null,
-    name: '',
-    address: '',
-    remark: '',
+    name: "",
+    address: "",
+    remark: "",
     date: null,
-    status: '未完成',
+    status: "未完成",
     categoryId: 0,
-    userId: null
+    userId: null,
   };
   isEditing.value = false;
   showAddModal.value = true;
@@ -989,7 +1126,7 @@ const exportToExcel = () => {
   const exportData = filteredActivities.value;
 
   if (exportData.length === 0) {
-    message.info('没有数据可导出');
+    message.info("没有数据可导出");
     return;
   }
 
@@ -999,7 +1136,7 @@ const exportToExcel = () => {
     filterInfo.push(`年份: ${yearFilter.value}年`);
   }
   if (categoryFilter.value !== undefined) {
-    filterInfo.push(`分类: ${categories.value[categoryFilter.value as number] || '未知分类'}`);
+    filterInfo.push(`分类: ${categories.value[categoryFilter.value as number] || "未知分类"}`);
   }
   if (statusFilter.value) {
     filterInfo.push(`状态: ${statusFilter.value}`);
@@ -1009,17 +1146,17 @@ const exportToExcel = () => {
   }
 
   const headers = [
-    { key: 'name', label: '活动名称' },
-    { key: 'category', label: '分类' },
-    { key: 'date', label: '日期' },
-    { key: 'address', label: '地址' },
-    { key: 'remark', label: '备注' },
-    { key: 'status', label: '状态' },
+    { key: "name", label: "活动名称" },
+    { key: "category", label: "分类" },
+    { key: "date", label: "日期" },
+    { key: "address", label: "地址" },
+    { key: "remark", label: "备注" },
+    { key: "status", label: "状态" },
   ];
 
-  const data = exportData.map(activity => ({
+  const data = exportData.map((activity) => ({
     name: activity.name,
-    category: categories.value[activity.categoryId] || '活动后台',
+    category: categories.value[activity.categoryId] || "活动后台",
     date: activity.date,
     address: activity.address,
     remark: activity.remark,
@@ -1029,18 +1166,18 @@ const exportToExcel = () => {
   // 创建工作簿
   const wb = XLSX.utils.book_new();
   // 将数据转换为工作表
-  const ws = XLSX.utils.json_to_sheet(data, { header: headers.map(h => h.key) });
+  const ws = XLSX.utils.json_to_sheet(data, { header: headers.map((h) => h.key) });
 
   // 添加筛选条件信息和总行数
   let startRow = 1;
 
   // 添加标题行
-  XLSX.utils.sheet_add_aoa(ws, [headers.map(h => h.label)], { origin: `A${startRow}` });
+  XLSX.utils.sheet_add_aoa(ws, [headers.map((h) => h.label)], { origin: `A${startRow}` });
 
   // 设置筛选信息行样式
   const infoStyle = {
-    font: { bold: true, sz: 10, color: { rgb: '666666' } },
-    alignment: { horizontal: 'left' },
+    font: { bold: true, sz: 10, color: { rgb: "666666" } },
+    alignment: { horizontal: "left" },
   };
   for (let r = 0; r < startRow - 1; r++) {
     const cellRef = XLSX.utils.encode_cell({ r: r, c: 0 });
@@ -1051,7 +1188,7 @@ const exportToExcel = () => {
   // 设置标题行样式：加粗、字体加大、自动换行
   const headerStyle = {
     font: { bold: true, sz: 12 }, // 加粗，字体大小14
-    alignment: { wrapText: true, vertical: 'center', horizontal: 'center' }, // 自动换行，垂直居中，水平居中
+    alignment: { wrapText: true, vertical: "center", horizontal: "center" }, // 自动换行，垂直居中，水平居中
   };
   headers.forEach((_, colIndex) => {
     const cellRef = XLSX.utils.encode_cell({ r: startRow - 1, c: colIndex });
@@ -1064,27 +1201,27 @@ const exportToExcel = () => {
     for (let c = 0; c < headers.length; c++) {
       const cellRef = XLSX.utils.encode_cell({ r: r, c: c });
       if (!ws[cellRef]) ws[cellRef] = {};
-      ws[cellRef].s = { alignment: { wrapText: true, vertical: 'center' } }; // 自动换行，顶部对齐
+      ws[cellRef].s = { alignment: { wrapText: true, vertical: "center" } }; // 自动换行，顶部对齐
     }
   }
 
   // 计算列宽
-  const colWidths = headers.map(header => {
+  const colWidths = headers.map((header) => {
     const maxLength = Math.max(
       header.label.toString().length, // 考虑标题长度
-      ...data.map(row => (row[header.key] || '').toString().length) // 考虑数据长度
+      ...data.map((row) => (row[header.key] || "").toString().length), // 考虑数据长度
     );
     return { wch: maxLength + 8 }; // 增加一些额外空间
   });
-  ws['!cols'] = colWidths;
+  ws["!cols"] = colWidths;
   // 将工作表添加到工作簿
-  XLSX.utils.book_append_sheet(wb, ws, '活动数据');
+  XLSX.utils.book_append_sheet(wb, ws, "活动数据");
 
   // 导出文件，文件名包含当前日期
   const fileName = `活动列表_${formatDate(selectedDate.value, "yyyyMMdd")}.xlsx`;
   XLSX.writeFile(wb, fileName);
 
-  message.success('活动数据已导出');
+  message.success("活动数据已导出");
 };
 
 // 确认删除
@@ -1104,8 +1241,8 @@ const confirmDelete = async () => {
 
       const response = await axios.delete(apiUrl, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       // 删除活动成功后刷新列表
@@ -1132,22 +1269,29 @@ onMounted(async () => {
   await nextTick();
 
   // 添加滚动事件监听
-  window.addEventListener('scroll', handleScroll);
+  window.addEventListener("scroll", handleScroll);
 
-  console.log('活动列表组件已挂载，数据加载完成');
+  console.log("活动列表组件已挂载，数据加载完成");
 });
 
 // 监听活动数据变化，确保内容渲染完成
-watch(activities, async (newActivities) => {
-  // 等待DOM更新完成
-  await nextTick();
-  console.log(`活动数据已更新，当前活动数量: ${newActivities.length}`);
-}, { deep: true });
+watch(
+  activities,
+  async (newActivities) => {
+    // 等待DOM更新完成
+    await nextTick();
+    console.log(`活动数据已更新，当前活动数量: ${newActivities.length}`);
+  },
+  { deep: true },
+);
 
 // 监听token变化，重新获取活动列表
-watch(() => useSettingStore().autoLoginCookie, () => {
-  fetchActivities();
-});
+watch(
+  () => useSettingStore().autoLoginCookie,
+  () => {
+    fetchActivities();
+  },
+);
 </script>
 
 <style scoped>
@@ -1329,4 +1473,3 @@ watch(() => useSettingStore().autoLoginCookie, () => {
   text-overflow: ellipsis;
 }
 </style>
-

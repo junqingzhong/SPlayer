@@ -32,7 +32,7 @@ server.interceptors.request.use(
     if (!request.params) request.params = {};
     // Cookie
     if (!request.params.noCookie && (isLogin() || getCookie("MUSIC_U") !== null)) {
-      const cookie = `MUSIC_U=${getCookie("MUSIC_U")};`;
+      const cookie = `MUSIC_U=${getCookie("MUSIC_U")};os=pc;`;
       request.params.cookie = cookie;
     }
     // 自定义 realIP
@@ -44,7 +44,11 @@ server.interceptors.request.use(
       }
     }
     // 全局代理配置优先
-    if (config.globalProxyConfig.enabled && config.globalProxyConfig.host && config.globalProxyConfig.port) {
+    if (
+      config.globalProxyConfig.enabled &&
+      config.globalProxyConfig.host &&
+      config.globalProxyConfig.port
+    ) {
       const protocol = config.globalProxyConfig.type.toLowerCase();
       const server = config.globalProxyConfig.host;
       const port = config.globalProxyConfig.port;

@@ -60,7 +60,7 @@ export default defineConfig(({ mode }) => {
     renderer: {
       root: ".",
       optimizeDeps: {
-        include: ["sortablejs", "@vueuse/integrations"]
+        include: ["sortablejs", "@vueuse/integrations"],
       },
       plugins: [
         vue(),
@@ -126,11 +126,11 @@ export default defineConfig(({ mode }) => {
           compress: {
             // 移除pure_funcs配置，避免构建错误
             drop_console: true,
-            drop_debugger: true
+            drop_debugger: true,
           },
           format: {
-            comments: false
-          }
+            comments: false,
+          },
         },
         sourcemap: false,
       },

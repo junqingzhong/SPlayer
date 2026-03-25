@@ -14,7 +14,7 @@
           <SvgIcon name="Menu" />
         </template>
       </n-button>
-      
+
       <template v-if="!isSmallScreen">
         <!-- 前进后退 -->
         <n-button :focusable="false" tertiary circle @click="router.go(-1)">
