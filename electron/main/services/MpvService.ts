@@ -491,7 +491,8 @@ export class MpvService {
         const uncPath = `//${parsedUrl.host}${decodeURIComponent(parsedUrl.pathname)}`;
         return this.normalizeLocalPath(uncPath);
       }
-    } catch {
+    } catch (e) {
+      processLog.warn(`[MpvService] 使用 'new URL()' 解析 URL 失败，将执行回退逻辑: ${url}`, e);
       // 忽略 URL 解析失败，继续走兜底逻辑
     }
 
