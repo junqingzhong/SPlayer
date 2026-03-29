@@ -93,7 +93,7 @@
         </n-form-item>
         <n-form-item label="cookie" path="cookie">
           <n-input v-model:value="userForm.cookie" placeholder="请输入cookie" />
-          <template #help> 可以手动设置cookie，也可以留空系统自动生成 </template>
+          <template #feedback> 可以手动设置cookie，也可以留空系统自动生成 </template>
         </n-form-item>
       </n-form>
       <template #footer>
