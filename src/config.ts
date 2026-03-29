@@ -1,3 +1,13 @@
+/*
+ * @Author: ZJQ
+ * @Date: 2025-07-12 01:33:40
+ * @LastEditors: zjq 631724110@qq.com
+ * @LastEditTime: 2026-01-28 00:06:13
+ * @FilePath: /music/src/config.ts
+ * @Description:
+ *
+ * Copyright (c) 2026 by ${git_name_email}, All Rights Reserved.
+ */
 /**
  * @Author: ZJQ
  * @Date: 2025-04-29
@@ -14,6 +24,8 @@ const defaultConfig = {
   unblockApiUrl: '/api/unblock',
   // 网易云音乐API URL
   neteaseApiUrl: '/api/netease',
+  // 活动API URL
+  activitiesApiBaseUrl: '/api/activity',
   // 默认真实IP
   defaultRealIP: '116.25.146.177',
   // 全局代理配置

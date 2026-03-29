@@ -374,7 +374,7 @@ export const useSettingStore = defineStore("setting", {
     routeAnimation: "slide",
     playerExpandAnimation: "up",
     layoutMode: "auto",
-    activitiesApiBaseUrl: "",
+    activitiesApiBaseUrl: "/api/activity",
     autoLoginCookie: "",
     useOnlineService: true,
     showCloseAppTip: true,

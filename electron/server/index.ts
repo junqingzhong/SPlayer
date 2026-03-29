@@ -1,9 +1,9 @@
 /*
  * @Author: ZJQ
  * @Date: 2025-05-23 10:50:52
- * @LastEditors: zjq zjq@xkb.com.cn
- * @LastEditTime: 2025-12-10 17:01:43
- * @FilePath: \tea\electron\server\index.ts
+ * @LastEditors: zjq 631724110@qq.com
+ * @LastEditTime: 2026-01-28 00:13:38
+ * @FilePath: /music/electron/server/index.ts
  * @Description:
  *
  * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
@@ -26,7 +26,7 @@ import fastify from "fastify";
  */
 const getServerPort = async (): Promise<number> => {
   // 从环境变量获取端口，默认为 3001
-  return process.env.VITE_SERVER_PORT ? parseInt(process.env.VITE_SERVER_PORT) : 3001;
+  return process.env.VITE_SERVER_PORT ? parseInt(process.env.VITE_SERVER_PORT) : 25884;
 };
 
 const initAppServer = async () => {

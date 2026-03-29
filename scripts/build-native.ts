@@ -35,12 +35,13 @@ if (!isRustAvailable()) {
     console.warn("[BuildNative] 未检测到 Rust 工具链，已跳过原生模块构建");
     process.exit(0);
   }
-  console.error("[BuildNative] 错误：检测不到 Rust 工具链");
-  console.error("[BuildNative] 未设置 SKIP_NATIVE_BUILD，因此必须包含 Rust 环境才能继续");
-  console.error(
+  console.warn("[BuildNative] 错误：检测不到 Rust 工具链");
+  console.warn("[BuildNative] 未设置 SKIP_NATIVE_BUILD，因此必须包含 Rust 环境才能继续");
+  console.warn(
     "[BuildNative] 安装 Rust (https://rust-lang.org/tools/install/) 或者设置环境变量 SKIP_NATIVE_BUILD=true",
   );
-  process.exit(1);
+  console.warn("[BuildNative] 由于当前环境缺少 Rust，已自动跳过原生模块构建。部分功能（如媒体键、Discord RPC）将不可用。");
+  process.exit(0);
 }
 
 console.log(`[BuildNative] 当前构建目标: ${process.platform}`);
