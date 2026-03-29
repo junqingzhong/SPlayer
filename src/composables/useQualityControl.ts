@@ -23,6 +23,7 @@ export const useQualityControl = () => {
   const musicStore = useMusicStore();
   const statusStore = useStatusStore();
   const settingStore = useSettingStore();
+
   const player = usePlayerController();
 
   // 获取音质名称
@@ -30,7 +31,8 @@ export const useQualityControl = () => {
     const song = musicStore.playSong;
     if (song.path) return "本地";
     if (song.pc) return "云盘";
-    if (statusStore.playUblock) return "解锁";
+    if (song.type === "radio") return "电台";
+    if (statusStore.isUnlocked) return "解锁";
     if (!quality) return "未知";
     return qualityNameMap[quality] || quality;
   };
@@ -44,7 +46,7 @@ export const useQualityControl = () => {
     if (!current || !availableQualities.value.length) return settingStore.songLevel;
     // 在可用列表中找到与当前播放音质名称匹配的级别
     const found = availableQualities.value.find((q) => handleSongQuality(q) === current);
-    return found ? found.level : settingStore.songLevel;
+    return found ? found.level : current;
   });
 
   // 音质选项
@@ -64,7 +66,7 @@ export const useQualityControl = () => {
                 alignItems: "center",
                 width: "100%",
                 minWidth: "150px",
-                fontWeight: isDefaultQuality ? "bold" : "normal",
+                fontWeight: isPlayingQuality ? "bold" : "normal",
               },
             },
             [
@@ -91,7 +93,7 @@ export const useQualityControl = () => {
    */
   const loadQualities = async (isPreload = false) => {
     // 本地歌曲或解锁歌曲不支持切换
-    if (musicStore.playSong.path || statusStore.playUblock || musicStore.playSong.type !== "song")
+    if (musicStore.playSong.path || statusStore.isUnlocked || musicStore.playSong.type !== "song")
       return;
     // 如果已经加载过，不重复加载
     if (statusStore.availableQualities.length > 0) return;
@@ -101,14 +103,16 @@ export const useQualityControl = () => {
       const res = await songQuality(songId);
       if (res.data) {
         const levels = getSongLevelsData(songLevelData, res.data);
+
+        statusStore.availableQualities = levels;
+
+        // Apply Fuck AI Mode filter (Secondary filter)
         // 如果当前播放的是被隐藏的音质，尝试切换到最高可用音质
         if (settingStore.disableAiAudio) {
-          statusStore.availableQualities = levels.filter((q) => {
+          statusStore.availableQualities = statusStore.availableQualities.filter((q) => {
             if (q.level === "dolby") return true;
             return !AI_AUDIO_LEVELS.includes(q.level);
           });
-        } else {
-          statusStore.availableQualities = levels;
         }
       } else if (!isPreload) {
         window.$message.warning("获取音质信息失败");
@@ -152,7 +156,7 @@ export const useQualityControl = () => {
     getQualityName,
     isOnlineSong: computed(() => {
       const song = musicStore.playSong;
-      return !song.path && !song.pc && song.type === "song" && !statusStore.playUblock;
+      return !song.path && !song.pc && song.type === "song" && !statusStore.isUnlocked;
     }),
   };
 };

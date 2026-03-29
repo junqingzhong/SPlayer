@@ -2,7 +2,7 @@
  * @Author: ZJQ
  * @Date: 2025-07-12 01:33:40
  * @LastEditors: zjq 631724110@qq.com
- * @LastEditTime: 2026-01-28 00:06:13
+ * @LastEditTime: 2026-03-30 00:07:36
  * @FilePath: /music/src/config.ts
  * @Description:
  *
@@ -19,35 +19,35 @@ const defaultConfig = {
   // API服务器端口
   serverPort: Number(import.meta.env.VITE_SERVER_PORT || 25884),
   // API基础URL
-  apiBaseUrl: import.meta.env.VITE_API_URL || '/api/netease',
+  apiBaseUrl: import.meta.env.VITE_API_URL || "/api/netease",
   // 解锁API URL
-  unblockApiUrl: '/api/unblock',
+  unblockApiUrl: "/api/unblock",
   // 网易云音乐API URL
   neteaseApiUrl: '/api/netease',
   // 活动API URL
   activitiesApiBaseUrl: '/api/activity',
   // 默认真实IP
-  defaultRealIP: '116.25.146.177',
+  defaultRealIP: "116.25.146.177",
   // 全局代理配置
   globalProxyConfig: {
     enabled: false,
-    type: 'http',
-    host: '',
+    type: "http",
+    host: "",
     port: 0,
-    username: '',
-    password: ''
-  }
+    username: "",
+    password: "",
+  },
 };
 
 // 获取用户自定义配置（如果有）
 const getUserConfig = () => {
   try {
-    const userConfigStr = localStorage.getItem('splayer-config');
+    const userConfigStr = localStorage.getItem("splayer-config");
     if (userConfigStr) {
       return JSON.parse(userConfigStr);
     }
   } catch (error) {
-    console.error('读取用户配置失败:', error);
+    console.error("读取用户配置失败:", error);
   }
   return {};
 };
@@ -55,7 +55,7 @@ const getUserConfig = () => {
 // 合并默认配置和用户配置
 const config = {
   ...defaultConfig,
-  ...getUserConfig()
+  ...getUserConfig(),
 };
 
 /**
@@ -65,9 +65,9 @@ const config = {
 export const updateConfig = (newConfig: Partial<typeof config>) => {
   Object.assign(config, newConfig);
   try {
-    localStorage.setItem('splayer-config', JSON.stringify(config));
+    localStorage.setItem("splayer-config", JSON.stringify(config));
   } catch (error) {
-    console.error('保存配置失败:', error);
+    console.error("保存配置失败:", error);
   }
 };
 

@@ -156,7 +156,7 @@ export const formatDate = (date: Date | number, format: string): string => {
     "m+": date.getMinutes(), //分
     "s+": date.getSeconds(), //秒
     "q+": Math.floor((date.getMonth() + 3) / 3), //季度
-    "S": date.getMilliseconds(), //毫秒
+    S: date.getMilliseconds(), //毫秒
   };
   if (/(y+)/.test(format)) {
     format = format.replace(RegExp.$1, (date.getFullYear() + "").substr(4 - RegExp.$1.length));
@@ -165,7 +165,9 @@ export const formatDate = (date: Date | number, format: string): string => {
     if (new RegExp("(" + k + ")").test(format)) {
       format = format.replace(
         RegExp.$1,
-        RegExp.$1.length == 1 ? (o[k] as any) : ("00" + o[k]).substr((o[k] as any).toString().length),
+        RegExp.$1.length == 1
+          ? (o[k] as any)
+          : ("00" + o[k]).substr((o[k] as any).toString().length),
       );
     }
   }
@@ -191,7 +193,12 @@ export const formatFileSize = (bytes: number): string => {
  */
 export const copyData = async (text: any, message?: string) => {
   if (!text) return;
-  const content = typeof text === "string" ? text.trim() : JSON.stringify(text, null, 2);
+  const content =
+    typeof text === "string"
+      ? text.trim()
+      : Array.isArray(text)
+        ? text.join("\n")
+        : JSON.stringify(text, null, 2);
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(content);
@@ -432,7 +439,7 @@ export const handleSongQuality = (
 ): QualityType | undefined => {
   const settingStore = useSettingStore();
   const { disableAiAudio } = settingStore;
-
+  if (!song) return undefined;
   if (type === "local" && typeof song === "number") {
     if (song >= 960000) return QualityType.HiRes;
     if (song >= 441000) return QualityType.SQ;
@@ -499,4 +506,21 @@ export const handleSongQuality = (
     }
   }
   return undefined;
+};
+
+/**
+ * 获取分享链接
+ * @param type 资源类型 (song, playlist, album, artist, mv, etc.)
+ * @param id 资源 ID
+ * @returns 分享链接
+ */
+export const getShareUrl = (type: string, id: number | string): string => {
+  const settingStore = useSettingStore();
+  const { shareUrlFormat } = settingStore;
+
+  if (shareUrlFormat === "mobile") {
+    return `https://y.music.163.com/m/${type}?id=${id}`;
+  }
+
+  return `https://music.163.com/#/${type}?id=${id}`;
 };

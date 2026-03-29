@@ -1,8 +1,25 @@
-import { SongType, CoverType, ArtistType, CommentType, MetaData, CatType } from "@/types/main";
-import { msToTime } from "./time";
+import { useDataStore, useMusicStore, useStatusStore } from "@/stores";
+import type { ArtistType, CatType, CommentType, CoverType, MetaData, SongType } from "@/types/main";
 import { flatMap, isArray, uniqBy } from "lodash-es";
 import { handleSongQuality } from "./helper";
-import { useDataStore, useMusicStore, useStatusStore } from "@/stores";
+import { msToTime } from "./time";
+
+/**
+ * 格式化评论数量
+ * @param count 评论数量
+ * @returns 格式化后的评论数量
+ */
+export const formatCommentCount = (count: number): string | number => {
+  if (count >= 10000) {
+    const val = Math.floor(count / 1000) / 10;
+    return `${val % 1 === 0 ? val.toFixed(0) : val}W+`;
+  }
+  if (count >= 1000) {
+    const val = Math.floor(count / 100) / 10;
+    return `${val % 1 === 0 ? val.toFixed(0) : val}K+`;
+  }
+  return count;
+};
 
 /**
  * 移除文本中的括号内容（支持中英文括号）
@@ -67,6 +84,7 @@ export const formatSongsList = (data: any[]): SongType[] => {
       dj: item.dj
         ? {
             id: item.mainTrackId || item.id,
+            radioId: item.radio?.id,
             name: item.dj?.brand,
             creator: item.dj?.nickname,
           }
@@ -76,6 +94,7 @@ export const formatSongsList = (data: any[]): SongType[] => {
       originCoverType: item?.originCoverType,
       free: item.fee || 0,
       mv: item.mv,
+      mark: item.mark,
       size: Number(item.size || 0),
       path: item.path,
       pc: !!item.pc,
@@ -329,7 +348,9 @@ export const getPlayerInfoObj = (
   song?: SongType,
   sep: string = "/",
 ): { name: string; artist: string; album: string } | null => {
-  const playSongData = song || getPlaySongData();
+  const musicStore = useMusicStore();
+  const playSongData = song || getPlaySongData() || musicStore.playSong;
+
   if (!playSongData) return null;
 
   // 标题
@@ -338,7 +359,7 @@ export const getPlayerInfoObj = (
   // 歌手
   const artist =
     playSongData.type === "radio"
-      ? "播客电台"
+      ? playSongData.dj?.creator || "未知播客"
       : Array.isArray(playSongData.artists)
         ? playSongData.artists.map((artists: { name: string }) => artists.name).join(sep)
         : String(playSongData?.artists || "未知歌手");
@@ -346,7 +367,7 @@ export const getPlayerInfoObj = (
   // 专辑
   const album =
     playSongData.type === "radio"
-      ? "播客电台"
+      ? playSongData.dj?.name || "未知播客"
       : typeof playSongData.album === "object"
         ? playSongData.album.name
         : String(playSongData.album || "未知专辑");
@@ -364,4 +385,42 @@ export const getPlayerInfo = (song?: SongType, sep: string = "/"): string | null
   const info = getPlayerInfoObj(song, sep);
   if (!info) return null;
   return `${info.name} - ${info.artist}`;
+};
+
+/**
+ * 检测所有输入行的共同最小缩进，将其从每一行中删除，如果第一行和最后一行是空白行，也将其删除
+ * @param string 字符串
+ * @param lineSplit 分割时的换行符
+ * @param lineJoin 连接时的换行符
+ * @returns 去除缩进后的字符串
+ */
+export const trimIndentString = (
+  string: string,
+  lineSplit: string = "\n",
+  lineJoin: string = lineSplit,
+): string => {
+  if (!string) return "";
+  const lines = string.split(lineSplit);
+  // 删除第一行和最后一行的空白行
+  const relevantLines = lines.filter(
+    (line, index) => (index !== 0 && index !== lines.length - 1) || line.trim() !== "",
+  );
+  // 移除每行的最小缩进
+  const minIndent = relevantLines
+    .filter((line) => line.trim() !== "")
+    .map((line) => line.match(/^\s*/)?.[0].length ?? 0)
+    .reduce((min, indent) => Math.min(min, indent), Infinity);
+  const trimmedLines = relevantLines.map((line) => line.slice(minIndent));
+  return trimmedLines.join(lineJoin);
+};
+
+/**
+ * 设置中多行描述的模板标签功能
+ * 删除最小公共缩进并将换行符转换为 HTML <br> 标记
+ *
+ * @see trimIndentString
+ */
+export const descMultiline = (strings: TemplateStringsArray, ...values: any[]): string => {
+  const fullString = String.raw(strings, ...values);
+  return trimIndentString(fullString, "\n", "<br>");
 };

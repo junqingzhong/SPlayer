@@ -1,4 +1,3 @@
-
 import axios from "axios";
 import type { SongUrlResult } from "./unblock";
 import { filterByDuration } from "./index";
@@ -43,9 +42,9 @@ const qqSearch = async (keyword: string, cookie: string = "") => {
 const qqTrack = async (songmid: string, cookie: string = ""): Promise<string | null> => {
   const formats = [
     ["F000", ".flac"], // FLAC
-    ["M800", ".mp3"],  // 320K
-    ["M500", ".mp3"],  // 128K
-    [null, null],      // 备用
+    ["M800", ".mp3"], // 320K
+    ["M500", ".mp3"], // 128K
+    [null, null], // 备用
   ];
   const headers = {
     origin: "http://y.qq.com/",
@@ -88,7 +87,10 @@ const qqTrack = async (songmid: string, cookie: string = ""): Promise<string | n
 };
 
 // 入口：通过关键词和cookie获取 QQ 歌曲高音质直链
-export const getQQSongUrl = async (keyword: string, cookie: string = ""): Promise<SongUrlResult> => {
+export const getQQSongUrl = async (
+  keyword: string,
+  cookie: string = "",
+): Promise<SongUrlResult> => {
   try {
     const list = await qqSearch(keyword, cookie);
     if (!list || list.length === 0) return { code: 404, url: null };
@@ -100,7 +102,7 @@ export const getQQSongUrl = async (keyword: string, cookie: string = ""): Promis
         return filterByDuration({
           code: 200,
           url: playUrl,
-          duration: song.interval ? song.interval * 1000 : undefined // 转换为毫秒
+          duration: song.interval ? song.interval * 1000 : undefined, // 转换为毫秒
         });
       }
     }

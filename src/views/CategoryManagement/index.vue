@@ -32,10 +32,21 @@
     </div>
 
     <!-- 添加/编辑分类弹窗 -->
-    <n-modal v-model:show="showAddModal" preset="card" :title="isEditing ? '编辑分类' : '添加分类'" class="category-modal"
-      :mask-closable="false">
-      <n-form ref="formRef" :model="categoryForm" :rules="rules" label-placement="left" label-width="auto"
-        require-mark-placement="right-hanging">
+    <n-modal
+      v-model:show="showAddModal"
+      preset="card"
+      :title="isEditing ? '编辑分类' : '添加分类'"
+      class="category-modal"
+      :mask-closable="false"
+    >
+      <n-form
+        ref="formRef"
+        :model="categoryForm"
+        :rules="rules"
+        label-placement="left"
+        label-width="auto"
+        require-mark-placement="right-hanging"
+      >
         <n-form-item label="名称" path="name">
           <n-input v-model:value="categoryForm.name" placeholder="请输入分类名称" />
         </n-form-item>
@@ -43,17 +54,27 @@
       <template #footer>
         <n-space justify="end">
           <n-button @click="showAddModal = false">取消</n-button>
-          <n-button type="primary" @click="submitCategory" :loading="submitting">
-            确定
-          </n-button>
+          <n-button type="primary" @click="submitCategory" :loading="submitting"> 确定 </n-button>
         </n-space>
       </template>
     </n-modal>
 
     <!-- 删除确认弹窗 -->
-    <n-modal v-model:show="showDeleteModal" preset="dialog" title="确认删除" content="确定要删除这个分类吗？此操作不可恢复。"
-      positive-text="确定" negative-text="取消" @positive-click="confirmDelete"
-      @negative-click="() => { showDeleteModal = false; deleteId = null; }" />
+    <n-modal
+      v-model:show="showDeleteModal"
+      preset="dialog"
+      title="确认删除"
+      content="确定要删除这个分类吗？此操作不可恢复。"
+      positive-text="确定"
+      negative-text="取消"
+      @positive-click="confirmDelete"
+      @negative-click="
+        () => {
+          showDeleteModal = false;
+          deleteId = null;
+        }
+      "
+    />
   </div>
 </template>
 
@@ -80,46 +101,50 @@ const hasToken = ref(false);
 
 // 分页设置
 const pagination = {
-  pageSize: 10
+  pageSize: 10,
 };
 
 // 表格列定义
 const columns: DataTableColumns = [
   {
-    title: '名称',
-    key: 'name',
+    title: "名称",
+    key: "name",
     width: 200,
-    resizable: true
+    resizable: true,
   },
   {
-    title: '操作',
-    key: 'actions',
+    title: "操作",
+    key: "actions",
     width: 200,
     render(row) {
-      return h(NSpace, {}, {
-        default: () => [
-          h(
-            NButton,
-            {
-              size: 'small',
-              type: 'info',
-              onClick: () => editCategory(row.name as string) // 传递分类名称
-            },
-            { default: () => '编辑' }
-          ),
-          h(
-            NButton,
-            {
-              size: 'small',
-              type: 'error',
-              onClick: () => deleteCategory(row.name as string) // 传递分类名称
-            },
-            { default: () => '删除' }
-          )
-        ]
-      });
-    }
-  }
+      return h(
+        NSpace,
+        {},
+        {
+          default: () => [
+            h(
+              NButton,
+              {
+                size: "small",
+                type: "info",
+                onClick: () => editCategory(row.name as string), // 传递分类名称
+              },
+              { default: () => "编辑" },
+            ),
+            h(
+              NButton,
+              {
+                size: "small",
+                type: "error",
+                onClick: () => deleteCategory(row.name as string), // 传递分类名称
+              },
+              { default: () => "删除" },
+            ),
+          ],
+        },
+      );
+    },
+  },
 ];
 
 // 表单数据
@@ -143,7 +168,6 @@ const checkToken = () => {
   return autoLoginCookie;
 };
 
-
 /**
  * @description 获取分类列表
  * 从用户设置中获取分类数据
@@ -161,8 +185,8 @@ const fetchCategories = async () => {
 
     const response = await axios.get(apiUrl, {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     if (response.data.status === 200 && response.data.data.length > 0) {
@@ -203,8 +227,8 @@ const addCategory = async () => {
     // 获取当前用户的settings
     const currentUserResponse = await axios.get(`${activitiesApiBaseUrl}/users?current_info=true`, {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     let currentSettings = {};
@@ -226,14 +250,14 @@ const addCategory = async () => {
     const updatedCategories = [...existingCategories, categoryForm.value.name];
 
     const payload = {
-      settings: { ...currentSettings, categories: updatedCategories }
+      settings: { ...currentSettings, categories: updatedCategories },
     };
 
     const response = await axios.put(apiUrl, payload, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
 
     if (response.data.status === 200) {
@@ -241,8 +265,7 @@ const addCategory = async () => {
       await fetchCategories();
       resetForm();
       return true;
-    }
-    else {
+    } else {
       message.error(response.data.data.message || "添加分类失败");
       return false;
     }
@@ -276,8 +299,8 @@ const updateCategory = async () => {
     // 获取当前用户的settings
     const currentUserResponse = await axios.get(`${activitiesApiBaseUrl}/users?current_info=true`, {
       headers: {
-        'Authorization': `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     let currentSettings = {};
@@ -295,7 +318,10 @@ const updateCategory = async () => {
     const index = existingCategories.indexOf(oldName);
     if (index !== -1) {
       // 检查新名称是否已存在（排除当前正在编辑的旧名称）
-      if (existingCategories.includes(categoryForm.value.name) && categoryForm.value.name !== oldName) {
+      if (
+        existingCategories.includes(categoryForm.value.name) &&
+        categoryForm.value.name !== oldName
+      ) {
         message.warning("新分类名称已存在");
         return false;
       }
@@ -303,14 +329,14 @@ const updateCategory = async () => {
     }
 
     const payload = {
-      settings: { ...currentSettings, categories: existingCategories }
+      settings: { ...currentSettings, categories: existingCategories },
     };
 
     const response = await axios.put(apiUrl, payload, {
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
     });
 
     if (response.data.status === 200) {
@@ -318,8 +344,7 @@ const updateCategory = async () => {
       await fetchCategories();
       resetForm();
       return true;
-    }
-    else {
+    } else {
       message.error(response.data.data.message || "更新分类失败");
       return false;
     }
@@ -408,11 +433,14 @@ const confirmDelete = async () => {
       const apiUrl = `${activitiesApiBaseUrl}/user/${userId.value}`;
 
       // 获取当前用户的settings
-      const currentUserResponse = await axios.get(`${activitiesApiBaseUrl}/users?current_info=true`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const currentUserResponse = await axios.get(
+        `${activitiesApiBaseUrl}/users?current_info=true`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
       let currentSettings = {};
       if (currentUserResponse.data.status === 200 && currentUserResponse.data.data.length > 0) {
         currentSettings = currentUserResponse.data.data[0].settings || {};
@@ -423,17 +451,19 @@ const confirmDelete = async () => {
         existingCategories = [];
       }
 
-      const updatedCategories = existingCategories.filter((name: string) => name !== deleteId.value);
+      const updatedCategories = existingCategories.filter(
+        (name: string) => name !== deleteId.value,
+      );
 
       const payload = {
-        settings: { ...currentSettings, categories: updatedCategories }
+        settings: { ...currentSettings, categories: updatedCategories },
       };
 
       const response = await axios.put(apiUrl, payload, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
       if (response.data.status === 200) {
@@ -456,9 +486,12 @@ onMounted(() => {
 });
 
 // 监听token变化，重新获取分类列表
-watch(() => useSettingStore().autoLoginCookie, () => {
-  fetchCategories();
-});
+watch(
+  () => useSettingStore().autoLoginCookie,
+  () => {
+    fetchCategories();
+  },
+);
 // 移除未使用的watch
 </script>
 

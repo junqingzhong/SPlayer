@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from "electron";
+import { MpvService } from "../services/MpvService";
 import { useStore } from "../store";
 import { isDev } from "../utils/config";
 import { initThumbar } from "../thumbar";
@@ -6,6 +7,7 @@ import { processProtocolFromCommand } from "../utils/protocol";
 import mainWindow from "../windows/main-window";
 import loadWindow from "../windows/load-window";
 import loginWindow from "../windows/login-window";
+import { processLog } from "../logger";
 
 /** 是否已首次启动 */
 let isFirstLaunch = false;
@@ -121,6 +123,14 @@ const initWindowsIpc = (): void => {
     win.focus();
   });
 
+  // 显示主窗口
+  ipcMain.on("win-show-main", () => {
+    const mainWin = mainWindow.getWin();
+    if (!mainWin) return;
+    mainWin.show();
+    mainWin.focus();
+  });
+
   // 重载
   ipcMain.on("win-reload", (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -129,15 +139,27 @@ const initWindowsIpc = (): void => {
   });
 
   // 重启
-  ipcMain.on("win-restart", () => {
+  ipcMain.on("win-restart", async () => {
+    // 先停止 MPV 服务，避免占用资源
+    const mpvService = MpvService.getInstance();
+    try {
+      await mpvService.stop();
+      processLog.info("MPV 进程已停止");
+    } catch (err) {
+      processLog.error("停止 MPV 进程失败", err);
+    } finally {
+      mpvService.terminate();
+    }
+
+    // 重启应用
     app.relaunch();
-    app.quit();
+    app.exit(0);
   });
 
   // 向主窗口发送事件
   ipcMain.on("send-to-main-win", (_, eventName, ...args) => {
     const mainWin = mainWindow.getWin();
-    if (!mainWin || mainWin.isDestroyed() || mainWin.webContents.isDestroyed()) return;
+    if (!mainWin) return;
     mainWin.webContents.send(eventName, ...args);
   });
 
@@ -149,11 +171,10 @@ const initWindowsIpc = (): void => {
   const updateProgressBar = () => {
     const mainWin = mainWindow.getWin();
     if (!mainWin) return;
-
     if (currentProgress < 0) {
       mainWin.setProgressBar(-1);
     } else {
-      mainWin.setProgressBar(currentProgress, { mode: currentMode as any });
+      mainWin.setProgressBar(currentProgress, { mode: currentMode });
     }
   };
 

@@ -6,7 +6,10 @@
 // 音频管理器接口
 export interface AudioManager {
   // 播放控制
-  play(src?: string, options?: { fadeIn?: boolean; autoPlay?: boolean; fadeDuration?: number }): Promise<void>;
+  play(
+    src?: string,
+    options?: { fadeIn?: boolean; autoPlay?: boolean; fadeDuration?: number },
+  ): Promise<void>;
   pause(options?: { fadeOut?: boolean; fadeDuration?: number }): void;
   stop(): void;
   seek(time: number): void;
@@ -50,11 +53,11 @@ class SimpleAudioManager implements AudioManager {
   }
 
   private setupEventListeners() {
-    this.audio.addEventListener('play', () => this.emit('play'));
-    this.audio.addEventListener('pause', () => this.emit('pause'));
-    this.audio.addEventListener('ended', () => this.emit('ended'));
-    this.audio.addEventListener('timeupdate', () => this.emit('timeupdate'));
-    this.audio.addEventListener('loadedmetadata', () => this.emit('loadedmetadata'));
+    this.audio.addEventListener("play", () => this.emit("play"));
+    this.audio.addEventListener("pause", () => this.emit("pause"));
+    this.audio.addEventListener("ended", () => this.emit("ended"));
+    this.audio.addEventListener("timeupdate", () => this.emit("timeupdate"));
+    this.audio.addEventListener("loadedmetadata", () => this.emit("loadedmetadata"));
   }
 
   private emit(event: string, ...args: any[]) {
@@ -77,7 +80,10 @@ class SimpleAudioManager implements AudioManager {
     }
   }
 
-  async play(src?: string, options?: { fadeIn?: boolean; autoPlay?: boolean; fadeDuration?: number }): Promise<void> {
+  async play(
+    src?: string,
+    options?: { fadeIn?: boolean; autoPlay?: boolean; fadeDuration?: number },
+  ): Promise<void> {
     if (src) {
       this.audio.src = src;
     }
@@ -158,12 +164,12 @@ class SimpleAudioManager implements AudioManager {
 
   setSinkId(device: string): void {
     // 简单的实现，实际可能需要更复杂的处理
-    console.log('Setting sink id:', device);
+    console.log("Setting sink id:", device);
   }
 
   setFilterGain(index: number, value: number): void {
     // 简单的实现，实际可能需要Web Audio API
-    console.log('Setting filter gain:', index, value);
+    console.log("Setting filter gain:", index, value);
   }
 
   getFrequencyData(): Uint8Array {

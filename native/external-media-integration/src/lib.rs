@@ -6,10 +6,7 @@
 
 use napi::{
     Result,
-    bindgen_prelude::{
-        Function,
-        Unknown,
-    },
+    bindgen_prelude::{Function, Unknown},
     threadsafe_function::UnknownReturnValue,
 };
 use napi_derive::napi;
@@ -20,13 +17,8 @@ mod model;
 mod sys_media;
 
 use model::{
-    DiscordConfigPayload,
-    MetadataParam,
-    MetadataPayload,
-    PlayModePayload,
-    PlayStatePayload,
-    SystemMediaEvent,
-    TimelinePayload,
+    DiscordConfigPayload, MetadataParam, MetadataPayload, PlayModePayload, PlayStatePayload,
+    SystemMediaEvent, TimelinePayload,
 };
 
 /// 初始化插件
@@ -133,6 +125,26 @@ pub fn update_metadata(payload: MetadataParam) {
 pub fn update_play_state(payload: PlayStatePayload) {
     discord::update_play_state(payload);
     sys_media::get_platform_controls().update_playback_status(payload);
+}
+
+/// 更新播放速率
+///
+/// ### 备注
+///
+/// 只会更新媒体控件的信息，不会更新 Discord RPC 上的信息
+#[napi]
+pub fn update_playback_rate(rate: f64) {
+    sys_media::get_platform_controls().update_playback_rate(rate);
+}
+
+/// 更新音量
+///
+/// ### 备注
+///
+/// 只会更新媒体控件的信息，不会更新 Discord RPC 上的信息
+#[napi]
+pub fn update_volume(volume: f64) {
+    sys_media::get_platform_controls().update_volume(volume);
 }
 
 /// 更新进度信息

@@ -7,7 +7,6 @@
         v-model:show="showQualityPopover"
         :value="currentPlayingLevel"
         :options="qualityOptions"
-        :class="{ player: statusStore.showFullPlayer }"
         trigger="manual"
         placement="top"
         @update:value="handleQualitySelect"
@@ -30,13 +29,7 @@
           </n-tag>
         </div>
       </n-popselect>
-      <n-popover
-        v-else
-        :class="{ player: statusStore.showFullPlayer }"
-        trigger="hover"
-        placement="top"
-        :show-arrow="false"
-      >
+      <n-popover v-else trigger="hover" placement="top" :show-arrow="false">
         <template #trigger>
           <n-tag class="quality-tag hidden" type="primary" size="small">
             {{ getQualityName(statusStore.songQuality) }}
@@ -46,16 +39,21 @@
       </n-popover>
     </template>
     <!-- 桌面歌词 -->
-    <n-badge v-if="isElectron" value="ON" :show="statusStore.showDesktopLyric">
+    <n-badge
+      v-if="isElectron && settingStore.fullscreenPlayerElements.desktopLyric"
+      value="ON"
+      :show="statusStore.showDesktopLyric"
+      class="hidden"
+    >
       <div class="menu-icon hidden" @click.stop="player.toggleDesktopLyric()">
         <SvgIcon name="DesktopLyric2" :depth="statusStore.showDesktopLyric ? 1 : 3" />
       </div>
     </n-badge>
     <!-- 其他控制 -->
     <n-dropdown
+      v-if="settingStore.fullscreenPlayerElements.moreSettings"
       :options="controlsOptions"
       :show-arrow="false"
-      :class="{ player: statusStore.showFullPlayer }"
       @select="handleControls"
     >
       <div class="menu-icon hidden">
@@ -63,11 +61,7 @@
       </div>
     </n-dropdown>
     <!-- 音量 -->
-    <n-popover
-      :show-arrow="false"
-      :style="{ padding: 0 }"
-      :class="{ player: statusStore.showFullPlayer }"
-    >
+    <n-popover :show-arrow="false" :style="{ padding: 0 }">
       <template #trigger>
         <div class="menu-icon hidden" @click.stop="player.toggleMute" @wheel="player.setVolume">
           <SvgIcon :name="statusStore.playVolumeIcon" />
@@ -108,7 +102,8 @@ import { usePlayerController } from "@/core/player/PlayerController";
 import { useDataStore, useSettingStore, useStatusStore, useMusicStore } from "@/stores";
 import { isElectron } from "@/utils/env";
 import { renderIcon } from "@/utils/helper";
-import { openAutoClose, openChangeRate, openEqualizer } from "@/utils/modal";
+import { openAutoClose, openChangeRate, openEqualizer, openABLoop } from "@/utils/modal";
+import { useAudioManager } from "@/core/player/AudioManager";
 import type { DropdownOption } from "naive-ui";
 import { useQualityControl } from "@/composables/useQualityControl";
 
@@ -150,12 +145,14 @@ const handleClickOutside = (e: MouseEvent) => {
 };
 
 // 更多功能
+const audioManager = useAudioManager();
+
 const controlsOptions = computed<DropdownOption[]>(() => [
   {
     label: "均衡器",
     key: "equalizer",
     icon: renderIcon("Eq"),
-    disabled: settingStore.playbackEngine === "mpv",
+    disabled: !audioManager.capabilities.supportsEqualizer,
   },
   {
     label: "自动关闭",
@@ -163,9 +160,14 @@ const controlsOptions = computed<DropdownOption[]>(() => [
     icon: renderIcon("TimeAuto"),
   },
   {
+    label: "AB 循环",
+    key: "abLoop",
+    icon: renderIcon("Repeat"),
+  },
+  {
     label: "播放速度",
     key: "rate",
-    disabled: settingStore.playbackEngine === "mpv",
+    disabled: !audioManager.capabilities.supportsRate,
     icon: renderIcon("PlayRate"),
   },
 ]);
@@ -174,14 +176,17 @@ const controlsOptions = computed<DropdownOption[]>(() => [
 const handleControls = (key: string) => {
   switch (key) {
     case "equalizer":
-      if (settingStore.playbackEngine === "mpv") {
-        window.$message.warning("MPV 引擎不支持均衡器功能");
+      if (!audioManager.capabilities.supportsEqualizer) {
+        window.$message.warning("当前引擎不支持均衡器功能");
         return;
       }
       openEqualizer();
       break;
     case "autoClose":
       openAutoClose();
+      break;
+    case "abLoop":
+      openABLoop();
       break;
     case "rate":
       openChangeRate();
@@ -200,6 +205,12 @@ watch(
     }
   },
 );
+
+// 监听 VIP 状态或设置变化，重新加载音质
+watch([() => dataStore.userData.vipType, () => settingStore.disableAiAudio], async () => {
+  statusStore.availableQualities = [];
+  await loadQualities();
+});
 </script>
 
 <style scoped lang="scss">
@@ -266,7 +277,6 @@ watch(
   .slider-num {
     margin-top: 8px;
     font-size: 13px;
-    color: var(--color);
     white-space: nowrap;
   }
 }

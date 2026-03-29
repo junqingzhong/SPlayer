@@ -146,8 +146,8 @@ const handleSearchUpdate = (val: string) => {
 
 // 播放全部歌曲
 const playAllSongs = useDebounceFn(() => {
-  if (!detailData.value || !listData.value?.length) return;
-  playAllSongsAction(listData.value);
+  if (!detailData.value || !displayData.value?.length) return;
+  playAllSongsAction(displayData.value);
 }, 300);
 
 onBeforeRouteUpdate((to) => {

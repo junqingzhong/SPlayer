@@ -87,7 +87,6 @@ const handleUpdate = (value: boolean) => {
 </script>
 
 <style scoped lang="scss">
-
 .auto-close {
   width: 100%;
   .open {

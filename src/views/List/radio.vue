@@ -29,42 +29,43 @@
         </n-button>
       </template>
     </ListDetail>
-    <Transition name="fade" mode="out-in">
-      <!-- 歌曲列表 -->
-      <template v-if="currentTab === 'songs'">
-        <SongList
-          v-if="!searchValue || searchData?.length"
-          :data="detailData?.id === radioId ? displayData : []"
-          :loading="loading"
-          :height="songListHeight"
-          :radioId="radioId"
-          :doubleClickAction="searchData?.length ? 'add' : 'all'"
-          type="radio"
-          @scroll="handleListScroll"
-        />
-        <n-empty
-          v-else
-          :description="`搜不到关于 ${searchValue} 的任何歌曲呀`"
-          style="margin-top: 60px"
-          size="large"
-        >
-          <template #icon>
-            <SvgIcon name="SearchOff" />
-          </template>
-        </n-empty>
-      </template>
-      <!-- 评论 -->
-      <template v-else>
-        <ListComment :id="radioId" :type="7" :height="songListHeight" />
-      </template>
-    </Transition>
+    <!-- 歌曲列表 -->
+    <template v-if="currentTab === 'songs'">
+      <SongList
+        v-if="!searchValue || searchData?.length"
+        :data="detailData?.id === radioId ? displayData : []"
+        :loading="loading"
+        :height="songListHeight"
+        :radioId="radioId"
+        :doubleClickAction="searchData?.length ? 'add' : 'all'"
+        type="radio"
+        @scroll="handleListScroll"
+      />
+      <n-empty
+        v-else
+        :description="`搜不到关于 ${searchValue} 的任何歌曲呀`"
+        style="margin-top: 60px"
+        size="large"
+      >
+        <template #icon>
+          <SvgIcon name="SearchOff" />
+        </template>
+      </n-empty>
+    </template>
+    <!-- 评论 -->
+    <ListComment
+      v-show="currentTab === 'comments'"
+      :id="radioId"
+      :type="7"
+      :height="songListHeight"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { DropdownOption, MessageReactive } from "naive-ui";
 import { formatCoverList, formatSongsList } from "@/utils/format";
-import { renderIcon, copyData } from "@/utils/helper";
+import { renderIcon, copyData, getShareUrl } from "@/utils/helper";
 import { useDataStore } from "@/stores";
 import { radioAllProgram, radioDetail } from "@/api/radio";
 import { useListDetail } from "@/composables/List/useListDetail";
@@ -169,8 +170,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     label: "复制分享链接",
     key: "copy",
     props: {
-      onClick: () =>
-        copyData(`https://music.163.com/#/djradio?id=${radioId.value}`, "已复制分享链接到剪贴板"),
+      onClick: () => copyData(getShareUrl("djradio", radioId.value), "已复制分享链接到剪贴板"),
     },
     icon: renderIcon("Share"),
   },
@@ -211,8 +211,9 @@ const getRadioDetail = async (id: number, refresh: boolean = false) => {
   }
 
   // 获取播客详情
-  if (detailData.value?.id !== id) {
+  if (detailData.value?.id !== id || refresh) {
     setDetailData(null);
+    setListData([]);
   }
   const detail = await radioDetail(id);
   if (currentRequestId.value !== id) return;
@@ -244,6 +245,8 @@ const getRadioAllProgram = async (id: number, count: number) => {
   setLoading(true);
   // 加载提示
   if (count > 500) loadingMsgShow();
+  // 强制清空列表，防止重复
+  setListData([]);
   // 循环获取
   let offset: number = 0;
   const limit: number = 500;
@@ -310,6 +313,7 @@ const loadingMsgShow = (show: boolean = true) => {
 onBeforeRouteUpdate((to) => {
   const id = Number(to.query.id as string);
   if (id) {
+    currentTab.value = "songs";
     oldRadioId.value = id;
     getRadioDetail(id);
   }

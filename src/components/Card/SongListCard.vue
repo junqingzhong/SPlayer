@@ -7,7 +7,7 @@
     </n-flex>
     <div class="content">
       <!-- 封面 -->
-      <div class="cover">
+      <div v-if="!hiddenCover" class="cover">
         <n-image v-if="cover" :src="cover" preview-disabled lazy @load="coverLoaded">
           <template #placeholder>
             <div class="cover-loading">
@@ -35,7 +35,7 @@
         <SvgIcon :size="36" name="Play" class="play" />
       </div>
       <!-- 信息 -->
-      <div v-if="size === 'small'" class="info">
+      <div v-if="size === 'small'" class="info" :class="{ center: hiddenCover }">
         <n-text v-if="typeof title === 'string'" class="name text-hidden">
           {{ title }}
         </n-text>
@@ -65,6 +65,7 @@ const props = defineProps<{
   loading?: boolean;
   height?: number;
   cover?: string;
+  hiddenCover?: boolean;
 }>();
 
 // 列表前三首
@@ -126,6 +127,10 @@ const songList = computed(() => sampleSize(props.data, 3));
       display: flex;
       flex-direction: column;
       justify-content: space-evenly;
+      &.center {
+        align-items: center;
+        text-align: center;
+      }
       .name {
         font-size: 18px;
         font-weight: bold;

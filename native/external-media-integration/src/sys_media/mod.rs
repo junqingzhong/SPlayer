@@ -3,18 +3,11 @@ use std::sync::OnceLock;
 use anyhow::Result;
 use napi::{
     Status,
-    threadsafe_function::{
-        ThreadsafeFunction,
-        UnknownReturnValue,
-    },
+    threadsafe_function::{ThreadsafeFunction, UnknownReturnValue},
 };
 
 use crate::model::{
-    MetadataPayload,
-    PlayModePayload,
-    PlayStatePayload,
-    SystemMediaEvent,
-    TimelinePayload,
+    MetadataPayload, PlayModePayload, PlayStatePayload, SystemMediaEvent, TimelinePayload,
 };
 
 pub type SystemMediaThreadsafeFunction =
@@ -52,6 +45,12 @@ pub trait SystemMediaControls: Send + Sync {
 
     /// 更新播放状态（播放/暂停）
     fn update_playback_status(&self, payload: PlayStatePayload);
+
+    /// 更新播放速率
+    fn update_playback_rate(&self, rate: f64);
+    
+    /// 更新音量
+    fn update_volume(&self, volume: f64);
 
     /// 更新进度条/时间轴
     ///
@@ -119,6 +118,8 @@ impl SystemMediaControls for NoOpControls {
     }
     fn update_metadata(&self, _: MetadataPayload) {}
     fn update_playback_status(&self, _: PlayStatePayload) {}
+    fn update_playback_rate(&self, _: f64) {}
+    fn update_volume(&self, _: f64) {}
     fn update_timeline(&self, _: TimelinePayload) {}
     fn update_play_mode(&self, _: PlayModePayload) {}
 }

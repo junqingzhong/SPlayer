@@ -14,23 +14,23 @@
  * @param mode - 格式化模式：'HH:MM:SS' 或 'MM:SS'
  * @returns 格式化后的时间字符串
  */
-export function formatTime(seconds: number, mode: 'HH:MM:SS' | 'MM:SS' = 'MM:SS'): string {
-  if (isNaN(seconds) || seconds < 0) return '00:00';
+export function formatTime(seconds: number, mode: "HH:MM:SS" | "MM:SS" = "MM:SS"): string {
+  if (isNaN(seconds) || seconds < 0) return "00:00";
 
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);
 
-  if (mode === 'HH:MM:SS') {
-    return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
+  if (mode === "HH:MM:SS") {
+    return [h, m, s].map((v) => v.toString().padStart(2, "0")).join(":");
   }
 
   // MM:SS 模式：如果超过1小时，显示为 60+:MM:SS
   if (h > 0) {
-    return `${h * 60 + m}:${s.toString().padStart(2, '0')}`;
+    return `${h * 60 + m}:${s.toString().padStart(2, "0")}`;
   }
 
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
 /**
@@ -57,9 +57,9 @@ export function secondsToMilliseconds(seconds: number): number {
  * @returns 秒数
  */
 export function parseTime(timeStr: string): number {
-  if (!timeStr || typeof timeStr !== 'string') return 0;
+  if (!timeStr || typeof timeStr !== "string") return 0;
 
-  const parts = timeStr.split(':');
+  const parts = timeStr.split(":");
   if (parts.length === 0) return 0;
 
   let seconds = 0;

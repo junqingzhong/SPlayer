@@ -112,5 +112,3 @@ export const countryList = () => {
     url: "/countries/code/list",
   });
 };
-
-

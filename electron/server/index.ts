@@ -80,7 +80,7 @@ const initAppServer = async () => {
     server.register(initQQMusicAPI, { prefix: "/api" });
     // 启动端口
     const port = await getServerPort();
-    await server.listen({ port });
+    await server.listen({ port, host: "127.0.0.1" });
     serverLog.info(`🌐 Starting AppServer on port ${port}`);
     return server;
   } catch (error) {

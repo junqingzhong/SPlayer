@@ -64,7 +64,6 @@
 
           <!-- 主控制按钮 -->
           <div class="control-section">
-
             <div class="placeholder"></div>
 
             <!-- 上一曲 -->
@@ -135,7 +134,7 @@
           <div class="lyric-info">
             <div class="name text-hidden">
               {{
-                settingStore.hideLyricBrackets
+                settingStore.hideBracketedContent
                   ? removeBrackets(musicStore.playSong.name)
                   : musicStore.playSong.name
               }}

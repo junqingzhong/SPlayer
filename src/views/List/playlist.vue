@@ -1,6 +1,6 @@
 <!-- 歌单列表 -->
 <template>
-  <div class="playlist-list" >
+  <div class="playlist-list">
     <ListDetail
       :detail-data="detailData?.id === playlistId ? detailData : null"
       :list-data="detailData?.id === playlistId ? listData : []"
@@ -44,35 +44,38 @@
         </n-button>
       </template>
     </ListDetail>
-    <Transition name="fade" mode="out-in">
-      <!-- 歌曲列表 -->
-      <template v-if="currentTab === 'songs'">
-        <SongList
-          v-if="!searchValue || searchData?.length"
-          :data="detailData?.id === playlistId ? displayData : []"
-          :loading="loading"
-          :height="songListHeight"
-          :playListId="playlistId"
-          :doubleClickAction="searchData?.length ? 'add' : 'all'"
-          @scroll="handleListScroll"
-          @removeSong="removeSong"
-        />
-        <n-empty
-          v-else
-          :description="`搜不到关于 ${searchValue} 的任何歌曲呀`"
-          style="margin-top: 60px"
-          size="large"
-        >
-          <template #icon>
-            <SvgIcon name="SearchOff" />
-          </template>
-        </n-empty>
-      </template>
-      <!-- 评论 -->
-      <template v-else>
-        <ListComment :id="playlistId" :type="2" :height="songListHeight" />
-      </template>
-    </Transition>
+    <!-- 歌曲列表 -->
+    <template v-if="currentTab === 'songs'">
+      <SongList
+        v-if="!searchValue || searchData?.length"
+        :data="detailData?.id === playlistId ? displayData : []"
+        :loading="loading"
+        :height="songListHeight"
+        :playListId="playlistId"
+        :draggable="canDragSort"
+        :doubleClickAction="searchData?.length ? 'add' : 'all'"
+        @scroll="handleListScroll"
+        @removeSong="removeSong"
+        @reorder="handleReorder"
+      />
+      <n-empty
+        v-else
+        :description="`搜不到关于 ${searchValue} 的任何歌曲呀`"
+        style="margin-top: 60px"
+        size="large"
+      >
+        <template #icon>
+          <SvgIcon name="SearchOff" />
+        </template>
+      </n-empty>
+    </template>
+    <!-- 评论 -->
+    <ListComment
+      v-show="currentTab === 'comments'"
+      :id="playlistId"
+      :type="2"
+      :height="songListHeight"
+    />
   </div>
 </template>
 
@@ -85,11 +88,12 @@ import {
   playlistAllSongs,
   deletePlaylist,
   updatePlaylistPrivacy,
+  songOrderUpdate,
 } from "@/api/playlist";
 import { formatCoverList, formatSongsList } from "@/utils/format";
-import { renderIcon, copyData } from "@/utils/helper";
+import { renderIcon, copyData, getShareUrl } from "@/utils/helper";
 import { isLogin, toLikePlaylist, updateUserLikePlaylist } from "@/utils/auth";
-import { useDataStore, useLocalStore } from "@/stores";
+import { useDataStore, useLocalStore, useStatusStore } from "@/stores";
 import { openBatchList, openUpdatePlaylist } from "@/utils/modal";
 import { useListDetail } from "@/composables/List/useListDetail";
 import { useListSearch } from "@/composables/List/useListSearch";
@@ -100,6 +104,7 @@ import { useListDataCache, type ListCacheData } from "@/composables/List/useList
 const router = useRouter();
 const dataStore = useDataStore();
 const localStore = useLocalStore();
+const statusStore = useStatusStore();
 
 const {
   detailData,
@@ -136,7 +141,7 @@ const currentTab = ref<"songs" | "comments">("songs");
 
 // 是否为本地歌单
 const isLocalPlaylist = computed(() => {
-  return playlistId.value.toString().length === 16;
+  return localStore.isLocalPlaylist(playlistId.value);
 });
 
 // 是否为用户歌单
@@ -148,6 +153,11 @@ const isUserPlaylist = computed(() => {
 // 是否处于收藏歌单
 const isLikePlaylist = computed(() => {
   return dataStore.userLikeData.playlists.some((playlist) => playlist.id === detailData.value?.id);
+});
+
+// 是否可拖拽排序（用户自建歌单 + 默认排序 + 非搜索模式）
+const canDragSort = computed(() => {
+  return isUserPlaylist.value && !searchValue.value && statusStore.listSortField === "default";
 });
 
 // 是否处于歌单页面
@@ -228,11 +238,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     key: "copy",
     show: !isLocalPlaylist.value,
     props: {
-      onClick: () =>
-        copyData(
-          `https://music.163.com/#/playlist?id=${playlistId.value}`,
-          "已复制分享链接到剪贴板",
-        ),
+      onClick: () => copyData(getShareUrl("playlist", playlistId.value), "已复制分享链接到剪贴板"),
     },
     icon: renderIcon("Share"),
   },
@@ -263,12 +269,30 @@ const getPlaylistDetail = async (
   // 清空数据
   clearSearch();
   if (!refresh && detailData.value?.id !== id) resetPlaylistData(getList);
+  // 等待本地歌单加载
+  if (id.toString().length === 16 && !localStore.isInitialized) {
+    try {
+      await localStore.readLocalPlaylists();
+    } catch (e) {
+      window.$message.error("获取本地歌单失败");
+      console.error("Failed to init local playlists", e);
+    }
+  }
   // 判断是否为本地歌单，本地歌单 ID 为 16 位
-  const isLocal = id.toString().length === 16;
+  const isLocal = localStore.isLocalPlaylist(id);
   // 本地歌单
   if (isLocal) handleLocalPlaylist(id);
   // 在线歌单
-  else await handleOnlinePlaylist(id, getList, refresh);
+  else {
+    try {
+      await handleOnlinePlaylist(id, getList, refresh);
+    } catch (error) {
+      console.error("Failed to load playlist", error);
+      window.$message.error("获取歌单详情失败");
+      setLoading(false);
+      router.push("/");
+    }
+  }
 };
 
 // 重置歌单数据
@@ -346,6 +370,7 @@ const handleOnlinePlaylist = async (id: number, getList: boolean, refresh: boole
     // 保存缓存
     saveCache("playlist", id, detailData.value!, songs);
   } else {
+    if (!refresh) setListData([]);
     await getPlaylistAllSongs(id, count, refresh);
   }
   // 检查是否仍然是当前请求的歌单
@@ -432,8 +457,8 @@ const handleTabChange = (value: "songs" | "comments") => {
 
 // 播放全部歌曲
 const playAllSongs = useDebounceFn(() => {
-  if (!detailData.value || !listData.value?.length) return;
-  playAllSongsAction(listData.value, playlistId.value);
+  if (!detailData.value || !displayData.value?.length) return;
+  playAllSongsAction(displayData.value, playlistId.value);
 }, 300);
 
 // 加载提示
@@ -500,11 +525,57 @@ const removeSong = async (ids: number[]) => {
   setListData(listData.value.filter((song) => !ids.includes(song.id)));
 };
 
+// 拖拽重排序
+const handleReorder = async (fromIndex: number, toIndex: number) => {
+  if (fromIndex === toIndex) return;
+
+  // 乐观更新视图
+  const newList = [...listData.value];
+  const [moved] = newList.splice(fromIndex, 1);
+  newList.splice(toIndex, 0, moved);
+  setListData(newList);
+
+  if (isLocalPlaylist.value) {
+    // 本地歌单持久化
+    const success = await localStore.reorderSongsInLocalPlaylist(
+      playlistId.value,
+      fromIndex,
+      toIndex,
+    );
+    if (!success) {
+      window.$message.error("排序失败");
+      handleLocalPlaylist(playlistId.value);
+    }
+  } else {
+    // 在线歌单持久化
+    try {
+      const ids = newList.map((s) => s.id);
+      const result = await songOrderUpdate(playlistId.value, ids);
+      if (result.code !== 200) {
+        window.$message.error("保存排序失败");
+        getPlaylistDetail(playlistId.value, { getList: true, refresh: true });
+      } else {
+        // 更新缓存
+        if (detailData.value) {
+          saveCache("playlist", playlistId.value, detailData.value, newList);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update song order:", error);
+      window.$message.error("保存排序失败，请重试");
+      getPlaylistDetail(playlistId.value, { getList: true, refresh: true });
+    }
+  }
+};
+
 // 编辑歌单
 const updatePlaylist = () => {
   if (!detailData.value || !playlistId.value) return;
-  openUpdatePlaylist(playlistId.value, detailData.value, () =>
-    getPlaylistDetail(playlistId.value, { getList: false, refresh: false }),
+  openUpdatePlaylist(
+    playlistId.value,
+    detailData.value,
+    () => getPlaylistDetail(playlistId.value, { getList: false, refresh: false }),
+    isLocalPlaylist.value,
   );
 };
 
@@ -528,6 +599,7 @@ const openPrivacy = async () => {
 onBeforeRouteUpdate((to) => {
   const id = Number(to.query.id as string);
   if (id) {
+    currentTab.value = "songs";
     oldPlaylistId.value = id;
     getPlaylistDetail(id);
   }

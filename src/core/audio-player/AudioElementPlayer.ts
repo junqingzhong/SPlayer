@@ -5,6 +5,7 @@ import {
   type AudioEventType,
 } from "./BaseAudioPlayer";
 import type { EngineCapabilities } from "./IPlaybackEngine";
+import { useSettingStore } from "@/stores";
 
 /**
  * 基于 HTMLAudioElement 的播放器实现
@@ -50,8 +51,13 @@ export class AudioElementPlayer extends BaseAudioPlayer {
     if (!this.audioCtx || !this.inputNode) return;
 
     try {
-      this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
+      if (!this.sourceNode) {
+        this.sourceNode = this.audioCtx.createMediaElementSource(this.audioElement);
+      } else {
+        this.sourceNode.disconnect();
+      }
 
+      // 连接: Source -> Input
       this.sourceNode.connect(this.inputNode);
     } catch (error) {
       console.error("[AudioElementPlayer] SourceNode 创建失败", error);
@@ -95,6 +101,16 @@ export class AudioElementPlayer extends BaseAudioPlayer {
   }
 
   /**
+   * 停止播放并清理当前音频源
+   * 彻底移除 src，防止旧链接后续继续触发 canplay 等事件
+   */
+  public stop(): void {
+    super.stop();
+    this.audioElement.removeAttribute("src");
+    this.audioElement.load();
+  }
+
+  /**
    * 执行底层 Seek
    * @param time 目标时间（秒）
    */
@@ -111,6 +127,38 @@ export class AudioElementPlayer extends BaseAudioPlayer {
   public setRate(value: number): void {
     this.audioElement.playbackRate = value;
     this.audioElement.defaultPlaybackRate = value;
+  }
+
+  /**
+   * 设置音高偏移
+   * @param semitones 半音偏移量
+   */
+  public setPitchShift(semitones: number): void {
+    // HTML5 Audio preservesPitch property
+    // true (default) = time stretch (pitch constant, speed changes)
+    // false = pitch shift (pitch changes with speed)
+
+    // We want to change pitch without changing speed?
+    // No, standard Web Audio doesn't support independent pitch shift natively without libraries like SoundTouch.
+    // However, if we want to change pitch to match keys:
+    // If we use playbackRate to change pitch, speed also changes.
+    // If preservesPitch = false, playbackRate changes both pitch and speed (like a vinyl record).
+
+    // If the request is to SHIFT pitch while keeping speed constant: NOT SUPPORTED by HTML5 Audio directly.
+    // But if the request is "we have set playbackRate to sync BPM, now we want to correct Pitch":
+    // That's complex.
+
+    // For now, let's assume 'preservesPitch' control.
+    // If semitones != 0, we might want to disable pitch preservation if we are using rate to shift pitch?
+    // Actually, 'preservesPitch' only affects what happens when playbackRate != 1.
+
+    // If we want independent pitch shifting, we can't do it with just AudioElement.
+    // But we can implement the interface method to avoid crashes.
+
+    if ("preservesPitch" in this.audioElement) {
+      const el = this.audioElement as HTMLAudioElement & { preservesPitch: boolean };
+      el.preservesPitch = semitones === 0;
+    }
   }
 
   /**
@@ -149,7 +197,18 @@ export class AudioElementPlayer extends BaseAudioPlayer {
     if (this.isInternalSeeking) {
       return this.targetSeekTime;
     }
-    return this.audioElement.currentTime || 0;
+    const settingStore = useSettingStore();
+
+    const isPlayback = settingStore.audioLatencyHint === "playback";
+
+    let autoLatency = 0;
+
+    if (isPlayback && this.audioCtx) {
+      autoLatency = (this.audioCtx.outputLatency || 0) + (this.audioCtx.baseLatency || 0);
+    }
+    const manualCompensation = isPlayback ? this.audioDelayCompensation / 1000 : 0;
+    // 基础时间 - 自动延迟补偿 + 手动延迟补偿
+    return (this.audioElement.currentTime || 0) - autoLatency + manualCompensation;
   }
 
   /** 获取是否暂停状态 */

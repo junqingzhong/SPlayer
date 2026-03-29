@@ -9,6 +9,8 @@ export type MetaData = {
 
 export type DjData = {
   id: number;
+  /** 所属电台 ID */
+  radioId?: number;
   name: string;
   creator?: string;
 };
@@ -41,6 +43,16 @@ export enum QualityType {
   /** 低质量 */
   LQ = "LQ", // l: 128kbps
 }
+
+/** 音频源类型 */
+export type AudioSourceType =
+  | "official"
+  | "netease"
+  | "kuwo"
+  | "bodian"
+  | "gequbao"
+  | "local"
+  | "streaming";
 
 export type UserType = {
   id: number;
@@ -88,6 +100,8 @@ export type SongType = {
   pc?: boolean;
   /** 大小 */
   size?: number;
+  /** 曲目序号 */
+  trackNumber?: number;
   /** 音质 */
   quality?: QualityType;
   /** 创建时间 */
@@ -111,7 +125,18 @@ export type SongType = {
   serverId?: string;
   /** 来源标记 */
   source?: "streaming";
+  /** 标记 */
+  mark?: number;
+  /** ReplayGain 信息 */
+  replayGain?: ReplayGainType;
 };
+
+export interface ReplayGainType {
+  trackGain?: number;
+  trackPeak?: number;
+  albumGain?: number;
+  albumPeak?: number;
+}
 
 // Cover
 export type CoverType = {
@@ -285,6 +310,8 @@ export type SortField =
   | "title"
   | "artist"
   | "album"
+  | "trackNumber"
+  | "filename"
   | "duration"
   | "size"
   | "createTime"
@@ -307,13 +334,12 @@ export type SongLevelDataType = {
 // setting
 export type SettingType =
   | "general"
+  | "appearance"
   | "play"
   | "lyrics"
   | "keyboard"
   | "local"
-  | "third"
-  | "streaming"
-  | "other"
+  | "network"
   | "about";
 
 // UpdateLog
@@ -348,3 +374,13 @@ export interface UpdateInfoType {
 
 // 登录方式
 export type LoginType = "qr" | "phone" | "cookie" | "uid";
+
+// 账号信息
+export interface AccountType {
+  userId: number;
+  name: string;
+  avatarUrl: string;
+  cookies: Record<string, string>;
+  loginType: LoginType;
+  lastLoginTime: number;
+}

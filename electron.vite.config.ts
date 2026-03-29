@@ -5,9 +5,19 @@ import AutoImport from "unplugin-auto-import/vite";
 import { NaiveUiResolver } from "unplugin-vue-components/resolvers";
 import Components from "unplugin-vue-components/vite";
 import viteCompression from "vite-plugin-compression";
-import { MainEnv } from "./env";
+import type { MainEnv } from "./env";
 // import VueDevTools from "vite-plugin-vue-devtools";
 import wasm from "vite-plugin-wasm";
+
+const commonResolve = {
+  alias: {
+    "@": resolve(__dirname, "src/"),
+    "@emi": resolve(__dirname, "native/external-media-integration"),
+    "@shared": resolve(__dirname, "src/types/shared"),
+    "@opencc": resolve(__dirname, "native/ferrous-opencc-wasm/pkg"),
+    "@native": resolve(__dirname, "native"),
+  },
+};
 
 export default defineConfig(({ mode }) => {
   // 读取环境变量
@@ -26,9 +36,14 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           input: {
             index: resolve(__dirname, "electron/main/index.ts"),
+            "workers/audio-analysis.worker": resolve(
+              __dirname,
+              "electron/main/workers/audio-analysis.worker.ts",
+            ),
           },
         },
       },
+      resolve: commonResolve,
     },
     // 预加载
     preload: {
@@ -39,12 +54,13 @@ export default defineConfig(({ mode }) => {
           },
         },
       },
+      resolve: commonResolve,
     },
     // 渲染进程
     renderer: {
       root: ".",
       optimizeDeps: {
-        include: ["sortablejs", "@vueuse/integrations"]
+        include: ["sortablejs", "@vueuse/integrations"],
       },
       plugins: [
         vue(),
@@ -69,14 +85,7 @@ export default defineConfig(({ mode }) => {
         viteCompression(),
         wasm(),
       ],
-      resolve: {
-        alias: {
-          "@": resolve(__dirname, "src/"),
-          "@emi": resolve(__dirname, "native/external-media-integration"),
-          "@shared": resolve(__dirname, "src/types/shared.ts"),
-          "@opencc": resolve(__dirname, "native/ferrous-opencc-wasm/pkg"),
-        },
-      },
+      resolve: commonResolve,
       css: {
         preprocessorOptions: {
           scss: {
@@ -117,11 +126,11 @@ export default defineConfig(({ mode }) => {
           compress: {
             // 移除pure_funcs配置，避免构建错误
             drop_console: true,
-            drop_debugger: true
+            drop_debugger: true,
           },
           format: {
-            comments: false
-          }
+            comments: false,
+          },
         },
         sourcemap: false,
       },

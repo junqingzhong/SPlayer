@@ -2,7 +2,7 @@
   <div :key="artistId" :class="['artist', { small: listScrolling }]">
     <Transition name="fade" mode="out-in">
       <div v-if="artistDetailData" class="detail">
-        <div class="cover">
+        <div v-if="!settingStore.hiddenCovers.artistDetail" class="cover">
           <n-image
             :src="artistDetailData.coverSize?.m || artistDetailData.cover"
             :previewed-img-props="{ style: { borderRadius: '8px' } }"
@@ -27,7 +27,11 @@
         </div>
         <div class="data">
           <div class="name text-hidden">
-            <n-text class="name-text">{{ artistDetailData.name || "未知艺术家" }}</n-text>
+            <n-text class="name-text">{{
+              settingStore.hideBracketedContent
+                ? removeBrackets(artistDetailData.name)
+                : artistDetailData.name || "未知艺术家"
+            }}</n-text>
             <n-text v-if="artistDetailData?.alia" class="name-alias" depth="3">
               {{ artistDetailData.alia || "未知艺术家" }}
             </n-text>
@@ -110,7 +114,7 @@
         </div>
       </div>
       <div v-else class="detail">
-        <n-skeleton class="cover" />
+        <n-skeleton v-if="!settingStore.hiddenCovers.artistDetail" class="cover" />
         <div class="data">
           <n-skeleton :repeat="4" text />
         </div>
@@ -150,11 +154,11 @@
 <script setup lang="ts">
 import type { DropdownOption } from "naive-ui";
 import type { ArtistType } from "@/types/main";
-import { coverLoaded, renderIcon, copyData } from "@/utils/helper";
+import { coverLoaded, renderIcon, copyData, getShareUrl } from "@/utils/helper";
 import { renderToolbar } from "@/utils/meta";
 import { openDescModal, openBatchList } from "@/utils/modal";
 import { artistDetail } from "@/api/artist";
-import { formatArtistsList } from "@/utils/format";
+import { formatArtistsList, removeBrackets } from "@/utils/format";
 import { useDataStore, useSettingStore } from "@/stores";
 import { toLikeArtist } from "@/utils/auth";
 import ArtistSongs from "./songs.vue";
@@ -204,8 +208,7 @@ const moreOptions = computed<DropdownOption[]>(() => [
     label: "复制分享链接",
     key: "copy",
     props: {
-      onClick: () =>
-        copyData(`https://music.163.com/#/artist?id=${artistId.value}`, "已复制分享链接到剪贴板"),
+      onClick: () => copyData(getShareUrl("artist", artistId.value), "已复制分享链接到剪贴板"),
     },
     icon: renderIcon("Share"),
   },

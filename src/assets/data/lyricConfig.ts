@@ -9,13 +9,14 @@ const config: LyricConfig = {
   fontSize: 24,
   fontWeight: 400,
   showTran: true,
-  showYrc: true,
+  showWordLyrics: true,
   isDoubleLine: true,
   position: "both",
   limitBounds: false,
   textBackgroundMask: false,
   backgroundMaskColor: "rgba(0, 0, 0, 0.5)",
   alwaysShowPlayInfo: false,
+  animation: true,
 };
 
 export default config;
