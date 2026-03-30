@@ -65,7 +65,7 @@ export const songUrl = (
 export const unlockSongUrl = (
   id: number,
   keyword: string,
-  server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili" | "bodian" | "gequbao",
+  server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili" | "bodian" | "gequbao" | "xiaowai" | "pili",
   level:
     | "standard"
     | "higher"
@@ -75,6 +75,7 @@ export const unlockSongUrl = (
     | "jyeffect"
     | "sky"
     | "jymaster" = "exhigh",
+  timeout: number = 15000,
 ) => {
   // 音质映射
   const levelMap = {
@@ -88,20 +89,21 @@ export const unlockSongUrl = (
     jymaster: "a",
   } as const;
   const quality = levelMap[level];
-  const params = server === "netease" ? { id } : { keyword };
+  const params: Record<string, any> = server === "netease" ? { id } : { keyword };
   if (server === "qq") {
-    // 如果是 QQ 音乐，尝试从环境变量中获取 cookie
+    // 如果是 QQ 音乐，尝试从 localStorage 中获取 cookie
     const qqCookie = localStorage.getItem("qq-cookie") || "";
     if (qqCookie) {
-      Object.assign(params, { cookie: qqCookie });
+      params.cookie = qqCookie;
     }
   }
   // 添加音质参数
-  Object.assign(params, { quality });
+  params.quality = quality;
   return request({
     baseURL: config.unblockApiUrl,
     url: `/${server}`,
     params: { ...params, noCookie: true },
+    timeout,
   });
 };
 

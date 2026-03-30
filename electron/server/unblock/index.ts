@@ -18,6 +18,8 @@ import { serverLog } from "../../main/logger";
 import axios from "axios";
 import getBodianSongUrl from "./bodian";
 import getGequbaoSongUrl from "./gequbao";
+import getXiaowaiSongUrl from "./xiaowai";
+import getPiliSongUrl from "./pili";
 
 // 最小有效音频时长（毫秒）
 const MIN_VALID_DURATION = 30 * 1000; // 60秒，避免11秒音频
@@ -102,25 +104,49 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       reply: FastifyReply,
     ) => {
       const { id } = req.query;
-      const result = await getNeteaseSongUrl(id);
+      const result = await fetchWithTimeout(
+        () => getNeteaseSongUrl(id),
+        5000,
+        "网易云音乐解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
       return reply.send(result);
     },
   );
-  // 构造匹配信息（fallback 用 lastIndexOf 兼容歌名含连字符的情况）
-  const buildMatchInfo = (query: { [key: string]: string }) => {
-    let songName = query.songName || "";
-    let artist = query.artist || "";
-    if (!songName && query.keyword) {
-      const lastIdx = query.keyword.lastIndexOf("-");
-      if (lastIdx > 0) {
-        songName = query.keyword.slice(0, lastIdx).trim();
-        artist = artist || query.keyword.slice(lastIdx + 1).trim();
-      } else {
-        songName = query.keyword.trim();
-      }
+// 构造匹配信息（fallback 用 lastIndexOf 兼容歌名含连字符的情况）
+const buildMatchInfo = (query: { [key: string]: string }) => {
+  let songName = query.songName || "";
+  let artist = query.artist || "";
+  if (!songName && query.keyword) {
+    const lastIdx = query.keyword.lastIndexOf("-");
+    if (lastIdx > 0) {
+      songName = query.keyword.slice(0, lastIdx).trim();
+      artist = artist || query.keyword.slice(lastIdx + 1).trim();
+    } else {
+      songName = query.keyword.trim();
     }
-    return { keyword: query.keyword || "", songName, artist };
-  };
+  }
+  return { keyword: query.keyword || "", songName, artist };
+};
+
+// 带超时的请求包装
+const fetchWithTimeout = async <T>(
+  fetcher: () => Promise<T>,
+  timeout: number = 8000,
+  label: string = "请求",
+): Promise<T | null> => {
+  try {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`${label} 超时`)), timeout);
+    });
+    return await Promise.race([fetcher(), timeoutPromise]);
+  } catch (error) {
+    serverLog.warn(`⚠️ ${label} 失败:`, error instanceof Error ? error.message : error);
+    return null;
+  }
+};
   // kuwo
   fastify.get(
     "/unblock/kuwo",
@@ -128,7 +154,14 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const result = await getKuwoSongUrl(buildMatchInfo(req.query));
+      const result = await fetchWithTimeout(
+        () => getKuwoSongUrl(buildMatchInfo(req.query)),
+        8000,
+        "酷我音乐解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
       return reply.send(result);
     },
   );
@@ -139,7 +172,14 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const result = await getBodianSongUrl(buildMatchInfo(req.query));
+      const result = await fetchWithTimeout(
+        () => getBodianSongUrl(buildMatchInfo(req.query)),
+        8000,
+        "波点音乐解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
       return reply.send(result);
     },
   );
@@ -150,7 +190,14 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const result = await getGequbaoSongUrl(buildMatchInfo(req.query));
+      const result = await fetchWithTimeout(
+        () => getGequbaoSongUrl(buildMatchInfo(req.query)),
+        10000,
+        "歌曲宝解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
       return reply.send(result);
     },
   );
@@ -163,7 +210,14 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       reply: FastifyReply,
     ) => {
       const { keyword, cookie } = req.query;
-      const result = await getQQSongUrl(keyword, cookie);
+      const result = await fetchWithTimeout(
+        () => getQQSongUrl(keyword, cookie),
+        8000,
+        "QQ音乐解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
       return reply.send(result);
     },
   );
@@ -176,7 +230,14 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       reply: FastifyReply,
     ) => {
       const { keyword } = req.query;
-      const result = await getKugouSongUrl(keyword);
+      const result = await fetchWithTimeout(
+        () => getKugouSongUrl(keyword),
+        8000,
+        "酷狗音乐解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
       return reply.send(result);
     },
   );
@@ -189,7 +250,52 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       reply: FastifyReply,
     ) => {
       const { keyword } = req.query;
-      const result = await getBilibiliSongUrl({ keyword });
+      const result = await fetchWithTimeout(
+        () => getBilibiliSongUrl({ keyword }),
+        10000,
+        "哔哩哔哩解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
+      return reply.send(result);
+    },
+  );
+
+  // xiaowai - 小歪音乐
+  fastify.get(
+    "/unblock/xiaowai",
+    async (
+      req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const result = await fetchWithTimeout(
+        () => getXiaowaiSongUrl(buildMatchInfo(req.query)),
+        10000,
+        "小歪音乐解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
+      return reply.send(result);
+    },
+  );
+
+  // pili - PILI API
+  fastify.get(
+    "/unblock/pili",
+    async (
+      req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const result = await fetchWithTimeout(
+        () => getPiliSongUrl(buildMatchInfo(req.query)),
+        10000,
+        "PILI解锁",
+      );
+      if (!result) {
+        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
+      }
       return reply.send(result);
     },
   );

@@ -178,6 +178,12 @@ export interface SettingState {
   replayGainMode: "track" | "album";
   /** 是否使用解灰 */
   useSongUnlock: boolean;
+  /** 歌曲解锁超时时间 */
+  songUnlockTimeout: number;
+  /** 歌曲解锁调试模式 */
+  songUnlockDebug: boolean;
+  /** 歌曲解锁重试次数 */
+  songUnlockRetry: number;
   /** 歌曲解锁音源 */
   songUnlockServer: { key: SongUnlockServer; enabled: boolean }[];
   /** 显示倒计时 */
@@ -550,13 +556,18 @@ export const useSettingStore = defineStore("setting", {
     enableReplayGain: false,
     replayGainMode: "track",
     useSongUnlock: true,
+    songUnlockTimeout: 8000,
+    songUnlockDebug: false,
+    songUnlockRetry: 1,
     songUnlockServer: [
-      { key: SongUnlockServer.BODIAN, enabled: true },
-      { key: SongUnlockServer.GEQUBAO, enabled: true },
-      { key: SongUnlockServer.NETEASE, enabled: true },
-      { key: SongUnlockServer.KUWO, enabled: false },
+      { key: SongUnlockServer.XIAOWAI, enabled: true },
+      { key: SongUnlockServer.KUGOU, enabled: true },
+      { key: SongUnlockServer.KUWO, enabled: true },
+      { key: SongUnlockServer.PILI, enabled: true },
       { key: SongUnlockServer.QQ, enabled: false },
-      { key: SongUnlockServer.KUGOU, enabled: false },
+      { key: SongUnlockServer.NETEASE, enabled: false },
+      { key: SongUnlockServer.BODIAN, enabled: false },
+      { key: SongUnlockServer.GEQUBAO, enabled: false },
       { key: SongUnlockServer.BILIBILI, enabled: false },
     ],
     countDownShow: true,

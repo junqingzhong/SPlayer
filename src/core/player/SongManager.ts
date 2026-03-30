@@ -27,6 +27,8 @@ export enum SongUnlockServer {
   QQ = "qq",
   KUGOU = "kugou",
   BILIBILI = "bilibili",
+  XIAOWAI = "xiaowai",
+  PILI = "pili",
 }
 
 /** 歌曲播放地址信息 */
@@ -253,9 +255,11 @@ class SongManager {
         return { id, url: cachedUrl, isTrial, quality };
       }
     }
-    // 缓存对应音质音乐
-    if (finalUrl) {
+    // 缓存对应音质音乐（仅缓存非试听链接）
+    if (finalUrl && !isTrial) {
       this.triggerCacheDownload(id, finalUrl, quality);
+    } else if (isTrial) {
+      console.log(`⚠️ [${id}] 试听链接不会缓存`);
     }
     return { id, url: finalUrl, isTrial, quality };
   };
@@ -302,47 +306,80 @@ class SongManager {
     if (specificSource && specificSource !== "auto") {
       servers = [specificSource as SongUnlockServer];
     } else {
+      // 按照设置中的顺序获取启用的音源
       servers = settingStore.songUnlockServer
         .filter((s) => s.enabled)
         .map((s) => s.key as SongUnlockServer);
     }
 
     if (servers.length === 0) {
+      console.warn(`⚠️ [${songId}] 没有启用的解密音源`);
       return { id: songId, url: undefined };
     }
 
-    // 并发执行
-    const results = await Promise.allSettled(
-      servers.map((server) =>
-        unlockSongUrl(songId, keyWord, server).then((result) => ({
-          server,
-          result,
-          success: result.code === 200 && !!result.url,
-        })),
-      ),
-    );
+    console.log(`🎵 [${songId}] 开始解锁，尝试源顺序:`, servers.join(" → "));
 
-    // 按顺序找成功项
-    for (const r of results) {
-      if (r.status === "fulfilled" && r.value.success) {
-        const unlockUrl = r.value?.result?.url;
-        // 解锁成功后，触发下载
-        this.triggerCacheDownload(songId, unlockUrl);
-        // 推断音质
-        let quality = QualityType.HQ;
-        if (unlockUrl && (unlockUrl.includes(".flac") || unlockUrl.includes(".wav"))) {
-          quality = QualityType.SQ;
+    // 串行执行：按照优先级顺序依次尝试
+    for (const server of servers) {
+      console.log(`🔄 [${songId}] 尝试音源: ${server}`);
+
+      // 根据配置进行重试
+      const maxRetries = settingStore.songUnlockRetry || 0;
+
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        if (attempt > 0) {
+          console.log(`🔄 [${songId}] ${server} 第 ${attempt} 次重试...`);
         }
-        console.log(`最终音质判断：详细输出：`, { unlockUrl, quality });
-        return {
-          id: songId,
-          url: unlockUrl,
-          isUnlocked: true,
-          quality,
-          source: r.value.server as AudioSourceType,
-        };
+
+        try {
+          const result = await unlockSongUrl(
+            songId,
+            keyWord,
+            server,
+            undefined,
+            settingStore.songUnlockTimeout,
+          );
+          const success = result.code === 200 && !!result.url;
+
+          if (success) {
+            const unlockUrl = result.url;
+            if (settingStore.songUnlockDebug) {
+              console.log(`✅ [${songId}] 解锁成功: ${server}`, unlockUrl);
+            } else {
+              console.log(`✅ [${songId}] 解锁成功: ${server}`);
+            }
+
+            // 解锁成功后，触发下载
+            this.triggerCacheDownload(songId, unlockUrl);
+
+            // 推断音质
+            let quality = QualityType.HQ;
+            if (unlockUrl && (unlockUrl.includes(".flac") || unlockUrl.includes(".wav"))) {
+              quality = QualityType.SQ;
+            }
+
+            return {
+              id: songId,
+              url: unlockUrl,
+              isUnlocked: true,
+              quality,
+              source: server as AudioSourceType,
+            };
+          } else {
+            console.log(`❌ [${songId}] ${server} 未找到资源`);
+            break; // 无需重试，直接换下一个源
+          }
+        } catch (error) {
+          console.error(`❌ [${songId}] ${server} 请求失败 (尝试 ${attempt + 1}/${maxRetries + 1}):`, error);
+          if (attempt < maxRetries) {
+            // 重试前等待一小段时间
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
       }
     }
+
+    console.warn(`⚠️ [${songId}] 所有音源都未找到资源`);
     return { id: songId, url: undefined };
   };
 
