@@ -177,6 +177,30 @@ export interface LyricPlayerRef {
    * 将歌词播放实例的元素包裹起来的 DIV 元素实例
    */
   wrapperEl: Readonly<ShallowRef<HTMLDivElement | null>>;
+  /**
+   * 设置当前播放进度
+   */
+  setCurrentTime: (time: number, isSeek?: boolean) => void;
+  /**
+   * 获取当前 Player 内部使用的歌词行元素
+   */
+  get currentLyricLineObjects(): LyricLineObject[] | undefined;
+}
+
+/**
+ * DomLyricPlayer 内部使用的歌词行元素（被称为 LyricLineEl）
+ *
+ * 用来进行一些神秘的 Hook（如根据歌词行内容设置语言属性）
+ */
+interface LyricLineObject {
+  /**
+   * 歌词行
+   */
+  lyricLine: LyricLine;
+  /**
+   * 歌词行的 HTML 元素
+   */
+  element: HTMLElement;
 }
 
 // 模板引用
@@ -315,6 +339,13 @@ watchEffect(() => {
 defineExpose<LyricPlayerRef>({
   lyricPlayer: playerRef,
   wrapperEl: wrapperRef,
+
+  setCurrentTime: (time: number, isSeek?: boolean) => {
+    playerRef.value?.setCurrentTime(time, isSeek);
+  },
+  get currentLyricLineObjects() {
+    return playerRef.value?.currentLyricLineObjects as LyricLineObject[] | undefined;
+  },
 });
 </script>
 
