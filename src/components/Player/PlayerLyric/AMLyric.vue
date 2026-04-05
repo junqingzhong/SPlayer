@@ -116,11 +116,20 @@ const hasDuet = computed(() => amLyricsData.value?.some((line) => line.isDuet) ?
 // 进度跳转
 const jumpSeek = (line: LyricLineMouseEvent) => {
   const lineContent = line.line.getLine();
-  if (!lineContent?.startTime) return;
-  const time = lineContent.startTime;
+  const lyricTargetTime = lineContent?.startTime;
+  if (
+    typeof lyricTargetTime !== "number" ||
+    !Number.isFinite(lyricTargetTime) ||
+    lyricTargetTime < 0
+  ) {
+    return;
+  }
+  // 让 LyricPlayer 跳转到目标时间，第二个参数 isSeek = true 会重置滚动状态
+  lyricPlayerRef.value?.setCurrentTime(lyricTargetTime, true);
+  // 获取偏移时间，计算歌曲真实的目标时间，并跳转
   const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
-  lyricPlayerRef.value?.setCurrentTime(time, true);
-  player.setSeek(time - offsetMs);
+  const musicTargetTime = lyricTargetTime - offsetMs;
+  player.setSeek(musicTargetTime);
   player.play();
 };
 
