@@ -118,6 +118,7 @@ const jumpSeek = (line: LyricLineMouseEvent) => {
   if (!lineContent?.startTime) return;
   const time = lineContent.startTime;
   const offsetMs = statusStore.getSongOffset(musicStore.playSong?.id);
+  lyricPlayerRef.value?.lyricPlayer?.setCurrentTime(time, true);
   player.setSeek(time - offsetMs);
   player.play();
 };
