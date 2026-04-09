@@ -14,7 +14,7 @@ jobs:
     outputs:
       should_run: ${{ steps.check.outputs.should_run }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: dev
           fetch-depth: 0
@@ -71,13 +71,13 @@ jobs:
     steps:
       # 检出 Git 仓库
       - name: Check out git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: dev
           fetch-depth: 0
       # 设置 pnpm
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v5
       # 安装 Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -217,7 +217,7 @@ jobs:
           esac
 
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: update-assets-${{ matrix.name }}
           path: dist/*.*
@@ -229,7 +229,7 @@ jobs:
       contents: write
       discussions: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: dev-nightly # 切换到 dev-nightly 分支
           fetch-depth: 0
@@ -248,7 +248,7 @@ jobs:
           git push -f origin $TAG_NAME
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
 

@@ -44,10 +44,10 @@ jobs:
     steps:
       # 检出 Git 仓库
       - name: Check out git repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       # 设置 pnpm
       - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v5
       # 安装 Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -159,7 +159,7 @@ jobs:
 
       # 合并所有构建
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SPlayer-${{ matrix.name }}
           path: dist/*.*
@@ -176,7 +176,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -246,7 +246,7 @@ jobs:
           git push origin HEAD:main || echo "Failed to push to main. This might happen if tag is not on main."
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: artifacts
       # 创建 GitHub Release 并上传所有产物
