@@ -67,12 +67,14 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
+      # 设置 Rust
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
+
       # 清理旧的构建产物
       - name: Clean workspace on Windows
         if: runner.os == 'Windows'
@@ -97,6 +99,14 @@ jobs:
         run: |
           echo "🧹 Cleaning workspace, node_modules, Electron caches, and pnpm store..."
           rm -rf dist out node_modules ~/.cache/electron-builder ~/.cache/electron ~/.pnpm-store
+
+      # 更新 Ubuntu 软件源并安装依赖
+      - name: Update and Install Ubuntu Dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y rpm libarchive-tools libopenjp2-tools
+
       # macOS 上安装 LLVM 以支持 Wasm 编译
       - name: Install LLVM on macOS
         if: runner.os == 'macOS'
@@ -106,9 +116,7 @@ jobs:
         run: |
           echo "CC=$(brew --prefix llvm)/bin/clang" >> $GITHUB_ENV
           echo "AR=$(brew --prefix llvm)/bin/llvm-ar" >> $GITHUB_ENV
-      # 安装项目依赖
-      - name: Install dependencies
-        run: pnpm install
+
       # 复制环境变量文件
       - name: Copy .env file on Windows
         if: runner.os == 'Windows'
@@ -126,54 +134,42 @@ jobs:
           else
             echo ".env file already exists. Skipping the copy step."
           fi
-      # 更新 Ubuntu 软件源
-      - name: Ubuntu Update with sudo
-        if: runner.os == 'Linux'
-        run: sudo apt-get update
-      # 安装依赖
-      - name: Install RPM & Pacman
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get install --no-install-recommends -y rpm &&
-          sudo apt-get install --no-install-recommends -y libarchive-tools &&
-          sudo apt-get install --no-install-recommends -y libopenjp2-tools
+
+      # 安装项目依赖
+      - name: Install dependencies
+        run: pnpm install
+
       # 构建 Electron App
-      - name: Build Windows x64 App
-        if: matrix.target == 'windows-x64'
-        run: pnpm build:win -- --x64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build Windows arm64 App
-        if: matrix.target == 'windows-arm64'
-        run: pnpm build:win -- --arm64
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build macOS x64 App
-        if: matrix.target == 'macos-x64'
-        run: pnpm build:mac -- --x64
-        shell: bash
+      - name: Build
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build macOS arm64 App
-        if: matrix.target == 'macos-arm64'
-        run: pnpm build:mac -- --arm64
         shell: bash
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build Linux x64 App
-        if: matrix.target == 'linux-x64'
-        run: pnpm build:linux -- --x64
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build Linux ARM64 App
-        if: matrix.target == 'linux-arm64'
-        run: pnpm build:linux -- --arm64
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          case "${{ matrix.target }}" in
+            windows-x64)
+              pnpm build:win -- --x64
+              ;;
+            windows-arm64)
+              pnpm build:win -- --arm64
+              ;;
+            macos-x64)
+              pnpm build:mac -- --x64
+              ;;
+            macos-arm64)
+              pnpm build:mac -- --arm64
+              ;;
+            linux-x64)
+              pnpm build:linux -- --x64
+              ;;
+            linux-arm64)
+              pnpm build:linux -- --arm64
+              ;;
+            *)
+              echo "Unsupported target: ${{ matrix.target }}"
+              exit 1
+              ;;
+          esac
 
       # 分别上传
       - {
