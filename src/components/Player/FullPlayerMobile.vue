@@ -546,6 +546,7 @@ const contentTransform = computed(() => {
     gap: 8px;
     pointer-events: none;
     .dot {
+      position: relative;
       width: 6px;
       height: 6px;
       border-radius: 50%;
@@ -553,6 +554,14 @@ const contentTransform = computed(() => {
       transition: all 0.3s;
       pointer-events: auto;
       cursor: pointer;
+      &::after {
+        content: "";
+        position: absolute;
+        top: -16px;
+        bottom: -16px;
+        left: -8px;
+        right: -8px;
+      }
       &.active {
         background-color: rgb(var(--main-cover-color));
         width: 16px;
