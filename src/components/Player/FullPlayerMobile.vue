@@ -551,6 +551,8 @@ const contentTransform = computed(() => {
       border-radius: 50%;
       background-color: rgba(255, 255, 255, 0.2);
       transition: all 0.3s;
+      pointer-events: auto;
+      cursor: pointer;
       &.active {
         background-color: rgb(var(--main-cover-color));
         width: 16px;
