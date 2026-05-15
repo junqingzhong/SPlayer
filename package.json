@@ -81,8 +81,7 @@
     "plyr": "^3.8.4",
     "sortablejs": "^1.15.7",
     "ws": "^8.20.1",
-    "xlsx-js-style": "1.2.0",
-    "ajv": "^8.20.0"
+    "xlsx-js-style": "1.2.0"
   },
   "devDependencies": {
     "@electron-toolkit/preload": "^3.0.1",
@@ -103,6 +102,7 @@
     "@typescript-eslint/eslint-plugin": "^8.59.3",
     "@typescript-eslint/parser": "^8.59.3",
     "@vitejs/plugin-vue": "^6.0.7",
+    "ajv": "^8.20.0",
     "crypto-js": "^4.2.0",
     "electron": "39.4.0",
     "electron-builder": "^26.8.1",
