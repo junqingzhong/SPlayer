@@ -2,7 +2,7 @@
  * @Author: ZJQ
  * @Date: 2025-12-15 16:09:47
  * @LastEditors: zjq zjq@xkb.com.cn
- * @LastEditTime: 2025-12-15 18:36:55
+ * @LastEditTime: 2026-05-15 12:10:32
  * @FilePath: \tea\src\components\Modal\Setting\SongUnlockManager.vue
  * @Description:
  *
@@ -13,7 +13,7 @@
     <n-alert title="免责声明" type="info" :show-icon="false" style="margin-bottom: 16px">
       本功能仅作为测试使用，资源来自网络，若侵犯到您的权益，请及时联系我们删除
     </n-alert>
-    
+
     <!-- Cookie 配置区域 -->
     <n-card title="音源配置" style="margin-bottom: 16px">
       <n-space vertical>

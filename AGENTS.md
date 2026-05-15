@@ -1,3 +1,13 @@
+<!--
+ * @Author: ZJQ
+ * @Date: 2026-02-25 16:47:21
+ * @LastEditors: zjq zjq@xkb.com.cn
+ * @LastEditTime: 2026-05-15 12:01:43
+ * @FilePath: \tea\AGENTS.md
+ * @Description:
+ *
+ * Copyright (c) 2026 by ${git_name_email}, All Rights Reserved.
+-->
 # AI 开发助手行为准则
 
 ## 项目技术栈与环境
@@ -68,3 +78,19 @@
 
 - **指令等级**: Critical。
 - **违规后果**: 违反以上任何一条规则将被定义为**任务失败**，代码将被直接拒绝。请务必严格执行上述标准。
+
+
+## 项目代码更新顺序
+- Git 合并远程 dev 分支 ：
+- 拉取远程 music 的更新。
+- 切换到 master 分支。
+- 将 music/dev 分支合并到 master ，并以远程代码为准处理冲突。
+- 更新所有包：`pnpm update`
+- 解决所有合并冲突。
+- 提交合并结果。
+- 活动列表功能适配 ：
+- 检查 src/views/Activities/index.vue 、 api/app.py 和 activities 表。
+- 确保现有活动列表相关的参数和功能能够适配新版本，避免报错或参数无法填写的情况。
+- 更新破解音源接口 ：
+- 检查 SongManager.ts 、 setting.ts 、 song.ts 、 config.ts 和 SongUnlockManager.vue 。
+- 检查并识别接口是否能用，删除不能使用的音源接口。

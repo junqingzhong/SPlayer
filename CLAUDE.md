@@ -189,10 +189,3 @@ unlockSongUrl(id, keyword, server, level, timeout)
 
 - 解锁API地址: `src/config.ts` 中的 `unblockApiUrl`
 - 音源设置UI: `src/components/Modal/Setting/SongUnlockManager.vue`
-
-
-1，将远程dev分支的git拉到本地合并当前分支并处理冲突，以远程的代码为准。
-
-2。确保项目本来的活动列表相关的参数和功能能适配新版本并正常使用，不会报错或者参数不能填下的情况。
-
-3.检查并获取最新的破解音源的接口和链接，删除不能使用的接口，结合远程分支代码。
