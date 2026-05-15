@@ -1,9 +1,9 @@
 /*
  * @Author: ZJQ
  * @Date: 2025-07-12 01:33:40
- * @LastEditors: zjq 631724110@qq.com
- * @LastEditTime: 2026-03-30 00:07:36
- * @FilePath: /music/src/config.ts
+ * @LastEditors: zjq zjq@xkb.com.cn
+ * @LastEditTime: 2026-03-31 16:24:17
+ * @FilePath: \tea\src\config.ts
  * @Description:
  *
  * Copyright (c) 2026 by ${git_name_email}, All Rights Reserved.
@@ -25,7 +25,7 @@ const defaultConfig = {
   // 网易云音乐API URL
   neteaseApiUrl: '/api/netease',
   // 活动API URL
-  activitiesApiBaseUrl: '/api/activity',
+  activitiesApiBaseUrl: '/api/activities',
   // 默认真实IP
   defaultRealIP: "116.25.146.177",
   // 全局代理配置

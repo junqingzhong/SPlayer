@@ -78,3 +78,121 @@ Rust-based, built via `scripts/build-native.ts`:
 - **Prettier**: Double quotes, trailing commas, 2-space indent, 100 char width
 - **Workers**: Heavy computation (audio analysis) runs in worker threads (`electron/main/workers/`)
 - **TypeScript**: Composite project — `tsconfig.node.json` (main/preload/scripts) and `tsconfig.web.json` (renderer)
+
+## Git 操作说明
+
+### 合并远程 dev 分支
+
+```bash
+# 拉取远程更新
+git fetch music
+# 切换到 master 分支
+git checkout master
+# 以远程 dev 分支代码为准合并
+git merge -X theirs music/dev
+# 如果有冲突，解决后继续
+git add .
+git commit -m "merge: 合并远程dev分支"
+```
+### 远程分支
+
+- `music/master` - 主分支
+- `music/dev` - 开发分支（包含最新功能和破解音源接口）
+
+## 活动列表功能
+
+### 功能位置
+
+- 活动列表页面: `src/views/Activities/index.vue`
+- API 服务: `api/app.py`
+- 活动数据表: `activities`
+
+### 活动列表参数
+
+| 参数 | 类型 | 说明 |
+|------|------|------|
+| id | number | 活动ID |
+| name | string | 活动名称 |
+| date | string | 活动日期 |
+| address | string | 活动地址 |
+| remark | string | 备注说明 |
+| categoryId | number | 分类ID |
+| status | string | 状态（已完成/进行中/未开始） |
+
+### API 端点
+
+- `GET /activities` - 获取活动列表
+- `POST /activities` - 创建活动
+- `PUT /activities/{id}` - 更新活动
+- `DELETE /activities/{id}` - 删除活动
+- `PUT /update_activity_status/{id}` - 更新活动状态
+
+## 破解音源接口
+
+### 音源服务器枚举 (`SongUnlockServer`)
+
+定义在 [SongManager.ts](file:///c:/Users/admin/Desktop/tea/src/core/player/SongManager.ts#L23-L31):
+
+| 枚举值 | 服务商 | 当前状态 |
+|--------|--------|----------|
+| NETEASE | 网易云音乐 | 已废弃 |
+| BODIAN | 波点音乐 | 已废弃 |
+| KUWO | 酷我音乐 | 正常 |
+| GEQUBAO | 歌曲宝 | 已废弃 |
+| QQ | QQ音乐 | 不稳定 |
+| KUGOU | 酷狗音乐 | 正常 |
+| BILIBILI | 哔哩哔哩 | 不稳定 |
+| XIAOWAI | 小歪音乐 | 正常（默认启用） |
+| PILI | PILI音乐 | 正常（默认启用） |
+
+### 默认启用的音源
+
+在 [setting.ts](file:///c:/Users/admin/Desktop/tea/src/stores/setting.ts#L562-L571) 中配置：
+
+```typescript
+songUnlockServer: [
+  { key: SongUnlockServer.XIAOWAI, enabled: true },
+  { key: SongUnlockServer.KUGOU, enabled: true },
+  { key: SongUnlockServer.KUWO, enabled: true },
+  { key: SongUnlockServer.PILI, enabled: true },
+  { key: SongUnlockServer.QQ, enabled: false },
+  { key: SongUnlockServer.NETEASE, enabled: false },
+  { key: SongUnlockServer.BODIAN, enabled: false },
+  { key: SongUnlockServer.GEQUBAO, enabled: false },
+  { key: SongUnlockServer.BILIBILI, enabled: false },
+]
+```
+
+### API 调用
+
+解锁接口定义在 [song.ts](file:///c:/Users/admin/Desktop/tea/src/api/song.ts#L64-L107):
+
+```typescript
+unlockSongUrl(id, keyword, server, level, timeout)
+// server 可选值: qq | kugou | kuwo | netease | bilibili | bodian | gequbao | xiaowai | pili
+```
+
+### 音质等级
+
+| 等级 | 参数 | 说明 |
+|------|------|------|
+| standard | l | 标准音质 |
+| higher | m | 较高音质 |
+| exhigh | h | 极高音质（默认） |
+| lossless | s | 无损音质 |
+| hires | e | Hi-Res |
+| jyeffect | j | 鲸鱼音效 |
+| sky | d | 天空音效 |
+| jymaster | a | 鲸鱼母带 |
+
+### 配置路径
+
+- 解锁API地址: `src/config.ts` 中的 `unblockApiUrl`
+- 音源设置UI: `src/components/Modal/Setting/SongUnlockManager.vue`
+
+
+1，将远程dev分支的git拉到本地合并当前分支并处理冲突，以远程的代码为准。
+
+2。确保项目本来的活动列表相关的参数和功能能适配新版本并正常使用，不会报错或者参数不能填下的情况。
+
+3.检查并获取最新的破解音源的接口和链接，删除不能使用的接口，结合远程分支代码。

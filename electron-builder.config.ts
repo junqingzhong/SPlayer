@@ -102,7 +102,7 @@ const config: Configuration = {
     // 可执行文件名
     executableName: "SPlayer",
     // 应用程序的图标文件路径
-    icon: "public/icons/icon.icns",
+    icon: "public/icons/icon.png",
     // macOS 平台全局文件名模板
     artifactName: "${productName}-${version}-${arch}.${ext}",
     // 不签名
@@ -142,12 +142,12 @@ const config: Configuration = {
       },
     ],
   },
-  // Linux 平台配置
+    // Linux 平台配置
   linux: {
     // 可执行文件名
     executableName: "SPlayer",
     // 应用程序的图标文件路径
-    icon: "public/icons/favicon-512x512.png",
+    icon: "public/icons/logo-icon-1024x1024.png",
     // Linux 所有格式的统一文件名模板
     artifactName: "${name}-${version}-${arch}.${ext}",
     // 构建类型 - 支持 x64 和 ARM64 架构
