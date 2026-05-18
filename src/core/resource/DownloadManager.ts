@@ -608,7 +608,7 @@ class DownloadManager {
         );
 
         if (downloadResult.status === "success" || downloadResult.status === "skipped") {
-          await strategy.postProcess(downloadResult.path || config.path); // IPC 返回结果通常包含路径
+          await strategy.postProcess(downloadResult.path || config.path);
           dataStore.removeDownloadingSong(strategy.id);
           window.$message.success(`${strategy.name} 下载完成`);
         } else {
