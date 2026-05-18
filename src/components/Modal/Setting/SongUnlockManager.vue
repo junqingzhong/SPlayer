@@ -27,9 +27,7 @@
             placeholder="请输入 QQ 音乐 Cookie（可选）"
             :rows="3"
           />
-          <template #feedback>
-            设置后可用于解锁 QQ 音乐高音质，留空则使用普通音质
-          </template>
+          <template #feedback> 设置后可用于解锁 QQ 音乐高音质，留空则使用普通音质 </template>
         </n-form-item>
         <n-space>
           <n-button @click="saveCookie">保存配置</n-button>
@@ -60,7 +58,9 @@
           </n-radio-group>
         </n-form-item>
         <n-form-item>
-          <n-checkbox v-model:checked="settingStore.songUnlockDebug">开启调试模式（在控制台显示详细日志）</n-checkbox>
+          <n-checkbox v-model:checked="settingStore.songUnlockDebug"
+            >开启调试模式（在控制台显示详细日志）</n-checkbox
+          >
         </n-form-item>
       </n-space>
     </n-card>
@@ -98,8 +98,9 @@
       <n-ul>
         <n-li>建议同时启用多个音源以提高成功率</n-li>
         <n-li>拖拽可调整音源优先级（从上到下依次尝试）</n-li>
-        <n-li>酷狗、酷我相对稳定，可优先启用</n-li>
+        <n-li>小歪、酷狗、酷我、PILI、咪咕相对稳定，可优先启用</n-li>
         <n-li>哔哩哔哩作为最后的备用源</n-li>
+        <n-li>已删除波点音乐和歌曲宝（不稳定/易失效）</n-li>
       </n-ul>
     </n-alert>
   </div>
@@ -107,15 +108,16 @@
 
 <script setup lang="ts">
 import { useSettingStore } from "@/stores";
-import { useSortable } from "@vueuse/integrations/useSortable";
 import { SongUnlockServer } from "@/core/player/SongManager";
-import type { Options } from "sortablejs";
+import Sortable from "sortablejs";
 import { useMessage } from "naive-ui";
+import type { Options } from "sortablejs";
 
 const settingStore = useSettingStore();
 const message = useMessage();
 
 const sortableRef = ref<HTMLElement | null>(null);
+let sortableInstance: Sortable | null = null;
 
 // QQ Cookie
 const qqCookie = ref(localStorage.getItem("qq-cookie") || "");
@@ -124,14 +126,13 @@ const qqCookie = ref(localStorage.getItem("qq-cookie") || "");
 const getServerDisplayName = (key: SongUnlockServer): string => {
   const nameMap: Record<SongUnlockServer, string> = {
     [SongUnlockServer.NETEASE]: "网易云音乐",
-    [SongUnlockServer.BODIAN]: "波点音乐",
-    [SongUnlockServer.GEQUBAO]: "歌曲宝",
     [SongUnlockServer.QQ]: "QQ音乐",
     [SongUnlockServer.KUGOU]: "酷狗音乐",
     [SongUnlockServer.KUWO]: "酷我音乐",
     [SongUnlockServer.BILIBILI]: "哔哩哔哩",
     [SongUnlockServer.XIAOWAI]: "小歪音乐",
     [SongUnlockServer.PILI]: "PILI音乐",
+    [SongUnlockServer.MIGU]: "咪咕音乐",
   };
   return nameMap[key] || key;
 };
@@ -140,14 +141,13 @@ const getServerDisplayName = (key: SongUnlockServer): string => {
 const getServerStatus = (key: SongUnlockServer): "success" | "warning" | "error" => {
   const statusMap: Record<SongUnlockServer, "success" | "warning" | "error"> = {
     [SongUnlockServer.NETEASE]: "warning",
-    [SongUnlockServer.BODIAN]: "warning",
-    [SongUnlockServer.GEQUBAO]: "error",
     [SongUnlockServer.QQ]: "warning",
     [SongUnlockServer.KUGOU]: "success",
     [SongUnlockServer.KUWO]: "success",
     [SongUnlockServer.BILIBILI]: "warning",
     [SongUnlockServer.XIAOWAI]: "success",
     [SongUnlockServer.PILI]: "success",
+    [SongUnlockServer.MIGU]: "success",
   };
   return statusMap[key] || "warning";
 };
@@ -156,14 +156,13 @@ const getServerStatus = (key: SongUnlockServer): "success" | "warning" | "error"
 const getServerStatusText = (key: SongUnlockServer): string => {
   const statusTextMap: Record<SongUnlockServer, string> = {
     [SongUnlockServer.NETEASE]: "一般",
-    [SongUnlockServer.BODIAN]: "不稳定",
-    [SongUnlockServer.GEQUBAO]: "易失效",
     [SongUnlockServer.QQ]: "需配置",
     [SongUnlockServer.KUGOU]: "较稳定",
     [SongUnlockServer.KUWO]: "较稳定",
     [SongUnlockServer.BILIBILI]: "备用",
     [SongUnlockServer.XIAOWAI]: "推荐",
     [SongUnlockServer.PILI]: "推荐",
+    [SongUnlockServer.MIGU]: "推荐",
   };
   return statusTextMap[key] || "一般";
 };
@@ -191,24 +190,58 @@ const resetToDefault = () => {
     { key: SongUnlockServer.KUGOU, enabled: true },
     { key: SongUnlockServer.KUWO, enabled: true },
     { key: SongUnlockServer.PILI, enabled: true },
+    { key: SongUnlockServer.MIGU, enabled: true },
     { key: SongUnlockServer.QQ, enabled: false },
     { key: SongUnlockServer.NETEASE, enabled: false },
-    { key: SongUnlockServer.BODIAN, enabled: false },
-    { key: SongUnlockServer.GEQUBAO, enabled: false },
     { key: SongUnlockServer.BILIBILI, enabled: false },
   ];
   settingStore.songUnlockServer = defaultOrder;
   message.success("已恢复默认排序");
 };
 
-// 拖拽排序
-useSortable(sortableRef, settingStore.songUnlockServer, {
-  animation: 150,
-  handle: ".sortable-handle",
-  ghostClass: "sortable-ghost",
-  chosenClass: "sortable-chosen",
-  dragClass: "sortable-drag",
-} as Options);
+// 初始化拖拽排序
+const initSortable = () => {
+  if (!sortableRef.value) return;
+
+  // 销毁现有实例
+  if (sortableInstance) {
+    sortableInstance.destroy();
+  }
+
+  sortableInstance = new Sortable(sortableRef.value, {
+    animation: 150,
+    handle: ".sortable-handle",
+    ghostClass: "sortable-ghost",
+    chosenClass: "sortable-chosen",
+    dragClass: "sortable-drag",
+    onEnd: (evt) => {
+      const { oldIndex, newIndex } = evt;
+      if (oldIndex === undefined || newIndex === undefined || oldIndex === newIndex) return;
+
+      // 手动更新数组顺序
+      const list = [...settingStore.songUnlockServer];
+      const [movedItem] = list.splice(oldIndex, 1);
+      list.splice(newIndex, 0, movedItem);
+
+      // 更新 store
+      settingStore.songUnlockServer = list;
+      console.log("音源排序已更新:", settingStore.songUnlockServer);
+    },
+  } as Options);
+};
+
+// 组件挂载时初始化
+onMounted(() => {
+  initSortable();
+});
+
+// 组件卸载时销毁
+onUnmounted(() => {
+  if (sortableInstance) {
+    sortableInstance.destroy();
+    sortableInstance = null;
+  }
+});
 </script>
 
 <style scoped lang="scss">

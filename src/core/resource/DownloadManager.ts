@@ -51,7 +51,6 @@ interface DownloadStrategy {
  */
 class SongDownloadStrategy implements DownloadStrategy {
   private settingStore = useSettingStore();
-  private dataStore = useDataStore();
 
   // prepare 阶段准备的状态
   private _downloadUrl = "";
@@ -258,78 +257,125 @@ class SongDownloadStrategy implements DownloadStrategy {
   }
 
   private async resolveUrl(): Promise<{ url: string; type: string }> {
+    const useUnlock = this.settingStore.useUnlockForDownload;
     const usePlayback = this.settingStore.usePlaybackForDownload;
     const levelName = songLevelData[this.quality].level;
+
+    // 尝试解锁源（手动开启 或 官方失败后自动回退）
+    const tryUnlockSources = async (): Promise<{ url: string; type: string } | null> => {
+      const servers = this.settingStore.songUnlockServer.filter((s) => s.enabled).map((s) => s.key);
+      const artist =
+        (Array.isArray(this.song.artists)
+          ? this.song.artists.map((a) => a.name).join(" & ")
+          : this.song.artists) || "";
+      const keyWord = `${this.song.name}-${artist}`;
+
+      if (servers.length === 0) return null;
+
+      console.log(`🎵 [下载] 歌曲 ${this.song.id} 尝试解锁源下载，音源顺序:`, servers.join(" → "));
+
+      for (const server of servers) {
+        try {
+          const result = await unlockSongUrl(this.song.id, keyWord, server);
+          const success = result.code === 200 && !!result.url;
+          if (!success) {
+            console.log(`❌ [下载] 歌曲 ${this.song.id} ${server} 未找到资源`);
+            continue;
+          }
+
+          const unlockUrl = result.url;
+
+          // 试听链接检测
+          const trialReasons: string[] = [];
+          if (result.isTrial) trialReasons.push("isTrial标识");
+          if (result.time && result.time < 30000)
+            trialReasons.push(`时长${Math.floor(result.time / 1000)}秒`);
+          if (result.duration && result.duration < 30)
+            trialReasons.push(`时长${result.duration}秒`);
+          if (
+            unlockUrl.includes("trial") ||
+            unlockUrl.includes("demo") ||
+            unlockUrl.includes("preview")
+          )
+            trialReasons.push("URL包含试听关键词");
+          if (result.br && result.br < 64000) trialReasons.push(`比特率${result.br}过低`);
+          if (result.size && result.size < 512000)
+            trialReasons.push(`文件大小${Math.floor(result.size / 1024)}KB过小`);
+
+          if (trialReasons.length > 0) {
+            console.log(
+              `⚠️ [下载] 歌曲 ${this.song.id} ${server} 返回试听链接，跳过 (${trialReasons.join(", ")})`,
+            );
+            continue;
+          }
+
+          console.log(`✅ [下载] 歌曲 ${this.song.id} 解锁成功: ${server}`);
+          const extensionMatch = unlockUrl.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+          return {
+            url: unlockUrl,
+            type: extensionMatch ? extensionMatch[1].toLowerCase() : "mp3",
+          };
+        } catch (error) {
+          console.error(`❌ [下载] 歌曲 ${this.song.id} ${server} 请求失败:`, error);
+        }
+      }
+      return null;
+    };
+
+    // 优先尝试使用解锁链接（如果手动开启）
+    if (useUnlock) {
+      try {
+        const unlockResult = await tryUnlockSources();
+        if (unlockResult) return unlockResult;
+        console.warn(`⚠️ [下载] 歌曲 ${this.song.id} 所有解锁源都未找到资源`);
+      } catch (e) {
+        console.error("Error fetching unlock url for download:", e);
+      }
+    }
 
     // 尝试使用播放链接
     if (usePlayback) {
       try {
         const result = await songUrl(this.song.id, levelName as Parameters<typeof songUrl>[1]);
         if (result.code === 200 && result?.data?.[0]?.url) {
-          return {
-            url: result.data[0].url,
-            type: (result.data[0].type || result.data[0].encodeType || "mp3").toLowerCase(),
-          };
+          const songData = result.data[0];
+          const isTrial = songData?.freeTrialInfo != null;
+          if (isTrial) {
+            console.log(`⚠️ [下载] 歌曲 ${this.song.id} 官方返回试听链接，跳过`);
+          } else {
+            return {
+              url: songData.url,
+              type: (songData.type || songData.encodeType || "mp3").toLowerCase(),
+            };
+          }
         }
       } catch (e) {
         console.error("Error fetching playback url for download:", e);
       }
     }
 
-    // 尝试使用解锁链接
-    const isVipUser = this.dataStore.userData?.vipType > 0;
-    const isRestricted = this.song.free === 1 || this.song.free === 4 || this.song.free === 8;
-    const canUseUnlock = !isRestricted || isVipUser;
-
-    if (this.settingStore.useUnlockForDownload && canUseUnlock) {
-      try {
-        const servers = this.settingStore.songUnlockServer
-          .filter((s) => s.enabled)
-          .map((s) => s.key);
-        const artist =
-          (Array.isArray(this.song.artists)
-            ? this.song.artists.map((a) => a.name).join(" & ")
-            : this.song.artists) || "";
-        const keyWord = `${this.song.name}-${artist}`;
-
-        if (servers.length > 0) {
-          const results = await Promise.allSettled(
-            servers.map((server) =>
-              unlockSongUrl(this.song.id, keyWord, server).then((result) => ({
-                server,
-                result,
-                success: result.code === 200 && !!result.url,
-              })),
-            ),
-          );
-
-          for (const r of results) {
-            if (r.status === "fulfilled" && r.value.success) {
-              const unlockUrl = r.value?.result?.url;
-              if (unlockUrl) {
-                const extensionMatch = unlockUrl.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
-                return {
-                  url: unlockUrl,
-                  type: extensionMatch ? extensionMatch[1].toLowerCase() : "mp3",
-                };
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Error fetching unlock url for download:", e);
-      }
-    }
-
     // 标准下载流程
-    const result = await songDownloadUrl(this.song.id, this.quality);
-    if (result.code !== 200 || !result?.data?.url) {
-      throw new Error(result.message || "获取下载链接失败");
+    try {
+      const result = await songDownloadUrl(this.song.id, this.quality);
+      if (result.code === 200 && result?.data?.url) {
+        return {
+          url: result.data.url,
+          type: result.data.type?.toLowerCase() || "mp3",
+        };
+      }
+    } catch (e) {
+      console.warn(`⚠️ [下载] 歌曲 ${this.song.id} 官方下载接口失败，尝试解锁源回退`, e);
     }
-    return {
-      url: result.data.url,
-      type: result.data.type?.toLowerCase() || "mp3",
-    };
+
+    // 官方失败后自动尝试解锁源回退（无需手动开启）
+    try {
+      const unlockResult = await tryUnlockSources();
+      if (unlockResult) return unlockResult;
+    } catch (e) {
+      console.error("Error fetching unlock url for download (fallback):", e);
+    }
+
+    throw new Error("无法获取下载链接，请检查解锁音源配置或网络连接");
   }
   /**
    * 获取文件名

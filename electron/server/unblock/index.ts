@@ -104,49 +104,45 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       reply: FastifyReply,
     ) => {
       const { id } = req.query;
-      const result = await fetchWithTimeout(
-        () => getNeteaseSongUrl(id),
-        5000,
-        "网易云音乐解锁",
-      );
+      const result = await fetchWithTimeout(() => getNeteaseSongUrl(id), 5000, "网易云音乐解锁");
       if (!result) {
         return reply.send({ code: 404, url: null, message: "请求超时或失败" });
       }
       return reply.send(result);
     },
   );
-// 构造匹配信息（fallback 用 lastIndexOf 兼容歌名含连字符的情况）
-const buildMatchInfo = (query: { [key: string]: string }) => {
-  let songName = query.songName || "";
-  let artist = query.artist || "";
-  if (!songName && query.keyword) {
-    const lastIdx = query.keyword.lastIndexOf("-");
-    if (lastIdx > 0) {
-      songName = query.keyword.slice(0, lastIdx).trim();
-      artist = artist || query.keyword.slice(lastIdx + 1).trim();
-    } else {
-      songName = query.keyword.trim();
+  // 构造匹配信息（fallback 用 lastIndexOf 兼容歌名含连字符的情况）
+  const buildMatchInfo = (query: { [key: string]: string }) => {
+    let songName = query.songName || "";
+    let artist = query.artist || "";
+    if (!songName && query.keyword) {
+      const lastIdx = query.keyword.lastIndexOf("-");
+      if (lastIdx > 0) {
+        songName = query.keyword.slice(0, lastIdx).trim();
+        artist = artist || query.keyword.slice(lastIdx + 1).trim();
+      } else {
+        songName = query.keyword.trim();
+      }
     }
-  }
-  return { keyword: query.keyword || "", songName, artist };
-};
+    return { keyword: query.keyword || "", songName, artist };
+  };
 
-// 带超时的请求包装
-const fetchWithTimeout = async <T>(
-  fetcher: () => Promise<T>,
-  timeout: number = 8000,
-  label: string = "请求",
-): Promise<T | null> => {
-  try {
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error(`${label} 超时`)), timeout);
-    });
-    return await Promise.race([fetcher(), timeoutPromise]);
-  } catch (error) {
-    serverLog.warn(`⚠️ ${label} 失败:`, error instanceof Error ? error.message : error);
-    return null;
-  }
-};
+  // 带超时的请求包装
+  const fetchWithTimeout = async <T>(
+    fetcher: () => Promise<T>,
+    timeout: number = 8000,
+    label: string = "请求",
+  ): Promise<T | null> => {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`${label} 超时`)), timeout);
+      });
+      return await Promise.race([fetcher(), timeoutPromise]);
+    } catch (error) {
+      serverLog.warn(`⚠️ ${label} 失败:`, error instanceof Error ? error.message : error);
+      return null;
+    }
+  };
   // kuwo
   fastify.get(
     "/unblock/kuwo",
@@ -230,11 +226,7 @@ const fetchWithTimeout = async <T>(
       reply: FastifyReply,
     ) => {
       const { keyword } = req.query;
-      const result = await fetchWithTimeout(
-        () => getKugouSongUrl(keyword),
-        8000,
-        "酷狗音乐解锁",
-      );
+      const result = await fetchWithTimeout(() => getKugouSongUrl(keyword), 8000, "酷狗音乐解锁");
       if (!result) {
         return reply.send({ code: 404, url: null, message: "请求超时或失败" });
       }

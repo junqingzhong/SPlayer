@@ -30,8 +30,8 @@ export const settingMigrations: Record<number, MigrationFunction> = {
   4: () => {
     return {
       songUnlockServer: [
-        { key: SongUnlockServer.BODIAN, enabled: true },
-        { key: SongUnlockServer.GEQUBAO, enabled: true },
+        { key: SongUnlockServer.XIAOWAI, enabled: true },
+        { key: SongUnlockServer.KUGOU, enabled: true },
         { key: SongUnlockServer.NETEASE, enabled: true },
         { key: SongUnlockServer.KUWO, enabled: false },
       ],

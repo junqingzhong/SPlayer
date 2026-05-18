@@ -65,7 +65,7 @@ export const songUrl = (
 export const unlockSongUrl = (
   id: number,
   keyword: string,
-  server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili" | "bodian" | "gequbao" | "xiaowai" | "pili",
+  server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili" | "xiaowai" | "pili" | "migu",
   level:
     | "standard"
     | "higher"

@@ -1,6 +1,8 @@
-import { existsSync, createReadStream } from "fs";
+import { existsSync, createReadStream, createWriteStream } from "fs";
 import { rename, stat, unlink } from "fs/promises";
 import { createHash } from "crypto";
+import https from "node:https";
+import http from "node:http";
 import { cacheLog } from "../logger";
 import { useStore } from "../store";
 import { loadNativeModule } from "../utils/native-loader";
@@ -9,22 +11,46 @@ import { CacheService } from "./CacheService";
 type toolModule = typeof import("@native/tools");
 const tools: toolModule = loadNativeModule("tools.node", "tools");
 
+/** 纯 Node.js 回退下载 */
+const nodejsDownload = (url: string, destPath: string): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const protocol = url.startsWith("https") ? https : http;
+    const request = protocol.get(url, (res) => {
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return nodejsDownload(res.headers.location, destPath).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) {
+        return reject(new Error(`下载失败，HTTP 状态码: ${res.statusCode}`));
+      }
+      const writer = createWriteStream(destPath);
+      res.pipe(writer);
+      writer.on("finish", () => resolve());
+      writer.on("error", reject);
+      res.on("error", reject);
+    });
+    request.on("error", reject);
+    request.setTimeout(30000, () => {
+      request.destroy();
+      reject(new Error("下载超时"));
+    });
+  });
+
 export class MusicCacheService {
   private static instance: MusicCacheService;
   private cacheService: CacheService;
   private downloadingTasks: Map<string, Promise<string>> = new Map();
   /** 音质优先级 */
   private readonly qualityPriority: Record<string, number> = {
-    "master": 100,
-    "dolby": 95,
-    "spatial": 90,
-    "surround": 85,
+    master: 100,
+    dolby: 95,
+    spatial: 90,
+    surround: 85,
     "hi-res": 80,
-    "sq": 70,
-    "hq": 60,
-    "mq": 50,
-    "lq": 40,
-    "standard": 40,
+    sq: 70,
+    hq: 60,
+    mq: 50,
+    lq: 40,
+    standard: 40,
   };
 
   private constructor() {
@@ -194,25 +220,17 @@ export class MusicCacheService {
 
       // 下载并写入
       try {
-        if (!tools) {
-          throw new Error("Native tools not loaded");
+        if (tools) {
+          // 使用 Rust 多线程下载器
+          const store = useStore();
+          const enableHttp2 = store.get("enableDownloadHttp2", true) as boolean;
+          const task = new tools.DownloadTask();
+          await task.download(url, tempPath, null, 4, null, () => {}, enableHttp2);
+        } else {
+          // 原生模块不可用，使用 Node.js 回退下载
+          cacheLog.warn("⚠️ Native tools not loaded，使用 Node.js 回退缓存下载");
+          await nodejsDownload(url, tempPath);
         }
-
-        // 使用 Rust 下载器
-
-        const store = useStore();
-        const enableHttp2 = store.get("enableDownloadHttp2", true) as boolean;
-
-        const task = new tools.DownloadTask();
-        await task.download(
-          url,
-          tempPath,
-          null, // No metadata for cache
-          4, // Thread count
-          null, // Referer
-          () => {}, // No progress callback needed for cache currently
-          enableHttp2,
-        );
 
         // 检查临时文件是否存在
         if (!existsSync(tempPath)) throw new Error("下载失败：临时文件未创建");

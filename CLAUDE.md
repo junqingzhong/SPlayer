@@ -94,6 +94,7 @@ git merge -X theirs music/dev
 git add .
 git commit -m "merge: 合并远程dev分支"
 ```
+
 ### 远程分支
 
 - `music/master` - 主分支
@@ -109,15 +110,15 @@ git commit -m "merge: 合并远程dev分支"
 
 ### 活动列表参数
 
-| 参数 | 类型 | 说明 |
-|------|------|------|
-| id | number | 活动ID |
-| name | string | 活动名称 |
-| date | string | 活动日期 |
-| address | string | 活动地址 |
-| remark | string | 备注说明 |
-| categoryId | number | 分类ID |
-| status | string | 状态（已完成/进行中/未开始） |
+| 参数       | 类型   | 说明                         |
+| ---------- | ------ | ---------------------------- |
+| id         | number | 活动ID                       |
+| name       | string | 活动名称                     |
+| date       | string | 活动日期                     |
+| address    | string | 活动地址                     |
+| remark     | string | 备注说明                     |
+| categoryId | number | 分类ID                       |
+| status     | string | 状态（已完成/进行中/未开始） |
 
 ### API 端点
 
@@ -133,17 +134,17 @@ git commit -m "merge: 合并远程dev分支"
 
 定义在 [SongManager.ts](file:///c:/Users/admin/Desktop/tea/src/core/player/SongManager.ts#L23-L31):
 
-| 枚举值 | 服务商 | 当前状态 |
-|--------|--------|----------|
-| NETEASE | 网易云音乐 | 已废弃 |
-| BODIAN | 波点音乐 | 已废弃 |
-| KUWO | 酷我音乐 | 正常 |
-| GEQUBAO | 歌曲宝 | 已废弃 |
-| QQ | QQ音乐 | 不稳定 |
-| KUGOU | 酷狗音乐 | 正常 |
-| BILIBILI | 哔哩哔哩 | 不稳定 |
-| XIAOWAI | 小歪音乐 | 正常（默认启用） |
-| PILI | PILI音乐 | 正常（默认启用） |
+| 枚举值   | 服务商     | 当前状态         |
+| -------- | ---------- | ---------------- |
+| NETEASE  | 网易云音乐 | 已废弃           |
+| BODIAN   | 波点音乐   | 已废弃           |
+| KUWO     | 酷我音乐   | 正常             |
+| GEQUBAO  | 歌曲宝     | 已废弃           |
+| QQ       | QQ音乐     | 不稳定           |
+| KUGOU    | 酷狗音乐   | 正常             |
+| BILIBILI | 哔哩哔哩   | 不稳定           |
+| XIAOWAI  | 小歪音乐   | 正常（默认启用） |
+| PILI     | PILI音乐   | 正常（默认启用） |
 
 ### 默认启用的音源
 
@@ -160,7 +161,7 @@ songUnlockServer: [
   { key: SongUnlockServer.BODIAN, enabled: false },
   { key: SongUnlockServer.GEQUBAO, enabled: false },
   { key: SongUnlockServer.BILIBILI, enabled: false },
-]
+];
 ```
 
 ### API 调用
@@ -168,22 +169,22 @@ songUnlockServer: [
 解锁接口定义在 [song.ts](file:///c:/Users/admin/Desktop/tea/src/api/song.ts#L64-L107):
 
 ```typescript
-unlockSongUrl(id, keyword, server, level, timeout)
+unlockSongUrl(id, keyword, server, level, timeout);
 // server 可选值: qq | kugou | kuwo | netease | bilibili | bodian | gequbao | xiaowai | pili
 ```
 
 ### 音质等级
 
-| 等级 | 参数 | 说明 |
-|------|------|------|
-| standard | l | 标准音质 |
-| higher | m | 较高音质 |
-| exhigh | h | 极高音质（默认） |
-| lossless | s | 无损音质 |
-| hires | e | Hi-Res |
-| jyeffect | j | 鲸鱼音效 |
-| sky | d | 天空音效 |
-| jymaster | a | 鲸鱼母带 |
+| 等级     | 参数 | 说明             |
+| -------- | ---- | ---------------- |
+| standard | l    | 标准音质         |
+| higher   | m    | 较高音质         |
+| exhigh   | h    | 极高音质（默认） |
+| lossless | s    | 无损音质         |
+| hires    | e    | Hi-Res           |
+| jyeffect | j    | 鲸鱼音效         |
+| sky      | d    | 天空音效         |
+| jymaster | a    | 鲸鱼母带         |
 
 ### 配置路径
 

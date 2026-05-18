@@ -1,6 +1,18 @@
 packages:
-  - "."
-  - "native/external-media-integration"
-  - "native/ferrous-opencc-wasm"
-  - "native/taskbar-lyric"
-  - "native/tools"
+  - .
+  - native/external-media-integration
+  - native/ferrous-opencc-wasm
+  - native/taskbar-lyric
+  - native/tools
+
+ignoredBuiltDependencies:
+  - "@applemusic-like-lyrics/core"
+  - "@applemusic-like-lyrics/lyric"
+  - "@parcel/watcher"
+  - better-sqlite3
+  - core-js
+  - electron
+  - electron-winstaller
+  - esbuild
+  - sharp
+  - wasm-pack

@@ -339,7 +339,9 @@ export class MusicMetadataService {
       };
 
       if (!tools) {
-        throw new Error("Native tools not loaded");
+        // 原生模块不可用，跳过元数据写入，仅保存文件
+        ipcLog.warn("⚠️ Native tools not loaded，跳过元数据写入");
+        return true;
       }
 
       await tools.writeMusicMetadata(songPath, meta, coverPath);

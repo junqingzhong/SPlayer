@@ -142,7 +142,7 @@ const config: Configuration = {
       },
     ],
   },
-    // Linux 平台配置
+  // Linux 平台配置
   linux: {
     // 可执行文件名
     executableName: "SPlayer",

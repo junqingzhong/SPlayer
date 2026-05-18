@@ -1,7 +1,10 @@
 import type { SongMetadata } from "@native/tools";
 import { app, BrowserWindow } from "electron";
 import { mkdir, access, writeFile, rename, unlink } from "node:fs/promises";
+import { createWriteStream as createWriteStreamSync } from "node:fs";
 import { join, resolve } from "node:path";
+import https from "node:https";
+import http from "node:http";
 import { ipcLog } from "../logger";
 import { useStore } from "../store";
 import { loadNativeModule } from "../utils/native-loader";
@@ -9,6 +12,48 @@ import { getArtistNames } from "../utils/format";
 
 type toolModule = typeof import("@native/tools");
 const tools: toolModule = loadNativeModule("tools.node", "tools");
+
+/**
+ * 纯 Node.js 回退下载（当原生模块不可用时使用）
+ */
+const fallbackDownload = (
+  url: string,
+  destPath: string,
+  onProgress?: (percent: number, transferred: number, total: number) => void,
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith("https") ? https : http;
+    const request = protocol.get(url, (res) => {
+      // 处理重定向
+      if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return fallbackDownload(res.headers.location, destPath, onProgress)
+          .then(resolve)
+          .catch(reject);
+      }
+      if (res.statusCode !== 200) {
+        return reject(new Error(`下载失败，HTTP 状态码: ${res.statusCode}`));
+      }
+      const total = parseInt(res.headers["content-length"] || "0", 10);
+      let transferred = 0;
+      const writer = createWriteStreamSync(destPath);
+      res.on("data", (chunk: Buffer) => {
+        transferred += chunk.length;
+        if (onProgress && total > 0) {
+          onProgress(transferred / total, transferred, total);
+        }
+      });
+      res.pipe(writer);
+      writer.on("finish", () => resolve());
+      writer.on("error", reject);
+      res.on("error", reject);
+    });
+    request.on("error", reject);
+    request.setTimeout(30000, () => {
+      request.destroy();
+      reject(new Error("下载超时"));
+    });
+  });
+};
 
 export class DownloadService {
   /** 存储活动下载任务：ID -> DownloadTask 实例 */
@@ -157,8 +202,6 @@ export class DownloadService {
         }
       };
       // 检查工具模块
-      if (!tools) throw new Error("Native tools not loaded");
-      // 获取配置
       const store = useStore();
       // 使用 threadCount（如果可用），否则回退到 store
       const threadCount = options.threadCount || store.get("downloadThreadCount") || 8;
@@ -170,34 +213,57 @@ export class DownloadService {
         finalUrl = finalUrl.replace(/^http:\/\//, "https://");
         ipcLog.info(`🔒 Upgraded download URL to HTTPS for HTTP/2 support: ${finalUrl}`);
       }
-      // 创建下载任务
-      const task = new tools.DownloadTask();
-      const downloadId = songData?.id || 0;
-      this.activeDownloads.set(downloadId, task);
 
-      try {
-        // 下载到临时文件
-        await task.download(
-          finalUrl,
-          tempFilePath,
-          metadata,
-          threadCount,
-          referer,
-          onProgress,
-          enableHttp2,
-        );
-        // 下载完成后重命名为最终文件名
-        await rename(tempFilePath, finalFilePath);
-      } catch (err) {
-        // 下载失败或取消，尝试清理临时文件
+      if (tools) {
+        // 使用原生多线程下载器
+        const task = new tools.DownloadTask();
+        const downloadId = songData?.id || 0;
+        this.activeDownloads.set(downloadId, task);
+
         try {
-          await unlink(tempFilePath);
-        } catch {
-          // 忽略清理错误
+          await task.download(
+            finalUrl,
+            tempFilePath,
+            metadata,
+            threadCount,
+            referer,
+            onProgress,
+            enableHttp2,
+          );
+          await rename(tempFilePath, finalFilePath);
+        } catch (err) {
+          try {
+            await unlink(tempFilePath);
+          } catch {
+            /* 忽略清理错误 */
+          }
+          throw err;
+        } finally {
+          this.activeDownloads.delete(downloadId);
         }
-        throw err;
-      } finally {
-        this.activeDownloads.delete(downloadId);
+      } else {
+        // 原生模块不可用，使用 Node.js 回退下载
+        ipcLog.warn(
+          "⚠️ Native tools not loaded，使用 Node.js 回退下载（不支持多线程和元数据写入）",
+        );
+        try {
+          await fallbackDownload(finalUrl, tempFilePath, (percent, transferred, total) => {
+            win.webContents.send("download-progress", {
+              id: songData?.id,
+              percent,
+              transferredBytes: transferred,
+              totalBytes: total,
+            });
+          });
+          await rename(tempFilePath, finalFilePath);
+        } catch (err) {
+          try {
+            await unlink(tempFilePath);
+          } catch {
+            /* 忽略清理错误 */
+          }
+          throw err;
+        }
       }
 
       // 创建同名歌词文件

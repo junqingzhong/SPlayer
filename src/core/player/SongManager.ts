@@ -22,14 +22,13 @@ import { openUserLogin } from "@/utils/modal";
  */
 export enum SongUnlockServer {
   NETEASE = "netease",
-  BODIAN = "bodian",
   KUWO = "kuwo",
-  GEQUBAO = "gequbao",
   QQ = "qq",
   KUGOU = "kugou",
   BILIBILI = "bilibili",
   XIAOWAI = "xiaowai",
   PILI = "pili",
+  MIGU = "migu",
 }
 
 /** 歌曲播放地址信息 */
@@ -55,6 +54,9 @@ export type AudioSource = {
 class SongManager {
   /** 预载下一首歌曲播放信息 */
   private nextPrefetch: AudioSource | undefined;
+
+  /** 当前播放歌曲的完整音频源缓存（用于单曲循环复用） */
+  private currentPlayingSource: AudioSource | undefined;
 
   public peekPrefetch(id: number): AudioSource | undefined {
     if (!this.nextPrefetch) return;
@@ -514,6 +516,31 @@ class SongManager {
   }
 
   /**
+   * 设置当前播放歌曲的音频源（用于单曲循环复用）
+   */
+  public setCurrentPlayingSource(source: AudioSource) {
+    this.currentPlayingSource = source;
+    console.log(`💾 [${source.id}] 缓存当前播放音频源`);
+  }
+
+  /**
+   * 清除当前播放歌曲的音频源缓存
+   */
+  public clearCurrentPlayingSource() {
+    this.currentPlayingSource = undefined;
+  }
+
+  /**
+   * 获取当前播放歌曲的缓存音频源
+   */
+  public getCurrentPlayingSource(songId: number): AudioSource | undefined {
+    if (this.currentPlayingSource && this.currentPlayingSource.id === songId) {
+      return this.currentPlayingSource;
+    }
+    return undefined;
+  }
+
+  /**
    * 获取音频源
    * 始终从此方法获取对应歌曲播放信息
    * @param song 歌曲
@@ -553,7 +580,16 @@ class SongManager {
     const songId = song.type === "radio" ? song.dj?.id : song.id;
     if (!songId) return { id: 0, url: undefined, quality: undefined, isUnlocked: false };
 
-    // 检查缓存并返回
+    // 优先检查当前播放歌曲的缓存（用于单曲循环）
+    if (!forceSource) {
+      const cachedPlayingSource = this.getCurrentPlayingSource(songId);
+      if (cachedPlayingSource && cachedPlayingSource.url) {
+        console.log(`🔁 [${songId}] 单曲循环复用已缓存的音频源`);
+        return cachedPlayingSource;
+      }
+    }
+
+    // 检查预加载缓存并返回
     if (
       !forceSource &&
       this.nextPrefetch &&

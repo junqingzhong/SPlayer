@@ -3,7 +3,7 @@ import { CURRENT_AGREEMENT_VERSION } from "@/constants/agreement";
 import { NScrollbar } from "naive-ui";
 import { isLogin } from "./auth";
 import { isArray, isFunction } from "lodash-es";
-import { useDataStore, useSettingStore } from "@/stores";
+import { useSettingStore } from "@/stores";
 import router from "@/router";
 import type { StreamingServerConfig as StreamingServerConfigType } from "@/types/streaming";
 
@@ -292,13 +292,10 @@ export const openUpdatePlaylist = async (
 
 // 下载歌曲
 export const openDownloadSong = async (song: SongType) => {
-  const dataStore = useDataStore();
   if (!isLogin()) return openUserLogin();
   // 是否可下载
   if (!song) return window.$message.warning("请正确选择歌曲");
-  if (song.free !== 0 && dataStore.userData.vipType === 0 && !song?.pc) {
-    return window.$message.warning("账号会员等级不足，请提升权限");
-  }
+  // 移除等级检查，允许所有歌曲下载
   const { default: DownloadModal } = await import("@/components/Modal/DownloadModal.vue");
   const modal = window.$modal.create({
     preset: "card",

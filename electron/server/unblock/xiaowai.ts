@@ -20,11 +20,11 @@ const search = async (match: SongMatchInfo): Promise<any | null> => {
   try {
     const keyword = encodeURIComponent(match.keyword);
     const url = `${XIAOWAI_API}?type=search&server=netease&keyword=${keyword}`;
-    
+
     const response = await axios.get(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": "https://api.liumingye.cn/",
+        Referer: "https://api.liumingye.cn/",
       },
       timeout: 8000,
     });
@@ -40,7 +40,7 @@ const search = async (match: SongMatchInfo): Promise<any | null> => {
         return item;
       }
     }
-    
+
     // 如果没有精确匹配，返回第一个结果
     return response.data[0];
   } catch (error) {
@@ -60,11 +60,11 @@ const getTrackUrl = async (song: any): Promise<string | null> => {
     if (!id) return null;
 
     const url = `${XIAOWAI_API}?type=url&server=netease&id=${id}`;
-    
+
     const response = await axios.get(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": "https://api.liumingye.cn/",
+        Referer: "https://api.liumingye.cn/",
       },
       timeout: 8000,
     });
@@ -97,10 +97,10 @@ const getXiaowaiSongUrl = async (match: SongMatchInfo): Promise<SongUrlResult> =
     if (!playUrl) return { code: 404, url: null };
 
     serverLog.log("🔗 XiaowaiSong URL:", playUrl);
-    
+
     // 计算时长（毫秒）
     const duration = song.time || song.duration ? (song.time || song.duration) * 1000 : undefined;
-    
+
     return filterByDuration({ code: 200, url: playUrl, duration });
   } catch (error) {
     serverLog.error("❌ Get XiaowaiSong URL Error:", error);

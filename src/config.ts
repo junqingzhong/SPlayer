@@ -23,9 +23,9 @@ const defaultConfig = {
   // 解锁API URL
   unblockApiUrl: "/api/unblock",
   // 网易云音乐API URL
-  neteaseApiUrl: '/api/netease',
+  neteaseApiUrl: "/api/netease",
   // 活动API URL
-  activitiesApiBaseUrl: '/api/activities',
+  activitiesApiBaseUrl: "/api/activities",
   // 默认真实IP
   defaultRealIP: "116.25.146.177",
   // 全局代理配置

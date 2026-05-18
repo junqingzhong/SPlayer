@@ -53,7 +53,9 @@ if (!isRustAvailable()) {
   console.warn(
     "[BuildNative] 安装 Rust (https://rust-lang.org/tools/install/) 或者设置环境变量 SKIP_NATIVE_BUILD=true",
   );
-  console.warn("[BuildNative] 由于当前环境缺少 Rust，已自动跳过原生模块构建。部分功能（如媒体键、Discord RPC）将不可用。");
+  console.warn(
+    "[BuildNative] 由于当前环境缺少 Rust，已自动跳过原生模块构建。部分功能（如媒体键、Discord RPC）将不可用。",
+  );
   process.exit(0);
 }
 
