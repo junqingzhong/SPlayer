@@ -9,7 +9,7 @@ const { autoUpdater } = electronUpdater;
 // 更新源
 autoUpdater.setFeedURL({
   provider: "github",
-  owner: "imsyy",
+  owner: "SPlayer-Dev",
   repo: "SPlayer",
 });
 
