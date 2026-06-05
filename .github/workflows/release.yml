@@ -298,4 +298,5 @@ jobs:
             --title "$TAG" \
             --notes-file release_notes.md \
             --verify-tag \
+            --draft \
             release-assets/*
