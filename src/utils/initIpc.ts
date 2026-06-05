@@ -140,6 +140,9 @@ const initIpc = () => {
       const statusStore = useStatusStore();
       if (player) {
         const { name, artist } = getPlayerInfoObj() || {};
+        const songLyric = statusStore.lyricLoading
+          ? { lrcData: [], yrcData: [] }
+          : toRaw(musicStore.songLyric);
         window.electron.ipcRenderer.send(
           "desktop-lyric:update-data",
           cloneDeep({
@@ -149,8 +152,8 @@ const initIpc = () => {
             currentTime: statusStore.currentTime,
             songId: musicStore.playSong?.id,
             songOffset: statusStore.getSongOffset(musicStore.playSong?.id),
-            lrcData: musicStore.songLyric.lrcData ?? [],
-            yrcData: musicStore.songLyric.yrcData ?? [],
+            lrcData: songLyric.lrcData ?? [],
+            yrcData: songLyric.yrcData ?? [],
             lyricIndex: statusStore.lyricIndex,
             lyricLoading: statusStore.lyricLoading,
           }),
