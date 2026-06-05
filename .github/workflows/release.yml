@@ -157,6 +157,18 @@ jobs:
               ;;
           esac
 
+      # 修复 Linux arm64 自动更新清单命名
+      - name: Rename Linux arm64 update manifest
+        if: matrix.target == 'linux-arm64'
+        shell: bash
+        run: |
+          if [ -f dist/latest-linux.yml ]; then
+            mv dist/latest-linux.yml dist/latest-linux-arm64.yml
+            echo "Renamed latest-linux.yml -> latest-linux-arm64.yml"
+          else
+            echo "dist/latest-linux.yml not found, skipping"
+          fi
+
       # 合并所有构建
       - name: Upload Artifact
         uses: actions/upload-artifact@v7

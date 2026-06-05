@@ -1,9 +1,5 @@
 import type { LyricLine } from "@applemusic-like-lyrics/lyric";
-import {
-  TASKBAR_IPC_CHANNELS,
-  type SyncStatePayload,
-  type SyncTickPayload,
-} from "@shared";
+import { TASKBAR_IPC_CHANNELS, type SyncStatePayload, type SyncTickPayload } from "@shared";
 import { ipcMain } from "electron";
 import { useStore } from "../store";
 import { getMainTray } from "../tray";

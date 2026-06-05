@@ -112,7 +112,9 @@ onMounted(async () => {
   const ipc = window.electron?.ipcRenderer;
   if (!ipc) return;
   try {
-    const saved = (await ipc.invoke(TASKBAR_IPC_CHANNELS.GET_OPTION)) as TaskbarLyricSettings | null;
+    const saved = (await ipc.invoke(
+      TASKBAR_IPC_CHANNELS.GET_OPTION,
+    )) as TaskbarLyricSettings | null;
     if (saved) Object.assign(config, saved);
   } catch (error) {
     console.error("[taskbar-lyric] load config failed", error);
