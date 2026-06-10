@@ -23,12 +23,6 @@ import { openUserLogin } from "@/utils/modal";
 export enum SongUnlockServer {
   NETEASE = "netease",
   KUWO = "kuwo",
-  QQ = "qq",
-  KUGOU = "kugou",
-  BILIBILI = "bilibili",
-  XIAOWAI = "xiaowai",
-  PILI = "pili",
-  MIGU = "migu",
 }
 
 /** 歌曲播放地址信息 */

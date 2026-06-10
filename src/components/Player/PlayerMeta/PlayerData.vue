@@ -223,12 +223,7 @@ const sourceMap: Record<string, string> = {
   official: "Official",
   [SongUnlockServer.NETEASE]: "Netease",
   [SongUnlockServer.KUWO]: "Kuwo",
-  [SongUnlockServer.KUGOU]: "Kugou",
-  [SongUnlockServer.QQ]: "QQ",
-  [SongUnlockServer.XIAOWAI]: "Xiaowai",
-  [SongUnlockServer.PILI]: "Pili",
-  [SongUnlockServer.MIGU]: "Migu",
-  [SongUnlockServer.BILIBILI]: "Bilibili",
+  [SongUnlockServer.BODIAN]: "Bodian",
   local: "Local",
   streaming: "Streaming",
 };

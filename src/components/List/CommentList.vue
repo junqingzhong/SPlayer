@@ -7,7 +7,7 @@
       :class="['comment-list', { transparent }]"
       vertical
     >
-      <n-flex v-for="(item, index) in data" :key="index" :size="20" class="comments">
+      <n-flex v-for="(item, index) in data" :key="index" :size="0" class="comments">
         <div v-if="!transparent && !hiddenCover" class="user">
           <div class="avatar">
             <n-image
