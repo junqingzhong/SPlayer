@@ -186,6 +186,7 @@ const config: Configuration = {
         MimeType: "x-scheme-handler/orpheus;",
       },
     },
+    syncDesktopName: true,
   },
   // AppImage 特定配置
   appImage: {
