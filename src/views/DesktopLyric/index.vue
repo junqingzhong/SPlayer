@@ -165,6 +165,7 @@ import { LyricWord } from "@applemusic-like-lyrics/lyric";
 import { calculateLyricIndex, getSafeEndTime } from "@/utils/calc";
 import { LyricConfig, LyricData, RenderLine } from "@/types/desktop-lyric";
 import defaultDesktopLyricConfig from "@/assets/data/lyricConfig";
+import SvgIcon from "@/components/Global/SvgIcon.vue";
 
 const FALLBACK_INITIALIZATION_TIMEOUT = 2000; // 歌词窗口初始化后备超时时间，用于防止无数据时无限期空白
 

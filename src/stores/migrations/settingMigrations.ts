@@ -6,7 +6,7 @@ import type { SettingState } from "../setting";
 /**
  * 当前设置 Schema 版本号
  */
-export const CURRENT_SETTING_SCHEMA_VERSION = 12;
+export const CURRENT_SETTING_SCHEMA_VERSION = 13;
 
 /**
  * 迁移函数类型
@@ -198,6 +198,23 @@ export const settingMigrations: Record<number, MigrationFunction> = {
     if (!Array.isArray(servers)) return {};
     return {
       songUnlockServer: servers.filter((s) => (s.key as string) !== "gequbao"),
+    };
+  },
+  13: (state) => {
+    // 新增咪咕音源，插入到酷我之前
+    const servers = state.songUnlockServer;
+    if (!Array.isArray(servers)) return {};
+    const hasMigu = servers.some((s) => s.key === SongUnlockServer.MIGU);
+    if (hasMigu) return {};
+    const kuwoIndex = servers.findIndex((s) => s.key === SongUnlockServer.KUWO);
+    const newServers = [...servers];
+    if (kuwoIndex >= 0) {
+      newServers.splice(kuwoIndex, 0, { key: SongUnlockServer.MIGU, enabled: true });
+    } else {
+      newServers.push({ key: SongUnlockServer.MIGU, enabled: true });
+    }
+    return {
+      songUnlockServer: newServers,
     };
   },
 };

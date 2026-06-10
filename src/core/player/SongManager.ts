@@ -22,7 +22,9 @@ import { openUserLogin } from "@/utils/modal";
  */
 export enum SongUnlockServer {
   NETEASE = "netease",
+  BODIAN = "bodian",
   KUWO = "kuwo",
+  MIGU = "migu",
 }
 
 /** 歌曲播放地址信息 */
@@ -333,8 +335,8 @@ class SongManager {
             songId,
             keyWord,
             server,
-            undefined,
-            settingStore.songUnlockTimeout,
+            song.name,
+            String(Array.isArray(song.artists) ? song.artists[0]?.name : song.artists),
           );
           const success = result.code === 200 && !!result.url;
 
@@ -367,7 +369,10 @@ class SongManager {
             break; // 无需重试，直接换下一个源
           }
         } catch (error) {
-          console.error(`❌ [${songId}] ${server} 请求失败 (尝试 ${attempt + 1}/${maxRetries + 1}):`, error);
+          console.error(
+            `❌ [${songId}] ${server} 请求失败 (尝试 ${attempt + 1}/${maxRetries + 1}):`,
+            error,
+          );
           if (attempt < maxRetries) {
             // 重试前等待一小段时间
             await new Promise((resolve) => setTimeout(resolve, 500));

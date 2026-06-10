@@ -48,7 +48,8 @@ const initSocketIpc = (): void => {
     return withErrorCatch(async () => {
       await socketService.stop();
       const store = useStore();
-      store.set("websocket.enabled", false);
+      const prevWebsocket = store.get("websocket") || {};
+      store.set("websocket", { ...prevWebsocket, enabled: false });
 
       return null;
     });

@@ -1,43 +1,8 @@
-/*
- * @Author: ZJQ
- * @Date: 2025-05-23 10:50:52
- * @LastEditors: zjq zjq@xkb.com.cn
- * @LastEditTime: 2026-01-27 11:55:21
- * @FilePath: \tea\electron\server\unblock\kuwo.ts
- * @Description:
- *
- * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
- */
 import { encryptQuery } from "./kwDES";
 import type { SongMatchInfo, SongUrlResult } from "./unblock";
 import { isSongMatch } from "./match";
-import { filterByDuration } from "./index";
 import { serverLog } from "../../main/logger";
 import axios from "axios";
-
-/**
- * 备用获取酷我音乐 URL 的方法
- * @param songId 歌曲 ID
- * @returns URL 或 null
- */
-const fetchKuwoUrlAntiserver = async (songId: string): Promise<string | null> => {
-  try {
-    const url = "http://antiserver.kuwo.cn/anti.s?type=convert_url&rid=" + songId + "&format=mp3";
-    const result = await axios.get(url, {
-      headers: {
-        "User-Agent": "okhttp/3.10.0",
-      },
-    });
-    if (result.data && typeof result.data === "string") {
-      const urlMatch = result.data.match(/http[^\s$"]+/);
-      return urlMatch ? urlMatch[0] : null;
-    }
-    return null;
-  } catch (error) {
-    serverLog.error("❌ Kuwo Antiserver Error:", error);
-    return null;
-  }
-};
 
 // 获取酷我音乐歌曲 ID
 const getKuwoSongId = async (match: SongMatchInfo): Promise<string | null> => {
@@ -93,56 +58,11 @@ const getKuwoSongUrl = async (match: SongMatchInfo): Promise<SongUrlResult> => {
     if (result.data) {
       const urlMatch = result.data.match(/http[^\s$"]+/)[0];
       serverLog.log("🔗 KuwoSong URL:", urlMatch);
-
-      let duration: number | undefined = undefined;
-      try {
-        const detailUrl = `http://www.kuwo.cn/api/www/music/musicInfo?mid=${songId}`;
-        const detailResult = await axios.get(detailUrl, {
-          headers: {
-            "User-Agent":
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            Referer: "http://www.kuwo.cn/",
-          },
-        });
-
-        if (detailResult.data && detailResult.data.data && detailResult.data.data.duration) {
-          const durationStr = detailResult.data.data.duration; // 格式可能是 "03:45"
-          const parts = durationStr.split(":");
-          if (parts.length === 2) {
-            const minutes = parseInt(parts[0]);
-            const seconds = parseInt(parts[1]);
-            duration = (minutes * 60 + seconds) * 1000;
-          }
-        }
-      } catch (detailError) {
-        serverLog.error("❌ Get Kuwo Song Duration Error:", detailError);
-      }
-
-      const filtered = filterByDuration({ code: 200, url: urlMatch, duration });
-      if (!filtered.url) {
-        const fallback = await fetchKuwoUrlAntiserver(songId);
-        if (fallback) {
-          serverLog.log("🔗 KuwoSong URL (fallback):", fallback);
-          return filterByDuration({ code: 200, url: fallback, duration });
-        }
-      }
-      return filtered;
+      return { code: 200, url: urlMatch };
     }
     return { code: 404, url: null };
   } catch (error) {
     serverLog.error("❌ Get KuwoSong URL Error:", error);
-    try {
-      const songId = await getKuwoSongId(match);
-      if (songId) {
-        const fallback = await fetchKuwoUrlAntiserver(songId);
-        if (fallback) {
-          serverLog.log("🔗 KuwoSong URL (fallback):", fallback);
-          return filterByDuration({ code: 200, url: fallback });
-        }
-      }
-    } catch (e) {
-      serverLog.error("❌ Kuwo fallback error:", e);
-    }
     return { code: 404, url: null };
   }
 };

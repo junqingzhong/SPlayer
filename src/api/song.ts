@@ -1,8 +1,8 @@
 import { isElectron } from "@/utils/env";
 import { defaultAMLLDbServer, songLevelData } from "@/utils/meta";
+import { SongUnlockServer } from "@/core/player/SongManager";
 import { useSettingStore } from "@/stores";
 import request from "@/utils/request";
-import config from "@/config";
 
 // 获取歌曲详情
 export const songDetail = (ids: number | number[]) => {
@@ -61,49 +61,20 @@ export const songUrl = (
     },
   });
 };
+
 // 获取解锁歌曲 URL
 export const unlockSongUrl = (
   id: number,
   keyword: string,
-  server: "qq" | "kugou" | "kuwo" | "netease" | "bilibili" | "xiaowai" | "pili" | "migu",
-  level:
-    | "standard"
-    | "higher"
-    | "exhigh"
-    | "lossless"
-    | "hires"
-    | "jyeffect"
-    | "sky"
-    | "jymaster" = "exhigh",
-  timeout: number = 15000,
+  server: SongUnlockServer,
+  songName?: string,
+  artist?: string,
 ) => {
-  // 音质映射
-  const levelMap = {
-    standard: "l",
-    higher: "m",
-    exhigh: "h",
-    lossless: "s",
-    hires: "e",
-    jyeffect: "j",
-    sky: "d",
-    jymaster: "a",
-  } as const;
-  const quality = levelMap[level];
-  const params: Record<string, any> = server === "netease" ? { id } : { keyword };
-  if (server === "qq") {
-    // 如果是 QQ 音乐，尝试从 localStorage 中获取 cookie
-    const qqCookie = localStorage.getItem("qq-cookie") || "";
-    if (qqCookie) {
-      params.cookie = qqCookie;
-    }
-  }
-  // 添加音质参数
-  params.quality = quality;
+  const params = server === SongUnlockServer.NETEASE ? { id } : { keyword, songName, artist };
   return request({
-    baseURL: config.unblockApiUrl,
+    baseURL: "/api/unblock",
     url: `/${server}`,
     params: { ...params, noCookie: true },
-    timeout,
   });
 };
 

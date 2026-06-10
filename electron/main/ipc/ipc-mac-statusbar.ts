@@ -120,7 +120,12 @@ export const initMacStatusBarIpc = () => {
 
   // 新增 macOS 专属设置切换监听
   ipcMain.on("macos-lyric:toggle", (_event, show: boolean) => {
-    store.set("macos.statusBarLyric.enabled", show);
+    const prevMacos = store.get("macos") || {};
+    const prevStatusBarLyric = prevMacos.statusBarLyric || {};
+    store.set("macos", {
+      ...prevMacos,
+      statusBarLyric: { ...prevStatusBarLyric, enabled: show },
+    });
     const tray = getMainTray();
     const mainWin = mainWindow.getWin();
 

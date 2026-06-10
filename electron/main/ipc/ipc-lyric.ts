@@ -203,10 +203,8 @@ const initLyricIpc = (): void => {
     if (!isWinAlive(lyricWin)) return;
     lyricWin.setBounds({ x, y, width, height });
     // 保存配置
-    store.set("lyric.x", x);
-    store.set("lyric.y", y);
-    store.set("lyric.width", width);
-    store.set("lyric.height", height);
+    const prevLyric = store.get("lyric") || {};
+    store.set("lyric", { ...prevLyric, x, y, width, height });
   });
 
   // 更新歌词窗口宽高
@@ -215,8 +213,8 @@ const initLyricIpc = (): void => {
     if (!isWinAlive(lyricWin)) return;
     // 更新窗口宽度
     lyricWin.setBounds({ width, height });
-    store.set("lyric.width", width);
-    store.set("lyric.height", height);
+    const prevLyric = store.get("lyric") || {};
+    store.set("lyric", { ...prevLyric, width, height });
   });
 
   // 更新高度
@@ -226,7 +224,8 @@ const initLyricIpc = (): void => {
     const { width } = lyricWin.getBounds();
     // 更新窗口高度
     lyricWin.setBounds({ width, height });
-    store.set("lyric.height", height);
+    const prevLyric = store.get("lyric") || {};
+    store.set("lyric", { ...prevLyric, height });
   });
 
   // 是否固定当前最大宽高
@@ -291,7 +290,8 @@ const initLyricIpc = (): void => {
       }
 
       if (temp) return;
-      store.set("lyric.config.isLock", isLock);
+      const prevConfig = store.get("lyric.config") || {};
+      store.set("lyric.config", { ...prevConfig, isLock });
       // 触发窗口更新
       const config = store.get("lyric.config");
       if (isWinAlive(mainWin)) {

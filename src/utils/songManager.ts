@@ -11,11 +11,8 @@ import { handleSongQuality } from "./helper";
 export enum SongUnlockServer {
   NETEASE = "netease",
   BODIAN = "bodian",
-  GEQUBAO = "gequbao",
-  QQ = "qq",
-  KUGOU = "kugou",
   KUWO = "kuwo",
-  BILIBILI = "bilibili",
+  MIGU = "migu",
 }
 
 export type NextPrefetchSong = {
@@ -142,9 +139,7 @@ class SongManager {
       if (servers.length === 0) return null;
       // 并发请求
       const promises = servers.map((server) => {
-        // 将 SongUnlockServer 枚举值转换为 unlockSongUrl 需要的字符串类型
-        const serverStr = server as unknown as "qq" | "kugou" | "kuwo" | "netease" | "bilibili";
-        return unlockSongUrl(songId, keyWord, serverStr)
+        return unlockSongUrl(songId, keyWord, server, songData.name, String(artist))
           .then((result) => ({
             server,
             result,

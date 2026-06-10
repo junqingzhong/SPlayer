@@ -147,7 +147,8 @@ export class SocketService {
       store.set("websocket", { enabled: true, port });
     } catch (error) {
       socketLog.error("❌ Error while auto-starting WebSocket server from store:", error);
-      store.set("websocket.enabled", false);
+      const prevWebsocket = store.get("websocket") || {};
+      store.set("websocket", { ...prevWebsocket, enabled: false });
     }
   }
 

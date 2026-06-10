@@ -203,47 +203,47 @@ export class LocalMusicService {
         await new Promise<void>((resolve, reject) => {
           tools
             .scanMusicLibrary(dbPath, dirPaths, coverDir, (err, event) => {
-            if (err) {
-              processLog.error("[LocalMusicService] 原生模块扫描时出错:", err);
-              return;
-            }
-            if (!event) return;
-            // 处理事件
-            try {
-              switch (event.event) {
-                // 进度更新
-                case "progress":
-                  if (event.progress) {
-                    onProgress?.(event.progress.current, event.progress.total);
-                  }
-                  break;
-                // 批量数据
-                case "batch":
-                  if (event.tracks && event.tracks.length > 0) {
-                    this.db?.addTracks(event.tracks);
-                    onTracksBatch?.(event.tracks);
-                  }
-                  break;
-                // 扫描结束
-                case "end":
-                  if (!ignoreDelete && event.deletedPaths && event.deletedPaths.length > 0) {
-                    this.db?.deleteTracks(event.deletedPaths);
-                  }
-                  resolve();
-                  break;
+              if (err) {
+                processLog.error("[LocalMusicService] 原生模块扫描时出错:", err);
+                return;
               }
-            } catch (e) {
-              processLog.error("[LocalMusicService] 扫描时出错:", e);
-            }
-          })
-          .catch((err) => {
-            reject(err);
-          });
-      });
-      console.timeEnd("RustScanStream");
+              if (!event) return;
+              // 处理事件
+              try {
+                switch (event.event) {
+                  // 进度更新
+                  case "progress":
+                    if (event.progress) {
+                      onProgress?.(event.progress.current, event.progress.total);
+                    }
+                    break;
+                  // 批量数据
+                  case "batch":
+                    if (event.tracks && event.tracks.length > 0) {
+                      this.db?.addTracks(event.tracks);
+                      onTracksBatch?.(event.tracks);
+                    }
+                    break;
+                  // 扫描结束
+                  case "end":
+                    if (!ignoreDelete && event.deletedPaths && event.deletedPaths.length > 0) {
+                      this.db?.deleteTracks(event.deletedPaths);
+                    }
+                    resolve();
+                    break;
+                }
+              } catch (e) {
+                processLog.error("[LocalMusicService] 扫描时出错:", e);
+              }
+            })
+            .catch((err) => {
+              reject(err);
+            });
+        });
+        console.timeEnd("RustScanStream");
       } else {
-         await this._scanWithNodeJS(dirPaths, ignoreDelete, onProgress, onTracksBatch);
-       }
+        await this._scanWithNodeJS(dirPaths, ignoreDelete, onProgress, onTracksBatch);
+      }
     } catch (err) {
       processLog.error("[LocalMusicService]: 扫描失败", err);
       throw err;

@@ -87,12 +87,12 @@
 - 拉取远程 music 的更新。
 - 切换到 master 分支。
 - 将 music/dev 分支合并到 master ，并以远程代码为准处理冲突。
-- 更新所有包：`pnpm update`
+- 更新所有包：`pnpm update`,确保插件最新，旧版插件清除干净。
 - 解决所有合并冲突。
-- 提交合并结果。
 - 活动列表功能适配 ：
 - 检查 src/views/Activities/index.vue 、 api/app.py 和 activities 表。
 - 确保现有活动列表相关的参数和功能能够适配新版本，避免报错或参数无法填写的情况。
 - 更新破解音源接口 ：
 - 检查 SongManager.ts 、 setting.ts 、 song.ts 、 config.ts 和 SongUnlockManager.vue 。
 - 检查并识别接口是否能用，删除不能使用的音源接口。
+- 测试打包，确保打包无语法错误。

@@ -17,9 +17,9 @@
  */
 "use strict";
 
-const fs = require("fs");
-const path = require("path");
-const yaml = require("js-yaml");
+import fs from "fs";
+import path from "path";
+import yaml from "js-yaml";
 
 const srcDir = process.argv[2];
 const outDir = process.argv[3];

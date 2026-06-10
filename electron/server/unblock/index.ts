@@ -1,22 +1,10 @@
-/*
- * @Author: ZJQ
- * @Date: 2025-05-23 10:50:52
- * @LastEditors: zjq zjq@xkb.com.cn
- * @LastEditTime: 2025-12-11 15:53:37
- * @FilePath: \tea\electron\server\unblock\index.ts
- * @Description:
- *
- * Copyright (c) 2025 by ${git_name_email}, All Rights Reserved.
- */
 import { FastifyInstance, FastifyRequest, FastifyReply } from "fastify";
-import { SongUrlResult } from "./unblock";
-import getKuwoSongUrl from "./kuwo";
-import getKugouSongUrl from "./kugou";
-import getQQSongUrl from "./qq";
-import { check as getBilibiliSongUrl } from "./bilibili";
+import type { SongUrlResult } from "./unblock";
 import { serverLog } from "../../main/logger";
 import axios from "axios";
+import getKuwoSongUrl from "./kuwo";
 import getBodianSongUrl from "./bodian";
+import getMiguSongUrl from "./migu";
 
 /**
  * 直接获取 网易云云盘 链接
@@ -32,15 +20,7 @@ const getNeteaseSongUrl = async (id: number | string): Promise<SongUrlResult> =>
     });
     const songUrl = result.data.url;
     serverLog.log("🔗 NeteaseSongUrl URL:", songUrl);
-
-    // 尝试获取音频时长
-    let duration: number | undefined = undefined;
-    if (result.data.duration) {
-      duration = parseInt(result.data.duration) * 1000; // 转换为毫秒
-    }
-
-    // 应用时长过滤
-    return filterByDuration({ code: 200, url: songUrl, duration });
+    return { code: 200, url: songUrl };
   } catch (error) {
     serverLog.error("❌ Get NeteaseSongUrl Error:", error);
     return { code: 404, url: null };
@@ -67,10 +47,7 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       reply: FastifyReply,
     ) => {
       const { id } = req.query;
-      const result = await fetchWithTimeout(() => getNeteaseSongUrl(id), 5000, "网易云音乐解锁");
-      if (!result) {
-        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
-      }
+      const result = await getNeteaseSongUrl(id);
       return reply.send(result);
     },
   );
@@ -89,23 +66,6 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
     }
     return { keyword: query.keyword || "", songName, artist };
   };
-
-  // 带超时的请求包装
-  const fetchWithTimeout = async <T>(
-    fetcher: () => Promise<T>,
-    timeout: number = 8000,
-    label: string = "请求",
-  ): Promise<T | null> => {
-    try {
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error(`${label} 超时`)), timeout);
-      });
-      return await Promise.race([fetcher(), timeoutPromise]);
-    } catch (error) {
-      serverLog.warn(`⚠️ ${label} 失败:`, error instanceof Error ? error.message : error);
-      return null;
-    }
-  };
   // kuwo
   fastify.get(
     "/unblock/kuwo",
@@ -113,14 +73,7 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const result = await fetchWithTimeout(
-        () => getKuwoSongUrl(buildMatchInfo(req.query)),
-        8000,
-        "酷我音乐解锁",
-      );
-      if (!result) {
-        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
-      }
+      const result = await getKuwoSongUrl(buildMatchInfo(req.query));
       return reply.send(result);
     },
   );
@@ -131,14 +84,18 @@ export const initUnblockAPI = async (fastify: FastifyInstance) => {
       req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
       reply: FastifyReply,
     ) => {
-      const result = await fetchWithTimeout(
-        () => getBodianSongUrl(buildMatchInfo(req.query)),
-        8000,
-        "波点音乐解锁",
-      );
-      if (!result) {
-        return reply.send({ code: 404, url: null, message: "请求超时或失败" });
-      }
+      const result = await getBodianSongUrl(buildMatchInfo(req.query));
+      return reply.send(result);
+    },
+  );
+  // migu
+  fastify.get(
+    "/unblock/migu",
+    async (
+      req: FastifyRequest<{ Querystring: { [key: string]: string } }>,
+      reply: FastifyReply,
+    ) => {
+      const result = await getMiguSongUrl(buildMatchInfo(req.query));
       return reply.send(result);
     },
   );
