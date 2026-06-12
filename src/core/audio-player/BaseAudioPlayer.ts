@@ -403,6 +403,8 @@ export abstract class BaseAudioPlayer
 
   /**
    * 设置输出设备
+   * 同时更新 AudioContext 与媒体元素的 sinkId，避免 Chromium 中元素 sink
+   * 覆盖上下文 sink 导致切换不生效
    */
   public async setSinkId(deviceId: string) {
     if (deviceId === "default") return;
@@ -410,12 +412,11 @@ export abstract class BaseAudioPlayer
     if (this.audioCtx && typeof this.audioCtx.setSinkId === "function") {
       try {
         await this.audioCtx.setSinkId(deviceId);
-        return;
       } catch (e) {
         console.warn("AudioContext setSinkId 失败, 尝试后备", e);
       }
     }
-    // 回退逻辑由子类实现，例如设置 HTMLAudioElement.setSinkId
+    // 无论 AudioContext 是否成功，都需要同步设置媒体元素自身的 sinkId
     await this.doSetSinkId(deviceId);
   }
 

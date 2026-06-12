@@ -1,6 +1,7 @@
 import type { VNodeChild } from "vue";
-import { useSettingStore } from "@/stores";
+import { useSettingStore, useStatusStore } from "@/stores";
 import { usePlayerController } from "@/core/player/PlayerController";
+import { useAudioManager } from "@/core/player/AudioManager";
 import { isElectron, checkIsolationSupport } from "@/utils/env";
 import { renderOption } from "@/utils/helper";
 import { SettingConfig } from "@/types/settings";
@@ -13,7 +14,9 @@ import { computed, ref, h, watch } from "vue";
 
 export const usePlaySettings = (): SettingConfig => {
   const settingStore = useSettingStore();
+  const statusStore = useStatusStore();
   const player = usePlayerController();
+  const audioManager = useAudioManager();
 
   // 音频引擎数据
   const audioEngineData = {
@@ -95,8 +98,21 @@ export const usePlaySettings = (): SettingConfig => {
 
   // 处理引擎切换
   const handleAudioEngineSelect = async (value: "element" | "ffmpeg" | "mpv") => {
+    // 切换引擎的提示框会触发 Chromium autoplay 策略挂起 AudioContext
+    // 早退路径需要确保音频状态被恢复，避免回到原引擎时无声
+    const ensureAudioResumed = async () => {
+      try {
+        if (statusStore.playStatus) {
+          await audioManager.resume({ fadeIn: false });
+        }
+      } catch (e) {
+        console.warn("恢复音频状态失败", e);
+      }
+    };
+
     if (value === "ffmpeg" && !checkIsolationSupport()) {
       window.$message.warning("当前环境不支持 FFmpeg 引擎，已回退至默认引擎");
+      await ensureAudioResumed();
       return;
     }
 
@@ -109,6 +125,8 @@ export const usePlaySettings = (): SettingConfig => {
       targetPlaybackEngine === settingStore.playbackEngine &&
       targetAudioEngine === settingStore.audioEngine
     ) {
+      // 选中当前引擎（可能由弹窗导致 AudioContext 挂起），恢复音频状态
+      await ensureAudioResumed();
       return;
     }
 
@@ -116,16 +134,19 @@ export const usePlaySettings = (): SettingConfig => {
     if (targetPlaybackEngine === "mpv") {
       if (!isElectron) {
         window.$message.warning("当前环境不支持 MPV 引擎，已回退至默认引擎");
+        await ensureAudioResumed();
         return;
       }
       try {
         const result = await window.electron.ipcRenderer.invoke("mpv-check-installed");
         if (!result.installed) {
           window.$message.error("未检测到 MPV，请先安装 MPV 播放器", { duration: 3000 });
+          await ensureAudioResumed();
           return;
         }
       } catch (e) {
         console.error("Check MPV installed failed", e);
+        await ensureAudioResumed();
         return;
       }
     }
@@ -226,12 +247,21 @@ export const usePlaySettings = (): SettingConfig => {
     // 找到对应的 label 用于显示
     const option = outputDevices.value.find((d) => d.value === deviceId);
     const label = option?.label || deviceId;
+    // 记录切换前是否在播放，用于决定是否需要暂停+恢复以让新设备立即生效
+    const wasPlaying = statusStore.playStatus;
 
     if (settingStore.playbackEngine === "mpv") {
       try {
         const result = await window.electron.ipcRenderer.invoke("mpv-set-audio-device", deviceId);
         if (result.success) {
           settingStore.playDevice = deviceId;
+          // 强制让新设备立即生效：暂停→恢复
+          if (wasPlaying) {
+            await new Promise((r) => setTimeout(r, 30));
+            window.electron.ipcRenderer.send("mpv-pause");
+            await new Promise((r) => setTimeout(r, 60));
+            window.electron.ipcRenderer.send("mpv-resume");
+          }
           window.$message.success(`已切换输出设备为 ${label}`);
         } else {
           window.$message.error(`切换输出设备失败: ${result.error}`);
@@ -245,6 +275,13 @@ export const usePlaySettings = (): SettingConfig => {
     try {
       await player.toggleOutputDevice(deviceId);
       settingStore.playDevice = deviceId;
+      // 强制让新设备立即生效：暂停→恢复
+      if (wasPlaying) {
+        await new Promise((r) => setTimeout(r, 30));
+        audioManager.pause({ fadeOut: false });
+        await new Promise((r) => setTimeout(r, 60));
+        await audioManager.resume({ fadeIn: false });
+      }
       window.$message.success(`已切换输出设备为 ${label}`);
     } catch (e) {
       window.$message.error(`切换输出设备失败: ${e}`);

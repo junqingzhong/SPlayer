@@ -21,6 +21,7 @@
 import { useSettingStore } from "@/stores";
 import { useMobile } from "@/composables/useMobile";
 import { onMounted } from "vue";
+import { audioDeviceWatcher } from "@/core/player/AudioDeviceWatcher";
 
 const settingStore = useSettingStore();
 const { isDesktop } = useMobile();
@@ -32,6 +33,8 @@ const isDesktopLyric = location.hash.includes("desktop-lyric");
  */
 onMounted(() => {
   settingStore.checkAndMigrate();
+  // 启动音频设备拔插自动暂停/恢复监听
+  audioDeviceWatcher.start();
 });
 </script>
 
